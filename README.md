@@ -1,6 +1,6 @@
 ## Testing 
 
-./mvnw package
-./mvnw payara-micro:start
+* `./mvnw package`
+* `./mvnw payara-micro:start`
 
 ## Building
