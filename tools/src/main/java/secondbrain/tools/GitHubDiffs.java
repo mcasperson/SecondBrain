@@ -82,7 +82,12 @@ public class GitHubDiffs implements Tool {
         final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
-        final String token = "Bearer " + context.getOrDefault("GITHUB_TOKEN", "");
+        final String token = context.getOrDefault("GITHUB_TOKEN", "");
+        final String authHeader = "Bearer " + token;
+
+        if (token.isEmpty()) {
+            return "You must provide a GitHub token to use this tool.";
+        }
 
         return Try.of(() -> getCommits(
                         owner,
@@ -90,8 +95,8 @@ public class GitHubDiffs implements Tool {
                         branch,
                         dateParser.parseDate(startDate).format(FORMATTER),
                         dateParser.parseDate(endDate).format(FORMATTER),
-                        token))
-                .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, token))
+                        authHeader))
+                .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader))
                 .map(diffs -> String.join("\n", diffs))
                 .map(diffs -> buildToolPrompt(diffs, prompt))
                 .map(this::callOllama)
