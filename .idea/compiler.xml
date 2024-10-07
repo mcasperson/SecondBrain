@@ -8,7 +8,6 @@
         <outputRelativeToContentRoot value="true" />
         <module name="secondbrain-tools" />
         <module name="secondbrain-cli" />
-        <module name="payara-micro-examples" />
         <module name="secondbrain-service" />
         <module name="secondbrain-core" />
         <module name="secondbrain-web" />
