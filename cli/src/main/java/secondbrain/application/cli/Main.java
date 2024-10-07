@@ -6,7 +6,7 @@ import secondbrain.domain.handler.PromptHandler;
 import domain.logging.LogConfig;
 
 public class Main {
-    private static final String DEFAULT_PROMPT = "Perform a smoke test";
+    private static final String DEFAULT_PROMPT = "Summarize the last 30 messages from the slack channel topic-features";
 
     public static void main(final String[] args) {
         LogConfig.init();

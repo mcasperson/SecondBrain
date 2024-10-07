@@ -13,10 +13,10 @@ import java.util.List;
  * A tool that returns a greeting message.
  */
 @Dependent
-public class HelloWorldTool implements Tool {
+public class HelloWorld implements Tool {
     @Override
     @NotNull public String getName() {
-        return HelloWorldTool.class.getSimpleName();
+        return HelloWorld.class.getSimpleName();
     }
 
     @Override
