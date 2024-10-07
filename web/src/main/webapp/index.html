@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
     <title>SecondBrain</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" rel="stylesheet">
 </head>
 <body>
 
@@ -19,27 +19,27 @@
         <div class="offset-3 col-6">
             <form onsubmit="handleSubmit(event)">
                 <div class="mb-3">
-                    <label for="githubToken" class="form-label">GitHub Token</label>
-                    <input type="password" class="form-control" id="githubToken" aria-describedby="githubTokenHelp">
-                    <div id="githubTokenHelp" class="form-text">Create a Personal Access Token using the instructions <a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens">here</a>.</div>
+                    <label class="form-label" for="githubToken">GitHub Token</label>
+                    <input aria-describedby="githubTokenHelp" class="form-control" id="githubToken" type="password">
+                    <div class="form-text" id="githubTokenHelp">Create a Personal Access Token using the instructions <a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens">here</a>.</div>
                 </div>
                 <div class="mb-3">
-                    <label for="prompt" class="form-label">Prompt</label>
-                    <textarea rows="10" class="form-control" id="prompt" aria-describedby="promptHelp"></textarea>
+                    <label class="form-label" for="prompt">Prompt</label>
+                    <textarea aria-describedby="promptHelp" class="form-control" id="prompt" rows="10">Given the diffs from owner "mcasperson" and repo "SecondBrain" on branch "main", generate release notes with an introductory paragraph and then bullet points of significant changes.</textarea>
                 </div>
                 <div class="mb-3">
-                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <button class="btn btn-primary" type="submit">Submit</button>
                 </div>
                 <div class="mb-3">
-                    <label for="response" class="form-label">Response</label>
-                    <textarea readonly rows="10" class="form-control" id="response" aria-describedby="responseHelp"></textarea>
+                    <label class="form-label" for="response">Response</label>
+                    <textarea aria-describedby="responseHelp" class="form-control" id="response" readonly rows="10"></textarea>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script crossorigin="anonymous" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
     function handleSubmit(event) {
@@ -51,11 +51,10 @@
         fetch('/api/prompt?prompt=' + encodeURIComponent(prompt), {
             method: 'GET',
             headers: {
-                'context': json.stringify({"GITHUB_TOKEN": githubToken}),
-            },
-            body: JSON.stringify({githubToken, prompt}),
+                'context': JSON.stringify({"GITHUB_TOKEN": githubToken}),
+            }
         })
-            .then(response => response.json())
+            .then(response => response.text())
             .then(data => {
                 response.value = data
             })

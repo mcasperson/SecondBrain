@@ -28,5 +28,7 @@ public interface Tool {
      * Calls the tool.
      * @param arguments The arguments to pass to the tool. These are extracted by the LLM.
     */
-    String call(Map<String, String> context, String prompt, List<ToolArgs> arguments);
+    String call(@NotNull Map<String, String> context,
+                @NotNull String prompt,
+                @NotNull List<ToolArgs> arguments);
 }
