@@ -27,7 +27,7 @@ public class GitHubDiffs implements Tool {
     private static final String DEFAULT_OWNER = "mcasperson";
     private static final String DEFAULT_REPO = "SecondBrain";
     private static final String DEFAULT_BRANCH = "main";
-    private static int DEFAULT_DURATION = 30;
+    private static final int DEFAULT_DURATION = 30;
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     @Inject
@@ -84,7 +84,7 @@ public class GitHubDiffs implements Tool {
                         startDate,
                         endDate,
                         token))
-                .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, token))
+                .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, "Bearer " + token))
                 .map(diffs -> String.join("\n", diffs))
                 .map(diffs -> buildToolPrompt(diffs, prompt))
                 .map(this::callOllama)
