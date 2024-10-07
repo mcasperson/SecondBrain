@@ -10,10 +10,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
+import secondbrain.domain.toolbuilder.ToolBuilder;
+import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolCall;
 import secondbrain.domain.tooldefs.ToolDefinition;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.toolbuilder.ToolBuilder;
 import secondbrain.domain.tooldefs.ToolDefinitionFallback;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
@@ -29,7 +29,8 @@ public class PromptHandlerImpl implements PromptHandler {
     @Inject
     private ToolBuilder toolBuilder;
 
-    @Inject @Any
+    @Inject
+    @Any
     private Instance<Tool> tools;
 
     @Inject
@@ -46,11 +47,18 @@ public class PromptHandlerImpl implements PromptHandler {
                 .mapTry(this::parseResponseAsToolDefinitions)
                 .map(tools -> tools[0])
                 .map(this::getToolCallFromToolDefinition)
-                .map(toolCall -> toolCall
-                        .map(tool -> tool.call(context, prompt))
-                        .orElseGet(() -> "No tool found"))
+                .map(toolCall -> toolCall.orElse(null))
+                .map(toolCall -> callTool(toolCall, context, prompt))
                 .recover(Throwable.class, e -> "Failed to call tool " + e.getMessage())
                 .get();
+    }
+
+    private String callTool(final ToolCall toolCall, @NotNull final Map<String, String> context, @NotNull final String prompt) {
+        if (toolCall == null) {
+            return "No tool found";
+        }
+
+        return toolCall.call(context, prompt);
     }
 
     private String getToolsPrompt(@NotNull final String prompt) {
