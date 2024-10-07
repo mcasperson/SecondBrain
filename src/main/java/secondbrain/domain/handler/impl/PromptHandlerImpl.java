@@ -17,6 +17,7 @@ import secondbrain.domain.toolbuilder.ToolBuilder;
 import secondbrain.infrastructure.Ollama;
 import secondbrain.infrastructure.OllamaGenerateBody;
 import org.jboss.resteasy.client.jaxrs.ResteasyClient;
+import secondbrain.infrastructure.OllamaResponse;
 
 @ApplicationScoped
 public class PromptHandlerImpl implements PromptHandler {
@@ -32,11 +33,11 @@ public class PromptHandlerImpl implements PromptHandler {
     public String handlePrompt(@NotNull final String prompt) {
         final String llmPrompt = toolBuilder.buildToolPrompt(tools.stream().toList(), prompt);
 
-        final String result = proxyCaller.callProxy(
+        final OllamaResponse ollama = proxyCaller.callProxy(
                 "http://localhost:11434",
                 Ollama.class,
                 simple -> simple.getTools(new OllamaGenerateBody("llama3.2", llmPrompt, false)));
 
-        return result;
+        return ollama.response();
     }
 }
