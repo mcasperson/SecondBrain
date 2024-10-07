@@ -3,7 +3,7 @@ package secondbrain.domain.toolbuilder.impl;
 import jakarta.enterprise.context.Dependent;
 import jakarta.validation.constraints.NotNull;
 import org.jspecify.annotations.NonNull;
-import secondbrain.domain.tools.Tool;
+import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.toolbuilder.ToolBuilder;
 
 import java.util.List;

@@ -1,6 +1,6 @@
 package secondbrain.domain.toolbuilder;
 
-import secondbrain.domain.tools.Tool;
+import secondbrain.domain.tooldefs.Tool;
 
 import java.util.List;
 

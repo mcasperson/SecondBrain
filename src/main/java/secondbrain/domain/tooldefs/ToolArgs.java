@@ -1,4 +1,4 @@
-package secondbrain.domain.tools;
+package secondbrain.domain.tooldefs;
 
 /**
  * Represents a tool argument. This is sent back by the LLM

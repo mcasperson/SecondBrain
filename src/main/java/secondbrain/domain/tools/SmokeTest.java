@@ -1,12 +1,11 @@
-package secondbrain.domain.tools.impl;
+package secondbrain.domain.tools;
 
 import jakarta.enterprise.context.Dependent;
 import jakarta.validation.constraints.NotNull;
-import secondbrain.domain.tools.Tool;
-import secondbrain.domain.tools.ToolArgs;
-import secondbrain.domain.tools.ToolArguments;
+import secondbrain.domain.tooldefs.Tool;
+import secondbrain.domain.tooldefs.ToolArgs;
+import secondbrain.domain.tooldefs.ToolArguments;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**

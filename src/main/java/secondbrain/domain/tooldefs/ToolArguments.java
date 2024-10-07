@@ -1,4 +1,4 @@
-package secondbrain.domain.tools;
+package secondbrain.domain.tooldefs;
 
 import org.jspecify.annotations.NonNull;
 
