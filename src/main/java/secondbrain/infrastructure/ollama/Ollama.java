@@ -1,4 +1,4 @@
-package secondbrain.infrastructure;
+package secondbrain.infrastructure.ollama;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;

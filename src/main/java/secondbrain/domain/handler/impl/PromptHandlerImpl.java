@@ -14,9 +14,9 @@ import secondbrain.domain.tooldefs.ToolCall;
 import secondbrain.domain.tooldefs.ToolDefinition;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.toolbuilder.ToolBuilder;
-import secondbrain.infrastructure.Ollama;
-import secondbrain.infrastructure.OllamaGenerateBody;
-import secondbrain.infrastructure.OllamaResponse;
+import secondbrain.infrastructure.ollama.Ollama;
+import secondbrain.infrastructure.ollama.OllamaGenerateBody;
+import secondbrain.infrastructure.ollama.OllamaResponse;
 
 import java.util.Optional;
 

@@ -5,8 +5,6 @@ import org.jboss.weld.environment.se.WeldContainer;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.logging.LogConfig;
 
-
-
 public class Main {
     private static final String DEFAULT_PROMPT = "Perform a smoke test";
 
