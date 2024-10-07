@@ -1,4 +1,4 @@
-package secondbrain.domain.logging;
+package domain.logging;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
