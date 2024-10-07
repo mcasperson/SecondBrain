@@ -3,6 +3,7 @@ package secondbrain.domain.tooldefs;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -11,7 +12,7 @@ import java.util.Objects;
  * @param toolDefinition The arguments to pass to the tool
  */
 public record ToolCall(@NotNull Tool tool, @NotNull ToolDefinition toolDefinition) {
-    public String call() {
-        return tool.call(Objects.requireNonNullElse(toolDefinition.toolArgs(), List.of()));
+    public String call(@NotNull final Map<String, String> context, final @NotNull String prompt) {
+        return tool.call(context, prompt, Objects.requireNonNullElse(toolDefinition.toolArgs(), List.of()));
     }
 }

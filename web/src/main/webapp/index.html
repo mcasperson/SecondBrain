@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SecondBrain</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg bg-body-tertiary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">SecondBrain</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="row">
+        <div class="offset-3 col-6">
+            <form onsubmit="handleSubmit(event)">
+                <div class="mb-3">
+                    <label for="githubToken" class="form-label">GitHub Token</label>
+                    <input type="password" class="form-control" id="githubToken" aria-describedby="githubTokenHelp">
+                    <div id="githubTokenHelp" class="form-text">Create a Personal Access Token using the instructions <a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens">here</a>.</div>
+                </div>
+                <div class="mb-3">
+                    <label for="prompt" class="form-label">Prompt</label>
+                    <textarea rows="10" class="form-control" id="prompt" aria-describedby="promptHelp"></textarea>
+                </div>
+                <div class="mb-3">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+                <div class="mb-3">
+                    <label for="response" class="form-label">Response</label>
+                    <textarea readonly rows="10" class="form-control" id="response" aria-describedby="responseHelp"></textarea>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+<script>
+    function handleSubmit(event) {
+        event.preventDefault();
+
+        const githubToken = document.getElementById('githubToken').value;
+        const prompt = document.getElementById('prompt').value;
+
+        fetch('/api/prompt?prompt=' + encodeURIComponent(prompt), {
+            method: 'GET',
+            headers: {
+                'context': json.stringify({"GITHUB_TOKEN": githubToken}),
+            },
+            body: JSON.stringify({githubToken, prompt}),
+        })
+            .then(response => response.json())
+            .then(data => {
+                response.value = data
+            })
+            .catch((error) => {
+                response.value = error
+            });
+    }
+</script>
+</body>
+</html>

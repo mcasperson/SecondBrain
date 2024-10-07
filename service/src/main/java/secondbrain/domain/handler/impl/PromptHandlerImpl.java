@@ -18,6 +18,7 @@ import secondbrain.infrastructure.ollama.Ollama;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
 
+import java.util.Map;
 import java.util.Optional;
 
 @ApplicationScoped
@@ -34,7 +35,7 @@ public class PromptHandlerImpl implements PromptHandler {
     @Inject
     private JsonDeserializer jsonDeserializer;
 
-    public String handlePrompt(@NotNull final String prompt) {
+    public String handlePrompt(@NotNull final Map<String, String> context, @NotNull final String prompt) {
 
         return Try.of(() -> getToolsPrompt(prompt))
                 .map(this::callOllama)
@@ -43,7 +44,7 @@ public class PromptHandlerImpl implements PromptHandler {
                 .map(tools -> tools[0])
                 .map(this::getToolCallFromToolDefinition)
                 .map(toolCall -> toolCall
-                        .map(ToolCall::call)
+                        .map(tool -> tool.call(context, prompt))
                         .orElseGet(() -> "No tool found"))
                 .getOrElse("Failed to call tool");
     }

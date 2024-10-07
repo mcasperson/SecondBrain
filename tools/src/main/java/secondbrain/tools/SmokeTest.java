@@ -7,6 +7,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * A tool that returns a greeting message.
@@ -29,7 +30,10 @@ public class SmokeTest implements Tool {
     }
 
     @Override
-    @NotNull public String call(final @NotNull List<ToolArgs> arguments) {
+    @NotNull public String call(
+            @NotNull final Map<String, String> context,
+            @NotNull final String prompt,
+            @NotNull final List<ToolArgs> arguments) {
         return "Test succeeded!";
     }
 }

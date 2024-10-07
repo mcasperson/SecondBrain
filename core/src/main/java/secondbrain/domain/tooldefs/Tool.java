@@ -1,6 +1,9 @@
 package secondbrain.domain.tooldefs;
 
+import jakarta.validation.constraints.NotNull;
+
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a tool that can be called by the LLM.
@@ -25,5 +28,5 @@ public interface Tool {
      * Calls the tool.
      * @param arguments The arguments to pass to the tool. These are extracted by the LLM.
     */
-    String call(List<ToolArgs> arguments);
+    String call(Map<String, String> context, String prompt, List<ToolArgs> arguments);
 }
