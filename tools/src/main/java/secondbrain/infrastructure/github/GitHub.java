@@ -9,7 +9,6 @@ import java.util.List;
 public interface GitHub {
     @GET
     @Path("/{owner}/{repo}/commits")
-    @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     List<GitHubCommitResponse> getCommits(
             @PathParam("owner") final String owner,
@@ -20,7 +19,7 @@ public interface GitHub {
             @HeaderParam("Authorization") final String authorization);
 
     @GET
-    @Path("/repos/{owner}/{repo}/commits/{sha}")
+    @Path("/{owner}/{repo}/commits/{sha}")
     @Produces("application/vnd.github.v3.diff")
     String getDiff(
             @PathParam("owner") final String owner,
