@@ -10,12 +10,13 @@ import org.jboss.resteasy.client.jaxrs.ResteasyWebTarget;
 
 @ApplicationScoped
 public class ProxyCaller {
-     public <T, U> U callProxy(@NotNull final String uri, @NotNull Class<T> proxyInterface, @NotNull ProxyCallback<T, U> callback) {
-         return Try.withResources(() -> new ClosableResteasyClient((ResteasyClient) ClientBuilder.newClient()))
-                 .of(client -> client.target(uri))
-                 .map(target -> callback.callProxy(target.proxy(proxyInterface)))
-                 .onFailure(ClientErrorException.class, ex -> System.out.println(ex.getMessage()))
-                 .get();
+    public <T, U> U callProxy(@NotNull final String uri, @NotNull Class<T> proxyInterface, @NotNull ProxyCallback<T, U> callback) {
+        return Try.withResources(() -> new ClosableResteasyClient((ResteasyClient) ClientBuilder.newClient()))
+                .of(client -> Try.of(() -> client.target(uri))
+                        .map(target -> callback.callProxy(target.proxy(proxyInterface)))
+                        .onFailure(ClientErrorException.class, ex -> System.out.println(ex.getMessage()))
+                        .get())
+                .get();
     }
 }
 
