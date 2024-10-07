@@ -7,14 +7,14 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.client.ClientBuilder;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
-import secondbrain.domain.resteasy.ProxyCaller;
 import secondbrain.domain.tooldefs.ToolCall;
 import secondbrain.domain.tooldefs.ToolDefinition;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.toolbuilder.ToolBuilder;
-import secondbrain.infrastructure.ollama.Ollama;
+import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
 
@@ -26,11 +26,11 @@ public class PromptHandlerImpl implements PromptHandler {
     @Inject
     private ToolBuilder toolBuilder;
 
-    @Inject
-    private ProxyCaller proxyCaller;
-
     @Inject @Any
     private Instance<Tool> tools;
+
+    @Inject
+    private OllamaClient ollamaClient;
 
     @Inject
     private JsonDeserializer jsonDeserializer;
@@ -55,10 +55,9 @@ public class PromptHandlerImpl implements PromptHandler {
     }
 
     private OllamaResponse callOllama(@NotNull final String llmPrompt) {
-        return proxyCaller.callProxy(
-                "http://localhost:11434",
-                Ollama.class,
-                simple -> simple.getTools(new OllamaGenerateBody("llama3.2", llmPrompt, false)));
+        return ollamaClient.getTools(
+                ClientBuilder.newClient(),
+                new OllamaGenerateBody("llama3.2", llmPrompt, false));
     }
 
     private ToolDefinition[] parseResponseAsToolDefinitions(@NotNull final String response) throws JsonProcessingException {

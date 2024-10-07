@@ -4,16 +4,17 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.client.ClientBuilder;
 import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.resteasy.ProxyCaller;
+import secondbrain.domain.date.DateParser;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.infrastructure.github.GitHub;
+import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.GitHubCommitResponse;
-import secondbrain.infrastructure.ollama.Ollama;
+import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
 
@@ -34,7 +35,13 @@ public class GitHubDiffs implements Tool {
     private ArgsAccessor argsAccessor;
 
     @Inject
-    private ProxyCaller proxyCaller;
+    private GitHubClient gitHubClient;
+
+    @Inject
+    private OllamaClient ollamaClient;
+
+    @Inject
+    private DateParser dateParser;
 
     @Override
     public String getName() {
@@ -46,7 +53,7 @@ public class GitHubDiffs implements Tool {
         return """
                 Provides a list of Git diffs and answers questions about them.
                 Example prompts include:
-                * Given the diffs from owner "mcasperson" and repo "SecondBrain" on branch "main" between 2021-01-01 and 2021-01-31, generate release notes with an introductory paragraph and then bullet points of significant changes.
+                * Given the diffs from owner "mcasperson" and repo "SecondBrain" on branch "main" between 2021-01-01T00:00Z and 2021-01-31T00:00Z, generate release notes with an introductory paragraph and then bullet points of significant changes.
                 """;
     }
 
@@ -81,8 +88,8 @@ public class GitHubDiffs implements Tool {
                         owner,
                         repo,
                         branch,
-                        startDate,
-                        endDate,
+                        dateParser.parseDate(startDate).format(FORMATTER),
+                        dateParser.parseDate(endDate).format(FORMATTER),
                         token))
                 .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, token))
                 .map(diffs -> String.join("\n", diffs))
@@ -108,16 +115,8 @@ public class GitHubDiffs implements Tool {
             @NotNull final String since,
             @NotNull final String until,
             @NotNull final String authorization) {
-        return proxyCaller.callProxy(
-                "https://api.github.com",
-                GitHub.class,
-                proxy -> proxy.getCommits(
-                        owner,
-                        repo,
-                        branch,
-                        until,
-                        since,
-                        authorization));
+
+        return gitHubClient.getCommits(ClientBuilder.newClient(), owner, repo, branch, until, since, authorization);
     }
 
     private String diffToContext(
@@ -130,10 +129,9 @@ public class GitHubDiffs implements Tool {
     }
 
     private OllamaResponse callOllama(@NotNull final String llmPrompt) {
-        return proxyCaller.callProxy(
-                "http://localhost:11434",
-                Ollama.class,
-                simple -> simple.getTools(new OllamaGenerateBody("llama3.2", llmPrompt, false)));
+        return ollamaClient.getTools(
+                ClientBuilder.newClient(),
+                new OllamaGenerateBody("llama3.2", llmPrompt, false));
     }
 
     private String getCommitDiff(
@@ -141,14 +139,8 @@ public class GitHubDiffs implements Tool {
             @NotNull final String repo,
             @NotNull final String sha,
             @NotNull final String authorization) {
-        return proxyCaller.callProxy(
-                "https://api.github.com",
-                GitHub.class,
-                proxy -> proxy.getDiff(
-                        owner,
-                        repo,
-                        sha,
-                        authorization));
+
+        return gitHubClient.getDiff(ClientBuilder.newClient(), owner, repo, sha, authorization);
     }
 
     @NotNull
@@ -160,7 +152,7 @@ public class GitHubDiffs implements Tool {
                 You must answer the question based on the diffs provided.
                 Here are the diffs:
                 """
-                + context.substring(0, Constants.MAX_CONTEXT_LENGTH)
+                + context.substring(0, Math.min(context.length(), Constants.MAX_CONTEXT_LENGTH))
                 + "<|eot_id|><|start_header_id|>user<|end_header_id|>"
                 + prompt
                 + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>".stripLeading();
