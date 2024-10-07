@@ -75,7 +75,7 @@ public class GitHubDiffs implements Tool {
         final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
-        final String token = context.getOrDefault("GITHUB_TOKEN", "");
+        final String token = "Bearer " + context.getOrDefault("GITHUB_TOKEN", "");
 
         return Try.of(() -> getCommits(
                         owner,
@@ -83,7 +83,7 @@ public class GitHubDiffs implements Tool {
                         branch,
                         startDate,
                         endDate,
-                        "Bearer " + token))
+                        token))
                 .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, token))
                 .map(diffs -> String.join("\n", diffs))
                 .map(diffs -> buildToolPrompt(diffs, prompt))
