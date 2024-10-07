@@ -1,12 +1,12 @@
 package secondbrain.domain.args;
 
-import jakarta.inject.Singleton;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.validation.constraints.NotNull;
 import secondbrain.domain.tooldefs.ToolArgs;
 
 import java.util.List;
 
-@Singleton
+@ApplicationScoped
 public class ArgsAccessor {
     public String getArgument(
             @NotNull final List<ToolArgs> arguments,
