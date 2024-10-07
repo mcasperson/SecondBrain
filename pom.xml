@@ -23,6 +23,8 @@
     <module>core</module>
     <module>service</module>
     <module>tools</module>
+    <module>cli</module>
+    <module>web</module>
   </modules>
 
   <dependencyManagement>

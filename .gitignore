@@ -26,4 +26,6 @@ replay_pid*
 service/target
 core/target
 tools/target
+web/target
+cli/target
 out
