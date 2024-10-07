@@ -7,14 +7,18 @@ import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.jboss.resteasy.client.jaxrs.ResteasyClient;
 import org.jboss.resteasy.client.jaxrs.ResteasyWebTarget;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 public class ProxyCaller {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProxyCaller.class);
+
     public <T, U> U callProxy(@NotNull final String uri, @NotNull Class<T> proxyInterface, @NotNull ProxyCallback<T, U> callback) {
         return Try.withResources(() -> new ClosableResteasyClient((ResteasyClient) ClientBuilder.newClient()))
                 .of(client -> Try.of(() -> client.target(uri))
                         .map(target -> callback.callProxy(target.proxy(proxyInterface)))
-                        .onFailure(ClientErrorException.class, ex -> System.out.println(ex.getMessage()))
+                        .onFailure(ClientErrorException.class, ex -> LOGGER.error(ex.getMessage()))
                         .get())
                 .get();
     }
