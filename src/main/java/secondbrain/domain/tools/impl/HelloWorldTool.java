@@ -6,6 +6,7 @@ import secondbrain.domain.tools.Tool;
 import secondbrain.domain.tools.ToolArgs;
 import secondbrain.domain.tools.ToolArguments;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Dependent
@@ -22,11 +23,17 @@ public class HelloWorldTool implements Tool {
 
     @Override
     @NotNull public List<ToolArguments> getArguments() {
-        return List.of();
+        return new ArrayList<>() {{
+            add(new ToolArguments("greeting","The greeting to display", "World"));
+        }};
     }
 
     @Override
     @NotNull public String call(final @NotNull List<ToolArgs> arguments) {
-        return "Hello, World!";
+        if (arguments.size() != 1) {
+            return "Hello, World!";
+        }
+
+        return arguments.getFirst().argValue();
     }
 }

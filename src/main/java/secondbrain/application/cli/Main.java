@@ -9,7 +9,7 @@ public class Main {
         final Weld weld = new Weld();
         try (WeldContainer weldContainer = weld.initialize()) {
             final String response = weldContainer.select(PromptHandler.class).get()
-                    .handlePrompt("Generate a greeting");
+                    .handlePrompt("Display the greeting \"Hi World!\"");
             System.out.println(response);
         }
     }

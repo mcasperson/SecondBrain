@@ -32,7 +32,7 @@ public class Llama3ToolBuilder implements ToolBuilder {
                     }
                     """.formatted(
                         argument.name(),
-                        argument.type(),
+                        "String",
                         argument.description(),
                         argument.defaultValue()
                 )).collect(Collectors.joining(","))
