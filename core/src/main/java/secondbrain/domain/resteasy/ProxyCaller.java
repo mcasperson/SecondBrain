@@ -23,15 +23,13 @@ public class ProxyCaller {
 class ClosableResteasyClient implements AutoCloseable {
     private final ResteasyClient client;
 
-    ClosableResteasyClient(final ResteasyClient client) {
+    ClosableResteasyClient(@NotNull final ResteasyClient client) {
         this.client = client;
     }
 
     @Override
     public void close() {
-        if (client != null) {
-            client.close();
-        }
+        client.close();
     }
 
     public ResteasyWebTarget target(final String uri) {
