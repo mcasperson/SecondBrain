@@ -14,7 +14,7 @@ public class SlackChannel implements Tool {
     @Override
     @NotNull
     public String getName() {
-        return "SlackChannel";
+        return SlackChannel.class.getSimpleName();
     }
 
     @Override

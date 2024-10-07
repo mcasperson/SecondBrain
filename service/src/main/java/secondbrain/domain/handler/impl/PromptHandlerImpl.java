@@ -46,7 +46,8 @@ public class PromptHandlerImpl implements PromptHandler {
                 .map(toolCall -> toolCall
                         .map(tool -> tool.call(context, prompt))
                         .orElseGet(() -> "No tool found"))
-                .getOrElse("Failed to call tool");
+                .recover(Throwable.class, e -> "Failed to call tool " + e.getMessage())
+                .get();
     }
 
     private String getToolsPrompt(@NotNull final String prompt) {

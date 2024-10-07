@@ -52,7 +52,7 @@ public class GitHubDiffs implements Tool {
 
     @Override
     public List<ToolArguments> getArguments() {
-        final String startTime = ZonedDateTime.now().minusDays(30).format(FORMATTER);
+        final String startTime = ZonedDateTime.now().minusDays(DEFAULT_DURATION).format(FORMATTER);
         final String endTime = ZonedDateTime.now().format(FORMATTER);
 
         return List.of(
@@ -84,7 +84,7 @@ public class GitHubDiffs implements Tool {
                         startDate,
                         endDate,
                         token))
-                .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, "Bearer " + token))
+                .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, token))
                 .map(diffs -> String.join("\n", diffs))
                 .map(diffs -> buildToolPrompt(diffs, prompt))
                 .map(this::callOllama)
