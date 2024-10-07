@@ -1,5 +1,5 @@
 ## Testing
 
+* `mvn clean install`
 * `cd web; mvn package; mvn payara-micro:start`
-
-## Building
+* Open [http://localhost:8080/index.html](http://localhost:8080/index.html) in a browser
