@@ -1,28 +1,23 @@
 package secondbrain.domain.handler.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
-import jakarta.ws.rs.ClientErrorException;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.client.WebTarget;
-import org.jboss.resteasy.client.jaxrs.ResteasyWebTarget;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.resteasy.ProxyCaller;
-import secondbrain.domain.toolbuilder.impl.ToolDefinition;
+import secondbrain.domain.tools.ToolCall;
+import secondbrain.domain.tools.ToolDefinition;
 import secondbrain.domain.tools.Tool;
 import secondbrain.domain.toolbuilder.ToolBuilder;
 import secondbrain.infrastructure.Ollama;
 import secondbrain.infrastructure.OllamaGenerateBody;
-import org.jboss.resteasy.client.jaxrs.ResteasyClient;
 import secondbrain.infrastructure.OllamaResponse;
 
-import java.util.List;
 import java.util.Optional;
 
 @ApplicationScoped
@@ -40,19 +35,37 @@ public class PromptHandlerImpl implements PromptHandler {
     private JsonDeserializer jsonDeserializer;
 
     public String handlePrompt(@NotNull final String prompt) {
-        final String llmPrompt = toolBuilder.buildToolPrompt(tools.stream().toList(), prompt);
 
-        final Try<ToolDefinition> toolDefinition = Try.of(() -> proxyCaller.callProxy(
+        return Try.of(() -> getToolsPrompt(prompt))
+                .map(this::callOllama)
+                .map(OllamaResponse::response)
+                .mapTry(this::parseResponseAsToolDefinitions)
+                .map(tools -> tools[0])
+                .map(this::getToolCallFromToolDefinition)
+                .map(toolCall -> toolCall
+                        .map(ToolCall::call)
+                        .orElseGet(() -> "No tool found"))
+                .getOrElse("Failed to call tool");
+    }
+
+    private String getToolsPrompt(@NotNull final String prompt) {
+        return toolBuilder.buildToolPrompt(tools.stream().toList(), prompt);
+    }
+
+    private OllamaResponse callOllama(@NotNull final String llmPrompt) {
+        return proxyCaller.callProxy(
                 "http://localhost:11434",
                 Ollama.class,
-                simple -> simple.getTools(new OllamaGenerateBody("llama3.2", llmPrompt, false))))
-                .mapTry(ollama -> jsonDeserializer.deserialize(ollama.response(), ToolDefinition[].class))
-                .mapTry(tools -> tools[0]);
+                simple -> simple.getTools(new OllamaGenerateBody("llama3.2", llmPrompt, false)));
+    }
 
-        final Try<Optional<Tool>> tool = toolDefinition
-                .mapTry(toolDef -> tools.stream().filter(t -> t.getName().equals(toolDef.toolName())).findFirst());
+    private ToolDefinition[] parseResponseAsToolDefinitions(@NotNull final String response) throws JsonProcessingException {
+        return jsonDeserializer.deserialize(response, ToolDefinition[].class);
+    }
 
-        return tool.mapTry(t -> t.get().call(toolDefinition.get().toolArgs()))
-                .getOrElseThrow(() -> new RuntimeException("Failed to call tool"));
+    private Optional<ToolCall> getToolCallFromToolDefinition(@NotNull final ToolDefinition toolDefinition) {
+        return tools.stream().filter(tool -> tool.getName().equals(toolDefinition.toolName()))
+                .findFirst()
+                .map(tool -> new ToolCall(tool, toolDefinition));
     }
 }
