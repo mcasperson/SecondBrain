@@ -5,7 +5,6 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-import secondbrain.domain.tools.ToolCalling;
 
 @Path("/api")
 public interface Ollama {

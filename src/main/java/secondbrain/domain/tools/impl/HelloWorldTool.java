@@ -9,6 +9,9 @@ import secondbrain.domain.tools.ToolArguments;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * A tool that returns a greeting message.
+ */
 @Dependent
 public class HelloWorldTool implements Tool {
     @Override
