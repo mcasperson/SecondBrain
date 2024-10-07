@@ -20,7 +20,8 @@ public interface GitHub {
             @HeaderParam("Authorization") final String authorization);
 
     @GET
-    @Path("/{owner}/{repo}/commits/{sha}.diff")
+    @Path("/repos/{owner}/{repo}/commits/{sha}")
+    @Consumes("application/vnd.github.v3.diff")
     String getDiff(
             @PathParam("owner") final String owner,
             @PathParam("repo") final String repo,

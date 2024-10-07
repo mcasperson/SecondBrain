@@ -5,18 +5,18 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import org.jspecify.annotations.NonNull;
+import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.resteasy.ProxyCaller;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.date.DateParser;
 import secondbrain.infrastructure.github.GitHub;
 import secondbrain.infrastructure.github.GitHubCommitResponse;
 import secondbrain.infrastructure.ollama.Ollama;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
 
-import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -24,7 +24,14 @@ import java.util.Map;
 
 @Dependent
 public class GitHubDiffs implements Tool {
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
+    private static final String DEFAULT_OWNER = "mcasperson";
+    private static final String DEFAULT_REPO = "SecondBrain";
+    private static final String DEFAULT_BRANCH = "main";
+    private static int DEFAULT_DURATION = 30;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+    @Inject
+    private ArgsAccessor argsAccessor;
 
     @Inject
     private ProxyCaller proxyCaller;
@@ -63,46 +70,27 @@ public class GitHubDiffs implements Tool {
             @NotNull final String prompt,
             @NotNull final List<ToolArgs> arguments) {
 
-        final LocalDate startDate = arguments.stream()
-                .filter(arg -> arg.argName().equals("since"))
-                .findFirst().map(arg -> DateParser.parseDate(arg.argValue()))
-                .orElse(LocalDate.now().minusDays(30));
-
-        final LocalDate endDate = arguments.stream()
-                .filter(arg -> arg.argName().equals("until"))
-                .findFirst().map(arg -> DateParser.parseDate(arg.argValue()))
-                .orElse(LocalDate.now());
-
-        final String owner = arguments.stream()
-                .filter(arg -> arg.argName().equals("owner"))
-                .findFirst().map(ToolArgs::argValue)
-                .orElse("mcasperson");
-
-        final String repo = arguments.stream()
-                .filter(arg -> arg.argName().equals("repo"))
-                .findFirst().map(ToolArgs::argValue)
-                .orElse("SecondBrain");
-
-        final String branch = arguments.stream()
-                .filter(arg -> arg.argName().equals("branch"))
-                .findFirst().map(ToolArgs::argValue)
-                .orElse("main");
-
+        final String startDate = argsAccessor.getArgument(arguments, "since", ZonedDateTime.now().minusDays(DEFAULT_DURATION).format(FORMATTER));
+        final String endDate = argsAccessor.getArgument(arguments, "until", ZonedDateTime.now().format(FORMATTER));
+        final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
+        final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
+        final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
         final String token = context.getOrDefault("GITHUB_TOKEN", "");
 
         return Try.of(() -> getCommits(
                         owner,
                         repo,
                         branch,
-                        startDate.format(FORMATTER),
-                        endDate.format(FORMATTER),
+                        startDate,
+                        endDate,
                         "Bearer " + token))
                 .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, token))
                 .map(diffs -> String.join("\n", diffs))
                 .map(diffs -> buildToolPrompt(diffs, prompt))
                 .map(this::callOllama)
                 .map(OllamaResponse::response)
-                .getOrElse("");
+                .recover(throwable -> "Failed to get diffs: " + throwable.getMessage())
+                .get();
     }
 
     private List<String> convertCommitsToDiffs(
@@ -123,7 +111,13 @@ public class GitHubDiffs implements Tool {
         return proxyCaller.callProxy(
                 "https://api.github.com",
                 GitHub.class,
-                proxy -> proxy.getCommits(owner, repo, branch, until, since, authorization));
+                proxy -> proxy.getCommits(
+                        owner,
+                        repo,
+                        branch,
+                        until,
+                        since,
+                        authorization));
     }
 
     private String diffToContext(
@@ -150,7 +144,11 @@ public class GitHubDiffs implements Tool {
         return proxyCaller.callProxy(
                 "https://api.github.com",
                 GitHub.class,
-                proxy -> proxy.getDiff(owner, repo, sha, authorization));
+                proxy -> proxy.getDiff(
+                        owner,
+                        repo,
+                        sha,
+                        authorization));
     }
 
     @NotNull
@@ -162,7 +160,7 @@ public class GitHubDiffs implements Tool {
                 You must answer the question based on the diffs provided.
                 Here are the diffs:
                 """
-                + context
+                + context.substring(0, Constants.MAX_CONTEXT_LENGTH)
                 + "<|eot_id|><|start_header_id|>user<|end_header_id|>"
                 + prompt
                 + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>".stripLeading();
