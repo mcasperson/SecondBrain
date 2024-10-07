@@ -3,6 +3,7 @@ package secondbrain.domain.tools.impl;
 import jakarta.enterprise.context.Dependent;
 import jakarta.validation.constraints.NotNull;
 import secondbrain.domain.tools.Tool;
+import secondbrain.domain.tools.ToolArgs;
 import secondbrain.domain.tools.ToolArguments;
 
 import java.util.List;
@@ -25,7 +26,7 @@ public class HelloWorldTool implements Tool {
     }
 
     @Override
-    @NotNull public String call(final @NotNull List<ToolArguments> arguments) {
+    @NotNull public String call(final @NotNull List<ToolArgs> arguments) {
         return "Hello, World!";
     }
 }

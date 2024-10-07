@@ -6,5 +6,5 @@ public interface Tool {
     String getName();
     String getDescription();
     List<ToolArguments> getArguments();
-    String call(List<ToolArguments> arguments);
+    String call(List<ToolArgs> arguments);
 }

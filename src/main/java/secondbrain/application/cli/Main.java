@@ -8,7 +8,8 @@ public class Main {
     public static void main(final String[] args) {
         final Weld weld = new Weld();
         try (WeldContainer weldContainer = weld.initialize()) {
-            final String response = weldContainer.select(PromptHandler.class).get().handlePrompt("Hello, World!");
+            final String response = weldContainer.select(PromptHandler.class).get()
+                    .handlePrompt("Generate a greeting");
             System.out.println(response);
         }
     }
