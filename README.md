@@ -1,6 +1,5 @@
-## Testing 
+## Testing
 
-* `./mvnw package`
-* `./mvnw payara-micro:start`
+* `cd web; mvn package; mvn payara-micro:start`
 
 ## Building
