@@ -14,10 +14,13 @@ import secondbrain.domain.tooldefs.ToolCall;
 import secondbrain.domain.tooldefs.ToolDefinition;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.toolbuilder.ToolBuilder;
+import secondbrain.domain.tooldefs.ToolDefinitionFallback;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -61,7 +64,14 @@ public class PromptHandlerImpl implements PromptHandler {
     }
 
     private ToolDefinition[] parseResponseAsToolDefinitions(@NotNull final String response) throws JsonProcessingException {
-        return jsonDeserializer.deserialize(response, ToolDefinition[].class);
+        return Try.of(() -> jsonDeserializer.deserialize(response, ToolDefinition[].class))
+                .recoverWith(error -> Try.of(() -> parseResponseAsToolDefinitionsFallback(response)))
+                .get();
+    }
+
+    private ToolDefinition[] parseResponseAsToolDefinitionsFallback(@NotNull final String response) throws JsonProcessingException {
+        final ToolDefinitionFallback[] tool = jsonDeserializer.deserialize(response, ToolDefinitionFallback[].class);
+        return Arrays.stream(tool).map(t -> new ToolDefinition(t.toolName(), List.of())).toArray(ToolDefinition[]::new);
     }
 
     private Optional<ToolCall> getToolCallFromToolDefinition(@NotNull final ToolDefinition toolDefinition) {

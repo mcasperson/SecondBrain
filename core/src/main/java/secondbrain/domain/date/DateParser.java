@@ -1,5 +1,6 @@
 package secondbrain.domain.date;
 
+import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.validation.constraints.NotNull;
 
@@ -14,11 +15,9 @@ import java.time.format.DateTimeParseException;
 @ApplicationScoped
 public class DateParser {
     public ZonedDateTime parseDate(@NotNull final String date) {
-        try {
-            return parseZonedDate(date);
-        } catch (DateTimeParseException e) {
-            return parseLocalDate(date);
-        }
+        return Try.of(() -> parseZonedDate(date))
+                .recoverWith(error -> Try.of(() -> parseLocalDate(date)))
+                .get();
     }
 
     public ZonedDateTime parseZonedDate(@NotNull final String date) {
