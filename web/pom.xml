@@ -68,6 +68,9 @@
                             <option>
                                 <key>--autoBindHttp</key>
                             </option>
+                            <option>
+                                <key>--autoBindSsl</key>
+                            </option>
                             <!-- https://github.com/payara/Payara/issues/5744 -->
                             <option>
                                 <key>--nocluster</key>
