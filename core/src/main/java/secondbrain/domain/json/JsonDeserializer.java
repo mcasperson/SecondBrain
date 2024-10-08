@@ -13,6 +13,11 @@ public class JsonDeserializer {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @NotNull
+    public String serialize(@NotNull final Object object) throws JsonProcessingException {
+        return objectMapper.writeValueAsString(object);
+    }
+
+    @NotNull
     public <T> T deserialize(@NotNull final String json, @NotNull final Class<T> clazz) throws JsonProcessingException {
         return objectMapper.readValue(json, clazz);
     }
