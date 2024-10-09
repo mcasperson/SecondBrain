@@ -12,7 +12,6 @@ import jakarta.ws.rs.core.Response;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.infrastructure.oauth.OauthClient;
-import secondbrain.infrastructure.oauth.OauthTokenResponse;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -32,8 +31,9 @@ public class OauthCallback {
                         code,
                         System.getenv("SLACK_CLIENT_ID"),
                         System.getenv("SLACK_CLIENT_SECRET")))
-                .map(OauthTokenResponse::access_token)
+                .map(response -> response.authed_user().access_token())
                 .mapTry(accessToken -> redirectWithToken(accessToken, state))
+                .onFailure(error -> System.out.println("Error: " + error.getMessage()))
                 .recover(this::redirectToLoginFailed)
                 .get();
     }
@@ -43,7 +43,10 @@ public class OauthCallback {
     }
 
     private Response redirectWithToken(@NotNull final String accessToken, @NotNull final String state) throws JsonProcessingException {
-        final String accessTokenEncrypted = new BasicTextEncryptor().encrypt(accessToken);
+        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
+        textEncryptor.setPassword(System.getenv("ENCRYPTION_PASSWORD"));
+
+        final String accessTokenEncrypted = textEncryptor.encrypt(accessToken);
 
         final Map<String, String> stateCookie = new HashMap<>();
         stateCookie.put("access_token", accessTokenEncrypted);

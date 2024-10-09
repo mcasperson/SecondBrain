@@ -21,9 +21,11 @@ public class OauthClient {
         multipart.add(EntityPart.withName("client_id").content(clientId).build());
         multipart.add(EntityPart.withName("client_secret").content(clientSecret).build());
 
-        try(final Response response = client.target("http://localhost:8080/form")
+        try (final Response response = client.target("https://slack.com/api/oauth.v2.access")
                 .request(MediaType.MULTIPART_FORM_DATA_TYPE)
-                .post(Entity.entity(new GenericEntity<>(multipart) {}, MediaType.MULTIPART_FORM_DATA))) {
+                .accept(MediaType.APPLICATION_JSON_TYPE)
+                .post(Entity.entity(new GenericEntity<>(multipart) {
+                }, MediaType.MULTIPART_FORM_DATA))) {
             return response.readEntity(OauthTokenResponse.class);
         }
     }
