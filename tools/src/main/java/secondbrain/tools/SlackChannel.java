@@ -20,6 +20,8 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,7 +51,7 @@ public class SlackChannel implements Tool {
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments("channel", "The Slack channel to read", "general"),
-                new ToolArguments("count", "The number of messages to return", "10")
+                new ToolArguments("days", "The number of days worth of messages to return", "7")
         );
     }
 
@@ -61,6 +63,11 @@ public class SlackChannel implements Tool {
             @NotNull final List<ToolArgs> arguments) {
         final String channel = argsAccessor.getArgument(arguments, "channel", "").trim()
                 .replaceFirst("^#", "");
+        final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "7")))
+                .recover(throwable -> 7)
+                .get();
+
+        final String oldest = Long.valueOf(LocalDateTime.now().minusDays(7).atZone(ZoneId.systemDefault()).toEpochSecond()).toString();
 
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(System.getenv("ENCRYPTION_PASSWORD"));
@@ -80,7 +87,7 @@ public class SlackChannel implements Tool {
 
 
         final Try<String> messages = id
-                .mapTry(chanId -> client.conversationsHistory(r -> r.token(accessToken).channel(chanId)))
+                .mapTry(chanId -> client.conversationsHistory(r -> r.token(accessToken).channel(chanId).oldest(oldest)))
                 .map(this::conversationsToText)
                 .onFailure(error -> System.out.println("Error: " + error));
 
@@ -102,7 +109,7 @@ public class SlackChannel implements Tool {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
-                You are professional agent that understands Slack conversations. 
+                You are professional agent that understands Slack conversations.
                 You are given the history of a Slack channel and asked to answer questions based on the messages provided.
                 Here are the messages:
                 """
