@@ -75,7 +75,7 @@
 
         const prompt = document.getElementById('prompt').value;
 
-        fetch('/api/prompt?prompt=' + encodeURIComponent(prompt), {
+        fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
             method: 'GET'
         })
             .then(response => response.text())
@@ -116,9 +116,11 @@
         if (session) {
             login.style.display = 'none';
             logout.style.display = 'inherit';
+            submit.disabled = false;
         } else {
             login.style.display = 'inherit';
             logout.style.display = 'none';
+            submit.disabled = true;
         }
     }
 

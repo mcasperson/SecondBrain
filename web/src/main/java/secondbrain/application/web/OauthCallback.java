@@ -49,7 +49,7 @@ public class OauthCallback {
         final String accessTokenEncrypted = textEncryptor.encrypt(accessToken);
 
         final Map<String, String> stateCookie = new HashMap<>();
-        stateCookie.put("access_token", accessTokenEncrypted);
+        stateCookie.put("slack_access_token", accessTokenEncrypted);
 
         final String stateCookieString = jsonDeserializer.serialize(stateCookie);
 

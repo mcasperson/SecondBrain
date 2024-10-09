@@ -73,7 +73,7 @@
         const githubToken = document.getElementById('githubToken').value;
         const prompt = document.getElementById('prompt').value;
 
-        fetch('/api/prompt?prompt=' + encodeURIComponent(prompt), {
+        fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
             method: 'GET',
             headers: {
                 'context': JSON.stringify({"GITHUB_TOKEN": githubToken}),
