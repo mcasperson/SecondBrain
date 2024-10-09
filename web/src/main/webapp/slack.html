@@ -20,8 +20,12 @@
         <div class="offset-lg-3 col-lg-6 col-sm-12">
             <form onsubmit="handleSubmit(event)">
                 <div class="mb-3 mt-3">
-                    <a href="https://slack.com/oauth/v2/authorize?user_scope=channels:history,channels:read,search:read&client_id=2551826103.6690644156900&state=/slack.html">Slack
-                        Login</a>
+                    <button class="btn btn-primary" id="login" onclick="handleLogin()" style="display: none"
+                            type="button">Slack Login
+                    </button>
+                    <button class="btn btn-primary" id="logout" onclick="handleLogout()" style="display: none"
+                            type="button">Slack Logout
+                    </button>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="prompt">Prompt</label>
@@ -47,6 +51,12 @@
     document.getElementById('prompt').value = stripLineBreaks(
         stripLeadingWhitespace(
             `Summarize 1 weeks worth of messages from teh #general channel`))
+
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
 
     function stripLeadingWhitespace(text) {
         return text.split("\n").map(l => l.replace(/^\s+/g, '')).join("\n");
@@ -95,6 +105,29 @@
         document.getElementById('prompt').disabled = false;
         document.querySelector('button').disabled = false;
     }
+
+    function handleLogin() {
+        window.location.href = 'https://slack.com/oauth/v2/authorize?user_scope=channels:history,channels:read,search:read&client_id=2551826103.6690644156900&state=/slack.html';
+    }
+
+    function handleLogout() {
+        document.cookie = 'session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+        buildButtons();
+    }
+
+    function buildButtons() {
+        const session = getCookie('session');
+        if (session) {
+            login.style.display = 'none';
+            logout.style.display = 'inherit';
+        } else {
+            login.style.display = 'inherit';
+            logout.style.display = 'none';
+        }
+    }
+
+    buildButtons();
+
 </script>
 </body>
 </html>

@@ -54,7 +54,7 @@ public class OauthCallback {
         final String stateCookieString = jsonDeserializer.serialize(stateCookie);
 
         final Response.ResponseBuilder builder = Response.temporaryRedirect(Try.of(() -> new URI(state)).get());
-        builder.header("Set-Cookie", "access_token=" + stateCookieString);
+        builder.header("Set-Cookie", "session=" + stateCookieString + ";path=/");
 
         return builder.build();
     }
