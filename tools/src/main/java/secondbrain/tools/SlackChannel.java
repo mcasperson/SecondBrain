@@ -59,28 +59,30 @@ public class SlackChannel implements Tool {
             @NotNull final Map<String, String> context,
             @NotNull final String prompt,
             @NotNull final List<ToolArgs> arguments) {
-        final String channel = argsAccessor.getArgument(arguments, "channel", "");
-
-        // you can get this instance via ctx.client() in a Bolt app
-        var client = Slack.getInstance().methods();
-
-        final Try<String> id = Try.of(() -> client.conversationsList(r -> r.token(System.getenv("SLACK_BOT_TOKEN"))).getChannels())
-                .map(channels -> channels.stream().filter(c -> c.getName().equals(channel)).map(Conversation::getId).findFirst())
-                .map(Optional::get)
-                .onFailure(error -> System.out.println("Error: " + error))
-                .recover(e -> null);
-
-        if (id.isFailure()) {
-            return "Channel " + channel + " not found";
-        }
+        final String channel = argsAccessor.getArgument(arguments, "channel", "").trim()
+                .replaceFirst("^#", "");
 
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(System.getenv("ENCRYPTION_PASSWORD"));
         final String accessToken = textEncryptor.decrypt(context.get("access_token"));
 
+        // you can get this instance via ctx.client() in a Bolt app
+        var client = Slack.getInstance().methods();
+
+        final Try<String> id = Try.of(() -> client.conversationsList(r -> r.token(accessToken)).getChannels())
+                .map(channels -> channels.stream().filter(c -> c.getName().equals(channel)).map(Conversation::getId).findFirst())
+                .map(Optional::get)
+                .onFailure(error -> System.out.println("Error: " + error));
+
+        if (id.isFailure()) {
+            return "Channel " + channel + " not found";
+        }
+
+
         final Try<String> messages = id
                 .mapTry(chanId -> client.conversationsHistory(r -> r.token(accessToken).channel(chanId)))
-                .map(this::conversationsToText);
+                .map(this::conversationsToText)
+                .onFailure(error -> System.out.println("Error: " + error));
 
         if (messages.isFailure()) {
             return "Messages could not be read";
