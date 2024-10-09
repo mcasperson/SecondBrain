@@ -50,7 +50,7 @@
 <script>
     document.getElementById('prompt').value = stripLineBreaks(
         stripLeadingWhitespace(
-            `Summarize 7 days worth of messages from teh #announcements channel`))
+            `Summarize 7 days worth of messages from the #announcements channel`))
 
     function getCookie(name) {
         const value = `; ${document.cookie}`;
@@ -91,13 +91,15 @@
     }
 
     function disableForm() {
-        document.getElementById('prompt').disabled = true;
-        document.querySelector('button').disabled = true;
+        document.querySelectorAll('button').forEach(b => b.disabled = true);
+        document.querySelectorAll('textarea').forEach(b => b.disabled = true);
+        document.querySelectorAll('input').forEach(b => b.disabled = true);
     }
 
     function enableForm() {
-        document.getElementById('prompt').disabled = false;
-        document.querySelector('button').disabled = false;
+        document.querySelectorAll('button').forEach(b => b.disabled = false);
+        document.querySelectorAll('textarea').forEach(b => b.disabled = false);
+        document.querySelectorAll('input').forEach(b => b.disabled = false);
     }
 
     function handleLogin() {

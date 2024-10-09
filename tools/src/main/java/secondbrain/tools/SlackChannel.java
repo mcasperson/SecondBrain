@@ -67,7 +67,7 @@ public class SlackChannel implements Tool {
                 .recover(throwable -> 7)
                 .get();
 
-        final String oldest = Long.valueOf(LocalDateTime.now().minusDays(7).atZone(ZoneId.systemDefault()).toEpochSecond()).toString();
+        final String oldest = Long.valueOf(LocalDateTime.now().minusDays(days).atZone(ZoneId.systemDefault()).toEpochSecond()).toString();
 
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(System.getenv("ENCRYPTION_PASSWORD"));
