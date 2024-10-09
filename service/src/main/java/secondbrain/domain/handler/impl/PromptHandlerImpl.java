@@ -65,9 +65,12 @@ public class PromptHandlerImpl implements PromptHandler {
     }
 
     private OllamaResponse callOllama(@NotNull final String llmPrompt) {
-        return ollamaClient.getTools(
-                ClientBuilder.newClient(),
-                new OllamaGenerateBody("llama3.2", llmPrompt, false));
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client ->
+                        ollamaClient.getTools(
+                                client,
+                                new OllamaGenerateBody("llama3.2", llmPrompt, false)))
+                .get();
     }
 
     private ToolDefinition[] parseResponseAsToolDefinitions(@NotNull final String response) throws JsonProcessingException {

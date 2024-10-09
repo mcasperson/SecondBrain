@@ -80,7 +80,7 @@ public class SlackChannel implements Tool {
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
 
-        final Try<String> id = Try.of(() -> client.conversationsList(r -> r.token(accessToken)).getChannels())
+        final Try<String> id = Try.of(() -> client.conversationsList(r -> r.token(accessToken).limit(1000).excludeArchived(true)).getChannels())
                 .map(channels -> channels.stream().filter(c -> c.getName().equals(channel)).map(Conversation::getId).findFirst())
                 .map(Optional::get)
                 .onFailure(error -> System.out.println("Error: " + error));
@@ -131,8 +131,9 @@ public class SlackChannel implements Tool {
     }
 
     private OllamaResponse callOllama(@NotNull final String llmPrompt) {
-        return ollamaClient.getTools(
-                ClientBuilder.newClient(),
-                new OllamaGenerateBody("llama3.2", llmPrompt, false));
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> ollamaClient.getTools(
+                        client,
+                        new OllamaGenerateBody("llama3.2", llmPrompt, false))).get();
     }
 }

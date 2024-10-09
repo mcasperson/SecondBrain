@@ -121,7 +121,9 @@ public class GitHubDiffs implements Tool {
             @NotNull final String until,
             @NotNull final String authorization) {
 
-        return gitHubClient.getCommits(ClientBuilder.newClient(), owner, repo, branch, until, since, authorization);
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> gitHubClient.getCommits(client, owner, repo, branch, until, since, authorization))
+                .get();
     }
 
     private String diffToContext(
@@ -134,9 +136,11 @@ public class GitHubDiffs implements Tool {
     }
 
     private OllamaResponse callOllama(@NotNull final String llmPrompt) {
-        return ollamaClient.getTools(
-                ClientBuilder.newClient(),
-                new OllamaGenerateBody("llama3.2", llmPrompt, false));
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> ollamaClient.getTools(
+                        client,
+                        new OllamaGenerateBody("llama3.2", llmPrompt, false)))
+                .get();
     }
 
     private String getCommitDiff(
@@ -145,7 +149,8 @@ public class GitHubDiffs implements Tool {
             @NotNull final String sha,
             @NotNull final String authorization) {
 
-        return gitHubClient.getDiff(ClientBuilder.newClient(), owner, repo, sha, authorization);
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> gitHubClient.getDiff(client, owner, repo, sha, authorization)).get();
     }
 
     @NotNull

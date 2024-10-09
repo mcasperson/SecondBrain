@@ -39,6 +39,7 @@
     </dependencyManagement>
 
     <dependencies>
+
         <dependency>
             <groupId>org.jasypt</groupId>
             <artifactId>jasypt</artifactId>

@@ -27,7 +27,9 @@ public class OauthCallback {
 
     @GET
     public Response get(@QueryParam("code") final String code, @QueryParam("state") final String state) {
-        return Try.of(() -> oauthClient.exchangeToken(ClientBuilder.newClient(),
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> oauthClient.exchangeToken(
+                        client,
                         code,
                         System.getenv("SLACK_CLIENT_ID"),
                         System.getenv("SLACK_CLIENT_SECRET")))
