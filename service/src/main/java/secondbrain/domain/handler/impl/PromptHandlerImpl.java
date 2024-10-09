@@ -48,7 +48,7 @@ public class PromptHandlerImpl implements PromptHandler {
                 .map(tools -> tools[0])
                 .map(this::getToolCallFromToolDefinition)
                 .map(toolCall -> callTool(toolCall.orElse(null), context, prompt))
-                .recover(Throwable.class, e -> "Failed to call tool " + e.getMessage())
+                .recover(Throwable.class, e -> "Failed to call tool " + e.toString())
                 .get();
     }
 

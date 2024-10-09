@@ -71,7 +71,11 @@ public class SlackChannel implements Tool {
 
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(System.getenv("ENCRYPTION_PASSWORD"));
-        final String accessToken = textEncryptor.decrypt(context.get("slack_access_token"));
+
+        // Try to decrypt the value, otherwise assume it is a plain text value
+        final String accessToken = Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
+                .recover(e -> context.get("slack_access_token"))
+                .get();
 
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
