@@ -32,7 +32,7 @@
                     <textarea aria-describedby="promptHelp" class="form-control" id="prompt" rows="10"></textarea>
                 </div>
                 <div class="mb-3">
-                    <button class="btn btn-primary" type="submit">Submit</button>
+                    <button class="btn btn-primary" id="submit" type="submit">Submit</button>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="response">Response</label>
@@ -76,7 +76,7 @@
         const prompt = document.getElementById('prompt').value;
 
         fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
-            method: 'GET'
+            method: 'POST'
         })
             .then(response => response.text())
             .then(data => {

@@ -74,7 +74,7 @@
         const prompt = document.getElementById('prompt').value;
 
         fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
-            method: 'GET',
+            method: 'POST',
             headers: {
                 'context': JSON.stringify({"GITHUB_TOKEN": githubToken}),
             }
