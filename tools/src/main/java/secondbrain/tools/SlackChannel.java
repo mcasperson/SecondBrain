@@ -1,14 +1,18 @@
 package secondbrain.tools;
 
 import com.slack.api.Slack;
+import com.slack.api.methods.MethodsClient;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
+import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.model.Conversation;
+import com.slack.api.model.ConversationType;
 import com.slack.api.model.Message;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang3.StringUtils;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
@@ -80,23 +84,27 @@ public class SlackChannel implements Tool {
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
 
-        final Try<String> id = Try.of(() -> client.conversationsList(r -> r.token(accessToken).limit(1000).excludeArchived(true)).getChannels())
-                .map(channels -> channels.stream().filter(c -> c.getName().equals(channel)).map(Conversation::getId).findFirst())
-                .map(Optional::get)
+        final Try<String> id = findChannelId(client, accessToken, channel, null)
                 .onFailure(error -> System.out.println("Error: " + error));
 
         if (id.isFailure()) {
             return "Channel " + channel + " not found";
         }
 
-
         final Try<String> messages = id
-                .mapTry(chanId -> client.conversationsHistory(r -> r.token(accessToken).channel(chanId).oldest(oldest)))
+                .mapTry(chanId -> client.conversationsHistory(r -> r
+                        .token(accessToken)
+                        .channel(chanId)
+                        .oldest(oldest)))
                 .map(this::conversationsToText)
                 .onFailure(error -> System.out.println("Error: " + error));
 
         if (messages.isFailure()) {
             return "Messages could not be read";
+        }
+
+        if (StringUtils.isBlank(messages.get())) {
+            return "No messages found in channel " + channel;
         }
 
         final String messageContext = buildToolPrompt(messages.get(), prompt);
@@ -108,8 +116,16 @@ public class SlackChannel implements Tool {
 
     }
 
+    private Optional<String> getChannelId(@NotNull final ConversationsListResponse response, @NotNull final String channel) {
+        return response.getChannels()
+                .stream()
+                .filter(c -> c.getName().equals(channel))
+                .map(Conversation::getId)
+                .findFirst();
+    }
+
     @NotNull
-    public String buildToolPrompt(@NotNull final String context, @NonNull final String prompt) {
+    private String buildToolPrompt(@NotNull final String context, @NonNull final String prompt) {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
@@ -135,5 +151,28 @@ public class SlackChannel implements Tool {
                 .of(client -> ollamaClient.getTools(
                         client,
                         new OllamaGenerateBody("llama3.2", llmPrompt, false))).get();
+    }
+
+    private Try<String> findChannelId(
+            @NotNull final MethodsClient client,
+            @NotNull final String accessToken,
+            @NotNull final String channel,
+            final String cursor) {
+
+        final Try<ConversationsListResponse> response = Try.of(() -> client.conversationsList(r -> r
+                .token(accessToken)
+                .limit(1000)
+                .types(List.of(ConversationType.PUBLIC_CHANNEL))
+                .excludeArchived(true)
+                .cursor(cursor)));
+
+        if (response.isSuccess()) {
+            final Optional<String> id = getChannelId(response.get(), channel);
+            return id
+                    .map(Try::success)
+                    .orElseGet(() -> findChannelId(client, accessToken, channel, response.get().getResponseMetadata().getNextCursor()));
+        }
+
+        return Try.failure(new RuntimeException("Failed to get channels"));
     }
 }
