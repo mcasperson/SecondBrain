@@ -50,7 +50,7 @@
 <script>
     document.getElementById('prompt').value = stripLineBreaks(
         stripLeadingWhitespace(
-            `Summarize 1 weeks worth of messages from teh #general channel`))
+            `Summarize 1 weeks worth of messages from teh #announcements channel`))
 
     function getCookie(name) {
         const value = `; ${document.cookie}`;
@@ -73,14 +73,10 @@
 
         response.value = 'Loading...'
 
-        const githubToken = document.getElementById('githubToken').value;
         const prompt = document.getElementById('prompt').value;
 
         fetch('/api/prompt?prompt=' + encodeURIComponent(prompt), {
-            method: 'GET',
-            headers: {
-                'context': JSON.stringify({"GITHUB_TOKEN": githubToken}),
-            }
+            method: 'GET'
         })
             .then(response => response.text())
             .then(data => {
@@ -95,13 +91,11 @@
     }
 
     function disableForm() {
-        document.getElementById('githubToken').disabled = true;
         document.getElementById('prompt').disabled = true;
         document.querySelector('button').disabled = true;
     }
 
     function enableForm() {
-        document.getElementById('githubToken').disabled = false;
         document.getElementById('prompt').disabled = false;
         document.querySelector('button').disabled = false;
     }
