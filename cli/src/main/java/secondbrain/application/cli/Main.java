@@ -20,6 +20,7 @@ public class Main {
 
     private static String getPrompt(final String[] args) {
         if (args.length > 0 && !StringUtils.isBlank(args[0])) {
+            System.err.println("Prompt: " + args[0]);
             return args[0];
         }
 
