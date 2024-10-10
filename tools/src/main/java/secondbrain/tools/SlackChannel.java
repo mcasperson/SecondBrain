@@ -222,21 +222,21 @@ public class SlackChannel implements Tool {
         return Try.of(() -> client.usersInfo(r -> r.token(token).user(userId)))
                 .map(response -> response.getUser().getName())
                 /*
-                    If the username could not be retrieved, we return the channel ID.
+                    If the username could not be retrieved, we return a placeholder.
                     We could omit this to bubble the errors up, but mostly we want to apply a best effort
                     to get context and be tolerant of errors.
                  */
-                .recover(error -> userId);
+                .recover(error -> "Unknown user");
     }
 
     private Try<String> getChannel(@NotNull final MethodsClient client, @NotNull final String token, @NotNull final String channelId) {
         return Try.of(() -> client.conversationsInfo(r -> r.token(token).channel(channelId)))
                 .map(response -> "#" + response.getChannel().getName())
                 /*
-                    If the channel name could not be retrieved, we return the channel ID.
+                    If the channel name could not be retrieved, we return a placeholder.
                     We could omit this to bubble the errors up, but mostly we want to apply a best effort
                     to get context and be tolerant of errors.
                  */
-                .recover(error -> channelId);
+                .recover(error -> "Unknown channel");
     }
 }
