@@ -45,7 +45,7 @@ public class PromptHandlerImpl implements PromptHandler {
                 .map(toolPrompt -> selectOllamaTool(toolPrompt, 1))
                 .map(this::getToolCallFromToolDefinition)
                 .map(toolCall -> callTool(toolCall.orElse(null), context, prompt))
-                .recover(Throwable.class, e -> "Failed to call tool " + e.toString())
+                .recover(Throwable.class, e -> "Failed to find a tool or call it: " + e.toString())
                 .get();
     }
 
