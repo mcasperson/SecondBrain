@@ -32,6 +32,8 @@ import java.util.Optional;
 
 @Dependent
 public class SlackChannel implements Tool {
+    private static final int MINIMUM_MESSAGE_LENGTH = 300;
+
     @Inject
     private ArgsAccessor argsAccessor;
 
@@ -103,8 +105,8 @@ public class SlackChannel implements Tool {
             return "Messages could not be read";
         }
 
-        if (StringUtils.isBlank(messages.get())) {
-            return "No messages found in channel " + channel;
+        if (messages.get().length() < MINIMUM_MESSAGE_LENGTH) {
+            return "Not enough messages found in channel " + channel;
         }
 
         final String messageContext = buildToolPrompt(messages.get(), prompt);
