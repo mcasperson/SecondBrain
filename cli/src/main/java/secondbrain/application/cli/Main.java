@@ -1,5 +1,6 @@
 package secondbrain.application.cli;
 
+import org.apache.commons.lang3.StringUtils;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 import secondbrain.domain.handler.PromptHandler;
@@ -8,8 +9,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Main {
-    private static final String DEFAULT_PROMPT = "Perform a smoke test";
-
     public static void main(final String[] args) {
         final Weld weld = new Weld();
         try (WeldContainer weldContainer = weld.initialize()) {
@@ -20,7 +19,11 @@ public class Main {
     }
 
     private static String getPrompt(final String[] args) {
-        return args.length > 0 ? args[0] : DEFAULT_PROMPT;
+        if (args.length > 0 && !StringUtils.isBlank(args[0])) {
+            return args[0];
+        }
+
+        throw new RuntimeException("No prompt specified");
     }
 
     private static Map<String, String> getContext() {
