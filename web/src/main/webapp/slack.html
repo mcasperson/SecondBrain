@@ -19,13 +19,24 @@
     <div class="row">
         <div class="offset-lg-3 col-lg-6 col-sm-12">
             <form onsubmit="handleSubmit(event)">
-                <div class="mb-3 mt-3">
+                <div class="mb-3 mt-3 form-check form-switch">
+                    <input class="form-check-input" id="tokenSelection" onclick="selectTokenInput()" type="checkbox">
+                    <label class="form-check-label" for="tokenSelection">Supply token
+                        directly</label>
+                </div>
+                <div class="mb-3 mt-3" id="loginButtonParent">
                     <button class="btn btn-primary" id="login" onclick="handleLogin()" style="display: none"
                             type="button">Slack Login
                     </button>
                     <button class="btn btn-primary" id="logout" onclick="handleLogout()" style="display: none"
                             type="button">Slack Logout
                     </button>
+                </div>
+                <div class="mb-3" id="tokenInputParent">
+                    <label class="form-label" for="slackToken">Slack Token</label>
+                    <input class="form-control" id="slackToken" oninput="buildButtons()"
+                           placeholder="Slack token"
+                           type="password">
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="prompt">Prompt</label>
@@ -75,8 +86,19 @@
 
         const prompt = document.getElementById('prompt').value;
 
+
+        const context = {};
+        const tokenSelection = document.getElementById('tokenSelection');
+        if (tokenSelection.checked) {
+            context['slack_access_token'] = slackToken.value;
+        }
+
         fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(context),
         })
             .then(response => response.text())
             .then(data => {
@@ -112,18 +134,36 @@
     }
 
     function buildButtons() {
-        const session = getCookie('session');
-        if (session) {
-            login.style.display = 'none';
-            logout.style.display = 'inherit';
-            submit.disabled = false;
+        if (tokenSelection.checked) {
+            submit.disabled = !slackToken.value;
         } else {
-            login.style.display = 'inherit';
-            logout.style.display = 'none';
-            submit.disabled = true;
+            const session = getCookie('session');
+            if (session) {
+                login.style.display = 'none';
+                logout.style.display = 'inherit';
+                submit.disabled = false;
+            } else {
+                login.style.display = 'inherit';
+                logout.style.display = 'none';
+                submit.disabled = true;
+            }
         }
     }
 
+    function selectTokenInput() {
+        const tokenSelection = document.getElementById('tokenSelection');
+        if (tokenSelection.checked) {
+            loginButtonParent.style.display = 'none';
+            tokenInputParent.style.display = 'inherit';
+        } else {
+            loginButtonParent.style.display = 'inherit';
+            tokenInputParent.style.display = 'none';
+        }
+
+        buildButtons();
+    }
+
+    selectTokenInput();
     buildButtons();
 
 </script>
