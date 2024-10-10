@@ -7,12 +7,12 @@ import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.model.Conversation;
 import com.slack.api.model.ConversationType;
 import com.slack.api.model.Message;
+import io.vavr.Tuple;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
-import org.apache.commons.lang3.StringUtils;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
@@ -29,6 +29,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 @Dependent
 public class SlackChannel implements Tool {
@@ -109,7 +110,14 @@ public class SlackChannel implements Tool {
             return "Not enough messages found in channel " + channel;
         }
 
-        final String messageContext = buildToolPrompt(messages.get(), prompt);
+        final Try<String> messagesWithUsersReplaced = messages
+                .flatMap(m -> replaceIds(client, accessToken, m));
+
+        if (messagesWithUsersReplaced.isFailure()) {
+            return "The user and channel IDs could not be replaced";
+        }
+
+        final String messageContext = buildToolPrompt(messagesWithUsersReplaced.get(), prompt);
 
         return Try.of(() -> callOllama(messageContext))
                 .map(OllamaResponse::response)
@@ -176,5 +184,59 @@ public class SlackChannel implements Tool {
         }
 
         return Try.failure(new RuntimeException("Failed to get channels"));
+    }
+
+    private Try<String> replaceIds(@NotNull final MethodsClient client, @NotNull final String token, @NotNull final String messages) {
+        final Pattern userPattern = Pattern.compile("<@(?<username>\\w+)>");
+        final Pattern channelPattern = Pattern.compile("<#(?<channelname>\\w+)\\|?>");
+
+        return Try.of(() -> Tuple.of(messages, userPattern.matcher(messages).results()))
+                /*
+                We map the original message and the list of regex matches for user IDs to a string with
+                the user IDs replaced with their usernames.
+                 */
+                .map(results -> results._2().reduce(
+                        results._1(),
+                        (m, match) -> m.replace(match.group(), getUsername(client, token, match.group("username")).get()),
+                        (s, s2) -> s + s2))
+                /*
+                The string with user ids replaces is then mapped to a tuple with the original string and a list of regex
+                matching channel IDs.
+                 */
+                .map(messagesWithUsersReplaced -> Tuple.of(messagesWithUsersReplaced, channelPattern.matcher(messagesWithUsersReplaced).results()))
+                /*
+                 The regex results for channel IDs are then reduced to a string with the channel IDs replaced with their
+                 names.
+                 */
+                .map(results -> results._2().reduce(
+                        results._1(),
+                        (m, match) -> m.replace(match.group(), getChannel(client, token, match.group("channelname")).get()),
+                        (s, s2) -> s + s2))
+                /*
+                 If any of the previous steps failed, we return the original messages.
+                 */
+                .recover(error -> messages);
+    }
+
+    private Try<String> getUsername(@NotNull final MethodsClient client, @NotNull final String token, @NotNull final String userId) {
+        return Try.of(() -> client.usersInfo(r -> r.token(token).user(userId)))
+                .map(response -> response.getUser().getName())
+                /*
+                    If the username could not be retrieved, we return the channel ID.
+                    We could omit this to bubble the errors up, but mostly we want to apply a best effort
+                    to get context and be tolerant of errors.
+                 */
+                .recover(error -> userId);
+    }
+
+    private Try<String> getChannel(@NotNull final MethodsClient client, @NotNull final String token, @NotNull final String channelId) {
+        return Try.of(() -> client.conversationsInfo(r -> r.token(token).channel(channelId)))
+                .map(response -> "#" + response.getChannel().getName())
+                /*
+                    If the channel name could not be retrieved, we return the channel ID.
+                    We could omit this to bubble the errors up, but mostly we want to apply a best effort
+                    to get context and be tolerant of errors.
+                 */
+                .recover(error -> channelId);
     }
 }
