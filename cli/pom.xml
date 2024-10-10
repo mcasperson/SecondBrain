@@ -106,9 +106,7 @@
                                     <mainClass>secondbrain.application.cli.Main</mainClass>
                                 </transformer>
                                 <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                                    <resource>META-INF/services/javax.ws.rs.ext.Providers</resource>
-                                </transformer>
+                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
                         </configuration>
                     </execution>
