@@ -43,7 +43,6 @@ public class PromptHandlerImpl implements PromptHandler {
 
         return Try.of(() -> getToolsPrompt(prompt))
                 .map(toolPrompt -> selectOllamaTool(toolPrompt, 1))
-                .map(tools -> tools[0])
                 .map(this::getToolCallFromToolDefinition)
                 .map(toolCall -> callTool(toolCall.orElse(null), context, prompt))
                 .recover(Throwable.class, e -> "Failed to call tool " + e.toString())
@@ -54,12 +53,13 @@ public class PromptHandlerImpl implements PromptHandler {
      * The LLM will sometimes return invalid JSON for tool selection, so we retry a few times
      * @param toolPrompt The tool prompt
      * @param count The retry count
-     * @return The list of tool definitions
+     * @return The selected tool
      */
-    private ToolDefinition[] selectOllamaTool(@NotNull final String toolPrompt, int count) {
+    private ToolDefinition selectOllamaTool(@NotNull final String toolPrompt, int count) {
         return Try.of(() -> callOllama(toolPrompt))
                 .map(OllamaResponse::response)
                 .mapTry(this::parseResponseAsToolDefinitions)
+                .mapTry(tools -> tools[0])
                 .recoverWith(error -> Try.of(() -> {
                     if (count < 3) {
                         return selectOllamaTool(toolPrompt, count + 1);
