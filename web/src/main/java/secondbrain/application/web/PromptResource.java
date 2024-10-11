@@ -9,6 +9,7 @@ import jakarta.ws.rs.core.MediaType;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -34,8 +35,9 @@ public class PromptResource {
                 ? Map.of()
                 : jsonDeserializer.deserializeMap(session.getValue(), String.class, String.class);
 
-        cookieContext.putAll(Objects.requireNonNullElse(context, Map.of()));
+        final Map<String, String> combinedContext = new HashMap<>(cookieContext);
+        combinedContext.putAll(Objects.requireNonNullElse(context, Map.of()));
 
-        return promptHandler.handlePrompt(cookieContext, Objects.requireNonNullElse(prompt, ""));
+        return promptHandler.handlePrompt(combinedContext, Objects.requireNonNullElse(prompt, ""));
     }
 }

@@ -96,8 +96,9 @@
         fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
             method: 'POST',
             headers: {
-                'context': JSON.stringify({"GITHUB_TOKEN": githubToken}),
-            }
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({"GITHUB_TOKEN": githubToken}),
         })
             .then(response => response.text())
             .then(data => {
