@@ -14,9 +14,15 @@ It works like this:
 The power in this platform is the ability to easily create new tools that interact with data sources. With a few simple
 HTTP calls you can create a new tool that link into almost any external data source.
 
+## Prerequisites
+
+1. Install [Ollama](https://ollama.com/)
+2. Pull the llama3.2 LLM with the command `ollama pull llama3.2`
+
 ## Supported LLMs
 
-SecondBrain is built around Ollama, which a is a local service exposing a huge selection of LLMs. This ensures that your
+SecondBrain is built around [Ollama](https://ollama.com/), which a is a local service exposing a huge selection of LLMs.
+This ensures that your
 data and prompts are kept private and secure.
 
 ## Example Usages
