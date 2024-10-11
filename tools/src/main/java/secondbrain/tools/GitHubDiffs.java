@@ -5,6 +5,7 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.NonNull;
@@ -109,7 +110,7 @@ public class GitHubDiffs implements Tool {
                 .mapTry(Objects::requireNonNull)
                 .recoverWith(e -> Try.of(() -> githubAccessToken.get()));
 
-        if (token.isFailure()) {
+        if (token.isFailure() || StringUtils.isBlank(token.get())) {
             return "Failed to get GitHub access token";
         }
 

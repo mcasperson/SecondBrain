@@ -6,12 +6,14 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.core.MediaType;
+import org.apache.commons.lang3.StringUtils;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Path("promptweb")
 public class PromptResource {
@@ -35,8 +37,14 @@ public class PromptResource {
                 ? Map.of()
                 : jsonDeserializer.deserializeMap(session.getValue(), String.class, String.class);
 
+        final Map<String, String> filteredContext = Objects.requireNonNullElse(context, Map.<String, String>of())
+                .entrySet()
+                .stream()
+                .filter(entry -> StringUtils.isNotBlank(entry.getValue()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
         final Map<String, String> combinedContext = new HashMap<>(cookieContext);
-        combinedContext.putAll(Objects.requireNonNullElse(context, Map.of()));
+        combinedContext.putAll(filteredContext);
 
         return promptHandler.handlePrompt(combinedContext, Objects.requireNonNullElse(prompt, ""));
     }
