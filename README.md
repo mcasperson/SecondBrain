@@ -74,7 +74,10 @@ This prompt is handled like this:
 
 * Build and install all the modules with command `mvn clean install`
 * Start Payara Micro with the command `cd web; mvn package; mvn payara-micro:start`
-* Open [http://localhost:8080/index.html](http://localhost:8080/index.html) in a browser
+* Create
+  a [GitHub access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
+* Open [http://localhost:8080/index.html](http://localhost:8080/index.html) in a browser, paste in the access token, and
+  run the default query
 
 ## New Tools
 
