@@ -17,16 +17,17 @@ import secondbrain.infrastructure.oauth.OauthClient;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Path("/slack_oauth")
 public class OauthCallback {
     @Inject
     @ConfigProperty(name = "sb.slack.clientid")
-    String slackClientId;
+    Optional<String> slackClientId;
 
     @Inject
     @ConfigProperty(name = "sb.slack.clientsecret")
-    String slackClientSecret;
+    Optional<String> slackClientSecret;
 
     @Inject
     private OauthClient oauthClient;
@@ -40,8 +41,8 @@ public class OauthCallback {
                 .of(client -> oauthClient.exchangeToken(
                         client,
                         code,
-                        slackClientId,
-                        slackClientSecret))
+                        slackClientId.get(),
+                        slackClientSecret.get()))
                 .map(response -> response.authed_user().access_token())
                 .mapTry(accessToken -> redirectWithToken(accessToken, state))
                 .onFailure(error -> System.out.println("Error: " + error.getMessage()))

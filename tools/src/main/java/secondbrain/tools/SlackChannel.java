@@ -47,7 +47,7 @@ public class SlackChannel implements Tool {
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
-    String slackAccessToken;
+    Optional<String> slackAccessToken;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -98,7 +98,7 @@ public class SlackChannel implements Tool {
         final String accessToken = Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
                 .recover(e -> context.get("slack_access_token"))
                 .mapTry(Objects::requireNonNull)
-                .recover(e -> slackAccessToken)
+                .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
                 .get();
 
         // you can get this instance via ctx.client() in a Bolt app
