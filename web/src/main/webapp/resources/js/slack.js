@@ -67,7 +67,7 @@ function handleLogin() {
     window.location.href = 'https://slack.com/oauth/v2/authorize'
         + '?user_scope=channels:history,channels:read,search:read'
         + '&client_id=' + clientId
-        + '&state=/slack.html';
+        + '&state=/slack.xhtml';
 }
 
 function handleLogout() {
