@@ -14,6 +14,33 @@ It works like this:
 The power in this platform is the ability to easily create new tools that interact with data sources. With a few simple
 HTTP calls you can create a new tool that link into almost any external data source.
 
+## Project Structure
+
+The project is split into modules:
+
+* `secondbrain-core` which contains shared utilities and interfaces used by all other modules.
+* `secondbrain-service` which orchestrates the function calling with the LLM.
+* `secondbrain-tools` which contains the tools that interact with external data sources.
+* `secondbrain-web` which is a web interface for interacting with the service.
+* `secondbrain-cli` which is a CLI tool for interacting with the service.
+
+# Configuration
+
+SecondBrain is configured via MicroProfile Config. The supplied `SlackChannel` tool requires the following
+configuration to support Oauth logins. Note that MicroProfile allows these configuration values to be set via
+[a number of different locations](https://smallrye.io/smallrye-config/Main/config/getting-started/), including
+environment variables, system properties, and configuration files:
+
+* `sb.slack.clientid` - The Slack client ID
+* `sb.slack.clientsecret` - The Slack client secret
+
+Other common configuration values include:
+
+* `sb.ollama.url` - The URL of the Ollama service (defaults to http://localhost:11434)
+* `sb.ollama.model` - The model to use in Ollama (defaults to `llama3.2`)
+* `sb.encryption.password` - The password to use for encrypting sensitive data stored by web clients (defaults to
+  `12345678`)
+
 ## Prerequisites
 
 1. Install [Ollama](https://ollama.com/)
@@ -48,3 +75,7 @@ This prompt is handled like this:
 * Build and install all the modules with command `mvn clean install`
 * Start Payara Micro with the command `cd web; mvn package; mvn payara-micro:start`
 * Open [http://localhost:8080/index.html](http://localhost:8080/index.html) in a browser
+
+## New Tools
+
+See the `secondbrain.tools.HelloWorld` tool for an example of how to create a new tool.
