@@ -2,6 +2,7 @@ package secondbrain.application.web;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Preconditions;
+import io.vavr.control.Try;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Cookie;
@@ -33,9 +34,11 @@ public class PromptResource {
         Preconditions.checkNotNull(promptHandler, "promptHandler must not be null");
         Preconditions.checkNotNull(jsonDeserializer, "jsonDeserializer must not be null");
 
-        final Map<String, String> cookieContext = session == null
-                ? Map.of()
-                : jsonDeserializer.deserializeMap(session.getValue(), String.class, String.class);
+        final Map<String, String> cookieContext = Try.of(() -> session)
+                .mapTry(Objects::requireNonNull)
+                .mapTry(s -> jsonDeserializer.deserializeMap(s.getValue(), String.class, String.class))
+                .recover(throwable -> Map.of())
+                .get();
 
         final Map<String, String> filteredContext = Objects.requireNonNullElse(context, Map.<String, String>of())
                 .entrySet()

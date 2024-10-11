@@ -23,7 +23,7 @@ public class JsonDeserializer {
     }
 
     @NotNull
-    public <T, U, V> T deserializeMap(@NotNull final String json, @NotNull final Class<U> key, @NotNull final Class<V> value) throws JsonProcessingException {
+    public <U, V> Map<U, V> deserializeMap(@NotNull final String json, @NotNull final Class<U> key, @NotNull final Class<V> value) throws JsonProcessingException {
 
         final MapType type = objectMapper.getTypeFactory().constructMapType(Map.class, key, value);
         return objectMapper.readValue(json, type);
