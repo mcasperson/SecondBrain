@@ -104,13 +104,16 @@ public class GitHubDiffs implements Tool {
 
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.
-        final String token = Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
+        final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
                 .recover(e -> context.get("github_access_token"))
                 .mapTry(Objects::requireNonNull)
-                .recoverWith(e -> Try.of(() -> githubAccessToken.get()))
-                .get();
+                .recoverWith(e -> Try.of(() -> githubAccessToken.get()));
 
-        final String authHeader = "Bearer " + token;
+        if (token.isFailure()) {
+            return "Failed to get GitHub access token";
+        }
+
+        final String authHeader = "Bearer " + token.get();
 
         return Try.of(() -> getCommits(
                         owner,

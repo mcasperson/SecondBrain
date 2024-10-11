@@ -95,16 +95,19 @@ public class SlackChannel implements Tool {
 
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.
-        final String accessToken = Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
+        final Try<String> accessToken = Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
                 .recover(e -> context.get("slack_access_token"))
                 .mapTry(Objects::requireNonNull)
-                .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
-                .get();
+                .recoverWith(e -> Try.of(() -> slackAccessToken.get()));
+
+        if (accessToken.isFailure()) {
+            return "Slack access token not found";
+        }
 
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
 
-        final Try<String> id = findChannelId(client, accessToken, channel, null)
+        final Try<String> id = findChannelId(client, accessToken.get(), channel, null)
                 .onFailure(error -> System.out.println("Error: " + error));
 
         if (id.isFailure()) {
@@ -113,7 +116,7 @@ public class SlackChannel implements Tool {
 
         final Try<String> messages = id
                 .mapTry(chanId -> client.conversationsHistory(r -> r
-                        .token(accessToken)
+                        .token(accessToken.get())
                         .channel(chanId)
                         .oldest(oldest)))
                 .map(this::conversationsToText)
@@ -128,7 +131,7 @@ public class SlackChannel implements Tool {
         }
 
         final Try<String> messagesWithUsersReplaced = messages
-                .flatMap(m -> replaceIds(client, accessToken, m));
+                .flatMap(m -> replaceIds(client, accessToken.get(), m));
 
         if (messagesWithUsersReplaced.isFailure()) {
             return "The user and channel IDs could not be replaced";
