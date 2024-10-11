@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -96,6 +97,7 @@ public class SlackChannel implements Tool {
         // fall back to the value defined in the local configuration.
         final String accessToken = Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
                 .recover(e -> context.get("slack_access_token"))
+                .mapTry(Objects::requireNonNull)
                 .recover(e -> slackAccessToken)
                 .get();
 
