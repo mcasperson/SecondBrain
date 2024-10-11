@@ -9,6 +9,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.infrastructure.oauth.OauthClient;
@@ -19,6 +20,14 @@ import java.util.Map;
 
 @Path("/slack_oauth")
 public class OauthCallback {
+    @Inject
+    @ConfigProperty(name = "sb.slack.clientid")
+    String slackClientId;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.clientsecret")
+    String slackClientSecret;
+
     @Inject
     private OauthClient oauthClient;
 
@@ -31,8 +40,8 @@ public class OauthCallback {
                 .of(client -> oauthClient.exchangeToken(
                         client,
                         code,
-                        System.getenv("SLACK_CLIENT_ID"),
-                        System.getenv("SLACK_CLIENT_SECRET")))
+                        slackClientId,
+                        slackClientSecret))
                 .map(response -> response.authed_user().access_token())
                 .mapTry(accessToken -> redirectWithToken(accessToken, state))
                 .onFailure(error -> System.out.println("Error: " + error.getMessage()))

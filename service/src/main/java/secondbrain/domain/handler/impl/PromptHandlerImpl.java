@@ -8,6 +8,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.toolbuilder.ToolBuilder;
@@ -26,6 +27,10 @@ import java.util.Optional;
 
 @ApplicationScoped
 public class PromptHandlerImpl implements PromptHandler {
+    @Inject
+    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
+    String model;
+
     @Inject
     private ToolBuilder toolBuilder;
 
@@ -51,8 +56,9 @@ public class PromptHandlerImpl implements PromptHandler {
 
     /**
      * The LLM will sometimes return invalid JSON for tool selection, so we retry a few times
+     *
      * @param toolPrompt The tool prompt
-     * @param count The retry count
+     * @param count      The retry count
      * @return The selected tool
      */
     private ToolDefinition selectOllamaTool(@NotNull final String toolPrompt, int count) {
@@ -86,7 +92,7 @@ public class PromptHandlerImpl implements PromptHandler {
                 .of(client ->
                         ollamaClient.getTools(
                                 client,
-                                new OllamaGenerateBody("llama3.2", llmPrompt, false)))
+                                new OllamaGenerateBody(model, llmPrompt, false)))
                 .get();
     }
 

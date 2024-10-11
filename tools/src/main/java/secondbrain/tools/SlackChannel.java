@@ -13,6 +13,7 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
@@ -34,6 +35,18 @@ import java.util.regex.Pattern;
 @Dependent
 public class SlackChannel implements Tool {
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
+
+    @Inject
+    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
+    String model;
+
+    @Inject
+    @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
+    String encryptionPassword;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.accesstoken")
+    String slackAccessToken;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -77,11 +90,13 @@ public class SlackChannel implements Tool {
         final String oldest = Long.valueOf(LocalDateTime.now().minusDays(days).atZone(ZoneId.systemDefault()).toEpochSecond()).toString();
 
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(System.getenv("ENCRYPTION_PASSWORD"));
+        textEncryptor.setPassword(encryptionPassword);
 
-        // Try to decrypt the value, otherwise assume it is a plain text value
+        // Try to decrypt the value, otherwise assume it is a plain text value, and finally
+        // fall back to the value defined in the local configuration.
         final String accessToken = Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
                 .recover(e -> context.get("slack_access_token"))
+                .recover(e -> slackAccessToken)
                 .get();
 
         // you can get this instance via ctx.client() in a Bolt app
@@ -160,7 +175,7 @@ public class SlackChannel implements Tool {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
-                        new OllamaGenerateBody("llama3.2", llmPrompt, false))).get();
+                        new OllamaGenerateBody(model, llmPrompt, false))).get();
     }
 
     private Try<String> findChannelId(

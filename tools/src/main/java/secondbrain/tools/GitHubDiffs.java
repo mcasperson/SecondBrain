@@ -5,6 +5,7 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
@@ -30,6 +31,10 @@ public class GitHubDiffs implements Tool {
     private static final String DEFAULT_BRANCH = "main";
     private static final int DEFAULT_DURATION = 30;
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+    @Inject
+    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
+    String model;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -139,7 +144,7 @@ public class GitHubDiffs implements Tool {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
-                        new OllamaGenerateBody("llama3.2", llmPrompt, false)))
+                        new OllamaGenerateBody(model, llmPrompt, false)))
                 .get();
     }
 
