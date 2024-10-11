@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
@@ -23,6 +24,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 @Dependent
 public class GitHubDiffs implements Tool {
@@ -35,6 +38,14 @@ public class GitHubDiffs implements Tool {
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
+
+    @Inject
+    @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
+    String encryptionPassword;
+
+    @Inject
+    @ConfigProperty(name = "sb.github.accesstoken")
+    Optional<String> githubAccessToken;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -87,12 +98,19 @@ public class GitHubDiffs implements Tool {
         final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
-        final String token = context.getOrDefault("GITHUB_TOKEN", "");
-        final String authHeader = "Bearer " + token;
 
-        if (token.isEmpty()) {
-            return "You must provide a GitHub token to use this tool.";
-        }
+        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
+        textEncryptor.setPassword(encryptionPassword);
+
+        // Try to decrypt the value, otherwise assume it is a plain text value, and finally
+        // fall back to the value defined in the local configuration.
+        final String token = Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
+                .recover(e -> context.get("github_access_token"))
+                .mapTry(Objects::requireNonNull)
+                .recoverWith(e -> Try.of(() -> githubAccessToken.get()))
+                .get();
+
+        final String authHeader = "Bearer " + token;
 
         return Try.of(() -> getCommits(
                         owner,
