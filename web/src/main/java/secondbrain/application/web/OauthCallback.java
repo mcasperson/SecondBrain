@@ -37,6 +37,12 @@ public class OauthCallback {
 
     @GET
     public Response get(@QueryParam("code") final String code, @QueryParam("state") final String state) {
+        if (slackClientId.isEmpty() || slackClientSecret.isEmpty()) {
+            return Response.serverError()
+                    .entity("Slack client id or secret must be set via the \"sb.slack.clientid\" and \"sb.slack.clientsecret\" configuration values.")
+                    .build();
+        }
+
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> oauthClient.exchangeToken(
                         client,
