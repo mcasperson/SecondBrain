@@ -9,9 +9,29 @@
 </head>
 <body>
 
-<nav class="navbar bg-info" data-bs-theme="dark">
+<nav class="navbar navbar-dark navbar-expand-lg bg-info">
     <div class="container-fluid">
         <a class="navbar-brand" href="#">SecondBrain</a>
+        <button aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"
+                class="navbar-toggler"
+                data-bs-target="#navbarSupportedContent" data-bs-toggle="collapse" type="button">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+                <li class="nav-item dropdown">
+                    <a aria-expanded="false" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#"
+                       role="button">
+                        Tools
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/index.html">GitHub</a></li>
+                        <li><a class="dropdown-item" href="/slack.html">Slack</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
     </div>
 </nav>
 
