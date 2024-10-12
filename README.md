@@ -1,5 +1,15 @@
 # SecondBrain
 
+Imagine a world where you can have a conversation with your data. SecondBrain is a framework that allows you to do just that by linking plain text prompts with external data sources. The result is then presented an LLM to provide the information it needs to answer your questions. 
+
+This means you can ask a question like:
+
+> Highlight the important changes made in the last 7 days in the GitHub repository "SecondBrain" owned by "mcasperson"
+
+and get a meaningful response.
+
+## How it works
+
 SecondBrain is a platform that allows you to have a conversation with your data.
 
 It works like this:
@@ -7,8 +17,7 @@ It works like this:
 1. You enter a plain text prompt about your data, such as GitHub commits or Slack messages.
 2. The prompt is passed to an LLM along with definitions of "tools" that can be used to interact with the data.
 3. The LLM selects the correct tool to collect the required data.
-4. The tool then collects the data, places it in the context of an LLM prompt, and passes the prompt and context to the
-   LLM.
+4. The tool then collects the data, places it in the context of an LLM prompt, and passes the prompt and context to the LLM.
 5. The LLM response is returned to the user.
 
 The power in this platform is the ability to easily create new tools that interact with data sources. With a few simple
