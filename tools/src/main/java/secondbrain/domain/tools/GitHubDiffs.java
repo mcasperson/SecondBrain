@@ -132,7 +132,8 @@ public class GitHubDiffs implements Tool {
                         dateParser.parseDate(endDate).format(FORMATTER),
                         authHeader))
                 .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader))
-                .map(list -> listLimiter.limitListContent(list, Constants.MAX_CONTEXT_LENGTH))
+                // llama3.2 struggled with a large context, so we limit it here
+                .map(list -> listLimiter.limitListContent(list, Constants.MAX_CONTEXT_LENGTH / 2))
                 .map(diffs -> String.join("\n", diffs))
                 .map(diffs -> buildToolPrompt(diffs, prompt))
                 .map(this::callOllama)
@@ -173,7 +174,7 @@ public class GitHubDiffs implements Tool {
         on the preferred format (or lack thereof) for RAG context.
         */
         return "<|start_header_id|>system<|end_header_id|>\n"
-                + "Gid Diff:\n"
+                + "Git Diff:\n"
                 + getCommitDiff(owner, repo, commit.sha(), authorization)
                 + "\n<|eot_id|>";
     }
@@ -203,11 +204,12 @@ public class GitHubDiffs implements Tool {
                 <|start_header_id|>system<|end_header_id|>
                 You are an expert in reading Git diffs.
                 You are given a question and a list of Git Diffs related to the question.
-                All the information required to answer the question is present in the diffs.
-                You must answer the question based on the diffs provided.
+                You must assume the Git Diffs capture the changes to the Git repository mentioned in the question.
+                You must assume the information required to answer the question is present in the Git Diffs.
+                You must answer the question based on the Git Diffs provided.
                 You will be penalized for suggesting manual steps to generate the answer.
                 You will be penalized for responding that you don't have access to real-time data or repositories.
-                If there are no diffs, you should indicate that in the answer.
+                If there are no Git Diffs, you must indicate that in the answer.
                 <|eot_id|>
                 """
                 + context
