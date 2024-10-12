@@ -32,7 +32,7 @@ function handleSubmit(event) {
 
     disableForm()
 
-    response.value = 'Loading...'
+    response.innerText = 'Loading...'
 
     const prompt = document.getElementById('prompt').value;
 
@@ -52,10 +52,10 @@ function handleSubmit(event) {
     })
         .then(response => response.text())
         .then(data => {
-            response.value = data
+            response.innerHTML = marked.parse(data)
         })
         .catch((error) => {
-            response.value = error
+            response.innerText = error
         })
         .finally(() => {
             enableForm()

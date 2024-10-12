@@ -43,6 +43,7 @@ public class DateParser {
                                 + "[yyyy-MM-dd'T'HH:mm:ss.SSSSSSSS]"
                                 + "[yyyy-MM-dd'T'HH:mm:ss.SSSSSSS]"
                                 + "[yyyy-MM-dd'T'HH:mm:ss.SSSSSS]"
+                                + "[yyyy-MM-dd'T'HH:mm:ss.SSSSS]"
                                 + "[yyyy-MM-dd'T'HH:mm:ss.SSSS]"
                                 + "[yyyy-MM-dd'T'HH:mm:ss.SSS]"
                                 + "[yyyy-MM-dd'T'HH:mm:ss.SS]"
