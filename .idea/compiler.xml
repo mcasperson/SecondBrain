@@ -13,8 +13,5 @@
         <module name="secondbrain-web" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="secondbrain" target="21" />
-    </bytecodeTargetLevel>
   </component>
 </project>
