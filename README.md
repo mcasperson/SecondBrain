@@ -4,7 +4,7 @@ Imagine a world where you can have a conversation with your data. SecondBrain is
 
 This means you can ask a question like:
 
-> Highlight the important changes made in the last 7 days in the GitHub repository "SecondBrain" owned by "mcasperson"
+> Highlight the important changes made since October 1 2024 in the GitHub repository "SecondBrain" owned by "mcasperson"
 
 and get a meaningful response.
 
