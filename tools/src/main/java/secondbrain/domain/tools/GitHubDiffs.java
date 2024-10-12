@@ -1,4 +1,4 @@
-package secondbrain.tools;
+package secondbrain.domain.tools;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;

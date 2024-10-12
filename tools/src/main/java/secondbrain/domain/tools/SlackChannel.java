@@ -1,4 +1,4 @@
-package secondbrain.tools;
+package secondbrain.domain.tools;
 
 import com.slack.api.Slack;
 import com.slack.api.methods.MethodsClient;

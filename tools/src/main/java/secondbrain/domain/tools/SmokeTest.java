@@ -1,4 +1,4 @@
-package secondbrain.tools;
+package secondbrain.domain.tools;
 
 import jakarta.enterprise.context.Dependent;
 import jakarta.validation.constraints.NotNull;
