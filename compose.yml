@@ -11,6 +11,7 @@ services:
       SB_SLACK_CLIENTSECRET: 123456789
       SB_ENCRYPTION_PASSWORD: 123456789
       SB_OLLAMA_URL: http://ollama:11434
+    pull_policy: always
 
   ollama:
     image: ollama/ollama

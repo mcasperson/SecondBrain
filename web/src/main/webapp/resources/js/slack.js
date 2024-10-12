@@ -1,6 +1,8 @@
-document.getElementById('prompt').value = stripLineBreaks(
-    stripLeadingWhitespace(
-        `Summarize 7 days worth of messages from the #announcements channel`))
+document.addEventListener('DOMContentLoaded', (event) => {
+    document.getElementById('prompt').value = stripLineBreaks(
+        stripLeadingWhitespace(
+            `Summarize 7 days worth of messages from the #announcements channel`))
+});
 
 function getCookie(name) {
     const value = `; ${document.cookie}`;

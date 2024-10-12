@@ -26,7 +26,7 @@ public class OllamaClient {
                 throw new RuntimeException("Failed to call Ollama:\n"
                         + response.getStatus()
                         + "\nMake sure to run 'ollama pull " + body.model() + "'"
-                        + "\nor 'docker exec -it secondbrain-ollama-1 ollama run " + body.model() + "'");
+                        + "\nor 'docker exec -it secondbrain-ollama-1 ollama pull " + body.model() + "'");
             }
 
             if (response.getStatus() != 200) {
