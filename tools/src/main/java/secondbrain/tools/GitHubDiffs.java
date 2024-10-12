@@ -129,9 +129,10 @@ public class GitHubDiffs implements Tool {
                         authHeader))
                 .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader))
                 .map(diffs -> String.join("\n", diffs))
-                .map(diffs -> buildToolPrompt(diffs, prompt) + debugToolArgs.debugArgs(arguments, true))
+                .map(diffs -> buildToolPrompt(diffs, prompt))
                 .map(this::callOllama)
                 .map(OllamaResponse::response)
+                .map(response -> response + debugToolArgs.debugArgs(arguments, true))
                 .recover(throwable -> "Failed to get diffs: " + throwable.getMessage())
                 .get();
     }

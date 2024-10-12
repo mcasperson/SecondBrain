@@ -23,10 +23,10 @@ public class DebugToolArgs {
         if (BooleanUtils.toBoolean(debug)) {
             final String debug = args.stream()
                     .map(arg -> arg.argName() + ": " + arg.argValue())
-                    .collect(Collectors.joining(", "));
+                    .collect(Collectors.joining("\n"));
 
             if (includeLineBreak) {
-                return debug + System.lineSeparator();
+                return System.lineSeparator() + debug;
             }
 
             return debug;
