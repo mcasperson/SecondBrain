@@ -23,7 +23,10 @@ public class OllamaClient {
                 .post(Entity.entity(body, MediaType.APPLICATION_JSON))) {
 
             if (response.getStatus() == 404) {
-                throw new RuntimeException("Failed to call Ollama:\n" + response.getStatus() + "\nMake sure to run 'ollama pull " + body.model() + "'");
+                throw new RuntimeException("Failed to call Ollama:\n"
+                        + response.getStatus()
+                        + "\nMake sure to run 'ollama pull " + body.model() + "'"
+                        + "\nor 'docker exec -it secondbrain-ollama-1 ollama run " + body.model() + "'");
             }
 
             if (response.getStatus() != 200) {

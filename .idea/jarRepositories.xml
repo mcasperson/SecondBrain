@@ -22,14 +22,14 @@
       <option name="url" value="https://maven.pkg.github.com/OctopusDeploy/WebDriverTraining" />
     </remote-repository>
     <remote-repository>
-      <option name="id" value="payara" />
-      <option name="name" value="payara" />
-      <option name="url" value="https://nexus.payara.fish/repository/payara-artifacts/" />
-    </remote-repository>
-    <remote-repository>
       <option name="id" value="central" />
       <option name="name" value="central" />
       <option name="url" value="https://repo1.maven.org/maven2" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="payara" />
+      <option name="name" value="payara" />
+      <option name="url" value="https://nexus.payara.fish/repository/payara-artifacts/" />
     </remote-repository>
   </component>
 </project>
