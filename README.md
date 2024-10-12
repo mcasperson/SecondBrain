@@ -21,7 +21,7 @@ Secondbrain is distributed as a Docker image and run in parallel with Ollama usi
 3. `docker compose up` to start the Docker Compose stack
 4. `docker exec secondbrain-ollama-1 ollama pull llama3.2` to pull the `llama3.2` LLM
 5. Create a [GitHub access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
-6. Open https://localhost:8081, paste in your access token, and click `Submit` to answer the default query
+6. Open https://localhost:8181, paste in your access token, and click `Submit` to answer the default query
 
 ## How it works
 
@@ -94,8 +94,7 @@ This prompt is handled like this:
 * Build and install all the modules with command `mvn clean install`
 * Start Payara Micro with the command `cd web; mvn package; mvn payara-micro:start`
 * Create a [GitHub access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
-* Open [http://localhost:8080/index.html](http://localhost:8080/index.html) in a browser, paste in the access token, and
-  run the default query
+* Open [https://localhost:8181/index.html](https://localhost:8181/index.html) in a browser, paste in the access token, and run the default query
 
 ## New Tools
 
