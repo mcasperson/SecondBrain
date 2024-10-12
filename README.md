@@ -8,6 +8,8 @@ This means you can ask a question like:
 
 and get a meaningful response.
 
+![Screenshot](screenshot.png)
+
 ## Technologies used
 
 SecondBrain makes heavy use of Jakarta EE and MicroProfile, executed in a Docker image using Payara Micro.
