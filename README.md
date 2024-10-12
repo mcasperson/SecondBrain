@@ -8,6 +8,10 @@ This means you can ask a question like:
 
 and get a meaningful response.
 
+## Technologies used
+
+SecondBrain makes heavy use of Jakarta EE and MicroProfile, executed in a Docker image using Payara Micro.
+
 ## Running the application
 
 Secondbrain is distributed as a Docker image and run in parallel with Ollama using Docker Compose:

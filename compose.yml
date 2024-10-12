@@ -5,9 +5,13 @@ services:
       - "8080:8080"
       - "8181:8181"
     environment:
+      # These values must be updated to use the details of your own Slack App
+      # if you wish to use the Oauth login flow: https://api.slack.com/apps
       SB_SLACK_CLIENTID: 1234567890.1234567890
       SB_SLACK_CLIENTSECRET: 123456789
+      # You should change this to a random value
       SB_ENCRYPTION_PASSWORD: 123456789
+      # This value refers to the sibling container
       SB_OLLAMA_URL: http://ollama:11434
     pull_policy: always
 
