@@ -132,8 +132,7 @@ public class GitHubDiffs implements Tool {
                         dateParser.parseDate(endDate).format(FORMATTER),
                         authHeader))
                 .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader))
-                // llama3.2 struggled with a large context, so we limit it here
-                .map(list -> listLimiter.limitListContent(list, Constants.MAX_CONTEXT_LENGTH / 2))
+                .map(list -> listLimiter.limitListContent(list, Constants.MAX_CONTEXT_LENGTH))
                 .map(diffs -> String.join("\n", diffs))
                 .map(diffs -> buildToolPrompt(diffs, prompt))
                 .map(this::callOllama)
@@ -207,6 +206,7 @@ public class GitHubDiffs implements Tool {
                 You must assume the Git Diffs capture the changes to the Git repository mentioned in the question.
                 You must assume the information required to answer the question is present in the Git Diffs.
                 You must answer the question based on the Git Diffs provided.
+                When the user asks a question indicating that they want to know the changes in the repository, you must generate the answer based on the Git Diffs.
                 You will be penalized for suggesting manual steps to generate the answer.
                 You will be penalized for responding that you don't have access to real-time data or repositories.
                 If there are no Git Diffs, you must indicate that in the answer.
