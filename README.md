@@ -12,10 +12,12 @@ and get a meaningful response.
 
 Secondbrain is distributed as a Docker image and run in parallel with Ollama using Docker Compose:
 
-1. `docker compose up` to start the Docker Compose stack
-2. `docker exec secondbrain-ollama-1 ollama pull llama3.2` to pull the `llama3.2` LLM
-3. Create a [GitHub access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
-4. Open https://localhost:8081, paste in your access token, and click `Submit` to answer the default query
+1. `git clone https://github.com/mcasperson/SecondBrain.git` to clone the repository
+2. `cd SecondBrain` to enter the project directory
+3. `docker compose up` to start the Docker Compose stack
+4. `docker exec secondbrain-ollama-1 ollama pull llama3.2` to pull the `llama3.2` LLM
+5. Create a [GitHub access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
+6. Open https://localhost:8081, paste in your access token, and click `Submit` to answer the default query
 
 ## How it works
 
