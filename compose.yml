@@ -13,6 +13,8 @@ services:
       SB_ENCRYPTION_PASSWORD: 123456789
       # This value refers to the sibling container
       SB_OLLAMA_URL: http://ollama:11434
+      # Set this to true to enable debug logging
+      SB_TOOLS_DEBUG: false
     pull_policy: always
 
   ollama:

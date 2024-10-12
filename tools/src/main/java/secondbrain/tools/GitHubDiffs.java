@@ -12,6 +12,7 @@ import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.date.DateParser;
+import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -47,6 +48,9 @@ public class GitHubDiffs implements Tool {
     @Inject
     @ConfigProperty(name = "sb.github.accesstoken")
     Optional<String> githubAccessToken;
+
+    @Inject
+    private DebugToolArgs debugToolArgs;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -125,7 +129,7 @@ public class GitHubDiffs implements Tool {
                         authHeader))
                 .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader))
                 .map(diffs -> String.join("\n", diffs))
-                .map(diffs -> buildToolPrompt(diffs, prompt))
+                .map(diffs -> buildToolPrompt(diffs, prompt) + debugToolArgs.debugArgs(arguments, true))
                 .map(this::callOllama)
                 .map(OllamaResponse::response)
                 .recover(throwable -> "Failed to get diffs: " + throwable.getMessage())
