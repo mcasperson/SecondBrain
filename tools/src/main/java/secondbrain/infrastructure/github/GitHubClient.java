@@ -21,27 +21,29 @@ public class GitHubClient {
     @Retry
     public List<GitHubCommitResponse> getCommits(@NotNull final Client client, @NotNull final String owner, @NotNull final String repo, @NotNull final String sha, @NotNull final String until, @NotNull final String since, @NotNull final String authorization) {
         return Try.withResources(() -> client.target("https://api.github.com/repos/" + owner + "/" + repo + "/commits")
-                .queryParam("sha", sha)
-                .queryParam("until", until)
-                .queryParam("since", since)
-                .request()
-                .header("Authorization", authorization)
-                .header("Accept", MediaType.APPLICATION_JSON)
-                .get())
-                .of(responseValidation::validate)
-                .map(response -> List.of(response.readEntity(GitHubCommitResponse[].class)))
+                        .queryParam("sha", sha)
+                        .queryParam("until", until)
+                        .queryParam("since", since)
+                        .request()
+                        .header("Authorization", authorization)
+                        .header("Accept", MediaType.APPLICATION_JSON)
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response))
+                        .map(r -> List.of(r.readEntity(GitHubCommitResponse[].class)))
+                        .get())
                 .get();
     }
 
     @Retry
     public String getDiff(@NotNull final Client client, @NotNull final String owner, @NotNull final String repo, @NotNull final String sha, @NotNull final String authorization) {
         return Try.withResources(() -> client.target("https://api.github.com/repos/" + owner + "/" + repo + "/commits/" + sha)
-                .request()
-                .header("Authorization", authorization)
-                .header("Accept", "application/vnd.github.v3.diff")
-                .get())
-                .of(responseValidation::validate)
-                .map(response -> response.readEntity(String.class))
+                        .request()
+                        .header("Authorization", authorization)
+                        .header("Accept", "application/vnd.github.v3.diff")
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response))
+                        .map(r -> r.readEntity(String.class))
+                        .get())
                 .get();
     }
 }
