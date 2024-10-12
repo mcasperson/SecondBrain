@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         stripLeadingWhitespace(
             `Summarize 7 days worth of messages from the #announcements channel`))
     buildButtons();
+    selectTokenInput();
 });
 
 function getCookie(name) {
@@ -107,6 +108,3 @@ function selectTokenInput() {
 
     buildButtons();
 }
-
-selectTokenInput();
-buildButtons();
