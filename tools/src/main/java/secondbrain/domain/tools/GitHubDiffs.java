@@ -13,6 +13,7 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
+import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -63,6 +64,9 @@ public class GitHubDiffs implements Tool {
 
     @Inject
     private DateParser dateParser;
+
+    @Inject
+    private ListLimiter listLimiter;
 
     @Override
     public String getName() {
@@ -128,7 +132,8 @@ public class GitHubDiffs implements Tool {
                         dateParser.parseDate(endDate).format(FORMATTER),
                         authHeader))
                 .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader))
-                .map(diffs -> String.join("\n\n", diffs))
+                .map(list -> listLimiter.limitListContent(list, Constants.MAX_CONTEXT_LENGTH))
+                .map(diffs -> String.join("\n", diffs))
                 .map(diffs -> buildToolPrompt(diffs, prompt))
                 .map(this::callOllama)
                 .map(OllamaResponse::response)
@@ -163,8 +168,14 @@ public class GitHubDiffs implements Tool {
             @NotNull final String repo,
             @NotNull final GitHubCommitResponse commit,
             @NotNull final String authorization) {
-        return "Git Diff:\n"
-                + getCommitDiff(owner, repo, commit.sha(), authorization);
+        /*
+        See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
+        on the preferred format (or lack thereof) for RAG context.
+        */
+        return "<|start_header_id|>system<|end_header_id|>\n"
+                + "Gid Diff:\n"
+                + getCommitDiff(owner, repo, commit.sha(), authorization)
+                + "\n<|eot_id|>";
     }
 
     private OllamaResponse callOllama(@NotNull final String llmPrompt) {
@@ -197,11 +208,12 @@ public class GitHubDiffs implements Tool {
                 You will be penalized for suggesting manual steps to generate the answer.
                 You will be penalized for responding that you don't have access to real-time data or repositories.
                 If there are no diffs, you should indicate that in the answer.
-                Here are the Git Diffs:
+                <|eot_id|>
                 """
-                + context.substring(0, Math.min(context.length(), Constants.MAX_CONTEXT_LENGTH))
-                + "<|eot_id|><|start_header_id|>user<|end_header_id|>"
+                + context
+                + "\n<|start_header_id|>user<|end_header_id|>"
                 + prompt
-                + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>".stripLeading();
+                + "<|eot_id|>"
+                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading();
     }
 }
