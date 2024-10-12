@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   secondbrain:
     image: ghcr.io/mcasperson/secondbrain

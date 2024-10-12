@@ -12,10 +12,10 @@ and get a meaningful response.
 
 Secondbrain is distributed as a Docker image and run in parallel with Ollama using Docker Compose:
 
-1. `docker compose up`
-2. `docker exec secondbrain-ollama-1 ollama pull llama3.2`
+1. `docker compose up` to start the Docker Compose stack
+2. `docker exec secondbrain-ollama-1 ollama pull llama3.2` to pull the `llama3.2` LLM
 3. Create a [GitHub access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
-4. Open https://localhost:8081
+4. Open https://localhost:8081, paste in your access token, and click `Submit` to answer the default query
 
 ## How it works
 
@@ -46,8 +46,7 @@ The project is split into modules:
 
 SecondBrain is configured via MicroProfile Config. The supplied `SlackChannel` tool requires the following
 configuration to support Oauth logins. Note that MicroProfile allows these configuration values to be set via
-[a number of different locations](https://smallrye.io/smallrye-config/Main/config/getting-started/), including
-environment variables, system properties, and configuration files:
+[a number of different locations](https://smallrye.io/smallrye-config/Main/config/getting-started/), including environment variables, system properties, and configuration files:
 
 * `sb.slack.clientid` - The Slack client ID
 * `sb.slack.clientsecret` - The Slack client secret
@@ -59,16 +58,10 @@ Other common configuration values include:
 * `sb.encryption.password` - The password to use for encrypting sensitive data stored by web clients (defaults to
   `12345678`)
 
-## Prerequisites
-
-1. Install [Ollama](https://ollama.com/)
-2. Pull the llama3.2 LLM with the command `ollama pull llama3.2`
-
 ## Supported LLMs
 
 SecondBrain is built around [Ollama](https://ollama.com/), which a is a local service exposing a huge selection of LLMs.
-This ensures that your
-data and prompts are kept private and secure.
+This ensures that your data and prompts are kept private and secure.
 
 ## Example Usages
 
@@ -90,6 +83,8 @@ This prompt is handled like this:
 
 ## Testing
 
+* Install Ollama locally
+* Pull the `llama3.2` model with the command `ollama pull llama3.2`
 * Build and install all the modules with command `mvn clean install`
 * Start Payara Micro with the command `cd web; mvn package; mvn payara-micro:start`
 * Create a [GitHub access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
