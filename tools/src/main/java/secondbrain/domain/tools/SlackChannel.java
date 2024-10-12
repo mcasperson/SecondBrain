@@ -13,6 +13,7 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.NonNull;
@@ -40,6 +41,10 @@ public class SlackChannel implements Tool {
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
+
+    @Inject
+    @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
+    String limit;
 
     @Inject
     @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
@@ -163,7 +168,7 @@ public class SlackChannel implements Tool {
                 You are given the history of a Slack channel and asked to answer questions based on the messages provided.
                 Here are the messages:
                 """
-                + context.substring(0, Math.min(context.length(), Constants.MAX_CONTEXT_LENGTH))
+                + context.substring(0, Math.min(context.length(), NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                 + "<|eot_id|><|start_header_id|>user<|end_header_id|>"
                 + prompt
                 + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>".stripLeading();

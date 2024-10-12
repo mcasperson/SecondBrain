@@ -63,6 +63,7 @@ Other common configuration values include:
 
 * `sb.ollama.url` - The URL of the Ollama service (defaults to http://localhost:11434)
 * `sb.ollama.model` - The model to use in Ollama (defaults to `llama3.2`)
+* `sb.ollama.contentlength` - The content window length to use in Ollama (defaults to `7000 * 4`, where each token is assumed to be 4 characters)
 * `sb.encryption.password` - The password to use for encrypting sensitive data stored by web clients (defaults to `12345678`)
 * `sb.tools.debug` - Whether to log debug information about the tool in the response (defaults to `false`)
 

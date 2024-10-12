@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.NonNull;
@@ -41,6 +42,10 @@ public class GitHubDiffs implements Tool {
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
+
+    @Inject
+    @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
+    String limit;
 
     @Inject
     @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
@@ -132,7 +137,7 @@ public class GitHubDiffs implements Tool {
                         dateParser.parseDate(endDate).format(FORMATTER),
                         authHeader))
                 .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader))
-                .map(list -> listLimiter.limitListContent(list, Constants.MAX_CONTEXT_LENGTH))
+                .map(list -> listLimiter.limitListContent(list, NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                 .map(diffs -> String.join("\n", diffs))
                 .map(diffs -> buildToolPrompt(diffs, prompt))
                 .map(this::callOllama)
