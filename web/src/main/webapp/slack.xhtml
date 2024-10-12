@@ -13,7 +13,7 @@
     <script type="text/javascript">
         const clientId = "#{slack.slackClientId}";
     </script>
-    <h:outputScript library="js" name="slack.js"/>
+    <h:outputScript library="js" name="slack.js" />
 </head>
 <body>
 
@@ -50,25 +50,25 @@
 <div class="container">
     <div class="row">
         <div class="offset-lg-3 col-lg-6 col-sm-12">
-            <form onsubmit="handleSubmit(event)">
+            <form id="form">
                 <div class="mb-3 mt-3 form-check form-switch">
-                    <input class="form-check-input" id="tokenSelection" onclick="selectTokenInput()" type="checkbox"/>
+                    <input class="form-check-input" id="tokenSelection" type="checkbox"/>
                     <label class="form-check-label" for="tokenSelection">Supply token
                         directly</label>
                 </div>
                 <div class="mb-3 mt-3" id="loginButtonParent">
-                    <button class="btn btn-primary" id="login" onclick="handleLogin()" style="display: none"
+                    <button class="btn btn-primary" id="login" style="display: none"
                             type="button">Slack Login
                     </button>
-                    <button class="btn btn-primary" id="logout" onclick="handleLogout()" style="display: none"
+                    <button class="btn btn-primary" id="logout" style="display: none"
                             type="button">Slack Logout
                     </button>
                 </div>
                 <div class="mb-3" id="tokenInputParent">
                     <label class="form-label" for="slackToken">Slack Token</label>
-                    <input class="form-control" id="slackToken" oninput="buildButtons()"
+                    <input class="form-control" id="slackToken"
                            placeholder="Slack token"
-                           type="password"></input>
+                           type="password"/>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="prompt">Prompt</label>

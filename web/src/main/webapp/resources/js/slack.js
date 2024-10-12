@@ -2,8 +2,15 @@ document.addEventListener('DOMContentLoaded', (event) => {
     document.getElementById('prompt').value = stripLineBreaks(
         stripLeadingWhitespace(
             `Summarize 7 days worth of messages from the #announcements channel`))
+
     buildButtons();
     selectTokenInput();
+
+    slackToken.addEventListener('input', buildButtons);
+    form.addEventListener('submit', handleSubmit);
+    tokenSelection.addEventListener('click', selectTokenInput);
+    login.addEventListener('click', handleLogin);
+    logout.addEventListener('click', handleLogout);
 });
 
 function getCookie(name) {
