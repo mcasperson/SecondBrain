@@ -190,8 +190,13 @@ public class GitHubDiffs implements Tool {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
-                You are an expert in reading Git diffs. You are given a question and a list of Git diffs.
+                You are an expert in reading Git diffs.
+                You are given a question and a list of Git diffs related to the question.
+                All the information required to answer the question is present in the diffs.
                 You must answer the question based on the diffs provided.
+                You will be penalized for suggesting manual steps to generate the answer.
+                You will be penalized for responding that you don't have access to real-time data or repositories.
+                If there are no diffs, you should indicate that in the answer.
                 Here are the diffs:
                 """
                 + context.substring(0, Math.min(context.length(), Constants.MAX_CONTEXT_LENGTH))
