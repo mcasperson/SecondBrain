@@ -58,9 +58,8 @@ The project is split into modules:
 
 # Configuration
 
-SecondBrain is configured via MicroProfile Config. The supplied `SlackChannel` tool requires the following
-configuration to support Oauth logins. Note that MicroProfile allows these configuration values to be set via
-[a number of different locations](https://smallrye.io/smallrye-config/Main/config/getting-started/), including
+SecondBrain is configured via MicroProfile Config. Note that MicroProfile allows these configuration values to be set
+via [a number of different locations](https://smallrye.io/smallrye-config/Main/config/getting-started/), including
 environment variables, system properties, and configuration files:
 
 * `sb.slack.clientid` - The Slack client ID
