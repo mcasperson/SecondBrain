@@ -14,6 +14,7 @@ import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
+import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.tooldefs.Tool;
@@ -33,6 +34,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 
 @ApplicationScoped
 public class ZenDeskOrganization implements Tool {
@@ -77,6 +80,8 @@ public class ZenDeskOrganization implements Tool {
 
     @Inject
     private DebugToolArgs debugToolArgs;
+    @Inject
+    private DateParser dateParser;
 
     @Override
     public String getName() {
@@ -130,7 +135,11 @@ public class ZenDeskOrganization implements Tool {
         final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
                 (user.get() + "/token:" + token.get()).getBytes())).get());
 
-        final String query = "type:ticket created>" + startDate + " created<" + endDate + " organization:" + owner;
+        final String query = "type:ticket created>"
+                + dateParser.parseDate(startDate).format(ISO_LOCAL_DATE)
+                + " created<"
+                + dateParser.parseDate(endDate).format(ISO_LOCAL_DATE)
+                + " organization:" + owner;
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, zenDeskUrl.get(), query))
@@ -155,7 +164,7 @@ public class ZenDeskOrganization implements Tool {
                 // Get the comments associated with the ticket
                 .map(ticket -> zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id()))
                 // Get the first comment, or an empty list
-                .flatMap(comments -> comments.results().stream().limit(1))
+                .flatMap(comments -> comments.getResults().stream().limit(1))
                 // get the comment body
                 .map(ZenDeskCommentResponse::body)
                 // Get the comment body as a LLM context string

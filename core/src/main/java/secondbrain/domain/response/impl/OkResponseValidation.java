@@ -12,13 +12,16 @@ import secondbrain.domain.response.ResponseValidation;
 @Named("OkValidator")
 public class OkResponseValidation implements ResponseValidation {
     @Override
-    @NotNull public Response validate(@NotNull final Response response) {
+    @NotNull
+    public Response validate(@NotNull final Response response) {
         if (response.getStatus() == 404) {
             throw new MissingResponse("Expected status code 200, but got 404");
         }
 
         if (response.getStatus() != 200) {
-            throw new InvalidResponse("Expected status code 200, but got " + response.getStatus());
+            throw new InvalidResponse("Expected status code 200, but got "
+                    + response.getStatus() + " "
+                    + response.readEntity(String.class));
         }
 
         return response;
