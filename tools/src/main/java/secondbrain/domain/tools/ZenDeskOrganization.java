@@ -17,6 +17,7 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.limit.ListLimiter;
+import secondbrain.domain.strings.ValidateString;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -28,7 +29,6 @@ import secondbrain.infrastructure.zendesk.ZenDeskCommentResponse;
 import secondbrain.infrastructure.zendesk.ZenDeskResponse;
 
 import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
@@ -68,6 +68,9 @@ public class ZenDeskOrganization implements Tool {
     String limit;
 
     @Inject
+    private ValidateString validateString;
+
+    @Inject
     private OllamaClient ollamaClient;
 
     @Inject
@@ -96,19 +99,16 @@ public class ZenDeskOrganization implements Tool {
 
     @Override
     public List<ToolArguments> getArguments() {
-        final String startTime = ZonedDateTime.now().minusDays(DEFAULT_DURATION).format(FORMATTER);
-        final String endTime = ZonedDateTime.now().format(FORMATTER);
-
         return List.of(new ToolArguments("organization", "The name of the ZenDesk organization", ""),
-                new ToolArguments("days", "The number of days worth of tickets to return", "7"));
+                new ToolArguments("days", "The number of days worth of tickets to return", "30"));
     }
 
     @Override
     public String call(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
         final String owner = argsAccessor.getArgument(arguments, "organization", "");
 
-        final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "7")))
-                .recover(throwable -> 7)
+        final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "30")))
+                .recover(throwable -> 30)
                 .get();
 
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
@@ -146,6 +146,7 @@ public class ZenDeskOrganization implements Tool {
                         .map(response -> ticketToFirstComment(response, client, authHeader))
                         .map(list -> listLimiter.limitListContent(list, NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                         .map(list -> String.join("\n", list))
+                        .mapTry(validateString::throwIfEmpty)
                         .map(contextString -> buildToolPrompt(contextString, prompt))
                         .map(llmPrompt -> ollamaClient.getTools(
                                 client,
@@ -180,7 +181,7 @@ public class ZenDeskOrganization implements Tool {
         on the preferred format (or lack thereof) for RAG context.
         */
         return "<|start_header_id|>system<|end_header_id|>\n"
-                + "Support Ticket:\n"
+                + "ZenDesk Ticket:\n"
                 + comment
                 + "\n<|eot_id|>";
     }
@@ -192,13 +193,14 @@ public class ZenDeskOrganization implements Tool {
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
                 You are an expert in reading help desk tickets.
-                You are given a question and a list of support tickets related to the question.
-                You must assume the information required to answer the question is present in the support tickets.
-                You must answer the question based on the support tickets provided.
-                When the user asks a question indicating that they want to know about support tickets, you must generate the answer based on the support tickets.
+                You are given a question and a list of ZenDesk Tickets related to the question.
+                You must assume the information required to answer the question is present in the ZenDesk Tickets.
+                You must answer the question based on the ZenDesk Tickets provided.
+                When the user asks a question indicating that they want to know about ZenDesk Tickets, you must generate the answer based on the ZenDesk Tickets.
                 You will be penalized for suggesting manual steps to generate the answer.
                 You will be penalized for responding that you don't have access to real-time data or zen desk instances.
-                If there are no support tickets, you must indicate that in the answer.
+                You will be penalized for referencing issues that are not present in the ZenDesk Tickets.
+                If there are no ZenDesk Tickets, you must indicate that in the answer.
                 <|eot_id|>
                 """
                 + context
