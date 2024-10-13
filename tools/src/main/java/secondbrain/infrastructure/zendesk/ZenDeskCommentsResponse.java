@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ZenDeskCommentsResponse(List<ZenDeskCommentResponse> results) {
+public record ZenDeskCommentsResponse(List<ZenDeskCommentResponse> comments) {
     public List<ZenDeskCommentResponse> getResults() {
-        return Objects.requireNonNullElse(results, List.of());
+        return Objects.requireNonNullElse(comments, List.of());
     }
 }
