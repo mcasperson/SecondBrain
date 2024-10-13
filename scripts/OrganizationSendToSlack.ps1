@@ -68,16 +68,17 @@ Function Invoke-CustomCommand
 }
 
 # Replace the location of the Jar file with your copy of the CLI UberJAR
-$result = Invoke-CustomCommand java "-jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize 7 days worth of messages from the $( $args[0] ) Slack channel in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain language. You will be penalized for using emotive or excited language.`""
+$result = Invoke-CustomCommand java "-jar ../cli/target/secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize 7 days worth of messages from the $( $args[0] ) Slack channel in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain language. You will be penalized for using emotive or excited language.`""
+$ticketResult = Invoke-CustomCommand java "-jar ../cli/target/secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize 7 days worth of ZenDesk tickets from the $( $args[1] ) organization in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain language. You will be penalized for using emotive or excited language.`""
 
 echo $result.StdOut
 echo $result.StdErr
 
 # Replace this URL with your own Slack web hook
-$uriSlack = $env:SB_SLACK_GENERAL_WEBHOOK
+$uriSlack = $env:SB_SLACK_CUSTOMER_WEBHOOK
 $body = ConvertTo-Json @{
     type = "mrkdwn"
-    text = "*" + $args[0] + " summary*`n" + $result.StdOut
+    text = "*" + $args[1] + " summary*`n" + $result.StdOut + "`n" + $ticketResult.StdOut
 }
 
 try

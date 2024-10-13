@@ -64,9 +64,9 @@ environment variables, system properties, and configuration files:
 
 * `sb.slack.clientid` - The Slack client ID
 * `sb.slack.clientsecret` - The Slack client secret
-
-Other common configuration values include:
-
+* `sb.zendesk.accesstoken` - The ZenDesk token
+* `sb.zendesk.user` - The ZenDesk user
+* `sb.zendesk.url` - The ZenDesk url
 * `sb.ollama.url` - The URL of the Ollama service (defaults to http://localhost:11434)
 * `sb.ollama.model` - The model to use in Ollama (defaults to `llama3.2`)
 * `sb.ollama.contentlength` - The content window length to use in Ollama (defaults to `7000 * 4`, where each token is
