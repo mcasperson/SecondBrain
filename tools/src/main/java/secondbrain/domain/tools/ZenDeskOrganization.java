@@ -127,7 +127,8 @@ public class ZenDeskOrganization implements Tool {
             return "Failed to get Zendesk User";
         }
 
-        final String authHeader = "Basic " + Try.of(() -> new Base64().encode(user.get() + "/token:" + token.get())).get();
+        final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
+                (user.get() + "/token:" + token.get()).getBytes())).get());
 
         final String query = "type:ticket created>" + startDate + " created<" + endDate + " organization:" + owner;
 
