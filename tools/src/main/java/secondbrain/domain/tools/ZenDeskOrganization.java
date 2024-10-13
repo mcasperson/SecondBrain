@@ -14,7 +14,6 @@ import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.strings.ValidateString;
@@ -84,8 +83,6 @@ public class ZenDeskOrganization implements Tool {
 
     @Inject
     private DebugToolArgs debugToolArgs;
-    @Inject
-    private DateParser dateParser;
 
     @Override
     public String getName() {
