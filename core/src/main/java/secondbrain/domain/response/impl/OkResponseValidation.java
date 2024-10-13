@@ -1,7 +1,6 @@
 package secondbrain.domain.response.impl;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Named;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.Response;
 import secondbrain.domain.exceptions.InvalidResponse;
@@ -9,7 +8,6 @@ import secondbrain.domain.exceptions.MissingResponse;
 import secondbrain.domain.response.ResponseValidation;
 
 @ApplicationScoped
-@Named("OkValidator")
 public class OkResponseValidation implements ResponseValidation {
     @Override
     @NotNull

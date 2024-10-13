@@ -20,7 +20,6 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
-        <failOnMissingWebXml>false</failOnMissingWebXml>
         <resteasy.version>6.2.10.Final</resteasy.version>
     </properties>
 
