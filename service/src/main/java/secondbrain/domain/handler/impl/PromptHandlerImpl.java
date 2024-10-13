@@ -7,6 +7,7 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.handler.PromptHandler;
@@ -50,6 +51,7 @@ public class PromptHandlerImpl implements PromptHandler {
                 .map(toolPrompt -> selectOllamaTool(toolPrompt, 1))
                 .map(this::getToolCallFromToolDefinition)
                 .map(toolCall -> callTool(toolCall.orElse(null), context, prompt))
+                .recover(ProcessingException.class, e -> "Failed to connect to Ollama. You must install Ollama from https://ollama.com/download: " + e.toString())
                 .recover(Throwable.class, e -> "Failed to find a tool or call it: " + e.toString())
                 .get();
     }
