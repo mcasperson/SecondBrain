@@ -27,6 +27,7 @@ import secondbrain.infrastructure.zendesk.ZenDeskClient;
 import secondbrain.infrastructure.zendesk.ZenDeskCommentResponse;
 import secondbrain.infrastructure.zendesk.ZenDeskResponse;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -99,15 +100,16 @@ public class ZenDeskOrganization implements Tool {
         final String endTime = ZonedDateTime.now().format(FORMATTER);
 
         return List.of(new ToolArguments("organization", "The name of the ZenDesk organization", ""),
-                new ToolArguments("since", "The date to start checking from", startTime),
-                new ToolArguments("until", "The date to stop checking at", endTime));
+                new ToolArguments("days", "The number of days worth of tickets to return", "7"));
     }
 
     @Override
     public String call(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
-        final String startDate = argsAccessor.getArgument(arguments, "since", ZonedDateTime.now().minusDays(DEFAULT_DURATION).format(FORMATTER));
-        final String endDate = argsAccessor.getArgument(arguments, "until", ZonedDateTime.now().format(FORMATTER));
         final String owner = argsAccessor.getArgument(arguments, "organization", "");
+
+        final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "7")))
+                .recover(throwable -> 7)
+                .get();
 
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(encryptionPassword);
@@ -136,9 +138,7 @@ public class ZenDeskOrganization implements Tool {
                 (user.get() + "/token:" + token.get()).getBytes())).get());
 
         final String query = "type:ticket created>"
-                + dateParser.parseDate(startDate).format(ISO_LOCAL_DATE)
-                + " created<"
-                + dateParser.parseDate(endDate).format(ISO_LOCAL_DATE)
+                + LocalDateTime.now().minusDays(days).format(ISO_LOCAL_DATE)
                 + " organization:" + owner;
 
         return Try.withResources(ClientBuilder::newClient)
@@ -146,6 +146,7 @@ public class ZenDeskOrganization implements Tool {
                         .map(response -> ticketToFirstComment(response, client, authHeader))
                         .map(list -> listLimiter.limitListContent(list, NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                         .map(list -> String.join("\n", list))
+                        .map(contextString -> buildToolPrompt(contextString, prompt))
                         .map(llmPrompt -> ollamaClient.getTools(
                                 client,
                                 new OllamaGenerateBody(model, llmPrompt, false)))
