@@ -98,7 +98,7 @@ public class ZenDeskOrganization implements Tool {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(new ToolArguments("organization", "The name of the ZenDesk organization", ""),
-                new ToolArguments("days", "The number of days worth of tickets to return", "30"));
+                new ToolArguments("days", "The number of days worth of tickets to return", DEFAULT_DURATION + ""));
     }
 
     @Override
@@ -106,7 +106,7 @@ public class ZenDeskOrganization implements Tool {
         final String owner = argsAccessor.getArgument(arguments, "organization", "");
 
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "30")))
-                .recover(throwable -> 30)
+                .recover(throwable -> DEFAULT_DURATION)
                 .get();
 
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
