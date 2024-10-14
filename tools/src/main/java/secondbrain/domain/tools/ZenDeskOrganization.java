@@ -15,6 +15,7 @@ import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.debug.DebugToolArgs;
+import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.strings.ValidateString;
 import secondbrain.domain.tooldefs.Tool;
@@ -150,6 +151,7 @@ public class ZenDeskOrganization implements Tool {
                                 new OllamaGenerateBody(model, llmPrompt, false)))
                         .map(OllamaResponse::response)
                         .map(response -> response + debugToolArgs.debugArgs(arguments, true))
+                        .recover(EmptyString.class, "No tickets found")
                         .recover(throwable -> "Failed to get tickets or comments: " + throwable.getMessage())
                         .get())
                 .get();
