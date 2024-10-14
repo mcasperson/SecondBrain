@@ -11,6 +11,11 @@ import java.util.Map;
 public class Main {
     public static void main(final String[] args) {
         final Weld weld = new Weld();
+        /*
+        For the life of me I could not get Weld to find beans in the service module without manually adding a class in
+        a shared ancestor package and then scanning recursively. So the marker class exists to help Weld scan for
+        annotated classes in an Uber JAR.
+         */
         try (WeldContainer weldContainer = weld.addPackages(true, Marker.class).initialize()) {
             final String response = weldContainer.select(PromptHandler.class).get()
                     .handlePrompt(Map.of(), getPrompt(args));
