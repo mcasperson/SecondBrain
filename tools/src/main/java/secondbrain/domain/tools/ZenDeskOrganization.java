@@ -123,6 +123,15 @@ public class ZenDeskOrganization implements Tool {
             return "Failed to get Zendesk access token";
         }
 
+        final Try<String> url = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_url")))
+                .recover(e -> context.get("zendesk_url"))
+                .mapTry(Objects::requireNonNull)
+                .recoverWith(e -> Try.of(() -> zenDeskUrl.get()));
+
+        if (url.isFailure() || StringUtils.isBlank(url.get())) {
+            return "Failed to get Zendesk URL";
+        }
+
         final Try<String> user = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_user")))
                 .recover(e -> context.get("zendesk_user"))
                 .mapTry(Objects::requireNonNull)
@@ -140,7 +149,7 @@ public class ZenDeskOrganization implements Tool {
                 + " organization:" + owner;
 
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, zenDeskUrl.get(), query))
+                .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), query))
                         .map(response -> ticketToFirstComment(response, client, authHeader))
                         .map(list -> listLimiter.limitListContent(list, NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                         .map(list -> String.join("\n", list))
