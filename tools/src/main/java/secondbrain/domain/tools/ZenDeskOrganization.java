@@ -128,7 +128,7 @@ public class ZenDeskOrganization implements Tool {
                 .mapTry(Objects::requireNonNull)
                 .recoverWith(e -> Try.of(() -> zenDeskUser.get()));
 
-        if (token.isFailure() || StringUtils.isBlank(token.get())) {
+        if (user.isFailure() || StringUtils.isBlank(user.get())) {
             return "Failed to get Zendesk User";
         }
 
