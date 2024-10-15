@@ -6,10 +6,12 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.docs.v1.Docs;
 import com.google.api.services.docs.v1.model.Document;
+import com.google.api.services.docs.v1.model.Paragraph;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.vavr.control.Try;
+import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -26,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+@Dependent
 public class GoogleDocs implements Tool {
 
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
@@ -55,7 +58,7 @@ public class GoogleDocs implements Tool {
 
     @Override
     public String getDescription() {
-        return "Allows prompts to be answered against the content of a Google Docs document.";
+        return "Provides a tool to summarize and ask questions about Google Docs documents.";
     }
 
     @Override
@@ -85,12 +88,24 @@ public class GoogleDocs implements Tool {
                         .build())
                 .mapTry(service -> service.documents().get(documentId).execute());
 
-        return doc.map(Document::getTitle).recover(error -> "Failed").get();
+        return doc.map(this::getDocumentText).recover(error -> "Failed").get();
     }
 
     @NotNull
     private HttpRequestInitializer getCredentials(@NotNull final String accessToken) {
         final GoogleCredentials credentials = GoogleCredentials.create(new AccessToken(accessToken, null));
         return new HttpCredentialsAdapter(credentials);
+    }
+
+    private String getDocumentText(@NotNull final Document doc) {
+        return doc.getBody().getContent()
+                .stream()
+                .reduce("",
+                        (acc, content) -> acc + getParagraphText(content.getParagraph()),
+                        String::concat);
+    }
+
+    private String getParagraphText(@NotNull final Paragraph paragraph) {
+        return paragraph.getElements().stream().reduce("", (acc, content) -> content.toString(), String::concat);
     }
 }

@@ -102,7 +102,7 @@ public class ZenDeskOrganization implements Tool {
     }
 
     @Override
-    public String call(@NotNull final Map<String, String> context, @NotNull final String prompt, List<ToolArgs> arguments) {
+    public String call(@NotNull final Map<String, String> context, @NotNull final String prompt, @NotNull final List<ToolArgs> arguments) {
         final String owner = argsAccessor.getArgument(arguments, "organization", "");
 
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "30")))
