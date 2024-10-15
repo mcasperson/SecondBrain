@@ -102,7 +102,7 @@ public class ZenDeskOrganization implements Tool {
     }
 
     @Override
-    public String call(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
+    public String call(@NotNull final Map<String, String> context, @NotNull final String prompt, List<ToolArgs> arguments) {
         final String owner = argsAccessor.getArgument(arguments, "organization", "");
 
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "30")))
@@ -114,27 +114,21 @@ public class ZenDeskOrganization implements Tool {
 
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.
-        final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_access_token")))
-                .recover(e -> context.get("zendesk_access_token"))
-                .mapTry(Objects::requireNonNull)
+        final Try<String> token = getContext("zendesk_access_token", context)
                 .recoverWith(e -> Try.of(() -> zenDeskAccessToken.get()));
 
         if (token.isFailure() || StringUtils.isBlank(token.get())) {
             return "Failed to get Zendesk access token";
         }
 
-        final Try<String> url = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_url")))
-                .recover(e -> context.get("zendesk_url"))
-                .mapTry(Objects::requireNonNull)
+        final Try<String> url = getContext("zendesk_url", context)
                 .recoverWith(e -> Try.of(() -> zenDeskUrl.get()));
 
         if (url.isFailure() || StringUtils.isBlank(url.get())) {
             return "Failed to get Zendesk URL";
         }
 
-        final Try<String> user = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_user")))
-                .recover(e -> context.get("zendesk_user"))
-                .mapTry(Objects::requireNonNull)
+        final Try<String> user = getContext("zendesk_user", context)
                 .recoverWith(e -> Try.of(() -> zenDeskUser.get()));
 
         if (user.isFailure() || StringUtils.isBlank(user.get())) {
@@ -164,6 +158,16 @@ public class ZenDeskOrganization implements Tool {
                         .recover(throwable -> "Failed to get tickets or comments: " + throwable.getMessage())
                         .get())
                 .get();
+    }
+
+    @NotNull
+    private Try<String> getContext(@NotNull final String name, @NotNull final Map<String, String> context) {
+        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
+        textEncryptor.setPassword(encryptionPassword);
+
+        return Try.of(() -> textEncryptor.decrypt(context.get(name)))
+                .recover(e -> context.get(name))
+                .mapTry(Objects::requireNonNull);
     }
 
     @NotNull
