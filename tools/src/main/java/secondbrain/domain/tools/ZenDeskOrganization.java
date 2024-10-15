@@ -17,10 +17,10 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
-import secondbrain.domain.strings.ValidateString;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
@@ -102,33 +102,33 @@ public class ZenDeskOrganization implements Tool {
     }
 
     @Override
-    public String call(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
+    public String call(@NotNull final Map<String, String> context, @NotNull final String prompt, List<ToolArgs> arguments) {
         final String owner = argsAccessor.getArgument(arguments, "organization", "");
 
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "30")))
                 .recover(throwable -> DEFAULT_DURATION)
                 .get();
 
-        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(encryptionPassword);
-
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.
-        final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_access_token")))
-                .recover(e -> context.get("zendesk_access_token"))
-                .mapTry(Objects::requireNonNull)
+        final Try<String> token = getContext("zendesk_access_token", context)
                 .recoverWith(e -> Try.of(() -> zenDeskAccessToken.get()));
 
         if (token.isFailure() || StringUtils.isBlank(token.get())) {
             return "Failed to get Zendesk access token";
         }
 
-        final Try<String> user = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_user")))
-                .recover(e -> context.get("zendesk_user"))
-                .mapTry(Objects::requireNonNull)
+        final Try<String> url = getContext("zendesk_url", context)
+                .recoverWith(e -> Try.of(() -> zenDeskUrl.get()));
+
+        if (url.isFailure() || StringUtils.isBlank(url.get())) {
+            return "Failed to get Zendesk URL";
+        }
+
+        final Try<String> user = getContext("zendesk_user", context)
                 .recoverWith(e -> Try.of(() -> zenDeskUser.get()));
 
-        if (token.isFailure() || StringUtils.isBlank(token.get())) {
+        if (user.isFailure() || StringUtils.isBlank(user.get())) {
             return "Failed to get Zendesk User";
         }
 
@@ -140,7 +140,7 @@ public class ZenDeskOrganization implements Tool {
                 + " organization:" + owner;
 
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, zenDeskUrl.get(), query))
+                .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), query))
                         .map(response -> ticketToFirstComment(response, client, authHeader))
                         .map(list -> listLimiter.limitListContent(list, NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                         .map(list -> String.join("\n", list))
@@ -155,6 +155,16 @@ public class ZenDeskOrganization implements Tool {
                         .recover(throwable -> "Failed to get tickets or comments: " + throwable.getMessage())
                         .get())
                 .get();
+    }
+
+    @NotNull
+    private Try<String> getContext(@NotNull final String name, @NotNull final Map<String, String> context) {
+        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
+        textEncryptor.setPassword(encryptionPassword);
+
+        return Try.of(() -> textEncryptor.decrypt(context.get(name)))
+                .recover(e -> context.get(name))
+                .mapTry(Objects::requireNonNull);
     }
 
     @NotNull

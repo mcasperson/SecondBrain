@@ -1,4 +1,4 @@
-package secondbrain.domain.strings;
+package secondbrain.domain.validate;
 
 import jakarta.validation.constraints.NotNull;
 
