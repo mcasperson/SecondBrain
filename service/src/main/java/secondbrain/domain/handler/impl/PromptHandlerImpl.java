@@ -17,6 +17,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolCall;
 import secondbrain.domain.tooldefs.ToolDefinition;
 import secondbrain.domain.tooldefs.ToolDefinitionFallback;
+import secondbrain.domain.validate.ValidateList;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
@@ -45,6 +46,9 @@ public class PromptHandlerImpl implements PromptHandler {
     @Inject
     private JsonDeserializer jsonDeserializer;
 
+    @Inject
+    private ValidateList validateList;
+
     public String handlePrompt(@NotNull final Map<String, String> context, @NotNull final String prompt) {
 
         return Try.of(() -> getToolsPrompt(prompt))
@@ -67,7 +71,8 @@ public class PromptHandlerImpl implements PromptHandler {
         return Try.of(() -> callOllama(toolPrompt))
                 .map(OllamaResponse::response)
                 .mapTry(this::parseResponseAsToolDefinitions)
-                .mapTry(tools -> tools[0])
+                .mapTry(validateList::throwIfEmpty)
+                .mapTry(List::getFirst)
                 .recoverWith(error -> Try.of(() -> {
                     if (count < 3) {
                         return selectOllamaTool(toolPrompt, count + 1);
@@ -98,15 +103,16 @@ public class PromptHandlerImpl implements PromptHandler {
                 .get();
     }
 
-    private ToolDefinition[] parseResponseAsToolDefinitions(@NotNull final String response) throws JsonProcessingException {
+    private List<ToolDefinition> parseResponseAsToolDefinitions(@NotNull final String response) throws JsonProcessingException {
         return Try.of(() -> jsonDeserializer.deserialize(response, ToolDefinition[].class))
+                .map(List::of)
                 .recoverWith(error -> Try.of(() -> parseResponseAsToolDefinitionsFallback(response)))
                 .get();
     }
 
-    private ToolDefinition[] parseResponseAsToolDefinitionsFallback(@NotNull final String response) throws JsonProcessingException {
+    private List<ToolDefinition> parseResponseAsToolDefinitionsFallback(@NotNull final String response) throws JsonProcessingException {
         final ToolDefinitionFallback[] tool = jsonDeserializer.deserialize(response, ToolDefinitionFallback[].class);
-        return Arrays.stream(tool).map(t -> new ToolDefinition(t.toolName(), List.of())).toArray(ToolDefinition[]::new);
+        return Arrays.stream(tool).map(t -> new ToolDefinition(t.toolName(), List.of())).toList();
     }
 
     private Optional<ToolCall> getToolCallFromToolDefinition(@NotNull final ToolDefinition toolDefinition) {

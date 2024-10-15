@@ -1,10 +1,10 @@
-package secondbrain.domain.strings.impl;
+package secondbrain.domain.validate.impl;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.validation.constraints.NotNull;
 import org.apache.commons.lang3.StringUtils;
 import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.strings.ValidateString;
+import secondbrain.domain.validate.ValidateString;
 
 
 @ApplicationScoped
