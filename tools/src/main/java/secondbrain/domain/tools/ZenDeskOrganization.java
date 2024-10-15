@@ -109,9 +109,6 @@ public class ZenDeskOrganization implements Tool {
                 .recover(throwable -> DEFAULT_DURATION)
                 .get();
 
-        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(encryptionPassword);
-
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.
         final Try<String> token = getContext("zendesk_access_token", context)
