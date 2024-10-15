@@ -1,6 +1,7 @@
-package secondbrain.infrastructure.oauth;
+package secondbrain.infrastructure.oauth.google;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.EntityPart;
@@ -13,20 +14,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 @ApplicationScoped
-public class OauthClient {
-    public OauthTokenResponse exchangeToken(Client client, String code, String clientId, String clientSecret) throws IOException {
+public class GoogleOauthClient {
+    public GoogleOauthTokenResponse exchangeToken(
+            @NotNull final Client client,
+            @NotNull final String code,
+            @NotNull final String clientId,
+            @NotNull final String clientSecret,
+            @NotNull final String redirect) throws IOException {
 
         final List<EntityPart> multipart = new ArrayList<>();
         multipart.add(EntityPart.withName("code").content(code).build());
         multipart.add(EntityPart.withName("client_id").content(clientId).build());
         multipart.add(EntityPart.withName("client_secret").content(clientSecret).build());
+        multipart.add(EntityPart.withName("redirect_uri").content(redirect).build());
+        multipart.add(EntityPart.withName("grant_type").content("authorization_code").build());
 
-        try (final Response response = client.target("https://slack.com/api/oauth.v2.access")
+        try (final Response response = client.target("https://oauth2.googleapis.com/token")
                 .request(MediaType.MULTIPART_FORM_DATA_TYPE)
                 .accept(MediaType.APPLICATION_JSON_TYPE)
                 .post(Entity.entity(new GenericEntity<>(multipart) {
                 }, MediaType.MULTIPART_FORM_DATA))) {
-            return response.readEntity(OauthTokenResponse.class);
+            return response.readEntity(GoogleOauthTokenResponse.class);
         }
     }
 }

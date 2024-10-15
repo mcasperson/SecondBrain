@@ -1,4 +1,4 @@
-package secondbrain.infrastructure.oauth;
+package secondbrain.infrastructure.oauth.slack;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -23,5 +23,5 @@ The format of the response is this:
  */
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record OauthTokenResponse(OauthAuthedUser authed_user) {
+public record SlackOauthTokenResponse(SlackOauthAuthedUser authed_user) {
 }

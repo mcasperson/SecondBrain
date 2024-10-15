@@ -1,7 +1,7 @@
-package secondbrain.infrastructure.oauth;
+package secondbrain.infrastructure.oauth.slack;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record OauthAuthedUser(String access_token) {
+public record SlackOauthAuthedUser(String access_token) {
 }

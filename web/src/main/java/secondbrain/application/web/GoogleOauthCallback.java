@@ -12,34 +12,42 @@ import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.json.JsonDeserializer;
-import secondbrain.infrastructure.oauth.OauthClient;
+import secondbrain.infrastructure.oauth.google.GoogleOauthClient;
+import secondbrain.infrastructure.oauth.google.GoogleOauthTokenResponse;
 
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-@Path("/slack_oauth")
-public class OauthCallback {
+/**
+ * Based on https://developers.google.com/identity/protocols/oauth2/web-server#httprest_2
+ */
+@Path("/google_oauth")
+public class GoogleOauthCallback {
     @Inject
-    @ConfigProperty(name = "sb.slack.clientid")
-    Optional<String> slackClientId;
+    @ConfigProperty(name = "sb.google.clientid")
+    Optional<String> googleClientId;
 
     @Inject
-    @ConfigProperty(name = "sb.slack.clientsecret")
-    Optional<String> slackClientSecret;
+    @ConfigProperty(name = "sb.google.clientsecret")
+    Optional<String> googleClientSecret;
 
     @Inject
-    private OauthClient oauthClient;
+    @ConfigProperty(name = "sb.google.redirecturl")
+    Optional<String> googleRedirectUrl;
+
+    @Inject
+    private GoogleOauthClient oauthClient;
 
     @Inject
     private JsonDeserializer jsonDeserializer;
 
     @GET
     public Response get(@QueryParam("code") final String code, @QueryParam("state") final String state) {
-        if (slackClientId.isEmpty() || slackClientSecret.isEmpty()) {
+        if (googleClientId.isEmpty() || googleClientSecret.isEmpty() || googleRedirectUrl.isEmpty()) {
             return Response.serverError()
-                    .entity("Slack client id or secret must be set via the \"sb.slack.clientid\" and \"sb.slack.clientsecret\" configuration values.")
+                    .entity("Google client id, secret, and redirect urls must be set via the \"sb.google.clientid\", \"sb.google.clientsecret\", and \"sb.google.redirecturl\" configuration values.")
                     .build();
         }
 
@@ -47,9 +55,10 @@ public class OauthCallback {
                 .of(client -> oauthClient.exchangeToken(
                         client,
                         code,
-                        slackClientId.get(),
-                        slackClientSecret.get()))
-                .map(response -> response.authed_user().access_token())
+                        googleClientId.get(),
+                        googleClientSecret.get(),
+                        googleRedirectUrl.get()))
+                .map(GoogleOauthTokenResponse::access_token)
                 .mapTry(accessToken -> redirectWithToken(accessToken, state))
                 .onFailure(error -> System.out.println("Error: " + error.getMessage()))
                 .recover(this::redirectToLoginFailed)
@@ -67,7 +76,7 @@ public class OauthCallback {
         final String accessTokenEncrypted = textEncryptor.encrypt(accessToken);
 
         final Map<String, String> stateCookie = new HashMap<>();
-        stateCookie.put("slack_access_token", accessTokenEncrypted);
+        stateCookie.put("google_access_token", accessTokenEncrypted);
 
         final String stateCookieString = jsonDeserializer.serialize(stateCookie);
 
