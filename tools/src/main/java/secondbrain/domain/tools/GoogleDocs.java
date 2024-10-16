@@ -14,14 +14,18 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.client.ClientBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
+import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.ollama.OllamaGenerateBody;
+import secondbrain.infrastructure.ollama.OllamaResponse;
 
 import java.util.List;
 import java.util.Map;
@@ -41,6 +45,10 @@ public class GoogleDocs implements Tool {
     @Inject
     @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
     String encryptionPassword;
+
+    @Inject
+    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
+    String model;
 
     @Inject
     private OllamaClient ollamaClient;
@@ -77,18 +85,23 @@ public class GoogleDocs implements Tool {
 
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.
-        final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
-                .recover(e -> context.get("github_access_token"))
+        final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token")))
+                .recover(e -> context.get("google_access_token"))
                 .mapTry(Objects::requireNonNull)
                 .recoverWith(e -> Try.of(() -> googleServiceAccountJson.get()));
 
-        final Try<Document> doc = Try.of(GoogleNetHttpTransport::newTrustedTransport)
+        return Try.of(GoogleNetHttpTransport::newTrustedTransport)
                 .map(transport -> new Docs.Builder(transport, JSON_FACTORY, getCredentials(token.get()))
                         .setApplicationName(APPLICATION_NAME)
                         .build())
-                .mapTry(service -> service.documents().get(documentId).execute());
-
-        return doc.map(this::getDocumentText).recover(error -> "Failed").get();
+                .mapTry(service -> service.documents().get(documentId).execute())
+                .map(this::getDocumentText)
+                .map(doc -> buildToolPrompt(doc, prompt))
+                .map(this::callOllama)
+                .map(OllamaResponse::response)
+                .map(response -> response + debugToolArgs.debugArgs(arguments, true))
+                .recover(throwable -> "Failed to get document: " + throwable.getMessage())
+                .get();
     }
 
     @NotNull
@@ -107,5 +120,34 @@ public class GoogleDocs implements Tool {
 
     private String getParagraphText(@NotNull final Paragraph paragraph) {
         return paragraph.getElements().stream().reduce("", (acc, content) -> content.toString(), String::concat);
+    }
+
+    private OllamaResponse callOllama(@NotNull final String llmPrompt) {
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> ollamaClient.getTools(
+                        client,
+                        new OllamaGenerateBody(model, llmPrompt, false)))
+                .get();
+    }
+
+    @NotNull
+    public String buildToolPrompt(@NotNull final String context, @NonNull final String prompt) {
+        return """
+                <|begin_of_text|>
+                <|start_header_id|>system<|end_header_id|>
+                You are an expert in reading technical documents.
+                You are given a question and the contents of a document related to the question.
+                You must assume the information required to answer the question is present in the document.
+                You must answer the question based on the document provided.
+                You will be penalized for suggesting manual steps to generate the answer.
+                You will be penalized for responding that you don't have access to real-time data or repositories.
+                If there is no document, you must indicate that in the answer.
+                <|eot_id|>
+                """
+                + context
+                + "\n<|start_header_id|>user<|end_header_id|>"
+                + prompt
+                + "<|eot_id|>"
+                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading();
     }
 }
