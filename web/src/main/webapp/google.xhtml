@@ -54,21 +54,21 @@
         <div class="offset-lg-3 col-lg-6 col-sm-12">
             <form id="form">
                 <div class="mb-3 mt-3 form-check form-check">
-                    <input class="form-check-input" type="radio" name="authSelection" id="flexRadioDefault1"
+                    <input class="form-check-input" type="radio" name="authSelection" id="authLogin"
                            checked="true"/>
-                    <label class="form-check-label" for="flexRadioDefault1" id="authLogin">
+                    <label class="form-check-label" for="authLogin">
                         Login
                     </label>
                 </div>
                 <div class="mb-3 mt-3 form-check form-check">
-                    <input class="form-check-input" type="radio" name="authSelection" id="flexRadioDefault2"/>
-                    <label class="form-check-label" for="flexRadioDefault2" id="authServiceAccount">
+                    <input class="form-check-input" type="radio" name="authSelection" id="authServiceAccount"/>
+                    <label class="form-check-label" for="authServiceAccount">
                         Service Account
                     </label>
                 </div>
                 <div class="mb-3 mt-3 form-check form-check">
-                    <input class="form-check-input" type="radio" name="authSelection" id="flexRadioDefault3"/>
-                    <label class="form-check-label" for="flexRadioDefault3" id="authRefresh">
+                    <input class="form-check-input" type="radio" name="authSelection" id="authRefresh"/>
+                    <label class="form-check-label" for="authRefresh">
                         Refresh Token
                     </label>
                 </div>
@@ -80,15 +80,15 @@
                             type="button">Google Logout
                     </button>
                 </div>
-                <div class="mb-3" id="tokenInputParent">
+                <div class="mb-3" id="serviceAccountParent">
                     <label class="form-label" for="googleToken">Google Service Account JSON</label>
-                    authRefreshEnabled <br/>
+                    <br/>
                     <input type="file" id="googleToken"/>
                 </div>
                 <div class="mb-3" id="tokenRefreshParent">
                     <label class="form-label" for="googleRefresh">Refresh Token</label>
                     <br/>
-                    <input id="googleRefresh" type="password"/>
+                    <input class="form-control" id="googleRefresh" type="password"/>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="prompt">Prompt</label>

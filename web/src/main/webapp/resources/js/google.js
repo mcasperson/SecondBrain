@@ -8,9 +8,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
 
     googleToken.addEventListener('input', buildButtons);
     form.addEventListener('submit', handleSubmit);
-    tokenSelection.addEventListener('click', selectTokenInput);
     login.addEventListener('click', handleLogin);
     logout.addEventListener('click', handleLogout);
+    authLogin.addEventListener('click', selectTokenInput);
+    authServiceAccount.addEventListener('click', selectTokenInput);
+    authRefresh.addEventListener('click', selectTokenInput);
 });
 
 function getCookie(name) {
@@ -111,9 +113,13 @@ function handleLogout() {
 }
 
 function buildButtons() {
-    if (tokenSelection.checked) {
-        submit.disabled = !googleToken.value;
-    } else {
+    const authLoginEnabled = document.getElementById('authLogin').checked;
+    const authServiceAccountEnabled = document.getElementById('authServiceAccount').checked;
+    const authRefreshEnabled = document.getElementById('authRefresh').checked;
+
+    if (authRefreshEnabled) {
+        submit.disabled = !googleRefresh.value;
+    } else if (authLoginEnabled) {
         const session = getCookie('session');
         if (session && JSON.parse(atob(session))["google_access_token"]) {
             login.style.display = 'none';
@@ -124,17 +130,28 @@ function buildButtons() {
             logout.style.display = 'none';
             submit.disabled = true;
         }
+    } else {
+        submit.disabled = googleToken.files.length === 0;
     }
 }
 
 function selectTokenInput() {
-    const tokenSelection = document.getElementById('tokenSelection');
-    if (tokenSelection.checked) {
-        loginButtonParent.style.display = 'none';
-        tokenInputParent.style.display = 'inherit';
-    } else {
+    const authLoginEnabled = document.getElementById('authLogin').checked;
+    const authServiceAccountEnabled = document.getElementById('authServiceAccount').checked;
+    const authRefreshEnabled = document.getElementById('authRefresh').checked;
+
+    if (authLoginEnabled) {
         loginButtonParent.style.display = 'inherit';
-        tokenInputParent.style.display = 'none';
+        serviceAccountParent.style.display = 'none';
+        tokenRefreshParent.style.display = 'none';
+    } else if (authServiceAccountEnabled) {
+        loginButtonParent.style.display = 'none';
+        serviceAccountParent.style.display = 'inherit';
+        tokenRefreshParent.style.display = 'none';
+    } else {
+        loginButtonParent.style.display = 'none';
+        serviceAccountParent.style.display = 'none';
+        tokenRefreshParent.style.display = 'inherit';
     }
 
     buildButtons();
