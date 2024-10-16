@@ -13,9 +13,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.infrastructure.oauth.google.GoogleOauthClient;
-import secondbrain.infrastructure.oauth.google.GoogleOauthTokenResponse;
 
 import java.net.URI;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -58,8 +59,7 @@ public class GoogleOauthCallback {
                         googleClientId.get(),
                         googleClientSecret.get(),
                         googleRedirectUrl.get()))
-                .map(GoogleOauthTokenResponse::access_token)
-                .mapTry(accessToken -> redirectWithToken(accessToken, state))
+                .mapTry(accessToken -> redirectWithToken(accessToken.access_token(), accessToken.expires_in(), state))
                 .onFailure(error -> System.out.println("Error: " + error.getMessage()))
                 .recover(this::redirectToLoginFailed)
                 .get();
@@ -69,7 +69,7 @@ public class GoogleOauthCallback {
         return Response.temporaryRedirect(Try.of(() -> new URI("/login_failed.html")).get()).build();
     }
 
-    private Response redirectWithToken(@NotNull final String accessToken, @NotNull final String state) throws JsonProcessingException {
+    private Response redirectWithToken(@NotNull final String accessToken, final int expiresIn, @NotNull final String state) throws JsonProcessingException {
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(System.getenv("ENCRYPTION_PASSWORD"));
 
@@ -77,6 +77,7 @@ public class GoogleOauthCallback {
 
         final Map<String, String> stateCookie = new HashMap<>();
         stateCookie.put("google_access_token", accessTokenEncrypted);
+        stateCookie.put("google_access_token_expires", LocalDateTime.now().plusSeconds(expiresIn).toEpochSecond(ZoneOffset.UTC) + "");
 
         final String stateCookieString = jsonDeserializer.serialize(stateCookie);
 

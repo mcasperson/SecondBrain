@@ -15,6 +15,7 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.NonNull;
@@ -27,10 +28,9 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.*;
 
 @Dependent
 public class GoogleDocs implements Tool {
@@ -90,8 +90,18 @@ public class GoogleDocs implements Tool {
                 .mapTry(Objects::requireNonNull)
                 .recoverWith(e -> Try.of(() -> googleServiceAccountJson.get()));
 
+        final long defaultExpires = LocalDateTime.now().plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
+        final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
+                .recover(e -> context.get("google_access_token_expires"))
+                .mapTry(Objects::requireNonNull)
+                .map(value -> NumberUtils.toLong(value, defaultExpires))
+                .recover(error -> defaultExpires)
+                .get();
+
         return Try.of(GoogleNetHttpTransport::newTrustedTransport)
-                .map(transport -> new Docs.Builder(transport, JSON_FACTORY, getCredentials(token.get()))
+                .map(transport -> new Docs.Builder(transport, JSON_FACTORY, getCredentials(
+                        token.get(),
+                        new Date(expires * 1000L)))
                         .setApplicationName(APPLICATION_NAME)
                         .build())
                 .mapTry(service -> service.documents().get(documentId).execute())
@@ -105,8 +115,8 @@ public class GoogleDocs implements Tool {
     }
 
     @NotNull
-    private HttpRequestInitializer getCredentials(@NotNull final String accessToken) {
-        final GoogleCredentials credentials = GoogleCredentials.create(new AccessToken(accessToken, null));
+    private HttpRequestInitializer getCredentials(@NotNull final String accessToken, @NotNull final Date expires) {
+        final GoogleCredentials credentials = GoogleCredentials.create(new AccessToken(accessToken, expires));
         return new HttpCredentialsAdapter(credentials);
     }
 
