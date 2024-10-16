@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.core.MediaType;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
@@ -36,7 +37,8 @@ public class PromptResource {
 
         final Map<String, String> cookieContext = Try.of(() -> session)
                 .mapTry(Objects::requireNonNull)
-                .mapTry(s -> jsonDeserializer.deserializeMap(s.getValue(), String.class, String.class))
+                .mapTry(cookie -> new String(new Base64().decode(cookie.getValue().getBytes())))
+                .mapTry(s -> jsonDeserializer.deserializeMap(s, String.class, String.class))
                 .recover(throwable -> Map.of())
                 .get();
 

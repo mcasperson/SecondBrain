@@ -9,6 +9,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.Response;
+import org.apache.commons.codec.binary.Base64;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.json.JsonDeserializer;
@@ -81,8 +82,11 @@ public class GoogleOauthCallback {
 
         final String stateCookieString = jsonDeserializer.serialize(stateCookie);
 
+        final String base64EncodedCookie = new String(Try.of(() -> new Base64().encode(
+                stateCookieString.getBytes())).get());
+
         final Response.ResponseBuilder builder = Response.temporaryRedirect(Try.of(() -> new URI(state)).get());
-        builder.header("Set-Cookie", "session=" + stateCookieString + ";path=/");
+        builder.header("Set-Cookie", "session=" + base64EncodedCookie + ";path=/");
 
         return builder.build();
     }

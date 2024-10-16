@@ -93,7 +93,7 @@ function buildButtons() {
         submit.disabled = !googleToken.value;
     } else {
         const session = getCookie('session');
-        if (session && JSON.parse(session)["google_access_token"]) {
+        if (session && JSON.parse(atob(session))["google_access_token"]) {
             login.style.display = 'none';
             logout.style.display = 'inherit';
             submit.disabled = false;
