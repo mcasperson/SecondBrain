@@ -16,6 +16,7 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
@@ -29,6 +30,9 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
@@ -84,12 +88,6 @@ public class GoogleDocs implements Tool {
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(encryptionPassword);
 
-        // Try to decrypt the value, otherwise assume it is a plain text value, and finally
-        // fall back to the value defined in the local configuration.
-        final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token")))
-                .recover(e -> context.get("google_access_token"))
-                .mapTry(Objects::requireNonNull)
-                .recoverWith(e -> Try.of(() -> googleServiceAccountJson.get()));
 
         final long defaultExpires = LocalDateTime.now().plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
@@ -99,10 +97,25 @@ public class GoogleDocs implements Tool {
                 .recover(error -> defaultExpires)
                 .get();
 
+        // Try to decrypt the value, otherwise assume it is a plain text value, and finally
+        // fall back to the value defined in the local configuration.
+        final Try<HttpRequestInitializer> token = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token")))
+                .recover(e -> context.get("google_access_token"))
+                .mapTry(Objects::requireNonNull)
+                .map(accessToken -> getCredentials(accessToken, new Date(expires * 1000L)))
+                .recoverWith(e -> Try.of(() -> context.get("google_service_account_json"))
+                        .mapTry(Objects::requireNonNull)
+                        .mapTry(this::getServiceAccountCredentials))
+                .recoverWith(e -> Try.of(() -> googleServiceAccountJson.get())
+                        .map(b64 -> new String(new Base64().decode(b64.getBytes())))
+                        .mapTry(this::getServiceAccountCredentials));
+
+        if (token.isFailure()) {
+            return "Failed to get Google access token: " + token.getCause().getMessage();
+        }
+
         return Try.of(GoogleNetHttpTransport::newTrustedTransport)
-                .map(transport -> new Docs.Builder(transport, JSON_FACTORY, getCredentials(
-                        token.get(),
-                        new Date(expires * 1000L)))
+                .map(transport -> new Docs.Builder(transport, JSON_FACTORY, token.get())
                         .setApplicationName(APPLICATION_NAME)
                         .build())
                 .mapTry(service -> service.documents().get(documentId).execute())
@@ -119,6 +132,12 @@ public class GoogleDocs implements Tool {
     @NotNull
     private HttpRequestInitializer getCredentials(@NotNull final String accessToken, @NotNull final Date expires) {
         final GoogleCredentials credentials = GoogleCredentials.create(new AccessToken(accessToken, expires));
+        return new HttpCredentialsAdapter(credentials);
+    }
+
+    @NotNull
+    private HttpRequestInitializer getServiceAccountCredentials(@NotNull final String serviceAccountJson) throws IOException {
+        final GoogleCredentials credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(serviceAccountJson.getBytes(StandardCharsets.UTF_8)));
         return new HttpCredentialsAdapter(credentials);
     }
 

@@ -3,8 +3,8 @@
         PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 
-<html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:h="http://xmlns.jcp.org/jsf/html">
+<html xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta content="width=device-width, initial-scale=1" name="viewport"/>
     <title>SecondBrain</title>
@@ -68,9 +68,8 @@
                 </div>
                 <div class="mb-3" id="tokenInputParent">
                     <label class="form-label" for="googleToken">Google Service Account JSON</label>
-                    <textarea class="form-control" id="googleToken"
-                              cols="20"
-                              rows="20"/>
+                    <br/>
+                    <input type="file" id="googleToken"/>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="prompt">Prompt</label>

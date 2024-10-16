@@ -36,7 +36,7 @@ public class GoogleOauthCallback {
     Optional<String> googleClientSecret;
 
     @Inject
-    @ConfigProperty(name = "sb.google.redirecturl")
+    @ConfigProperty(name = "sb.google.redirecturl", defaultValue = "https://localhost:8181/google_oauth")
     Optional<String> googleRedirectUrl;
 
     @Inject

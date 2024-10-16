@@ -36,13 +36,30 @@ function handleSubmit(event) {
 
     const prompt = document.getElementById('prompt').value;
 
-
-    const context = {};
     const tokenSelection = document.getElementById('tokenSelection');
     if (tokenSelection.checked) {
-        context['google_access_token'] = googleToken.value;
+        const file = googleToken.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const content = e.target.result;
+                const context = {google_service_account_json: content}
+                postRequest(prompt, context);
+            };
+            reader.readAsText(file);
+
+
+        } else {
+            alert("Please select a file.");
+        }
+    } else {
+        postRequest(prompt, {});
     }
 
+
+}
+
+function postRequest(prompt, context) {
     fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
         method: 'POST',
         headers: {
