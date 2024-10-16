@@ -36,6 +36,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Dependent
 public class GoogleDocs implements Tool {
@@ -182,12 +183,12 @@ public class GoogleDocs implements Tool {
             return "";
         }
 
-        final String people = paragraph.getElements().stream().reduce("", (acc, content) -> peopleToString(content.getPerson()) + "\n", String::concat);
-        final String textRuns = paragraph.getElements().stream().reduce("", (acc, content) -> textRunToString(content.getTextRun()) + "\n", String::concat);
-        final String autotext = paragraph.getElements().stream().reduce("", (acc, content) -> autoTextToString(content.getAutoText()) + "\n", String::concat);
-        final String links = paragraph.getElements().stream().reduce("", (acc, content) -> richLinkToString(content.getRichLink()) + "\n", String::concat);
+        final String people = paragraph.getElements().stream().map(content -> peopleToString(content.getPerson())).filter(x -> !x.isEmpty()).collect(Collectors.joining("\n"));
+        final String textRuns = paragraph.getElements().stream().map(content -> textRunToString(content.getTextRun())).filter(x -> !x.isEmpty()).collect(Collectors.joining("\n"));
+        final String autotext = paragraph.getElements().stream().map(content -> autoTextToString(content.getAutoText())).filter(x -> !x.isEmpty()).collect(Collectors.joining("\n"));
+        final String links = paragraph.getElements().stream().map(content -> richLinkToString(content.getRichLink())).filter(x -> !x.isEmpty()).collect(Collectors.joining("\n"));
 
-        return people + textRuns + autotext + links;
+        return String.join("\n", List.of(people + textRuns + autotext + links));
     }
 
     private String autoTextToString(final AutoText content) {
