@@ -230,6 +230,7 @@ public class GoogleDocs implements Tool {
                 If there is no Google Document, you must indicate that in the answer.
                 <|eot_id|>
                 """
+                + "\n<|start_header_id|>system<|end_header_id|>The current date is " + LocalDateTime.now() + ".<|eot_id|>"
                 + context
                 + "\n<|start_header_id|>user<|end_header_id|>"
                 + prompt
