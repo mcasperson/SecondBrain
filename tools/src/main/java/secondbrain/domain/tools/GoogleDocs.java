@@ -128,8 +128,12 @@ public class GoogleDocs implements Tool {
                         String::concat);
     }
 
-    private String getParagraphText(@NotNull final Paragraph paragraph) {
-        return paragraph.getElements().stream().reduce("", (acc, content) -> content.toString(), String::concat);
+    private String getParagraphText(final Paragraph paragraph) {
+        if (paragraph == null) {
+            return "";
+        }
+
+        return paragraph.getElements().stream().reduce("", (acc, content) -> content.getTextRun().getContent() + "\n", String::concat);
     }
 
     private OllamaResponse callOllama(@NotNull final String llmPrompt) {
