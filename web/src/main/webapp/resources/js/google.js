@@ -36,8 +36,13 @@ function handleSubmit(event) {
 
     const prompt = document.getElementById('prompt').value;
 
-    const tokenSelection = document.getElementById('tokenSelection');
-    if (tokenSelection.checked) {
+    const authLoginEnabled = document.getElementById('authLogin').checked;
+    const authServiceAccountEnabled = document.getElementById('authServiceAccount').checked;
+    const authRefreshEnabled = document.getElementById('authRefresh').checked;
+
+    if (authLoginEnabled) {
+        postRequest(prompt, {});
+    } else if (authServiceAccountEnabled) {
         const file = googleToken.files[0];
         if (file) {
             const reader = new FileReader();
@@ -53,7 +58,7 @@ function handleSubmit(event) {
             alert("Please select a file.");
         }
     } else {
-        postRequest(prompt, {});
+        postRequest(prompt, {google_refresh_token: googleRefresh.value});
     }
 
 
