@@ -27,7 +27,6 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.google.GoogleOauthClient;
-import secondbrain.infrastructure.google.GoogleOauthTokenResponse;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
@@ -110,21 +109,24 @@ public class GoogleDocs implements Tool {
                 .recover(error -> defaultExpires)
                 .get();
 
-        // Try to decrypt the value, otherwise assume it is a plain text value, and finally
-        // fall back to the value defined in the local configuration.
-        final Try<HttpRequestInitializer> token = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token")))
+
+        final Try<HttpRequestInitializer> token = Try
+                // Start assuming an encrypted access token was sent from the browser
+                .of(() -> textEncryptor.decrypt(context.get("google_access_token")))
+                // Then try an unencrypted token
                 .recover(e -> context.get("google_access_token"))
                 .mapTry(Objects::requireNonNull)
                 .map(accessToken -> getCredentials(accessToken, new Date(expires * 1000L)))
+                // Next try the service account JSON file from the browser
                 .recoverWith(e -> Try.of(() -> context.get("google_service_account_json"))
                         .mapTry(Objects::requireNonNull)
                         .mapTry(this::getServiceAccountCredentials))
-                .recoverWith(e -> Try.of(() -> context.get("google_access_token"))
-                        .mapTry(Objects::requireNonNull)
-                        .mapTry(this::getServiceAccountCredentials))
+                // The try the service account passed in as a config setting
                 .recoverWith(e -> Try.of(() -> googleServiceAccountJson.get())
                         .map(b64 -> new String(new Base64().decode(b64.getBytes())))
-                        .mapTry(this::getServiceAccountCredentials));
+                        .mapTry(this::getServiceAccountCredentials))
+                // Finally see if the existing gcloud login can be used
+                .recoverWith(e -> Try.of(this::getDefaultCredentials));
 
         if (token.isFailure()) {
             return "Failed to get Google access token: " + token.getCause().getMessage();
@@ -158,18 +160,8 @@ public class GoogleDocs implements Tool {
     }
 
     @NotNull
-    private HttpRequestInitializer getRefreshTokenCredentials(@NotNull final String refreshToken) throws IOException {
-        final GoogleOauthTokenResponse tokenResponse = Try.withResources(ClientBuilder::newClient)
-                .of(client -> oauthClient.refresh(
-                        client,
-                        refreshToken,
-                        googleClientId.get(),
-                        googleClientSecret.get()))
-                .get();
-        final Calendar expires = Calendar.getInstance();
-        expires.setTime(new Date());
-        expires.add(Calendar.SECOND, tokenResponse.expires_in());
-        final GoogleCredentials credentials = GoogleCredentials.create(new AccessToken(tokenResponse.access_token(), expires.getTime()));
+    private HttpRequestInitializer getDefaultCredentials() throws IOException {
+        final GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
         return new HttpCredentialsAdapter(credentials);
     }
 

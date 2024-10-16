@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
     logout.addEventListener('click', handleLogout);
     authLogin.addEventListener('click', selectTokenInput);
     authServiceAccount.addEventListener('click', selectTokenInput);
-    authRefresh.addEventListener('click', selectTokenInput);
 });
 
 function getCookie(name) {
@@ -39,12 +38,10 @@ function handleSubmit(event) {
     const prompt = document.getElementById('prompt').value;
 
     const authLoginEnabled = document.getElementById('authLogin').checked;
-    const authServiceAccountEnabled = document.getElementById('authServiceAccount').checked;
-    const authRefreshEnabled = document.getElementById('authRefresh').checked;
 
     if (authLoginEnabled) {
         postRequest(prompt, {});
-    } else if (authServiceAccountEnabled) {
+    } else {
         const file = googleToken.files[0];
         if (file) {
             const reader = new FileReader();
@@ -59,11 +56,7 @@ function handleSubmit(event) {
         } else {
             alert("Please select a file.");
         }
-    } else {
-        postRequest(prompt, {google_refresh_token: googleRefresh.value});
     }
-
-
 }
 
 function postRequest(prompt, context) {
@@ -114,12 +107,8 @@ function handleLogout() {
 
 function buildButtons() {
     const authLoginEnabled = document.getElementById('authLogin').checked;
-    const authServiceAccountEnabled = document.getElementById('authServiceAccount').checked;
-    const authRefreshEnabled = document.getElementById('authRefresh').checked;
 
-    if (authRefreshEnabled) {
-        submit.disabled = !googleRefresh.value;
-    } else if (authLoginEnabled) {
+    if (authLoginEnabled) {
         const session = getCookie('session');
         if (session && JSON.parse(atob(session))["google_access_token"]) {
             login.style.display = 'none';
@@ -137,21 +126,13 @@ function buildButtons() {
 
 function selectTokenInput() {
     const authLoginEnabled = document.getElementById('authLogin').checked;
-    const authServiceAccountEnabled = document.getElementById('authServiceAccount').checked;
-    const authRefreshEnabled = document.getElementById('authRefresh').checked;
 
     if (authLoginEnabled) {
         loginButtonParent.style.display = 'inherit';
         serviceAccountParent.style.display = 'none';
-        tokenRefreshParent.style.display = 'none';
-    } else if (authServiceAccountEnabled) {
-        loginButtonParent.style.display = 'none';
-        serviceAccountParent.style.display = 'inherit';
-        tokenRefreshParent.style.display = 'none';
     } else {
         loginButtonParent.style.display = 'none';
-        serviceAccountParent.style.display = 'none';
-        tokenRefreshParent.style.display = 'inherit';
+        serviceAccountParent.style.display = 'inherit';
     }
 
     buildButtons();
