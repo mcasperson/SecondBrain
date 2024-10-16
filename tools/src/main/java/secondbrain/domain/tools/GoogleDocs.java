@@ -26,6 +26,8 @@ import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.infrastructure.google.GoogleOauthClient;
+import secondbrain.infrastructure.google.GoogleOauthTokenResponse;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
@@ -54,6 +56,17 @@ public class GoogleDocs implements Tool {
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
+
+    @Inject
+    @ConfigProperty(name = "sb.google.clientid")
+    Optional<String> googleClientId;
+
+    @Inject
+    @ConfigProperty(name = "sb.google.clientsecret")
+    Optional<String> googleClientSecret;
+
+    @Inject
+    private GoogleOauthClient oauthClient;
 
     @Inject
     private OllamaClient ollamaClient;
@@ -106,6 +119,9 @@ public class GoogleDocs implements Tool {
                 .recoverWith(e -> Try.of(() -> context.get("google_service_account_json"))
                         .mapTry(Objects::requireNonNull)
                         .mapTry(this::getServiceAccountCredentials))
+                .recoverWith(e -> Try.of(() -> context.get("google_access_token"))
+                        .mapTry(Objects::requireNonNull)
+                        .mapTry(this::getServiceAccountCredentials))
                 .recoverWith(e -> Try.of(() -> googleServiceAccountJson.get())
                         .map(b64 -> new String(new Base64().decode(b64.getBytes())))
                         .mapTry(this::getServiceAccountCredentials));
@@ -138,6 +154,22 @@ public class GoogleDocs implements Tool {
     @NotNull
     private HttpRequestInitializer getServiceAccountCredentials(@NotNull final String serviceAccountJson) throws IOException {
         final GoogleCredentials credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(serviceAccountJson.getBytes(StandardCharsets.UTF_8)));
+        return new HttpCredentialsAdapter(credentials);
+    }
+
+    @NotNull
+    private HttpRequestInitializer getRefreshTokenCredentials(@NotNull final String refreshToken) throws IOException {
+        final GoogleOauthTokenResponse tokenResponse = Try.withResources(ClientBuilder::newClient)
+                .of(client -> oauthClient.refresh(
+                        client,
+                        refreshToken,
+                        googleClientId.get(),
+                        googleClientSecret.get()))
+                .get();
+        final Calendar expires = Calendar.getInstance();
+        expires.setTime(new Date());
+        expires.add(Calendar.SECOND, tokenResponse.expires_in());
+        final GoogleCredentials credentials = GoogleCredentials.create(new AccessToken(tokenResponse.access_token(), expires.getTime()));
         return new HttpCredentialsAdapter(credentials);
     }
 

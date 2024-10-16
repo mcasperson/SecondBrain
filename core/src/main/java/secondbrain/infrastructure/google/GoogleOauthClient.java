@@ -1,4 +1,4 @@
-package secondbrain.infrastructure.oauth.google;
+package secondbrain.infrastructure.google;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.validation.constraints.NotNull;
