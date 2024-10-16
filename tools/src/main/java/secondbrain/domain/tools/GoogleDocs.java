@@ -185,7 +185,7 @@ public class GoogleDocs implements Tool {
         final String people = paragraph.getElements().stream().reduce("", (acc, content) -> peopleToString(content.getPerson()) + "\n", String::concat);
         final String textRuns = paragraph.getElements().stream().reduce("", (acc, content) -> textRunToString(content.getTextRun()) + "\n", String::concat);
         final String autotext = paragraph.getElements().stream().reduce("", (acc, content) -> autoTextToString(content.getAutoText()) + "\n", String::concat);
-        final String links = paragraph.getElements().stream().reduce("", (acc, content) -> autoTextToString(content.getAutoText()) + "\n", String::concat);
+        final String links = paragraph.getElements().stream().reduce("", (acc, content) -> richLinkToString(content.getRichLink()) + "\n", String::concat);
 
         return people + textRuns + autotext + links;
     }
