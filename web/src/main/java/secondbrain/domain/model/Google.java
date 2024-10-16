@@ -12,7 +12,7 @@ import java.util.Optional;
 public class Google {
 
     @Inject
-    @ConfigProperty(name = "sb.google.redirecturl", defaultValue = "https://localhost:8181/google_oauth")
+    @ConfigProperty(name = "sb.google.redirecturl", defaultValue = "https://localhost:8181/api/google_oauth")
     Optional<String> googleRedirectUrl;
 
     @Inject
