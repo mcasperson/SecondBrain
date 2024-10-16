@@ -5,9 +5,7 @@ import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.docs.v1.Docs;
-import com.google.api.services.docs.v1.model.Document;
-import com.google.api.services.docs.v1.model.Paragraph;
-import com.google.api.services.docs.v1.model.TextRun;
+import com.google.api.services.docs.v1.model.*;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
@@ -36,6 +34,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.*;
 
 @Dependent
@@ -183,7 +182,28 @@ public class GoogleDocs implements Tool {
             return "";
         }
 
-        return paragraph.getElements().stream().reduce("", (acc, content) -> Optional.ofNullable(content.getTextRun()).map(TextRun::getContent).orElse("") + "\n", String::concat);
+        final String people = paragraph.getElements().stream().reduce("", (acc, content) -> peopleToString(content.getPerson()) + "\n", String::concat);
+        final String textRuns = paragraph.getElements().stream().reduce("", (acc, content) -> textRunToString(content.getTextRun()) + "\n", String::concat);
+        final String autotext = paragraph.getElements().stream().reduce("", (acc, content) -> autoTextToString(content.getAutoText()) + "\n", String::concat);
+        final String links = paragraph.getElements().stream().reduce("", (acc, content) -> autoTextToString(content.getAutoText()) + "\n", String::concat);
+
+        return people + textRuns + autotext + links;
+    }
+
+    private String autoTextToString(final AutoText content) {
+        return Try.of(() -> content).mapTry(AutoText::toPrettyString).getOrElse("");
+    }
+
+    private String peopleToString(final Person content) {
+        return Optional.ofNullable(content).map(Person::getPersonId).orElse("");
+    }
+
+    private String richLinkToString(final RichLink content) {
+        return Optional.ofNullable(content).map(RichLink::getRichLinkId).orElse("");
+    }
+
+    private String textRunToString(final TextRun textRun) {
+        return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
     }
 
     private OllamaResponse callOllama(@NotNull final String llmPrompt) {
