@@ -40,6 +40,10 @@ public class GoogleOauthCallback {
     Optional<String> googleRedirectUrl;
 
     @Inject
+    @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
+    String encryptionPassword;
+
+    @Inject
     private GoogleOauthClient oauthClient;
 
     @Inject
@@ -72,7 +76,7 @@ public class GoogleOauthCallback {
 
     private Response redirectWithToken(@NotNull final String accessToken, final int expiresIn, @NotNull final String state) throws JsonProcessingException {
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(System.getenv("ENCRYPTION_PASSWORD"));
+        textEncryptor.setPassword(encryptionPassword);
 
         final String accessTokenEncrypted = textEncryptor.encrypt(accessToken);
 
