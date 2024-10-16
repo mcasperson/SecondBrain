@@ -160,6 +160,7 @@ public class GoogleDocs implements Tool {
     }
 
     /**
+     * To use this method, you must have the gcloud SDK installed and authenticated with Application Default Credentials:
      * ./google-cloud-sdk/bin/gcloud auth application-default login --scopes https://www.googleapis.com/auth/documents.readonly,https://www.googleapis.com/auth/cloud-platform --client-id-file ~/Downloads/client.json
      * client.json is the download a desktop app from https://console.cloud.google.com/apis/credentials
      */
