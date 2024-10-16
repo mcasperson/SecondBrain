@@ -13,7 +13,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.json.JsonDeserializer;
-import secondbrain.infrastructure.google.GoogleOauthClient;
+import secondbrain.infrastructure.oauth.google.GoogleOauthClient;
 
 import java.net.URI;
 import java.time.LocalDateTime;

@@ -1,4 +1,4 @@
-package secondbrain.infrastructure.google;
+package secondbrain.infrastructure.oauth.google;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

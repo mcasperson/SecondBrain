@@ -24,7 +24,6 @@ import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.infrastructure.google.GoogleOauthClient;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
@@ -55,17 +54,6 @@ public class GoogleDocs implements Tool {
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
-
-    @Inject
-    @ConfigProperty(name = "sb.google.clientid")
-    Optional<String> googleClientId;
-
-    @Inject
-    @ConfigProperty(name = "sb.google.clientsecret")
-    Optional<String> googleClientSecret;
-
-    @Inject
-    private GoogleOauthClient oauthClient;
 
     @Inject
     private OllamaClient ollamaClient;
