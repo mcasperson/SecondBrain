@@ -106,6 +106,7 @@ public class GoogleDocs implements Tool {
                         .build())
                 .mapTry(service -> service.documents().get(documentId).execute())
                 .map(this::getDocumentText)
+                .map(this::documentToContext)
                 .map(doc -> buildToolPrompt(doc, prompt))
                 .map(this::callOllama)
                 .map(OllamaResponse::response)
@@ -144,17 +145,29 @@ public class GoogleDocs implements Tool {
                 .get();
     }
 
+    private String documentToContext(@NotNull final String doc) {
+        /*
+        See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
+        on the preferred format (or lack thereof) for RAG context.
+        */
+        return "<|start_header_id|>system<|end_header_id|>\n"
+                + "Google Document:\n"
+                + doc
+                + "\n<|eot_id|>";
+    }
+
     @NotNull
     public String buildToolPrompt(@NotNull final String context, @NonNull final String prompt) {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
-                You are an expert in reading technical documents.
-                You are given a question and the contents of a document related to the question.
-                You must assume the information required to answer the question is present in the document.
-                You must answer the question based on the document provided.
+                You are an expert in reading technical Google Document.
+                You are given a question and the contents of a Google Document related to the question.
+                You must assume the information required to answer the question is present in the Google Document.
+                You must answer the question based on the Google Document provided.
+                When the user asks a question indicating that they want to query a document, you must generate the answer based on the Google Document.
                 You will be penalized for suggesting manual steps to generate the answer.
-                You will be penalized for responding that you don't have access to real-time data or repositories.
+                You will be penalized for responding that you don't have access to real-time data or Google Docs.
                 If there is no document, you must indicate that in the answer.
                 <|eot_id|>
                 """
