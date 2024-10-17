@@ -172,24 +172,26 @@ public class GoogleDocs implements Tool {
             return "";
         }
 
-        final String people = paragraphToString(paragraph, content -> peopleToString(content.getPerson()));
-        final String textRuns = paragraphToString(paragraph, content -> textRunToString(content.getTextRun()));
-        final String autotext = paragraphToString(paragraph, content -> autoTextToString(content.getAutoText()));
-        final String links = paragraphToString(paragraph, content -> richLinkToString(content.getRichLink()));
+        final List<String> paragraphContent = new ArrayList<>();
 
-        return String.join("\n", List.of(people + textRuns + autotext + links));
+        paragraphContent.addAll(paragraphToString(paragraph, content -> peopleToString(content.getPerson())));
+        paragraphContent.addAll(paragraphToString(paragraph, content -> textRunToString(content.getTextRun())));
+        paragraphContent.addAll(paragraphToString(paragraph, content -> autoTextToString(content.getAutoText())));
+        paragraphContent.addAll(paragraphToString(paragraph, content -> richLinkToString(content.getRichLink())));
+
+        return String.join("\n", paragraphContent);
     }
 
-    private String paragraphToString(final Paragraph paragraph, final Function<ParagraphElement, String> paraToStringFunction) {
+    private List<String> paragraphToString(final Paragraph paragraph, final Function<ParagraphElement, String> paraToStringFunction) {
         if (paragraph == null) {
-            return "";
+            return List.of();
         }
 
         return paragraph.getElements()
                 .stream()
                 .map(paraToStringFunction)
                 .filter(x -> !x.isEmpty())
-                .collect(Collectors.joining("\n"));
+                .collect(Collectors.toList());
     }
 
     private String autoTextToString(final AutoText content) {
