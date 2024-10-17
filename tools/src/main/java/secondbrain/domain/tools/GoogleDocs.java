@@ -185,7 +185,7 @@ public class GoogleDocs implements Tool {
     }
 
     @NotNull
-    private List<String> paragraphToString(@NotNull final Paragraph paragraph, @NotNull final Function<ParagraphElement, String> paraToStringFunction) {
+    private List<String> paragraphToString(final Paragraph paragraph, @NotNull final Function<ParagraphElement, String> paraToStringFunction) {
         if (paragraph == null) {
             return List.of();
         }
