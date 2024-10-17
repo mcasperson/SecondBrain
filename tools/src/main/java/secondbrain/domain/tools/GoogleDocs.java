@@ -35,6 +35,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Dependent
@@ -171,12 +172,24 @@ public class GoogleDocs implements Tool {
             return "";
         }
 
-        final String people = paragraph.getElements().stream().map(content -> peopleToString(content.getPerson())).filter(x -> !x.isEmpty()).collect(Collectors.joining("\n"));
-        final String textRuns = paragraph.getElements().stream().map(content -> textRunToString(content.getTextRun())).filter(x -> !x.isEmpty()).collect(Collectors.joining("\n"));
-        final String autotext = paragraph.getElements().stream().map(content -> autoTextToString(content.getAutoText())).filter(x -> !x.isEmpty()).collect(Collectors.joining("\n"));
-        final String links = paragraph.getElements().stream().map(content -> richLinkToString(content.getRichLink())).filter(x -> !x.isEmpty()).collect(Collectors.joining("\n"));
+        final String people = paragraphToString(paragraph, content -> peopleToString(content.getPerson()));
+        final String textRuns = paragraphToString(paragraph, content -> textRunToString(content.getTextRun()));
+        final String autotext = paragraphToString(paragraph, content -> autoTextToString(content.getAutoText()));
+        final String links = paragraphToString(paragraph, content -> richLinkToString(content.getRichLink()));
 
         return String.join("\n", List.of(people + textRuns + autotext + links));
+    }
+
+    private String paragraphToString(final Paragraph paragraph, final Function<ParagraphElement, String> paraToStringFunction) {
+        if (paragraph == null) {
+            return "";
+        }
+
+        return paragraph.getElements()
+                .stream()
+                .map(paraToStringFunction)
+                .filter(x -> !x.isEmpty())
+                .collect(Collectors.joining("\n"));
     }
 
     private String autoTextToString(final AutoText content) {
