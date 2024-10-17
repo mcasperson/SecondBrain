@@ -159,6 +159,7 @@ public class GoogleDocs implements Tool {
         return new HttpCredentialsAdapter(credentials);
     }
 
+    @NotNull
     private String getDocumentText(@NotNull final Document doc) {
         return doc.getBody().getContent()
                 .stream()
@@ -167,6 +168,7 @@ public class GoogleDocs implements Tool {
                         String::concat);
     }
 
+    @NotNull
     private String getParagraphText(final Paragraph paragraph) {
         if (paragraph == null) {
             return "";
@@ -182,7 +184,8 @@ public class GoogleDocs implements Tool {
         return String.join("\n", paragraphContent);
     }
 
-    private List<String> paragraphToString(final Paragraph paragraph, final Function<ParagraphElement, String> paraToStringFunction) {
+    @NotNull
+    private List<String> paragraphToString(@NotNull final Paragraph paragraph, @NotNull final Function<ParagraphElement, String> paraToStringFunction) {
         if (paragraph == null) {
             return List.of();
         }
@@ -194,22 +197,26 @@ public class GoogleDocs implements Tool {
                 .collect(Collectors.toList());
     }
 
-    private String autoTextToString(final AutoText content) {
+    @NotNull
+    private String autoTextToString(@NotNull final AutoText content) {
         return Try.of(() -> content).mapTry(AutoText::toPrettyString).getOrElse("");
     }
 
+    @NotNull
     private String peopleToString(final Person content) {
         return Optional.ofNullable(content).map(Person::getPersonId).orElse("");
     }
 
-    private String richLinkToString(final RichLink content) {
+    private String richLinkToString(@NotNull final RichLink content) {
         return Optional.ofNullable(content).map(RichLink::getRichLinkId).orElse("");
     }
 
-    private String textRunToString(final TextRun textRun) {
+    @NotNull
+    private String textRunToString(@NotNull final TextRun textRun) {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
     }
 
+    @NotNull
     private OllamaResponse callOllama(@NotNull final String llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
@@ -218,6 +225,7 @@ public class GoogleDocs implements Tool {
                 .get();
     }
 
+    @NotNull
     private String documentToContext(@NotNull final String doc, @NotNull final String id) {
         /*
         See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
