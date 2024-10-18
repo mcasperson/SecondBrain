@@ -15,19 +15,16 @@ import java.util.Map;
 @Dependent
 public class HelloWorld implements Tool {
     @Override
-
     public String getName() {
         return HelloWorld.class.getSimpleName();
     }
 
     @Override
-
     public String getDescription() {
         return "Returns a greeting message";
     }
 
     @Override
-
     public List<ToolArguments> getArguments() {
         return ImmutableList.of(new ToolArguments(
                 "greeting",
@@ -36,7 +33,6 @@ public class HelloWorld implements Tool {
     }
 
     @Override
-
     public String call(
             final Map<String, String> context,
             final String prompt,

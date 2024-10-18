@@ -60,19 +60,16 @@ public class SlackChannel implements Tool {
     private OllamaClient ollamaClient;
 
     @Override
-
     public String getName() {
         return SlackChannel.class.getSimpleName();
     }
 
     @Override
-
     public String getDescription() {
         return "Returns messages from a Slack channel";
     }
 
     @Override
-
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments("channel", "The Slack channel to read", "general"),
@@ -81,7 +78,6 @@ public class SlackChannel implements Tool {
     }
 
     @Override
-
     public String call(
             final Map<String, String> context,
             final String prompt,

@@ -68,19 +68,16 @@ public class GoogleDocs implements Tool {
     private ArgsAccessor argsAccessor;
 
     @Override
-
     public String getName() {
         return GoogleDocs.class.getSimpleName();
     }
 
     @Override
-
     public String getDescription() {
         return "Provides a tool to summarize and ask questions about Google Docs documents.";
     }
 
     @Override
-
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments("documentId", "The ID of the Google Docs document to use.", "")
@@ -88,7 +85,6 @@ public class GoogleDocs implements Tool {
     }
 
     @Override
-
     public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final String documentId = argsAccessor.getArgument(arguments, "documentId", "");
 
@@ -158,7 +154,6 @@ public class GoogleDocs implements Tool {
      * ./google-cloud-sdk/bin/gcloud auth application-default login --scopes https://www.googleapis.com/auth/documents.readonly,https://www.googleapis.com/auth/cloud-platform --client-id-file ~/Downloads/client.json
      * client.json is the download a desktop app from https://console.cloud.google.com/apis/credentials
      */
-
     private HttpRequestInitializer getDefaultCredentials() throws IOException {
         final GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
         return new HttpCredentialsAdapter(credentials);

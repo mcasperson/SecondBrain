@@ -9,7 +9,6 @@ import secondbrain.domain.response.ResponseValidation;
 @ApplicationScoped
 public class OkResponseValidation implements ResponseValidation {
     @Override
-
     public Response validate(final Response response) {
         if (response.getStatus() == 404) {
             throw new MissingResponse("Expected status code 200, but got 404");

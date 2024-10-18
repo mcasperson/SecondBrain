@@ -79,7 +79,6 @@ public class GitHubDiffs implements Tool {
     }
 
     @Override
-
     public String getDescription() {
         return """
                 Provides a list of Git diffs and answers questions about them.
@@ -89,7 +88,6 @@ public class GitHubDiffs implements Tool {
     }
 
     @Override
-
     public List<ToolArguments> getArguments() {
         final String startTime = ZonedDateTime.now(ZoneId.systemDefault()).minusDays(DEFAULT_DURATION).format(FORMATTER);
         final String endTime = ZonedDateTime.now(ZoneId.systemDefault()).format(FORMATTER);
@@ -104,7 +102,6 @@ public class GitHubDiffs implements Tool {
     }
 
     @Override
-
     public String call(
             final Map<String, String> context,
             final String prompt,

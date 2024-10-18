@@ -85,26 +85,22 @@ public class ZenDeskOrganization implements Tool {
     private DebugToolArgs debugToolArgs;
 
     @Override
-
     public String getName() {
         return ZenDeskOrganization.class.getSimpleName();
     }
 
     @Override
-
     public String getDescription() {
         return "Returns the details of ZenDesk support tickets";
     }
 
     @Override
-
     public List<ToolArguments> getArguments() {
         return List.of(new ToolArguments("organization", "The name of the ZenDesk organization", ""),
                 new ToolArguments("days", "The number of days worth of tickets to return", DEFAULT_DURATION + ""));
     }
 
     @Override
-
     public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final String owner = argsAccessor.getArgument(arguments, "organization", "");
 
