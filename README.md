@@ -1,8 +1,6 @@
 # SecondBrain
 
-Imagine a world where you can have a conversation with your data. SecondBrain is a framework that allows you to do just
-that by linking plain text prompts with external data sources, commonly referred to as Retrieval Augmented Generation (
-RAG). The resulting context is then presented an LLM to provide the information it needs to answer your questions.
+Imagine a world where you can have a conversation with your data. SecondBrain is a framework that allows you to do just that by linking plain text prompts with external data sources, commonly referred to as Retrieval Augmented Generation (RAG). The resulting context is then presented an LLM to provide the information it needs to answer your questions.
 
 This means you can ask a question like:
 
@@ -56,6 +54,8 @@ The project is split into modules:
 * `secondbrain-web` which is a web interface for interacting with the service.
 * `secondbrain-cli` which is a CLI tool for interacting with the service.
 
+![Architecture](architecture.png)
+
 # Configuration
 
 SecondBrain is configured via MicroProfile Config. Note that MicroProfile allows these configuration values to be set
@@ -67,13 +67,21 @@ environment variables, system properties, and configuration files:
 * `sb.zendesk.accesstoken` - The ZenDesk token
 * `sb.zendesk.user` - The ZenDesk user
 * `sb.zendesk.url` - The ZenDesk url
+* `sb.google.serviceaccountjson` - The Google service account JSON file used to authenticate with Google APIs
 * `sb.ollama.url` - The URL of the Ollama service (defaults to http://localhost:11434)
 * `sb.ollama.model` - The model to use in Ollama (defaults to `llama3.2`)
-* `sb.ollama.contentlength` - The content window length to use in Ollama (defaults to `7000 * 4`, where each token is
-  assumed to be 4 characters)
+* `sb.ollama.contentlength` - The content window length to use in Ollama (defaults to `7000 * 4`, where each token is assumed to be 4 characters)
 * `sb.encryption.password` - The password to use for encrypting sensitive data stored by web clients (defaults to
   `12345678`)
 * `sb.tools.debug` - Whether to log debug information about the tool in the response (defaults to `false`)
+
+### Google login
+
+The `GoogleDocs` tool can use [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials) to authenticate with Google APIs. To set this up, you need to run the following command:
+
+```bash
+gcloud auth application-default login --scopes https://www.googleapis.com/auth/documents.readonly,https://www.googleapis.com/auth/cloud-platform --client-id-file ~/Downloads/client.json
+```
 
 ## Supported LLMs
 
