@@ -79,7 +79,7 @@ if ( $args.Length -ge 3) {
 $uriSlack = $env:SB_SLACK_CUSTOMER_WEBHOOK
 $body = ConvertTo-Json @{
     type = "mrkdwn"
-    text = "*=== " + $args[1] + " summary ===*`n`n*Slack*`n" + $result.StdOut + "`n`nZenDesk`n" + $ticketResult.StdOut + "`n`nCDJ`n" + $docsResult.StdOut
+    text = "*=== " + $args[1] + " summary ===*`n`n*Slack*`n" + $result.StdOut + "`n`n*ZenDesk*`n" + $ticketResult.StdOut + "`n`n*CDJ*`n" + $docsResult.StdOut
 }
 
 try
