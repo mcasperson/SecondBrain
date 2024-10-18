@@ -17,7 +17,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.debug.DebugToolArgs;
@@ -234,7 +233,7 @@ public class GoogleDocs implements Tool {
     }
 
 
-    public String buildToolPrompt(final String context, @NonNull final String prompt) {
+    public String buildToolPrompt(final String context, final String prompt) {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>

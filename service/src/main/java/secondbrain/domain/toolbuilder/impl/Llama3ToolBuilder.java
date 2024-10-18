@@ -1,7 +1,6 @@
 package secondbrain.domain.toolbuilder.impl;
 
 import jakarta.enterprise.context.Dependent;
-import org.jspecify.annotations.NonNull;
 import secondbrain.domain.toolbuilder.ToolBuilder;
 import secondbrain.domain.tooldefs.Tool;
 
@@ -14,7 +13,7 @@ import java.util.stream.Collectors;
 @Dependent
 public class Llama3ToolBuilder implements ToolBuilder {
     @Override
-    public String buildToolJson(@NonNull final List<Tool> tools) {
+    public String buildToolJson(final List<Tool> tools) {
         return tools.stream().map(tool -> """
                 {
                     "name": "%s",
@@ -42,7 +41,7 @@ public class Llama3ToolBuilder implements ToolBuilder {
     }
 
     @Override
-    public String buildToolPrompt(@NonNull final List<Tool> tools, @NonNull final String prompt) {
+    public String buildToolPrompt(final List<Tool> tools, final String prompt) {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>

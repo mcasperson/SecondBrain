@@ -1,7 +1,5 @@
 package secondbrain.domain.tooldefs;
 
-import org.jspecify.annotations.NonNull;
-
 /**
  * Represents the definition of a tool argument. This is sent to the LLM.
  *
@@ -10,7 +8,7 @@ import org.jspecify.annotations.NonNull;
  * @param defaultValue The default value of the argument
  */
 public record ToolArguments(
-        @NonNull String name,
-        @NonNull String description,
-        @NonNull String defaultValue) {
+        String name,
+        String description,
+        String defaultValue) {
 }

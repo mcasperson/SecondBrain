@@ -8,7 +8,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
-import org.jspecify.annotations.NonNull;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.date.DateParser;
@@ -207,7 +206,7 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    public String buildToolPrompt(final String context, @NonNull final String prompt) {
+    public String buildToolPrompt(final String context, final String prompt) {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
