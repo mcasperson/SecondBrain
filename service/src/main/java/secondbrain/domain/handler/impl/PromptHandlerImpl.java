@@ -2,11 +2,11 @@ package secondbrain.domain.handler.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vavr.control.Try;
+import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -27,6 +27,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Implementation of the prompt handler.
+ */
 @ApplicationScoped
 public class PromptHandlerImpl implements PromptHandler {
     @Inject
@@ -49,7 +52,8 @@ public class PromptHandlerImpl implements PromptHandler {
     @Inject
     private ValidateList validateList;
 
-    public String handlePrompt(@NotNull final Map<String, String> context, @NotNull final String prompt) {
+
+    public String handlePrompt(final Map<String, String> context, final String prompt) {
 
         return Try.of(() -> getToolsPrompt(prompt))
                 .map(toolPrompt -> selectOllamaTool(toolPrompt, 1))
@@ -67,7 +71,7 @@ public class PromptHandlerImpl implements PromptHandler {
      * @param count      The retry count
      * @return The selected tool
      */
-    private ToolDefinition selectOllamaTool(@NotNull final String toolPrompt, int count) {
+    private ToolDefinition selectOllamaTool(final String toolPrompt, int count) {
         return Try.of(() -> callOllama(toolPrompt))
                 .map(OllamaResponse::response)
                 .mapTry(this::parseResponseAsToolDefinitions)
@@ -82,7 +86,7 @@ public class PromptHandlerImpl implements PromptHandler {
                 .get();
     }
 
-    private String callTool(final ToolCall toolCall, @NotNull final Map<String, String> context, @NotNull final String prompt) {
+    private String callTool(@Nullable final ToolCall toolCall, final Map<String, String> context, final String prompt) {
         if (toolCall == null) {
             return "No tool found";
         }
@@ -90,11 +94,11 @@ public class PromptHandlerImpl implements PromptHandler {
         return toolCall.call(context, prompt);
     }
 
-    private String getToolsPrompt(@NotNull final String prompt) {
+    private String getToolsPrompt(final String prompt) {
         return toolBuilder.buildToolPrompt(tools.stream().toList(), prompt);
     }
 
-    private OllamaResponse callOllama(@NotNull final String llmPrompt) {
+    private OllamaResponse callOllama(final String llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client ->
                         ollamaClient.getTools(
@@ -103,19 +107,19 @@ public class PromptHandlerImpl implements PromptHandler {
                 .get();
     }
 
-    private List<ToolDefinition> parseResponseAsToolDefinitions(@NotNull final String response) throws JsonProcessingException {
+    private List<ToolDefinition> parseResponseAsToolDefinitions(final String response) throws JsonProcessingException {
         return Try.of(() -> jsonDeserializer.deserialize(response, ToolDefinition[].class))
                 .map(List::of)
                 .recoverWith(error -> Try.of(() -> parseResponseAsToolDefinitionsFallback(response)))
                 .get();
     }
 
-    private List<ToolDefinition> parseResponseAsToolDefinitionsFallback(@NotNull final String response) throws JsonProcessingException {
+    private List<ToolDefinition> parseResponseAsToolDefinitionsFallback(final String response) throws JsonProcessingException {
         final ToolDefinitionFallback[] tool = jsonDeserializer.deserialize(response, ToolDefinitionFallback[].class);
         return Arrays.stream(tool).map(t -> new ToolDefinition(t.toolName(), List.of())).toList();
     }
 
-    private Optional<ToolCall> getToolCallFromToolDefinition(@NotNull final ToolDefinition toolDefinition) {
+    private Optional<ToolCall> getToolCallFromToolDefinition(final ToolDefinition toolDefinition) {
         return tools.stream().filter(tool -> tool.getName().equals(toolDefinition.toolName()))
                 .findFirst()
                 .map(tool -> new ToolCall(tool, toolDefinition));

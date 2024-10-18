@@ -2,7 +2,6 @@ package secondbrain.domain.debug;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.validation.constraints.NotNull;
 import org.apache.commons.lang3.BooleanUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -19,7 +18,7 @@ public class DebugToolArgs {
     @ConfigProperty(name = "sb.tools.debug", defaultValue = "false")
     String debug;
 
-    public String debugArgs(@NotNull final List<ToolArgs> args, boolean includeLineBreak) {
+    public String debugArgs(final List<ToolArgs> args, boolean includeLineBreak) {
         if (BooleanUtils.toBoolean(debug)) {
             final String debug = args.stream()
                     .map(arg -> arg.argName() + ": " + arg.argValue())

@@ -1,7 +1,6 @@
 package secondbrain.infrastructure.oauth.google;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.EntityPart;
@@ -16,11 +15,11 @@ import java.util.List;
 @ApplicationScoped
 public class GoogleOauthClient {
     public GoogleOauthTokenResponse exchangeToken(
-            @NotNull final Client client,
-            @NotNull final String code,
-            @NotNull final String clientId,
-            @NotNull final String clientSecret,
-            @NotNull final String redirect) throws IOException {
+            final Client client,
+            final String code,
+            final String clientId,
+            final String clientSecret,
+            final String redirect) throws IOException {
 
         final List<EntityPart> multipart = new ArrayList<>();
         multipart.add(EntityPart.withName("code").content(code).build());
@@ -40,10 +39,10 @@ public class GoogleOauthClient {
     }
 
     public GoogleOauthTokenResponse refresh(
-            @NotNull final Client client,
-            @NotNull final String refreshToken,
-            @NotNull final String clientId,
-            @NotNull final String clientSecret) throws IOException {
+            final Client client,
+            final String refreshToken,
+            final String clientId,
+            final String clientSecret) throws IOException {
 
         final List<EntityPart> multipart = new ArrayList<>();
         multipart.add(EntityPart.withName("refresh_token").content(refreshToken).build());

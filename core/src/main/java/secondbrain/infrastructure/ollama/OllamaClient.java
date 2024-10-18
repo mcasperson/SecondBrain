@@ -3,17 +3,13 @@ package secondbrain.infrastructure.ollama;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
-import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
 import secondbrain.domain.response.ResponseValidation;
-import secondbrain.domain.response.impl.OkResponseValidation;
 
 import static io.vavr.control.Try.of;
 
@@ -26,7 +22,7 @@ public class OllamaClient {
     @Inject
     private ResponseValidation responseValidation;
 
-    public OllamaResponse getTools(@NotNull final Client client, @NotNull final OllamaGenerateBody body) {
+    public OllamaResponse getTools(final Client client, final OllamaGenerateBody body) {
         return Try.withResources(() -> client.target(uri + "/api/generate")
                         .request()
                         .header("Content-Type", "application/json")

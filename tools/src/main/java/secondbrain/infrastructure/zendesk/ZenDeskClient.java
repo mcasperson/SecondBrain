@@ -3,7 +3,6 @@ package secondbrain.infrastructure.zendesk;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.Client;
 import secondbrain.domain.response.ResponseValidation;
 
@@ -13,12 +12,12 @@ public class ZenDeskClient {
     @Inject
     private ResponseValidation responseValidation;
 
-    @NotNull
+
     public ZenDeskResponse getTickets(
-            @NotNull final Client client,
-            @NotNull final String authorization,
-            @NotNull final String url,
-            @NotNull final String query) {
+            final Client client,
+            final String authorization,
+            final String url,
+            final String query) {
 
         return Try.withResources(() -> client.target(url + "/api/v2/search.json")
                         .queryParam("query", query)
@@ -32,12 +31,12 @@ public class ZenDeskClient {
                 .get();
     }
 
-    @NotNull
+
     public ZenDeskCommentsResponse getComments(
-            @NotNull final Client client,
-            @NotNull final String authorization,
-            @NotNull final String url,
-            @NotNull final String ticketId) {
+            final Client client,
+            final String authorization,
+            final String url,
+            final String ticketId) {
 
         return Try.withResources(() -> client.target(url + "/api/v2/tickets/" + ticketId + "/comments")
                         .request()

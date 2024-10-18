@@ -1,12 +1,11 @@
 package secondbrain.domain.tools;
 
+import com.google.common.collect.ImmutableList;
 import jakarta.enterprise.context.Dependent;
-import jakarta.validation.constraints.NotNull;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -16,31 +15,32 @@ import java.util.Map;
 @Dependent
 public class HelloWorld implements Tool {
     @Override
-    @NotNull
+
     public String getName() {
         return HelloWorld.class.getSimpleName();
     }
 
     @Override
-    @NotNull
+
     public String getDescription() {
         return "Returns a greeting message";
     }
 
     @Override
-    @NotNull
+
     public List<ToolArguments> getArguments() {
-        return new ArrayList<>() {{
-            add(new ToolArguments("greeting", "The greeting to display", "World"));
-        }};
+        return ImmutableList.of(new ToolArguments(
+                "greeting",
+                "The greeting to display",
+                "World"));
     }
 
     @Override
-    @NotNull
+
     public String call(
-            @NotNull final Map<String, String> context,
-            @NotNull final String prompt,
-            @NotNull final List<ToolArgs> arguments) {
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
         if (arguments.size() != 1) {
             return "Hello, World!";
         }

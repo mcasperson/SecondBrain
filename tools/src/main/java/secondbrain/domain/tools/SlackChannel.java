@@ -11,7 +11,6 @@ import io.vavr.Tuple;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
-import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -61,19 +60,19 @@ public class SlackChannel implements Tool {
     private OllamaClient ollamaClient;
 
     @Override
-    @NotNull
+
     public String getName() {
         return SlackChannel.class.getSimpleName();
     }
 
     @Override
-    @NotNull
+
     public String getDescription() {
         return "Returns messages from a Slack channel";
     }
 
     @Override
-    @NotNull
+
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments("channel", "The Slack channel to read", "general"),
@@ -82,18 +81,22 @@ public class SlackChannel implements Tool {
     }
 
     @Override
-    @NotNull
+
     public String call(
-            @NotNull final Map<String, String> context,
-            @NotNull final String prompt,
-            @NotNull final List<ToolArgs> arguments) {
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
         final String channel = argsAccessor.getArgument(arguments, "channel", "").trim()
                 .replaceFirst("^#", "");
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "7")))
                 .recover(throwable -> 7)
                 .get();
 
-        final String oldest = Long.valueOf(LocalDateTime.now().minusDays(days).atZone(ZoneId.systemDefault()).toEpochSecond()).toString();
+        final String oldest = Long.valueOf(LocalDateTime.now(ZoneId.systemDefault())
+                        .minusDays(days)
+                        .atZone(ZoneId.systemDefault())
+                        .toEpochSecond())
+                .toString();
 
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(encryptionPassword);
@@ -151,7 +154,8 @@ public class SlackChannel implements Tool {
 
     }
 
-    private Optional<String> getChannelId(@NotNull final ConversationsListResponse response, @NotNull final String channel) {
+
+    private Optional<String> getChannelId(final ConversationsListResponse response, final String channel) {
         return response.getChannels()
                 .stream()
                 .filter(c -> c.getName().equals(channel))
@@ -159,8 +163,8 @@ public class SlackChannel implements Tool {
                 .findFirst();
     }
 
-    @NotNull
-    private String buildToolPrompt(@NotNull final String context, @NonNull final String prompt) {
+
+    private String buildToolPrompt(final String context, @NonNull final String prompt) {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
@@ -174,24 +178,27 @@ public class SlackChannel implements Tool {
                 + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>".stripLeading();
     }
 
-    private String conversationsToText(@NotNull final ConversationsHistoryResponse conversation) {
+
+    private String conversationsToText(final ConversationsHistoryResponse conversation) {
         return conversation.getMessages()
                 .stream()
                 .map(Message::getText)
                 .reduce("", (a, b) -> a + "\n" + b);
     }
 
-    private OllamaResponse callOllama(@NotNull final String llmPrompt) {
+
+    private OllamaResponse callOllama(final String llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
                         new OllamaGenerateBody(model, llmPrompt, false))).get();
     }
 
+
     private Try<String> findChannelId(
-            @NotNull final MethodsClient client,
-            @NotNull final String accessToken,
-            @NotNull final String channel,
+            final MethodsClient client,
+            final String accessToken,
+            final String channel,
             final String cursor) {
 
         final Try<ConversationsListResponse> response = Try.of(() -> client.conversationsList(r -> r
@@ -211,7 +218,8 @@ public class SlackChannel implements Tool {
         return Try.failure(new RuntimeException("Failed to get channels"));
     }
 
-    private Try<String> replaceIds(@NotNull final MethodsClient client, @NotNull final String token, @NotNull final String messages) {
+
+    private Try<String> replaceIds(final MethodsClient client, final String token, final String messages) {
         final Pattern userPattern = Pattern.compile("<@(?<username>\\w+)>");
         final Pattern channelPattern = Pattern.compile("<#(?<channelname>\\w+)\\|?>");
 
@@ -243,7 +251,8 @@ public class SlackChannel implements Tool {
                 .recover(error -> messages);
     }
 
-    private Try<String> getUsername(@NotNull final MethodsClient client, @NotNull final String token, @NotNull final String userId) {
+
+    private Try<String> getUsername(final MethodsClient client, final String token, final String userId) {
         return Try.of(() -> client.usersInfo(r -> r.token(token).user(userId)))
                 .map(response -> response.getUser().getName())
                 /*
@@ -254,7 +263,8 @@ public class SlackChannel implements Tool {
                 .recover(error -> "Unknown user");
     }
 
-    private Try<String> getChannel(@NotNull final MethodsClient client, @NotNull final String token, @NotNull final String channelId) {
+
+    private Try<String> getChannel(final MethodsClient client, final String token, final String channelId) {
         return Try.of(() -> client.conversationsInfo(r -> r.token(token).channel(channelId)))
                 .map(response -> "#" + response.getChannel().getName())
                 /*

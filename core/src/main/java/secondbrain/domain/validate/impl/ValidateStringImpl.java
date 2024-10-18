@@ -1,7 +1,6 @@
 package secondbrain.domain.validate.impl;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.validation.constraints.NotNull;
 import org.apache.commons.lang3.StringUtils;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.validate.ValidateString;
@@ -10,7 +9,7 @@ import secondbrain.domain.validate.ValidateString;
 @ApplicationScoped
 public class ValidateStringImpl implements ValidateString {
     @Override
-    public @NotNull String throwIfEmpty(String value) {
+    public String throwIfEmpty(String value) {
         if (StringUtils.isEmpty(value)) {
             throw new EmptyString("String is empty");
         }

@@ -3,7 +3,6 @@ package secondbrain.domain.tools;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
-import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -24,6 +23,7 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
 
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -79,6 +79,7 @@ public class GitHubDiffs implements Tool {
     }
 
     @Override
+
     public String getDescription() {
         return """
                 Provides a list of Git diffs and answers questions about them.
@@ -88,9 +89,10 @@ public class GitHubDiffs implements Tool {
     }
 
     @Override
+
     public List<ToolArguments> getArguments() {
-        final String startTime = ZonedDateTime.now().minusDays(DEFAULT_DURATION).format(FORMATTER);
-        final String endTime = ZonedDateTime.now().format(FORMATTER);
+        final String startTime = ZonedDateTime.now(ZoneId.systemDefault()).minusDays(DEFAULT_DURATION).format(FORMATTER);
+        final String endTime = ZonedDateTime.now(ZoneId.systemDefault()).format(FORMATTER);
 
         return List.of(
                 new ToolArguments("owner", "The github owner to check", "mcasperson"),
@@ -102,13 +104,14 @@ public class GitHubDiffs implements Tool {
     }
 
     @Override
-    public String call(
-            @NotNull final Map<String, String> context,
-            @NotNull final String prompt,
-            @NotNull final List<ToolArgs> arguments) {
 
-        final String startDate = argsAccessor.getArgument(arguments, "since", ZonedDateTime.now().minusDays(DEFAULT_DURATION).format(FORMATTER));
-        final String endDate = argsAccessor.getArgument(arguments, "until", ZonedDateTime.now().format(FORMATTER));
+    public String call(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+
+        final String startDate = argsAccessor.getArgument(arguments, "since", ZonedDateTime.now(ZoneId.systemDefault()).minusDays(DEFAULT_DURATION).format(FORMATTER));
+        final String endDate = argsAccessor.getArgument(arguments, "until", ZonedDateTime.now(ZoneId.systemDefault()).format(FORMATTER));
         final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
@@ -147,32 +150,35 @@ public class GitHubDiffs implements Tool {
                 .get();
     }
 
+
     private List<String> convertCommitsToDiffs(
-            @NotNull final List<GitHubCommitResponse> commitsResponse,
-            @NotNull final String owner,
-            @NotNull final String repo,
-            @NotNull final String authorization) {
+            final List<GitHubCommitResponse> commitsResponse,
+            final String owner,
+            final String repo,
+            final String authorization) {
         return commitsResponse.stream().map(commit -> diffToContext(owner, repo, commit, authorization)).toList();
     }
 
+
     private List<GitHubCommitResponse> getCommits(
-            @NotNull final String owner,
-            @NotNull final String repo,
-            @NotNull final String branch,
-            @NotNull final String since,
-            @NotNull final String until,
-            @NotNull final String authorization) {
+            final String owner,
+            final String repo,
+            final String branch,
+            final String since,
+            final String until,
+            final String authorization) {
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> gitHubClient.getCommits(client, owner, repo, branch, until, since, authorization))
                 .get();
     }
 
+
     private String diffToContext(
-            @NotNull final String owner,
-            @NotNull final String repo,
-            @NotNull final GitHubCommitResponse commit,
-            @NotNull final String authorization) {
+            final String owner,
+            final String repo,
+            final GitHubCommitResponse commit,
+            final String authorization) {
         /*
         See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
         on the preferred format (or lack thereof) for RAG context.
@@ -183,7 +189,8 @@ public class GitHubDiffs implements Tool {
                 + "\n<|eot_id|>";
     }
 
-    private OllamaResponse callOllama(@NotNull final String llmPrompt) {
+
+    private OllamaResponse callOllama(final String llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
@@ -191,18 +198,19 @@ public class GitHubDiffs implements Tool {
                 .get();
     }
 
+
     private String getCommitDiff(
-            @NotNull final String owner,
-            @NotNull final String repo,
-            @NotNull final String sha,
-            @NotNull final String authorization) {
+            final String owner,
+            final String repo,
+            final String sha,
+            final String authorization) {
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> gitHubClient.getDiff(client, owner, repo, sha, authorization)).get();
     }
 
-    @NotNull
-    public String buildToolPrompt(@NotNull final String context, @NonNull final String prompt) {
+
+    public String buildToolPrompt(final String context, @NonNull final String prompt) {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>

@@ -1,9 +1,18 @@
 package secondbrain.domain.handler;
 
-import jakarta.validation.constraints.NotNull;
 
 import java.util.Map;
 
+/**
+ * Interface that defines a prompt handler
+ */
 public interface PromptHandler {
-    String handlePrompt(@NotNull Map<String, String> context, @NotNull String prompt);
+    /**
+     * Handles a prompt
+     *
+     * @param context Key/value pairs that define the context of the prompt. Typically, this is used to pass authentication details.
+     * @param prompt  The prompt to handle
+     * @return The prompt response
+     */
+    String handlePrompt(Map<String, String> context, String prompt);
 }

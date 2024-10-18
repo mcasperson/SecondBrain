@@ -12,13 +12,13 @@ import com.google.auth.oauth2.GoogleCredentials;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
-import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.tooldefs.Tool;
@@ -30,13 +30,15 @@ import secondbrain.infrastructure.ollama.OllamaResponse;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Dependent
 public class GoogleDocs implements Tool {
@@ -66,16 +68,19 @@ public class GoogleDocs implements Tool {
     private ArgsAccessor argsAccessor;
 
     @Override
+
     public String getName() {
         return GoogleDocs.class.getSimpleName();
     }
 
     @Override
+
     public String getDescription() {
         return "Provides a tool to summarize and ask questions about Google Docs documents.";
     }
 
     @Override
+
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments("documentId", "The ID of the Google Docs document to use.", "")
@@ -83,14 +88,14 @@ public class GoogleDocs implements Tool {
     }
 
     @Override
-    public String call(@NotNull final Map<String, String> context, @NotNull final String prompt, @NotNull final List<ToolArgs> arguments) {
+
+    public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final String documentId = argsAccessor.getArgument(arguments, "documentId", "");
 
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(encryptionPassword);
 
-
-        final long defaultExpires = LocalDateTime.now().plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
+        final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
                 .recover(e -> context.get("google_access_token_expires"))
                 .mapTry(Objects::requireNonNull)
@@ -112,7 +117,7 @@ public class GoogleDocs implements Tool {
                         .mapTry(this::getServiceAccountCredentials))
                 // The try the service account passed in as a config setting
                 .recoverWith(e -> Try.of(() -> googleServiceAccountJson.get())
-                        .map(b64 -> new String(new Base64().decode(b64.getBytes())))
+                        .map(b64 -> new String(new Base64().decode(b64.getBytes(UTF_8)), UTF_8))
                         .mapTry(this::getServiceAccountCredentials))
                 // Finally see if the existing gcloud login can be used
                 .recoverWith(e -> Try.of(this::getDefaultCredentials));
@@ -136,15 +141,15 @@ public class GoogleDocs implements Tool {
                 .get();
     }
 
-    @NotNull
-    private HttpRequestInitializer getCredentials(@NotNull final String accessToken, @NotNull final Date expires) {
+
+    private HttpRequestInitializer getCredentials(final String accessToken, final Date expires) {
         final GoogleCredentials credentials = GoogleCredentials.create(new AccessToken(accessToken, expires));
         return new HttpCredentialsAdapter(credentials);
     }
 
-    @NotNull
-    private HttpRequestInitializer getServiceAccountCredentials(@NotNull final String serviceAccountJson) throws IOException {
-        final GoogleCredentials credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(serviceAccountJson.getBytes(StandardCharsets.UTF_8)));
+
+    private HttpRequestInitializer getServiceAccountCredentials(final String serviceAccountJson) throws IOException {
+        final GoogleCredentials credentials = GoogleCredentials.fromStream(new ByteArrayInputStream(serviceAccountJson.getBytes(UTF_8)));
         return new HttpCredentialsAdapter(credentials);
     }
 
@@ -153,14 +158,14 @@ public class GoogleDocs implements Tool {
      * ./google-cloud-sdk/bin/gcloud auth application-default login --scopes https://www.googleapis.com/auth/documents.readonly,https://www.googleapis.com/auth/cloud-platform --client-id-file ~/Downloads/client.json
      * client.json is the download a desktop app from https://console.cloud.google.com/apis/credentials
      */
-    @NotNull
+
     private HttpRequestInitializer getDefaultCredentials() throws IOException {
         final GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
         return new HttpCredentialsAdapter(credentials);
     }
 
-    @NotNull
-    private String getDocumentText(@NotNull final Document doc) {
+
+    private String getDocumentText(final Document doc) {
         return doc.getBody().getContent()
                 .stream()
                 .reduce("",
@@ -168,8 +173,8 @@ public class GoogleDocs implements Tool {
                         String::concat);
     }
 
-    @NotNull
-    private String getParagraphText(final Paragraph paragraph) {
+
+    private String getParagraphText(@Nullable final Paragraph paragraph) {
         if (paragraph == null) {
             return "";
         }
@@ -184,8 +189,8 @@ public class GoogleDocs implements Tool {
         return String.join("\n", paragraphContent);
     }
 
-    @NotNull
-    private List<String> paragraphToString(final Paragraph paragraph, @NotNull final Function<ParagraphElement, String> paraToStringFunction) {
+
+    private List<String> paragraphToString(@Nullable final Paragraph paragraph, final Function<ParagraphElement, String> paraToStringFunction) {
         if (paragraph == null) {
             return List.of();
         }
@@ -197,27 +202,23 @@ public class GoogleDocs implements Tool {
                 .collect(Collectors.toList());
     }
 
-    @NotNull
-    private String autoTextToString(@NotNull final AutoText content) {
+    private String autoTextToString(final AutoText content) {
         return Try.of(() -> content).mapTry(AutoText::toPrettyString).getOrElse("");
     }
 
-    @NotNull
     private String peopleToString(final Person content) {
         return Optional.ofNullable(content).map(Person::getPersonId).orElse("");
     }
 
-    private String richLinkToString(@NotNull final RichLink content) {
+    private String richLinkToString(final RichLink content) {
         return Optional.ofNullable(content).map(RichLink::getRichLinkId).orElse("");
     }
 
-    @NotNull
-    private String textRunToString(@NotNull final TextRun textRun) {
+    private String textRunToString(final TextRun textRun) {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
     }
 
-    @NotNull
-    private OllamaResponse callOllama(@NotNull final String llmPrompt) {
+    private OllamaResponse callOllama(final String llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
@@ -225,8 +226,8 @@ public class GoogleDocs implements Tool {
                 .get();
     }
 
-    @NotNull
-    private String documentToContext(@NotNull final String doc, @NotNull final String id) {
+
+    private String documentToContext(final String doc, final String id) {
         /*
         See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
         on the preferred format (or lack thereof) for RAG context.
@@ -237,8 +238,8 @@ public class GoogleDocs implements Tool {
                 + "\n<|eot_id|>";
     }
 
-    @NotNull
-    public String buildToolPrompt(@NotNull final String context, @NonNull final String prompt) {
+
+    public String buildToolPrompt(final String context, @NonNull final String prompt) {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
@@ -253,7 +254,7 @@ public class GoogleDocs implements Tool {
                 If there is no Google Document, you must indicate that in the answer.
                 <|eot_id|>
                 """
-                + "\n<|start_header_id|>system<|end_header_id|>The current date is " + LocalDateTime.now() + ".<|eot_id|>"
+                + "\n<|start_header_id|>system<|end_header_id|>The current date is " + LocalDateTime.now(ZoneId.systemDefault()) + ".<|eot_id|>"
                 + context
                 + "\n<|start_header_id|>user<|end_header_id|>"
                 + prompt

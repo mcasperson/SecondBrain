@@ -3,7 +3,6 @@ package secondbrain.domain.tools;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
@@ -29,19 +28,19 @@ import secondbrain.infrastructure.zendesk.ZenDeskCommentResponse;
 import secondbrain.infrastructure.zendesk.ZenDeskResponse;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 
 @ApplicationScoped
 public class ZenDeskOrganization implements Tool {
     private static final int DEFAULT_DURATION = 30;
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
@@ -86,23 +85,27 @@ public class ZenDeskOrganization implements Tool {
     private DebugToolArgs debugToolArgs;
 
     @Override
+
     public String getName() {
         return ZenDeskOrganization.class.getSimpleName();
     }
 
     @Override
+
     public String getDescription() {
         return "Returns the details of ZenDesk support tickets";
     }
 
     @Override
+
     public List<ToolArguments> getArguments() {
         return List.of(new ToolArguments("organization", "The name of the ZenDesk organization", ""),
                 new ToolArguments("days", "The number of days worth of tickets to return", DEFAULT_DURATION + ""));
     }
 
     @Override
-    public String call(@NotNull final Map<String, String> context, @NotNull final String prompt, @NotNull final List<ToolArgs> arguments) {
+
+    public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final String owner = argsAccessor.getArgument(arguments, "organization", "");
 
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "30")))
@@ -133,10 +136,10 @@ public class ZenDeskOrganization implements Tool {
         }
 
         final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
-                (user.get() + "/token:" + token.get()).getBytes())).get());
+                (user.get() + "/token:" + token.get()).getBytes(UTF_8))).get(), UTF_8);
 
         final String query = "type:ticket created>"
-                + LocalDateTime.now().minusDays(days).format(ISO_LOCAL_DATE)
+                + LocalDateTime.now(ZoneId.systemDefault()).minusDays(days).format(ISO_LOCAL_DATE)
                 + " organization:" + owner;
 
         return Try.withResources(ClientBuilder::newClient)
@@ -157,8 +160,8 @@ public class ZenDeskOrganization implements Tool {
                 .get();
     }
 
-    @NotNull
-    private Try<String> getContext(@NotNull final String name, @NotNull final Map<String, String> context) {
+
+    private Try<String> getContext(final String name, final Map<String, String> context) {
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(encryptionPassword);
 
@@ -167,10 +170,10 @@ public class ZenDeskOrganization implements Tool {
                 .mapTry(Objects::requireNonNull);
     }
 
-    @NotNull
-    private List<String> ticketToFirstComment(@NotNull final ZenDeskResponse response,
-                                              @NotNull final Client client,
-                                              @NotNull final String authorization) {
+
+    private List<String> ticketToFirstComment(final ZenDeskResponse response,
+                                              final Client client,
+                                              final String authorization) {
         return response.results().stream()
                 // Get the comments associated with the ticket
                 .map(ticket -> zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id()))
@@ -184,7 +187,8 @@ public class ZenDeskOrganization implements Tool {
                 .collect(Collectors.toList());
     }
 
-    private String diffToContext(@NotNull final String comment) {
+
+    private String diffToContext(final String comment) {
         /*
         See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
         on the preferred format (or lack thereof) for RAG context.
@@ -196,8 +200,7 @@ public class ZenDeskOrganization implements Tool {
     }
 
 
-    @NotNull
-    public String buildToolPrompt(@NotNull final String context, @NonNull final String prompt) {
+    public String buildToolPrompt(final String context, @NonNull final String prompt) {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
