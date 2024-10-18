@@ -1,6 +1,7 @@
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /usr/src/app
 COPY pom.xml .
+COPY .mvn .mvn
 COPY cli ./cli
 COPY core ./core
 COPY service ./service
