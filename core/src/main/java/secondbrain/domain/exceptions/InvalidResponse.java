@@ -5,15 +5,15 @@ public class InvalidResponse extends RuntimeException {
         super();
     }
 
-    public InvalidResponse(String message) {
+    public InvalidResponse(final String message) {
         super(message);
     }
 
-    public InvalidResponse(String message, Throwable cause) {
+    public InvalidResponse(final String message, final Throwable cause) {
         super(message, cause);
     }
 
-    public InvalidResponse(Throwable cause) {
+    public InvalidResponse(final Throwable cause) {
         super(cause);
     }
 }

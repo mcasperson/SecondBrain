@@ -5,15 +5,15 @@ public class EmptyString extends RuntimeException {
         super();
     }
 
-    public EmptyString(String message) {
+    public EmptyString(final String message) {
         super(message);
     }
 
-    public EmptyString(String message, Throwable cause) {
+    public EmptyString(final String message, final Throwable cause) {
         super(message, cause);
     }
 
-    public EmptyString(Throwable cause) {
+    public EmptyString(final Throwable cause) {
         super(cause);
     }
 }

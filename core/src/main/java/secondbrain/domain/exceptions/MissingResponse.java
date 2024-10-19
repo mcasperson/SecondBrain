@@ -5,15 +5,15 @@ public class MissingResponse extends RuntimeException {
         super();
     }
 
-    public MissingResponse(String message) {
+    public MissingResponse(final String message) {
         super(message);
     }
 
-    public MissingResponse(String message, Throwable cause) {
+    public MissingResponse(final String message, final Throwable cause) {
         super(message, cause);
     }
 
-    public MissingResponse(Throwable cause) {
+    public MissingResponse(final Throwable cause) {
         super(cause);
     }
 }

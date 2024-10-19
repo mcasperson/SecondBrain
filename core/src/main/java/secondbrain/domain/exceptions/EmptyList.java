@@ -5,15 +5,15 @@ public class EmptyList extends RuntimeException {
         super();
     }
 
-    public EmptyList(String message) {
+    public EmptyList(final String message) {
         super(message);
     }
 
-    public EmptyList(String message, Throwable cause) {
+    public EmptyList(final String message, final Throwable cause) {
         super(message, cause);
     }
 
-    public EmptyList(Throwable cause) {
+    public EmptyList(final Throwable cause) {
         super(cause);
     }
 }

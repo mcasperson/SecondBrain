@@ -2,7 +2,7 @@ package secondbrain.domain.toolbuilder.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
-import secondbrain.domain.json.JsonDeserializer;
+import secondbrain.domain.json.impl.JsonDeserializerImpl;
 import secondbrain.domain.tools.TestTool;
 
 import java.util.List;
@@ -36,8 +36,8 @@ public class Llama3ToolBuilderTest {
                 }
                 """;
 
-        final Map<String, Object> expectedJsonMap = new JsonDeserializer().deserializeMap(expectedJson, String.class, Object.class);
-        final Map<String, Object> jsonMap = new JsonDeserializer().deserializeMap(json, String.class, Object.class);
+        final Map<String, Object> expectedJsonMap = new JsonDeserializerImpl().deserializeMap(expectedJson, String.class, Object.class);
+        final Map<String, Object> jsonMap = new JsonDeserializerImpl().deserializeMap(json, String.class, Object.class);
 
         assertEquals(expectedJsonMap, jsonMap);
     }
