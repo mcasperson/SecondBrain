@@ -1,10 +1,9 @@
-package secondbrain.domain.response.impl;
+package secondbrain.domain.response;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.Response;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
-import secondbrain.domain.response.ResponseValidation;
 
 @ApplicationScoped
 public class OkResponseValidation implements ResponseValidation {

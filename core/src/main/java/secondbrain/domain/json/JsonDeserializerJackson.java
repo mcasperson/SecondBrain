@@ -1,10 +1,9 @@
-package secondbrain.domain.json.impl;
+package secondbrain.domain.json;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
 import jakarta.enterprise.context.ApplicationScoped;
-import secondbrain.domain.json.JsonDeserializer;
 
 import java.util.Map;
 
@@ -12,7 +11,7 @@ import java.util.Map;
  * A service for serializing and deserializing JSON.
  */
 @ApplicationScoped
-public class JsonDeserializerImpl implements JsonDeserializer {
+public class JsonDeserializerJackson implements JsonDeserializer {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override

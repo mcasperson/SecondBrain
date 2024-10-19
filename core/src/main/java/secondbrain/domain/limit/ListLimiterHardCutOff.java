@@ -1,12 +1,11 @@
-package secondbrain.domain.limit.impl;
+package secondbrain.domain.limit;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import secondbrain.domain.limit.ListLimiter;
 
 import java.util.List;
 
 @ApplicationScoped
-public class ListLimiterImpl implements ListLimiter {
+public class ListLimiterHardCutOff implements ListLimiter {
     public List<String> limitListContent(final List<String> list, final int limit) {
         if (limit <= 0) {
             return List.of();

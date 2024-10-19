@@ -1,7 +1,6 @@
-package secondbrain.domain.args.implt;
+package secondbrain.domain.args;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.tooldefs.ToolArgs;
 
 import java.util.List;

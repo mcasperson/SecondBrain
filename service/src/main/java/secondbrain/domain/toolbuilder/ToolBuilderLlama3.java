@@ -1,7 +1,6 @@
-package secondbrain.domain.toolbuilder.impl;
+package secondbrain.domain.toolbuilder;
 
 import jakarta.enterprise.context.Dependent;
-import secondbrain.domain.toolbuilder.ToolBuilder;
 import secondbrain.domain.tooldefs.Tool;
 
 import java.util.List;
@@ -11,7 +10,7 @@ import java.util.stream.Collectors;
  * A tool builder tailored for Llama3. Based on https://www.llama.com/docs/model-cards-and-prompt-formats/llama3_2/.
  */
 @Dependent
-public class Llama3ToolBuilder implements ToolBuilder {
+public class ToolBuilderLlama3 implements ToolBuilder {
     @Override
     public String buildToolJson(final List<Tool> tools) {
         return tools.stream().map(tool -> """

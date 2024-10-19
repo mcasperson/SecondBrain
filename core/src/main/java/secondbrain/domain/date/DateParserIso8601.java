@@ -1,8 +1,7 @@
-package secondbrain.domain.date.impl;
+package secondbrain.domain.date;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
-import secondbrain.domain.date.DateParser;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -14,7 +13,7 @@ import java.time.format.DateTimeFormatterBuilder;
  * A service for parsing dates. It handles ISO8601 dates with and without time zones.
  */
 @ApplicationScoped
-public class DateParserImpl implements DateParser {
+public class DateParserIso8601 implements DateParser {
     @Override
     public ZonedDateTime parseDate(final String date) {
         return Try.of(() -> parseZonedDate(date))

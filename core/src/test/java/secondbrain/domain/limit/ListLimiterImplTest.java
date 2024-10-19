@@ -1,7 +1,6 @@
 package secondbrain.domain.limit;
 
 import org.junit.jupiter.api.Test;
-import secondbrain.domain.limit.impl.ListLimiterImpl;
 
 import java.util.List;
 
@@ -11,7 +10,7 @@ public class ListLimiterImplTest {
 
     @Test
     public void testLimitListContentWithinLimit() {
-        ListLimiter listLimiter = new ListLimiterImpl();
+        ListLimiter listLimiter = new ListLimiterHardCutOff();
         List<String> inputList = List.of("one", "two", "three");
         int limit = 15;
 
@@ -22,7 +21,7 @@ public class ListLimiterImplTest {
 
     @Test
     public void testLimitListContentExceedsLimit() {
-        ListLimiter listLimiter = new ListLimiterImpl();
+        ListLimiter listLimiter = new ListLimiterHardCutOff();
         List<String> inputList = List.of("one", "two", "three");
         int limit = 6;
 
@@ -34,7 +33,7 @@ public class ListLimiterImplTest {
 
     @Test
     public void testLimitListContentExactLimit() {
-        ListLimiter listLimiter = new ListLimiterImpl();
+        ListLimiter listLimiter = new ListLimiterHardCutOff();
         List<String> inputList = List.of("one", "two", "three");
         int limit = 11;
 

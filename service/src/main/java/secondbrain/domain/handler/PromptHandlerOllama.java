@@ -1,4 +1,4 @@
-package secondbrain.domain.handler.impl;
+package secondbrain.domain.handler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vavr.control.Try;
@@ -10,7 +10,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.toolbuilder.ToolBuilder;
 import secondbrain.domain.tooldefs.Tool;
@@ -31,7 +30,7 @@ import java.util.Optional;
  * Implementation of the prompt handler.
  */
 @ApplicationScoped
-public class PromptHandlerImpl implements PromptHandler {
+public class PromptHandlerOllama implements PromptHandler {
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;

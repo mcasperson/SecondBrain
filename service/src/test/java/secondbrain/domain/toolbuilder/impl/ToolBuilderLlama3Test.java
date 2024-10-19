@@ -2,7 +2,8 @@ package secondbrain.domain.toolbuilder.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.jupiter.api.Test;
-import secondbrain.domain.json.impl.JsonDeserializerImpl;
+import secondbrain.domain.json.JsonDeserializerJackson;
+import secondbrain.domain.toolbuilder.ToolBuilderLlama3;
 import secondbrain.domain.tools.TestTool;
 
 import java.util.List;
@@ -10,11 +11,11 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class Llama3ToolBuilderTest {
+public class ToolBuilderLlama3Test {
 
     @Test
     public void testBuildToolJson() throws JsonProcessingException {
-        final Llama3ToolBuilder builder = new Llama3ToolBuilder();
+        final ToolBuilderLlama3 builder = new ToolBuilderLlama3();
         final String json = builder.buildToolJson(List.of(new TestTool()));
 
         final String expectedJson = """
@@ -36,8 +37,8 @@ public class Llama3ToolBuilderTest {
                 }
                 """;
 
-        final Map<String, Object> expectedJsonMap = new JsonDeserializerImpl().deserializeMap(expectedJson, String.class, Object.class);
-        final Map<String, Object> jsonMap = new JsonDeserializerImpl().deserializeMap(json, String.class, Object.class);
+        final Map<String, Object> expectedJsonMap = new JsonDeserializerJackson().deserializeMap(expectedJson, String.class, Object.class);
+        final Map<String, Object> jsonMap = new JsonDeserializerJackson().deserializeMap(json, String.class, Object.class);
 
         assertEquals(expectedJsonMap, jsonMap);
     }
