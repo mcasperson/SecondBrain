@@ -10,7 +10,7 @@ public class ListLimiterImplTest {
 
     @Test
     public void testLimitListContentWithinLimit() {
-        ListLimiter listLimiter = new ListLimiterHardCutOff();
+        ListLimiter listLimiter = new ListLimiterAtomicCutOff();
         List<String> inputList = List.of("one", "two", "three");
         int limit = 15;
 
@@ -21,7 +21,7 @@ public class ListLimiterImplTest {
 
     @Test
     public void testLimitListContentExceedsLimit() {
-        ListLimiter listLimiter = new ListLimiterHardCutOff();
+        ListLimiter listLimiter = new ListLimiterAtomicCutOff();
         List<String> inputList = List.of("one", "two", "three");
         int limit = 6;
 
@@ -33,7 +33,7 @@ public class ListLimiterImplTest {
 
     @Test
     public void testLimitListContentExactLimit() {
-        ListLimiter listLimiter = new ListLimiterHardCutOff();
+        ListLimiter listLimiter = new ListLimiterAtomicCutOff();
         List<String> inputList = List.of("one", "two", "three");
         int limit = 11;
 

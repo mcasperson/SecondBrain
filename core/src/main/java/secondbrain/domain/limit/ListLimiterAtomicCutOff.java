@@ -4,8 +4,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 
+/**
+ * An implementation of ListLimiter that cuts off the list at the first element that would exceed the limit.
+ */
 @ApplicationScoped
-public class ListLimiterHardCutOff implements ListLimiter {
+public class ListLimiterAtomicCutOff implements ListLimiter {
     public List<String> limitListContent(final List<String> list, final int limit) {
         if (limit <= 0) {
             return List.of();
