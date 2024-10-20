@@ -1,10 +1,9 @@
-package secondbrain.domain.tools;
+package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
 import com.slack.api.methods.MethodsClient;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
-import com.slack.api.model.Conversation;
 import com.slack.api.model.ConversationType;
 import com.slack.api.model.Message;
 import io.vavr.Tuple;
@@ -110,7 +109,7 @@ public class SlackChannel implements Tool {
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
 
-        final Try<String> id = findChannelId(client, accessToken.get(), channel, null)
+        final Try<ChannelDetails> id = findChannelId(client, accessToken.get(), channel, null)
                 .onFailure(error -> System.out.println("Error: " + error));
 
         if (id.isFailure()) {
@@ -120,7 +119,7 @@ public class SlackChannel implements Tool {
         final Try<String> messages = id
                 .mapTry(chanId -> client.conversationsHistory(r -> r
                         .token(accessToken.get())
-                        .channel(chanId)
+                        .channel(chanId.channelId())
                         .oldest(oldest)))
                 .map(this::conversationsToText)
                 .onFailure(error -> System.out.println("Error: " + error));
@@ -130,7 +129,9 @@ public class SlackChannel implements Tool {
         }
 
         if (messages.get().length() < MINIMUM_MESSAGE_LENGTH) {
-            return "Not enough messages found in channel " + channel;
+            return "Not enough messages found in channel " + channel
+                    + System.lineSeparator() + System.lineSeparator()
+                    + "* [Slack Channel](https://app.slack.com/client/" + id.get().teamId() + "/" + id.get().channelId() + ")";
         }
 
         final Try<String> messagesWithUsersReplaced = messages
@@ -143,18 +144,20 @@ public class SlackChannel implements Tool {
         final String messageContext = buildToolPrompt(messagesWithUsersReplaced.get(), prompt);
 
         return Try.of(() -> callOllama(messageContext))
-                .map(OllamaResponse::response)
+                .map(response -> response.response()
+                        + System.lineSeparator() + System.lineSeparator()
+                        + "* [Slack Channel](https://app.slack.com/client/" + id.get().teamId() + "/" + id.get().channelId() + ")")
                 .recover(throwable -> "Failed to call Ollama: " + throwable.getMessage())
                 .get();
 
     }
 
 
-    private Optional<String> getChannelId(final ConversationsListResponse response, final String channel) {
+    private Optional<ChannelDetails> getChannelId(final ConversationsListResponse response, final String channel) {
         return response.getChannels()
                 .stream()
                 .filter(c -> c.getName().equals(channel))
-                .map(Conversation::getId)
+                .map(c -> new ChannelDetails(c.getId(), c.getContextTeamId()))
                 .findFirst();
     }
 
@@ -190,7 +193,7 @@ public class SlackChannel implements Tool {
     }
 
 
-    private Try<String> findChannelId(
+    private Try<ChannelDetails> findChannelId(
             final MethodsClient client,
             final String accessToken,
             final String channel,
@@ -204,7 +207,7 @@ public class SlackChannel implements Tool {
                 .cursor(cursor)));
 
         if (response.isSuccess()) {
-            final Optional<String> id = getChannelId(response.get(), channel);
+            final Optional<ChannelDetails> id = getChannelId(response.get(), channel);
             return id
                     .map(Try::success)
                     .orElseGet(() -> findChannelId(client, accessToken, channel, response.get().getResponseMetadata().getNextCursor()));
