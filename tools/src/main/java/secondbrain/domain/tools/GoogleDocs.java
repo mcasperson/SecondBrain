@@ -131,7 +131,10 @@ public class GoogleDocs implements Tool {
                 .map(doc -> buildToolPrompt(doc, prompt))
                 .map(this::callOllama)
                 .map(OllamaResponse::response)
-                .map(response -> response + debugToolArgs.debugArgs(arguments, true))
+                .map(response -> response
+                        + System.lineSeparator() + System.lineSeparator()
+                        + "* [Document](https://docs.google.com/document/d/" + documentId + ")"
+                        + debugToolArgs.debugArgs(arguments, true))
                 .recover(throwable -> "Failed to get document: " + throwable.getMessage())
                 .get();
     }
