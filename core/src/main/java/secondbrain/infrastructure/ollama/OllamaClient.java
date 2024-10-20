@@ -43,4 +43,9 @@ public class OllamaClient {
                         .get())
                 .get();
     }
+
+    public OllamaResponseWithContext getTools(final Client client, final OllamaGenerateBodyWithContext body) {
+        final OllamaResponse response = getTools(client, new OllamaGenerateBody(body.model(), body.prompt().toString(), body.stream()));
+        return new OllamaResponseWithContext(body.prompt().ids(), response);
+    }
 }

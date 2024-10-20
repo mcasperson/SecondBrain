@@ -3,7 +3,7 @@ package secondbrain.infrastructure.oauth.slack;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /*
-The format of the response is this:
+The format of the ollamaResponse is this:
 {
   "ok" : true,
   "app_id" : "xxx",

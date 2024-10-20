@@ -12,7 +12,7 @@ public interface PromptHandler {
      *
      * @param context Key/value pairs that define the context of the prompt. Typically, this is used to pass authentication details.
      * @param prompt  The prompt to handle
-     * @return The prompt response
+     * @return The prompt ollamaResponse
      */
     String handlePrompt(Map<String, String> context, String prompt);
 }

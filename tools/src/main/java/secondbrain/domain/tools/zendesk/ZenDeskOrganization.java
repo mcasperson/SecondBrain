@@ -1,4 +1,4 @@
-package secondbrain.domain.tools;
+package secondbrain.domain.tools.zendesk;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -12,6 +12,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
+import secondbrain.domain.context.IndividualContext;
+import secondbrain.domain.context.MergedContext;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
@@ -20,10 +22,10 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaResponse;
+import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
 import secondbrain.infrastructure.zendesk.ZenDeskCommentResponse;
+import secondbrain.infrastructure.zendesk.ZenDeskCommentsResponse;
 import secondbrain.infrastructure.zendesk.ZenDeskResponse;
 
 import java.time.LocalDateTime;
@@ -140,19 +142,51 @@ public class ZenDeskOrganization implements Tool {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), query))
                         .map(response -> ticketToFirstComment(response, client, authHeader))
-                        .map(list -> listLimiter.limitListContent(list, NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
-                        .map(list -> String.join("\n", list))
-                        .mapTry(validateString::throwIfEmpty)
+                        .map(list -> listLimiter.limitIndividualContextListContent(
+                                list,
+                                NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
+                        .map(this::mergeContext)
+                        .mapTry(mergedContext -> validateString.throwIfEmpty(mergedContext, MergedContext::context))
                         .map(contextString -> buildToolPrompt(contextString, prompt))
                         .map(llmPrompt -> ollamaClient.getTools(
                                 client,
-                                new OllamaGenerateBody(model, llmPrompt, false)))
-                        .map(OllamaResponse::response)
-                        .map(response -> response + debugToolArgs.debugArgs(arguments, true))
+                                new OllamaGenerateBodyWithContext(model, llmPrompt, false)))
+                        .map(response -> response.ollamaResponse().response()
+                                + System.lineSeparator() + System.lineSeparator()
+                                + idsToLinks(url.get(), response.ids())
+                                + debugToolArgs.debugArgs(arguments, true))
                         .recover(EmptyString.class, "No tickets found")
-                        .recover(throwable -> "Failed to get tickets or comments: " + throwable.getMessage())
+                        .recover(throwable -> "Failed to get tickets or context: " + throwable.getMessage())
                         .get())
                 .get();
+    }
+
+    /**
+     * Display a Markdown list of the ticket IDs with links to the tickets. This helps users understand
+     * where the information is coming from.
+     *
+     * @param url The ZenDesk url
+     * @param ids The list of ticket IDs
+     * @return A Markdown list of source tickets
+     */
+    private String idsToLinks(final String url, final List<String> ids) {
+        return ids.stream()
+                .map(id -> "* [" + id + "](" + idToLink(url, id) + ")")
+                .collect(Collectors.joining("\n"));
+    }
+
+    private String idToLink(final String url, final String id) {
+        return url + "/agent/tickets/" + id;
+    }
+
+    private MergedContext mergeContext(final List<IndividualContext<String>> context) {
+        return new MergedContext(
+                context.stream()
+                        .map(IndividualContext::id)
+                        .collect(Collectors.toList()),
+                context.stream()
+                        .map(IndividualContext::context)
+                        .collect(Collectors.joining("\n")));
     }
 
 
@@ -166,54 +200,61 @@ public class ZenDeskOrganization implements Tool {
     }
 
 
-    private List<String> ticketToFirstComment(final ZenDeskResponse response,
-                                              final Client client,
-                                              final String authorization) {
+    private List<IndividualContext<String>> ticketToFirstComment(final ZenDeskResponse response,
+                                                                 final Client client,
+                                                                 final String authorization) {
         return response.results().stream()
-                // Get the comments associated with the ticket
-                .map(ticket -> zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id()))
+                // Get the context associated with the ticket
+                .map(ticket -> new IndividualContext<>(ticket.id(), zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id())))
                 // Get the first comment, or an empty list
-                .flatMap(comments -> comments.getResults().stream().limit(1))
-                // get the comment body
-                .map(ZenDeskCommentResponse::body)
+                .map(comments -> new IndividualContext<>(comments.id(), ticketToBody(comments.context(), 1)))
                 // Get the comment body as a LLM context string
-                .map(this::diffToContext)
+                .map(comments -> new IndividualContext<>(comments.id(), diffToContext(comments.context())))
                 // Get a list of context strings
                 .collect(Collectors.toList());
     }
 
+    private List<String> ticketToBody(final ZenDeskCommentsResponse comments, final int limit) {
+        return comments
+                .getResults()
+                .stream()
+                .limit(limit)
+                .map(ZenDeskCommentResponse::body)
+                .collect(Collectors.toList());
+    }
 
-    private String diffToContext(final String comment) {
+    private String diffToContext(final List<String> comment) {
         /*
         See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
         on the preferred format (or lack thereof) for RAG context.
         */
         return "<|start_header_id|>system<|end_header_id|>\n"
                 + "ZenDesk Ticket:\n"
-                + comment
+                + String.join("\n", comment)
                 + "\n<|eot_id|>";
     }
 
 
-    public String buildToolPrompt(final String context, final String prompt) {
-        return """
-                <|begin_of_text|>
-                <|start_header_id|>system<|end_header_id|>
-                You are an expert in reading help desk tickets.
-                You are given a question and a list of ZenDesk Tickets related to the question.
-                You must assume the information required to answer the question is present in the ZenDesk Tickets.
-                You must answer the question based on the ZenDesk Tickets provided.
-                When the user asks a question indicating that they want to know about ZenDesk Tickets, you must generate the answer based on the ZenDesk Tickets.
-                You will be penalized for suggesting manual steps to generate the answer.
-                You will be penalized for responding that you don't have access to real-time data or zen desk instances.
-                You will be penalized for referencing issues that are not present in the ZenDesk Tickets.
-                If there are no ZenDesk Tickets, you must indicate that in the answer.
-                <|eot_id|>
+    public MergedContext buildToolPrompt(final MergedContext context, final String prompt) {
+        return new MergedContext(context.ids(),
                 """
-                + context
-                + "\n<|start_header_id|>user<|end_header_id|>"
-                + prompt
-                + "<|eot_id|>"
-                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading();
+                        <|begin_of_text|>
+                        <|start_header_id|>system<|end_header_id|>
+                        You are an expert in reading help desk tickets.
+                        You are given a question and a list of ZenDesk Tickets related to the question.
+                        You must assume the information required to answer the question is present in the ZenDesk Tickets.
+                        You must answer the question based on the ZenDesk Tickets provided.
+                        When the user asks a question indicating that they want to know about ZenDesk Tickets, you must generate the answer based on the ZenDesk Tickets.
+                        You will be penalized for suggesting manual steps to generate the answer.
+                        You will be penalized for responding that you don't have access to real-time data or zen desk instances.
+                        You will be penalized for referencing issues that are not present in the ZenDesk Tickets.
+                        If there are no ZenDesk Tickets, you must indicate that in the answer.
+                        <|eot_id|>
+                        """
+                        + context.context()
+                        + "\n<|start_header_id|>user<|end_header_id|>"
+                        + prompt
+                        + "<|eot_id|>"
+                        + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading());
     }
 }

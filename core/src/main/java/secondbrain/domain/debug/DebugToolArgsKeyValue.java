@@ -26,7 +26,7 @@ public class DebugToolArgsKeyValue implements DebugToolArgs {
                     .collect(Collectors.joining("\n"));
 
             if (includeLineBreak) {
-                return System.lineSeparator() + debug;
+                return System.lineSeparator() + System.lineSeparator() + debug;
             }
 
             return debug;
