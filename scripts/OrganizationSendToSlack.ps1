@@ -68,12 +68,12 @@ Function Invoke-CustomCommand
 }
 
 # Replace the location of the Jar file with your copy of the CLI UberJAR
-$result = Invoke-CustomCommand java "-jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize 7 days worth of messages from the '$( $args[0] )' Slack channel in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`""
-$ticketResult = Invoke-CustomCommand java "-jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize 7 days worth of ZenDesk tickets from the '$( $args[1] )' organization in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`""
+$result = Invoke-CustomCommand java "-jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize 7 days worth of messages from the '$( $args[0] )' Slack channel in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`" markdn"
+$ticketResult = Invoke-CustomCommand java "-jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize 7 days worth of ZenDesk tickets from the '$( $args[1] )' organization in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`" markdn"
 
 if ($args.Length -ge 3)
 {
-    $docsResult = Invoke-CustomCommand java "-jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize the Google doc with id '$( $args[2] )'.`""
+    $docsResult = Invoke-CustomCommand java "-jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize the Google doc with id '$( $args[2] )'.`" markdn"
 }
 
 # Replace this URL with your own Slack web hook
