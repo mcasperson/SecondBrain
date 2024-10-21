@@ -153,6 +153,7 @@ public class ZenDeskOrganization implements Tool {
                                 new OllamaGenerateBodyWithContext(model, llmPrompt, false)))
                         .map(response -> response.ollamaResponse().response()
                                 + System.lineSeparator() + System.lineSeparator()
+                                + "Tickets:" + System.lineSeparator()
                                 + idsToLinks(url.get(), response.ids())
                                 + debugToolArgs.debugArgs(arguments, true))
                         .recover(EmptyString.class, "No tickets found")

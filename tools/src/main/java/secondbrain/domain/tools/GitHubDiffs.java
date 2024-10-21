@@ -145,6 +145,7 @@ public class GitHubDiffs implements Tool {
                 .map(this::callOllama)
                 .map(response -> response.ollamaResponse().response()
                         + System.lineSeparator() + System.lineSeparator()
+                        + "Diffs:" + System.lineSeparator()
                         + urlsToLinks(response.ids())
                         + debugToolArgs.debugArgs(arguments, true))
                 .recover(throwable -> "Failed to get diffs: " + throwable.getMessage())
