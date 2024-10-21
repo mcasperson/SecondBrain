@@ -10,6 +10,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
+import secondbrain.domain.context.IndividualContext;
+import secondbrain.domain.context.MergedContext;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.limit.ListLimiter;
@@ -19,8 +21,8 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.GitHubCommitResponse;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaResponse;
+import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
+import secondbrain.infrastructure.ollama.OllamaResponseWithContext;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Dependent
 public class GitHubDiffs implements Tool {
@@ -136,23 +139,43 @@ public class GitHubDiffs implements Tool {
                         dateParser.parseDate(endDate).format(FORMATTER),
                         authHeader))
                 .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader))
-                .map(list -> listLimiter.limitListContent(list, NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
-                .map(diffs -> String.join("\n", diffs))
+                .map(list -> listLimiter.limitIndividualContextListContent(list, NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
+                .map(this::mergeContext)
                 .map(diffs -> buildToolPrompt(diffs, prompt))
                 .map(this::callOllama)
-                .map(OllamaResponse::response)
-                .map(response -> response + debugToolArgs.debugArgs(arguments, true))
+                .map(response -> response.ollamaResponse().response()
+                        + System.lineSeparator() + System.lineSeparator()
+                        + urlsToLinks(response.ids())
+                        + debugToolArgs.debugArgs(arguments, true))
                 .recover(throwable -> "Failed to get diffs: " + throwable.getMessage())
                 .get();
     }
 
+    private String urlsToLinks(final List<String> urls) {
+        return urls.stream()
+                .map(url -> "* [" + url + "](" + url + ")")
+                .collect(Collectors.joining("\n"));
+    }
 
-    private List<String> convertCommitsToDiffs(
+    private MergedContext mergeContext(final List<IndividualContext<String>> context) {
+        return new MergedContext(
+                context.stream()
+                        .map(IndividualContext::id)
+                        .collect(Collectors.toList()),
+                context.stream()
+                        .map(IndividualContext::context)
+                        .collect(Collectors.joining("\n")));
+    }
+
+
+    private List<IndividualContext<String>> convertCommitsToDiffs(
             final List<GitHubCommitResponse> commitsResponse,
             final String owner,
             final String repo,
             final String authorization) {
-        return commitsResponse.stream().map(commit -> diffToContext(owner, repo, commit, authorization)).toList();
+        return commitsResponse.stream().map(commit -> new IndividualContext<>(
+                commit.html_url(),
+                diffToContext(owner, repo, commit, authorization))).toList();
     }
 
 
@@ -186,11 +209,11 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    private OllamaResponse callOllama(final String llmPrompt) {
+    private OllamaResponseWithContext callOllama(final MergedContext llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
-                        new OllamaGenerateBody(model, llmPrompt, false)))
+                        new OllamaGenerateBodyWithContext(model, llmPrompt, false)))
                 .get();
     }
 
@@ -206,8 +229,8 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    public String buildToolPrompt(final String context, final String prompt) {
-        return """
+    public MergedContext buildToolPrompt(final MergedContext context, final String prompt) {
+        return new MergedContext(context.ids(), """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
                 You are an expert in reading Git diffs.
@@ -225,6 +248,6 @@ public class GitHubDiffs implements Tool {
                 + "\n<|start_header_id|>user<|end_header_id|>"
                 + prompt
                 + "<|eot_id|>"
-                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading();
+                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading());
     }
 }
