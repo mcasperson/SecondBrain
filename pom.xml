@@ -52,7 +52,6 @@
             <version>2.7.0</version>
         </dependency>
 
-
         <dependency>
             <groupId>org.jasypt</groupId>
             <artifactId>jasypt</artifactId>
