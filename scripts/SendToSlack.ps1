@@ -15,6 +15,8 @@ Function Invoke-CustomCommand
     $pinfo.WorkingDirectory = $workingDir
     $pinfo.RedirectStandardError = $true
     $pinfo.RedirectStandardOutput = $true
+    $pinfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+    $pinfo.StandardErrorEncoding = [System.Text.Encoding]::UTF8
     $pinfo.UseShellExecute = $false
     $pinfo.Arguments = $commandArguments
     $pinfo.EnvironmentVariables["PATH"] = $newPath
