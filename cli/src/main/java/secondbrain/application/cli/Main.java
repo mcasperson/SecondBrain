@@ -38,7 +38,7 @@ public class Main {
 
     private void printMarkDn(final String response) {
         final String markdn = new DownParser(response, true).toSlack().toString();
-        System.err.println(markdn);
+        System.out.println(markdn);
     }
 
     public void entry(String[] args) {
