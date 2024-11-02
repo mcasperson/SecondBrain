@@ -69,6 +69,10 @@ Function Invoke-CustomCommand
     return $executionResults
 }
 
+# Powershell has to be set to parse the output of an executable as UTF8
+# Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
+$OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
+
 # Replace the location of the Jar file with your copy of the CLI UberJAR
 $result = Invoke-CustomCommand java "-Dstdout.encoding=UTF-8 -jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize 7 days worth of messages from the '$( $args[0] )' Slack channel in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain language. You will be penalized for using emotive or excited language.`" markdn"
 
