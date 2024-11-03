@@ -121,7 +121,10 @@ public class SlackSearch implements Tool {
                         .getMessages()
                         .getMatches()
                         .stream()
-                        .map(result -> "* [" + StringUtils.substring(result.getText().replaceAll("[^A-Za-z0-9-._ ]", " "), 0, 75) + "](" + result.getPermalink() + ")")
+                        .map(result -> "* [" + StringUtils.substring(result.getText()
+                                        .replaceAll(":.*?:", "")
+                                        .replaceAll("[^A-Za-z0-9-._ ]", " "),
+                                0, 75) + "](" + result.getPermalink() + ")")
                         .collect(Collectors.joining("\n")))
                 .recover(throwable -> "Failed to call Ollama: " + throwable.getMessage())
                 .get();
