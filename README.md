@@ -1,8 +1,8 @@
 # SecondBrain
 
 Imagine a world where you can have a conversation with your data. SecondBrain is a framework that allows you to do just
-that by linking plain text prompts with external data sources, commonly referred to as Retrieval Augmented Generation (
-RAG). The resulting context is then presented an LLM to provide the information it needs to answer your questions.
+that by linking plain text prompts with external data sources, commonly referred to as Retrieval Augmented Generation
+(RAG). The resulting context is then presented an LLM to provide the information it needs to answer your questions.
 
 This means you can ask a question like:
 
