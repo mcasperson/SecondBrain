@@ -64,7 +64,7 @@ public class SlackSearch implements Tool {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("keywords", "The number of days worth of messages to return", "")
+                new ToolArguments("keywords", "Comma separated list of keywords defined in the prompt", "")
         );
     }
 
@@ -73,7 +73,7 @@ public class SlackSearch implements Tool {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        
+
         final String keywordsRaw = argsAccessor.getArgument(arguments, "keywords", "").trim();
 
         if (StringUtils.isBlank(keywordsRaw)) {
@@ -121,7 +121,7 @@ public class SlackSearch implements Tool {
                         .getMessages()
                         .getMatches()
                         .stream()
-                        .map(result -> "* [Slack Message](" + result.getPermalink() + ")")
+                        .map(result -> "* [" + StringUtils.substring(result.getText().replaceAll("[^A-Za-z0-9-._ ]", " "), 0, 75) + "](" + result.getPermalink() + ")")
                         .collect(Collectors.joining("\n")))
                 .recover(throwable -> "Failed to call Ollama: " + throwable.getMessage())
                 .get();

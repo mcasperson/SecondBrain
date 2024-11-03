@@ -31,6 +31,8 @@ import java.util.Optional;
  */
 @ApplicationScoped
 public class PromptHandlerOllama implements PromptHandler {
+    private static final int TOOL_RETRY = 5;
+
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
@@ -77,7 +79,7 @@ public class PromptHandlerOllama implements PromptHandler {
                 .mapTry(validateList::throwIfEmpty)
                 .mapTry(List::getFirst)
                 .recoverWith(error -> Try.of(() -> {
-                    if (count < 3) {
+                    if (count < TOOL_RETRY) {
                         return selectOllamaTool(toolPrompt, count + 1);
                     }
                     throw error;
