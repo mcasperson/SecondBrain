@@ -1,4 +1,4 @@
-package secondbrain.domain.tools;
+package secondbrain.domain.tools.github;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
@@ -154,9 +154,10 @@ public class GitHubDiffs implements Tool {
 
     private String urlsToLinks(final List<String> urls) {
         return urls.stream()
-                .map(url -> "* [" + url + "](" + url + ")")
+                .map(url -> "* [" + GitHubUrlParser.urlToCommitHash(url) + "](" + url + ")")
                 .collect(Collectors.joining("\n"));
     }
+
 
     private MergedContext mergeContext(final List<IndividualContext<String>> context) {
         return new MergedContext(

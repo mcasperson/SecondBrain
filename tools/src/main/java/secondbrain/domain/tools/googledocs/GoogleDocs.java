@@ -1,4 +1,4 @@
-package secondbrain.domain.tools;
+package secondbrain.domain.tools.googledocs;
 
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpRequestInitializer;

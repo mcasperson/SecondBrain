@@ -1,5 +1,6 @@
-package secondbrain.domain.tools;
+package secondbrain.domain.tools.helloworld;
 
+import com.google.common.collect.ImmutableList;
 import jakarta.enterprise.context.Dependent;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -12,20 +13,23 @@ import java.util.Map;
  * A tool that returns a greeting message.
  */
 @Dependent
-public class SmokeTest implements Tool {
+public class HelloWorld implements Tool {
     @Override
     public String getName() {
-        return SmokeTest.class.getSimpleName();
+        return HelloWorld.class.getSimpleName();
     }
 
     @Override
     public String getDescription() {
-        return "Used for smoke testing";
+        return "Returns a greeting message";
     }
 
     @Override
     public List<ToolArguments> getArguments() {
-        return List.of();
+        return ImmutableList.of(new ToolArguments(
+                "greeting",
+                "The greeting to display",
+                "World"));
     }
 
     @Override
@@ -33,6 +37,10 @@ public class SmokeTest implements Tool {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        return "Test succeeded!";
+        if (arguments.size() != 1) {
+            return "Hello, World!";
+        }
+
+        return arguments.getFirst().argValue();
     }
 }
