@@ -82,18 +82,40 @@ if ($args.Length -ge 3)
     $docsResult = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize the Google doc with id '$( $args[2] )'.`" markdn"
 }
 
-# Replace this URL with your own Slack web hook
-$uriSlack = $env:SB_SLACK_CUSTOMER_WEBHOOK
-$body = ConvertTo-Json @{
-    type = "mrkdwn"
-    text = "*=== " + $args[1] + " summary ===*`n`n*Slack*`n" + $result.StdOut + "`n`n*ZenDesk*`n" + $ticketResult.StdOut + "`n`n*CDJ*`n" + $docsResult.StdOut
+$text = "*=== " + $args[1] + " summary ===*`n`n"
+
+if ($result.StdOut -ne "")
+{
+    $text += "*Slack*`n" + $result.StdOut + "`n`n"
 }
 
-try
+if ($ticketResult.StdOut -ne "")
 {
-    Invoke-RestMethod -uri $uriSlack -Method Post -body $body -ContentType 'application/json' | Out-Null
+    $text += "*ZenDesk*`n" + $ticketResult.StdOut + "`n`n"
 }
-catch
+
+if ($docsResult.StdOut -ne "")
 {
-    Write-Error (Get-Date) ": Update to Slack went wrong..."
+    $text += "*CDJ*`n" + $docsResult.StdOut
 }
+
+if ($result.StdOut -ne "" -or $ticketResult.StdOut -ne "" -or $docsResult.StdOut -ne "")
+{
+    # Replace this URL with your own Slack web hook
+    $uriSlack = $env:SB_SLACK_CUSTOMER_WEBHOOK
+    $body = ConvertTo-Json @{
+        type = "mrkdwn"
+        text = $text
+    }
+
+    try
+    {
+        Invoke-RestMethod -uri $uriSlack -Method Post -body $body -ContentType 'application/json' | Out-Null
+    }
+    catch
+    {
+        Write-Error (Get-Date) ": Update to Slack went wrong..."
+    }
+}
+
+
