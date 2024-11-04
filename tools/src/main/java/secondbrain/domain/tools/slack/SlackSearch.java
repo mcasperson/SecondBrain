@@ -110,6 +110,7 @@ public class SlackSearch implements Tool {
                 .getMatches()
                 .stream()
                 .map(MatchedItem::getText)
+                .map(this::messageToContext)
                 .collect(Collectors.joining("\n"));
 
         final String messageContext = buildToolPrompt(searchResults, prompt);
@@ -131,6 +132,17 @@ public class SlackSearch implements Tool {
 
     }
 
+    private String messageToContext(final String message) {
+        /*
+        See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
+        on the preferred format (or lack thereof) for RAG context.
+        */
+        return "<|start_header_id|>system<|end_header_id|>\n"
+                + "Slack Message:\n"
+                + message
+                + "\n<|eot_id|>";
+    }
+
 
     private String buildToolPrompt(final String context, final String prompt) {
         return """
@@ -140,8 +152,9 @@ public class SlackSearch implements Tool {
                 You are given Slack search results and asked to answer questions based on the messages provided.
                 Here are the messages:
                 """
+                + "<|eot_id|>"
                 + context.substring(0, Math.min(context.length(), NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
-                + "<|eot_id|><|start_header_id|>user<|end_header_id|>"
+                + "<|start_header_id|>user<|end_header_id|>"
                 + prompt
                 + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>".stripLeading();
     }
