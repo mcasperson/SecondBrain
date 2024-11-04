@@ -168,6 +168,8 @@ public class SlackChannel implements Tool {
                 <|start_header_id|>system<|end_header_id|>
                 You are professional agent that understands Slack conversations.
                 You are given the history of a Slack channel and asked to answer questions based on the messages provided.
+                The token "<!here>" is used to notify all members of the channel.
+                You must consider any message with the token "<!here>" to be important.
                 Here are the messages:
                 """
                 + context.substring(0, Math.min(context.length(), NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
