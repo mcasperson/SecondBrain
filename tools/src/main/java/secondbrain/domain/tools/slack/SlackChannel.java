@@ -168,7 +168,7 @@ public class SlackChannel implements Tool {
                 <|start_header_id|>system<|end_header_id|>
                 You are professional agent that understands Slack conversations.
                 You are given the history of a Slack channel and asked to answer questions based on the messages provided.
-                The tokens "<!here>" and "<!channel>" is used to notify all members of the channel.
+                The tokens "<!here>" and "<!channel>" are used to notify all members of the channel.
                 You must consider any message with the tokens "<!here>" or "<!channel>" to be important.
                 Here are the messages:
                 """
