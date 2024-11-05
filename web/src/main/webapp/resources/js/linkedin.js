@@ -1,12 +1,12 @@
 document.addEventListener('DOMContentLoaded', (event) => {
     document.getElementById('prompt').value = stripLineBreaks(
         stripLeadingWhitespace(
-            `Summarize 7 days worth of messages from the #announcements channel`))
+            `Summarize 7 days worth of LinkedIn posts for company <ORGANIZATION_ID>`))
 
     buildButtons();
     selectTokenInput();
 
-    slackToken.addEventListener('input', buildButtons);
+    authToken.addEventListener('input', buildButtons);
     form.addEventListener('submit', handleSubmit);
     tokenSelection.addEventListener('click', selectTokenInput);
     login.addEventListener('click', handleLogin);
@@ -40,7 +40,7 @@ function handleSubmit(event) {
     const context = {};
     const tokenSelection = document.getElementById('tokenSelection');
     if (tokenSelection.checked) {
-        context['slack_access_token'] = slackToken.value;
+        context['linkedin_access_token'] = authToken.value;
     }
 
     fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
@@ -75,10 +75,12 @@ function enableForm() {
 }
 
 function handleLogin() {
-    window.location.href = 'https://slack.com/oauth/v2/authorize'
-        + '?user_scope=channels:history,channels:read,search:read'
+    window.location.href = 'https://www.linkedin.com/oauth/v2/authorization'
+        + '?scope=openid%20profile%20email'
+        + "&response_type=code"
+        + "&redirect_uri=" + encodeURIComponent(redirectUri)
         + '&client_id=' + encodeURIComponent(clientId)
-        + '&state=/slack.xhtml';
+        + '&state=/linkedin.xhtml';
 }
 
 function handleLogout() {
@@ -88,7 +90,7 @@ function handleLogout() {
 
 function buildButtons() {
     if (tokenSelection.checked) {
-        submit.disabled = !slackToken.value;
+        submit.disabled = !authToken.value;
     } else {
         const session = getCookie('session');
         if (session) {
