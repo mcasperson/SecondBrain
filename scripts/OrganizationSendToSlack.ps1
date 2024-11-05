@@ -73,28 +73,30 @@ Function Invoke-CustomCommand
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 
+$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
+
 # Replace the location of the Jar file with your copy of the CLI UberJAR
-$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize 7 days worth of messages from the '$( $args[0] )' Slack channel in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`" markdn"
-$ticketResult = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize 7 days worth of ZenDesk tickets from the '$( $args[1] )' organization in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`" markdn"
+$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Summarize 7 days worth of messages from the '$( $args[0] )' Slack channel in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`" markdn"
+$ticketResult = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Summarize 7 days worth of ZenDesk tickets from the '$( $args[1] )' organization in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`" markdn"
 
 if ($args.Length -ge 3)
 {
-    $docsResult = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar `"Summarize the Google doc with id '$( $args[2] )'.`" markdn"
+    $docsResult = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Summarize the Google doc with id '$( $args[2] )'.`" markdn"
 }
 
 $text = "*=== " + $args[1] + " summary ===*`n`n"
 
-if ($result.StdOut -ne "")
+if (-not [string]::IsNullOrWhitespace($result.StdOut))
 {
     $text += "*Slack*`n" + $result.StdOut + "`n`n"
 }
 
-if ($ticketResult.StdOut -ne "")
+if (-not [string]::IsNullOrWhitespace($ticketResult.StdOut))
 {
     $text += "*ZenDesk*`n" + $ticketResult.StdOut + "`n`n"
 }
 
-if ($docsResult.StdOut -ne "")
+if (-not [string]::IsNullOrWhitespace($docsResult.StdOut))
 {
     $text += "*CDJ*`n" + $docsResult.StdOut
 }
