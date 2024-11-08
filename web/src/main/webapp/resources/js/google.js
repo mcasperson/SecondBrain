@@ -1,7 +1,9 @@
 document.addEventListener('DOMContentLoaded', (event) => {
+    const defaultPrompt = new URLSearchParams(window.location.search).get('prompt');
+
     document.getElementById('prompt').value = stripLineBreaks(
         stripLeadingWhitespace(
-            `Summarize the Google document with the id 195j9eDD3ccgjQRttHhJPymLJUCOUjs-jmwTrekvdjFE`))
+            defaultPrompt || `Summarize the Google document with the id 195j9eDD3ccgjQRttHhJPymLJUCOUjs-jmwTrekvdjFE`))
 
     buildButtons();
     selectTokenInput();
