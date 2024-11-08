@@ -19,6 +19,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -56,6 +57,10 @@ public class GoogleDocs implements Tool {
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
+
+    @Inject
+    @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
+    String limit;
 
     @Inject
     private OllamaClient ollamaClient;
@@ -237,7 +242,7 @@ public class GoogleDocs implements Tool {
         */
         return "<|start_header_id|>system<|end_header_id|>\n"
                 + "Google Document " + id + ":\n"
-                + doc
+                + doc.substring(0, Math.min(doc.length(), NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                 + "\n<|eot_id|>";
     }
 
