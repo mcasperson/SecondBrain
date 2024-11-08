@@ -1,6 +1,7 @@
 services:
   secondbrain:
     image: ghcr.io/mcasperson/secondbrain
+    restart: always
     ports:
       - "8080:8080"
       - "8181:8181"
@@ -19,6 +20,7 @@ services:
 
   ollama:
     image: ollama/ollama
+    restart: always
     volumes:
       - ollama:/root/.ollama
 volumes:
