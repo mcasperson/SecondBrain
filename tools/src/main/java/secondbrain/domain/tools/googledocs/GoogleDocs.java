@@ -77,6 +77,7 @@ public class GoogleDocs implements Tool {
                 Provides a tool to summarize and answer questions about Google Docs documents.
                 Sample prompts include:
                 Given Google document with ID '1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t', who is mentioned in the document?
+                You are given the Google document with ID '1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t'. Tell me who I talked to last week.
                 Summarise the Google document with ID 'wiefugwoeufbweofubi27928o71tro817fro86f31vgfe'.
                 """;
     }
