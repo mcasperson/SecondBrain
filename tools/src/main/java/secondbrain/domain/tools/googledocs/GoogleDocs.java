@@ -166,6 +166,11 @@ public class GoogleDocs implements Tool {
                 .get();
     }
 
+    /**
+     * Annotate the document with the closest matching sentence from the source context.
+     * @param document The document to annotate
+     * @return The annotated result
+     */
     private String annotateDocumentContext(final RagDocumentContext document) {
         final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
                 .recover(throwable -> 0.5f)
@@ -179,18 +184,26 @@ public class GoogleDocs implements Tool {
                 continue;
             }
 
+            /*
+                Find the closest matching sentence from the source context over the
+                minimum similarity threshold.
+             */
+
             var closestMatch = document.getClosestSentence(
                     sentenceVectorizer.vectorize(sentence).vector(),
                     similarityCalculator,
                     parsedMinSimilarity);
 
             if (closestMatch != null) {
+                // Annotate the original document
                 retValue = retValue.replace(sentence, sentence + " [" + index + "]");
 
+                // The start of the list of annotations has an extra line break
                 if (index == 1) {
                     retValue += System.lineSeparator();
                 }
 
+                // Make a note of the source sentence
                 retValue += System.lineSeparator()
                         + "* [" + index + "]: " + closestMatch.context();
 
