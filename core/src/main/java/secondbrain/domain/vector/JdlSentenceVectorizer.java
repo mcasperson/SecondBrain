@@ -7,6 +7,7 @@ import ai.djl.repository.zoo.ZooModel;
 import ai.djl.training.util.ProgressBar;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,7 +32,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
                 .build())
                 .mapTry(Criteria::loadModel)
                 .mapTry(ZooModel::newPredictor)
-                .onFailure((Throwable e) -> new RuntimeException("Error while loading model", e))
+                .onFailure((Throwable e) -> System.err.println("Failed to initialise predictor: " + ExceptionUtils.getRootCause(e)))
                 .getOrElse(() -> null);
     }
 
