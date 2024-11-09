@@ -74,6 +74,17 @@
             <artifactId>pytorch-model-zoo</artifactId>
         </dependency>
 
+        <!--
+        PyTorch native for macos x86 ended with 2.2.2
+        https://dev-discuss.pytorch.org/t/pytorch-macos-x86-builds-deprecation-starting-january-2024/1690
+        -->
+        <dependency>
+            <groupId>ai.djl.pytorch</groupId>
+            <artifactId>pytorch-native-cpu</artifactId>
+            <version>2.2.2</version>
+            <scope>runtime</scope>
+        </dependency>
+
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-docs</artifactId>
