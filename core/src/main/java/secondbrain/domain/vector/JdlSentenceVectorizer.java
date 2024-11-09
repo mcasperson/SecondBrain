@@ -31,10 +31,15 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
                 .build())
                 .mapTry(Criteria::loadModel)
                 .mapTry(ZooModel::newPredictor)
-                .getOrElseThrow((Throwable e) -> new RuntimeException("Error while loading model", e));
+                .onFailure((Throwable e) -> new RuntimeException("Error while loading model", e))
+                .getOrElse(() -> null);
     }
 
     public RagStringContext vectorize(final String text) {
+        if (predictor == null) {
+            throw new RuntimeException("Predictor is not initialized");
+        }
+
         return Try.of(() -> predictor.predict(text))
                 .map(embeddings -> new Vector(floatToDouble(embeddings)))
                 .map(vector -> new RagStringContext(text, vector))
