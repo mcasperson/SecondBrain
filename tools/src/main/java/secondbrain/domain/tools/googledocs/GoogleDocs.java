@@ -65,6 +65,10 @@ public class GoogleDocs implements Tool {
     String limit;
 
     @Inject
+    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
+    String minSimilarity;
+
+    @Inject
     private OllamaClient ollamaClient;
 
     @Inject
@@ -163,6 +167,10 @@ public class GoogleDocs implements Tool {
     }
 
     private String annotateDocumentContext(final RagDocumentContext document) {
+        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
+                .recover(throwable -> 0.5f)
+                .get();
+
         String retValue = document.document();
         int index = 1;
         for (var sentence : sentenceSplitter.splitDocument(document.document())) {
@@ -174,10 +182,15 @@ public class GoogleDocs implements Tool {
             var closestMatch = document.getClosestSentence(
                     sentenceVectorizer.vectorize(sentence).vector(),
                     similarityCalculator,
-                    0.5);
+                    parsedMinSimilarity);
 
             if (closestMatch != null) {
                 retValue = retValue.replace(sentence, sentence + " [" + index + "]");
+
+                if (index == 1) {
+                    retValue += System.lineSeparator();
+                }
+
                 retValue += System.lineSeparator()
                         + "* [" + index + "]: " + closestMatch.context();
 
