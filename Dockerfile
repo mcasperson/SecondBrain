@@ -7,8 +7,8 @@ COPY core ./core
 COPY service ./service
 COPY tools ./tools
 COPY web ./web
-RUN mvn clean install -DskipTests
-RUN cd web && mvn clean package -DskipTests
+RUN mvn clean install -DskipTests --batch-mode
+RUN cd web && mvn clean package -DskipTests --batch-mode
 
 # Based on https://hub.docker.com/r/payara/micro/dockerfile
 # Modified to use a GLIBC based image
