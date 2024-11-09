@@ -165,22 +165,26 @@ public class GoogleDocs implements Tool {
     private String annotateDocumentContext(final RagDocumentContext document) {
         String retValue = document.document();
         final List<String> responseSentences = sentenceSplitter.splitDocument(document.document());
-        for (var i = 0; i < responseSentences.size(); ++i) {
-            if (StringUtils.isBlank(responseSentences.get(i))) {
+        int index = 1;
+        for (var sentence : responseSentences) {
+
+            if (StringUtils.isBlank(sentence)) {
                 continue;
             }
 
             var closestMatch = document.getClosestSentence(
-                    sentenceVectorizer.vectorize(responseSentences.get(i)).vector(),
+                    sentenceVectorizer.vectorize(sentence).vector(),
                     similarityCalculator,
-                    0.9);
+                    0.7);
             if (closestMatch != null) {
                 retValue = retValue.replace(
-                        responseSentences.get(i),
-                        responseSentences.get(i) + " [" + (i+1) + "]");
+                        sentence,
+                        sentence + " [" + index + "]");
                 retValue += System.lineSeparator()
                         + System.lineSeparator()
-                        + "[" + (i+1) + "]: " + closestMatch.context();
+                        + "[" + index + "]: " + closestMatch.context();
+
+                ++index;
             }
         }
 
