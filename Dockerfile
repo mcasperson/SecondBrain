@@ -12,7 +12,7 @@ RUN cd web && mvn clean package -DskipTests
 
 FROM payara/micro
 USER root
-RUN apk add --no-cache libstdc++
+RUN apk add --no-cache libstdc++ gcompat
 USER payara
 COPY --from=build /usr/src/app/web/target/secondbrain-web-*.war $DEPLOY_DIR
 EXPOSE 8080
