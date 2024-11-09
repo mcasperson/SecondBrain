@@ -11,6 +11,9 @@ RUN mvn clean install -DskipTests
 RUN cd web && mvn clean package -DskipTests
 
 FROM payara/micro
+USER root
+RUN apk add --no-cache libstdc++
+USER payara
 COPY --from=build /usr/src/app/web/target/secondbrain-web-*.war $DEPLOY_DIR
 EXPOSE 8080
 EXPOSE 8181
