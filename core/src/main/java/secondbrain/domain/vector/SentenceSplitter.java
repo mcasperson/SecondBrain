@@ -1,5 +1,7 @@
 package secondbrain.domain.vector;
 
+import java.util.List;
+
 public interface SentenceSplitter {
-    String splitDocument(String document);
+    List<String> splitDocument(String document);
 }

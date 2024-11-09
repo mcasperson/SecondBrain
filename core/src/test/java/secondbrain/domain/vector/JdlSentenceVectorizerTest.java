@@ -9,7 +9,7 @@ public class JdlSentenceVectorizerTest {
     public void testVectorize() {
         final JdlSentenceVectorizer jdlSentenceVectorizer = new JdlSentenceVectorizer();
         final String text = "This is a test sentence.";
-        final Vector vector = jdlSentenceVectorizer.vectorize(text);
-        assertNotNull(vector);
+        final RagStringContext vector = jdlSentenceVectorizer.vectorize(text);
+        assertNotNull(vector.vector());
     }
 }

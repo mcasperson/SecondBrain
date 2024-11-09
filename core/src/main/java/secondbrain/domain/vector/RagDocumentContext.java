@@ -9,8 +9,10 @@ import java.util.PriorityQueue;
 import static java.util.Comparator.comparing;
 
 public record RagDocumentContext(String document, List<RagStringContext> sentences) {
-    @Nullable public RagStringContext getClosestSentence(final Vector vector, final SimilarityCalculator similarityCalculator) {
-
+    @Nullable public RagStringContext getClosestSentence(
+            final Vector vector,
+            final SimilarityCalculator similarityCalculator,
+            final double minSimilarity) {
         if (sentences.isEmpty()) {
             return null;
         }
@@ -30,6 +32,12 @@ public record RagDocumentContext(String document, List<RagStringContext> sentenc
             return null;
         }
 
-        return vectorToSimilarityPq.poll().getLeft();
+        var bestSimilarity = vectorToSimilarityPq.peek();
+
+        if (bestSimilarity.getRight() < minSimilarity) {
+            return null;
+        }
+
+        return bestSimilarity.getLeft();
     }
 }

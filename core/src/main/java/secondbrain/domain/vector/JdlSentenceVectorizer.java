@@ -5,10 +5,12 @@ import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.training.util.ProgressBar;
 import io.vavr.control.Try;
+import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@ApplicationScoped
 public class JdlSentenceVectorizer implements SentenceVectorizer {
     String DJL_MODEL = "sentence-transformers/all-MiniLM-L6-v2";
     String DJL_PATH = "djl://ai.djl.huggingface.pytorch/" + DJL_MODEL;
@@ -22,7 +24,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer {
         return options;
     }
 
-    public Vector vectorize(final String text) {
+    public RagStringContext vectorize(final String text) {
         return Try.of(() ->
                         Criteria.builder()
                                 .setTypes(String.class, float[].class)
@@ -35,6 +37,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer {
                 .mapTry(ZooModel::newPredictor)
                 .mapTry(predictor -> predictor.predict(text))
                 .map(embeddings -> new Vector(floatToDouble(embeddings)))
+                .map(vector -> new RagStringContext(text, vector))
                 .getOrElseThrow((Throwable e) -> new RuntimeException("Error while getting embeddings", e));
     }
 
