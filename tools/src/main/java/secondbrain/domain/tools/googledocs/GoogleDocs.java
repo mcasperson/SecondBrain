@@ -181,8 +181,7 @@ public class GoogleDocs implements Tool {
                         sentence,
                         sentence + " [" + index + "]");
                 retValue += System.lineSeparator()
-                        + System.lineSeparator()
-                        + "[" + index + "]: " + closestMatch.context();
+                        + "* [" + index + "]: " + closestMatch.context();
 
                 ++index;
             }
