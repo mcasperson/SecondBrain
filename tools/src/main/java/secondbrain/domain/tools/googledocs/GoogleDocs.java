@@ -216,11 +216,10 @@ public class GoogleDocs implements Tool {
     }
 
     private RagDocumentContext getDocumentContext(final String document) {
-        final List<String> sentences = sentenceSplitter.splitDocument(document);
-
-        return Try.of(() -> new RagDocumentContext(document, sentences.stream()
-                .map(sentenceVectorizer::vectorize)
-                .collect(Collectors.toList())))
+        return Try.of(() -> sentenceSplitter.splitDocument(document))
+                .map(sentences -> new RagDocumentContext(document, sentences.stream()
+                    .map(sentenceVectorizer::vectorize)
+                    .collect(Collectors.toList())))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext(document, List.of()))
