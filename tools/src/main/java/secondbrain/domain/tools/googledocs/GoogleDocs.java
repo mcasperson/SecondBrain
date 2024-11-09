@@ -187,13 +187,14 @@ public class GoogleDocs implements Tool {
 
             /*
                 Find the closest matching sentence from the source context over the
-                minimum similarity threshold.
+                minimum similarity threshold. Ignore any failures.
              */
-
-            var closestMatch = document.getClosestSentence(
+            var closestMatch = Try.of(() -> document.getClosestSentence(
                     sentenceVectorizer.vectorize(sentence).vector(),
                     similarityCalculator,
-                    parsedMinSimilarity);
+                    parsedMinSimilarity))
+                    .onFailure(throwable -> System.err.println("Failed to get closest sentence: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                    .getOrElse(() -> null);
 
             if (closestMatch != null) {
                 // Annotate the original document
