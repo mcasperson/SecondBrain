@@ -14,6 +14,7 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
@@ -24,6 +25,7 @@ import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.vector.*;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
@@ -63,6 +65,10 @@ public class GoogleDocs implements Tool {
     String limit;
 
     @Inject
+    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
+    String minSimilarity;
+
+    @Inject
     private OllamaClient ollamaClient;
 
     @Inject
@@ -70,6 +76,15 @@ public class GoogleDocs implements Tool {
 
     @Inject
     private ArgsAccessor argsAccessor;
+
+    @Inject
+    private SentenceSplitter sentenceSplitter;
+
+    @Inject
+    private SimilarityCalculator similarityCalculator;
+
+    @Inject
+    private SentenceVectorizer sentenceVectorizer;
 
     @Override
     public String getName() {
@@ -138,10 +153,11 @@ public class GoogleDocs implements Tool {
                         .build())
                 .mapTry(service -> service.documents().get(documentId).execute())
                 .map(this::getDocumentText)
+                .map(this::getDocumentContext)
                 .map(doc -> documentToContext(doc, documentId))
                 .map(doc -> buildToolPrompt(doc, prompt))
                 .map(this::callOllama)
-                .map(OllamaResponse::response)
+                .map(this::annotateDocumentContext)
                 .map(response -> response
                         + System.lineSeparator() + System.lineSeparator()
                         + "* [Document](https://docs.google.com/document/d/" + documentId + ")"
@@ -150,6 +166,60 @@ public class GoogleDocs implements Tool {
                 .get();
     }
 
+    /**
+     * Annotate the document with the closest matching sentence from the source context.
+     * @param document The document to annotate
+     * @return The annotated result
+     */
+    private String annotateDocumentContext(final RagDocumentContext document) {
+        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
+                .recover(throwable -> 0.5f)
+                .get();
+
+        String retValue = document.document();
+        int index = 1;
+        for (var sentence : sentenceSplitter.splitDocument(document.document())) {
+
+            if (StringUtils.isBlank(sentence)) {
+                continue;
+            }
+
+            /*
+                Find the closest matching sentence from the source context over the
+                minimum similarity threshold.
+             */
+
+            var closestMatch = document.getClosestSentence(
+                    sentenceVectorizer.vectorize(sentence).vector(),
+                    similarityCalculator,
+                    parsedMinSimilarity);
+
+            if (closestMatch != null) {
+                // Annotate the original document
+                retValue = retValue.replace(sentence, sentence + " [" + index + "]");
+
+                // The start of the list of annotations has an extra line break
+                if (index == 1) {
+                    retValue += System.lineSeparator();
+                }
+
+                // Make a note of the source sentence
+                retValue += System.lineSeparator()
+                        + "* [" + index + "]: " + closestMatch.context();
+
+                ++index;
+            }
+        }
+
+        return retValue;
+    }
+
+    private RagDocumentContext getDocumentContext(final String document) {
+        final List<String> sentences = sentenceSplitter.splitDocument(document);
+        return new RagDocumentContext(document, sentences.stream()
+                .map(sentenceVectorizer::vectorize)
+                .collect(Collectors.toList()));
+    }
 
     private HttpRequestInitializer getCredentials(final String accessToken, final Date expires) {
         final GoogleCredentials credentials = GoogleCredentials.create(new AccessToken(accessToken, expires));
@@ -226,29 +296,31 @@ public class GoogleDocs implements Tool {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
     }
 
-    private OllamaResponse callOllama(final String llmPrompt) {
+    private RagDocumentContext callOllama(final RagDocumentContext llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
-                        new OllamaGenerateBody(model, llmPrompt, false)))
+                        new OllamaGenerateBody(model, llmPrompt.document(), false)))
+                .map(response -> new RagDocumentContext(response.response(), llmPrompt.sentences()))
                 .get();
     }
 
 
-    private String documentToContext(final String doc, final String id) {
+    private RagDocumentContext documentToContext(final RagDocumentContext doc, final String id) {
         /*
         See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
         on the preferred format (or lack thereof) for RAG context.
         */
-        return "<|start_header_id|>system<|end_header_id|>\n"
+        return new RagDocumentContext("<|start_header_id|>system<|end_header_id|>\n"
                 + "Google Document " + id + ":\n"
-                + doc.substring(0, Math.min(doc.length(), NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
-                + "\n<|eot_id|>";
+                + doc.document().substring(0, Math.min(doc.document().length(), NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
+                + "\n<|eot_id|>",
+                doc.sentences());
     }
 
 
-    public String buildToolPrompt(final String context, final String prompt) {
-        return """
+    public RagDocumentContext buildToolPrompt(final RagDocumentContext context, final String prompt) {
+        return new RagDocumentContext("""
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
                 You are an expert in reading technical Google Documents.
@@ -263,10 +335,21 @@ public class GoogleDocs implements Tool {
                 <|eot_id|>
                 """
                 + "\n<|start_header_id|>system<|end_header_id|>The current date is " + LocalDateTime.now(ZoneId.systemDefault()) + ".<|eot_id|>"
-                + context
+                + context.document()
                 + "\n<|start_header_id|>user<|end_header_id|>"
                 + prompt
                 + "<|eot_id|>"
-                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading();
+                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading(),
+                context.sentences());
+    }
+
+    static class IndexedResult {
+        int index;
+        String result;
+
+        IndexedResult(int index, String result) {
+            this.index = index;
+            this.result = result;
+        }
     }
 }

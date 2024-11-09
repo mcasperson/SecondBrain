@@ -16,6 +16,11 @@
         <maven.compiler.release>21</maven.compiler.release>
         <jakarta.version>10.0.0</jakarta.version>
         <microprofile.config.version>3.1</microprofile.config.version>
+        <!--
+        Note macos x86 is not supported from 0.30.0 onwards
+        https://github.com/deepjavalibrary/djl/blob/master/engines/pytorch/pytorch-engine/README.md#macos
+        -->
+        <djl.version>0.29.0</djl.version>
     </properties>
 
     <modules>
@@ -26,8 +31,22 @@
         <module>web</module>
     </modules>
 
+    <repositories>
+        <repository>
+            <id>djl.ai</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+        </repository>
+    </repositories>
+
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>ai.djl</groupId>
+                <artifactId>bom</artifactId>
+                <version>${djl.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
@@ -39,6 +58,32 @@
     </dependencyManagement>
 
     <dependencies>
+
+        <dependency>
+            <groupId>ai.djl</groupId>
+            <artifactId>api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>ai.djl.huggingface</groupId>
+            <artifactId>tokenizers</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>ai.djl.pytorch</groupId>
+            <artifactId>pytorch-model-zoo</artifactId>
+        </dependency>
+
+        <!--
+        PyTorch native for macos x86 ended with 2.2.2
+        https://dev-discuss.pytorch.org/t/pytorch-macos-x86-builds-deprecation-starting-january-2024/1690
+        -->
+        <dependency>
+            <groupId>ai.djl.pytorch</groupId>
+            <artifactId>pytorch-native-cpu</artifactId>
+            <version>2.2.2</version>
+            <scope>runtime</scope>
+        </dependency>
 
         <dependency>
             <groupId>com.google.apis</groupId>
