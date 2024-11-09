@@ -172,7 +172,7 @@ public class GoogleDocs implements Tool {
             if (closestMatch != null) {
                 retValue = retValue.replace(
                         responseSentences.get(i),
-                        responseSentences.get(i) + "[" + (i+1) + "]");
+                        responseSentences.get(i) + " [" + (i+1) + "]");
                 retValue += System.lineSeparator()
                         + System.lineSeparator()
                         + "[" + (i+1) + "]: " + closestMatch.context();
