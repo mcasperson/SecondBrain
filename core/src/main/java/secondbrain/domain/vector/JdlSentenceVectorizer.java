@@ -11,6 +11,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Use the Java Deep Learning library to vectorize sentences.
+ */
 @ApplicationScoped
 public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable {
     private static final String DJL_MODEL = "sentence-transformers/all-MiniLM-L6-v2";
@@ -29,15 +32,6 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
                 .mapTry(Criteria::loadModel)
                 .mapTry(ZooModel::newPredictor)
                 .getOrElseThrow((Throwable e) -> new RuntimeException("Error while loading model", e));
-    }
-
-    private Map<String, String> getDJLConfig() {
-        final Map<String, String> options = new HashMap<String, String>();
-        options.put("addSpecialTokens", "false");
-        options.put("padding", "false");
-        options.put("modelMaxLength", "100000");
-        options.put("maxLength", "100000");
-        return options;
     }
 
     public RagStringContext vectorize(final String text) {
