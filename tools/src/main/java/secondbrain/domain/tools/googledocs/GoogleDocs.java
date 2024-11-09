@@ -15,6 +15,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
@@ -216,9 +217,14 @@ public class GoogleDocs implements Tool {
 
     private RagDocumentContext getDocumentContext(final String document) {
         final List<String> sentences = sentenceSplitter.splitDocument(document);
-        return new RagDocumentContext(document, sentences.stream()
+
+        return Try.of(() -> new RagDocumentContext(document, sentences.stream()
                 .map(sentenceVectorizer::vectorize)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList())))
+                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                // If we can't vectorize the sentences, just return the document
+                .recover(e -> new RagDocumentContext(document, List.of()))
+                .get();
     }
 
     private HttpRequestInitializer getCredentials(final String accessToken, final Date expires) {
