@@ -12,7 +12,7 @@ RUN cd web && mvn clean package -DskipTests
 
 # Based on https://hub.docker.com/r/payara/micro/dockerfile
 # Modified to use a GLIBC based image
-FROM azul/zulu-openjdk:11-jre
+FROM azul/zulu-openjdk:21-jre
 
 RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
 
@@ -34,7 +34,7 @@ ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=90.0", "-j
 CMD ["--deploymentDir", "/opt/payara/deployments"]
 
 # Download specific
-ARG PAYARA_VERSION="5.201"
+ARG PAYARA_VERSION="6.2024.10"
 ENV PAYARA_VERSION="$PAYARA_VERSION"
 RUN wget --no-verbose -O ${PAYARA_HOME}/payara-micro.jar https://repo1.maven.org/maven2/fish/payara/extras/payara-micro/${PAYARA_VERSION}/payara-micro-${PAYARA_VERSION}.jar
 
