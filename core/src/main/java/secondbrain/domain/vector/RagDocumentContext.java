@@ -8,7 +8,19 @@ import java.util.PriorityQueue;
 
 import static java.util.Comparator.comparing;
 
+/**
+ * Represents a document made up of many individual context strings.
+ * @param document The document
+ * @param sentences The individual context strings that make up the documents
+ */
 public record RagDocumentContext(String document, List<RagStringContext> sentences) {
+    /**
+     * Given a vector, find the closest sentence in the document.
+     * @param vector The vector to compare against
+     * @param similarityCalculator The similarity calculator to use
+     * @param minSimilarity The minimum similarity to consider
+     * @return The closest sentence, or null if none are close enough
+     */
     @Nullable public RagStringContext getClosestSentence(
             final Vector vector,
             final SimilarityCalculator similarityCalculator,

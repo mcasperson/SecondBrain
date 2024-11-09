@@ -2,6 +2,9 @@ package secondbrain.domain.vector;
 
 import jakarta.enterprise.context.ApplicationScoped;
 
+/**
+ * Calculate the similarity between two vectors.
+ */
 @ApplicationScoped
 public class CosineSimilarityCalculator implements SimilarityCalculator {
     @Override

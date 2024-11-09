@@ -5,6 +5,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.List;
 import java.util.stream.Stream;
 
+/**
+ * Splits a document into individual sentences based on punctuation and line breaks.
+ */
 @ApplicationScoped
 public class SimpleSentenceSplitter implements SentenceSplitter {
     @Override

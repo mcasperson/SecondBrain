@@ -4,6 +4,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Represents a vector of double values.
+ * @param value The list of double values
+ */
 public record Vector(List<Double> value) {
 
     public Vector(final Double... value) {
