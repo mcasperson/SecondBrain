@@ -164,9 +164,8 @@ public class GoogleDocs implements Tool {
 
     private String annotateDocumentContext(final RagDocumentContext document) {
         String retValue = document.document();
-        final List<String> responseSentences = sentenceSplitter.splitDocument(document.document());
         int index = 1;
-        for (var sentence : responseSentences) {
+        for (var sentence : sentenceSplitter.splitDocument(document.document())) {
 
             if (StringUtils.isBlank(sentence)) {
                 continue;
@@ -175,11 +174,10 @@ public class GoogleDocs implements Tool {
             var closestMatch = document.getClosestSentence(
                     sentenceVectorizer.vectorize(sentence).vector(),
                     similarityCalculator,
-                    0.7);
+                    0.5);
+
             if (closestMatch != null) {
-                retValue = retValue.replace(
-                        sentence,
-                        sentence + " [" + index + "]");
+                retValue = retValue.replace(sentence, sentence + " [" + index + "]");
                 retValue += System.lineSeparator()
                         + "* [" + index + "]: " + closestMatch.context();
 
