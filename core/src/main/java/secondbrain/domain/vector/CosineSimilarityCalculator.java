@@ -1,5 +1,8 @@
 package secondbrain.domain.vector;
 
+import jakarta.enterprise.context.ApplicationScoped;
+
+@ApplicationScoped
 public class CosineSimilarityCalculator implements SimilarityCalculator {
     @Override
     public Double calculateSimilarity(final Vector v1, final Vector v2) {

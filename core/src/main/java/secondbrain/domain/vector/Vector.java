@@ -10,6 +10,10 @@ public record Vector(List<Double> value) {
         this(Arrays.asList(value));
     }
 
+    public Vector(final double[] values) {
+        this(Arrays.stream(values).boxed().toList());
+    }
+
     public Vector(final List<Double> value) {
         this.value = Objects.requireNonNull(value);
     }
@@ -41,4 +45,6 @@ public record Vector(List<Double> value) {
                         .sum()
         );
     }
+
+
 }

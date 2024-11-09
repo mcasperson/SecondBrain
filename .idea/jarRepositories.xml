@@ -27,6 +27,11 @@
       <option name="url" value="https://repo1.maven.org/maven2" />
     </remote-repository>
     <remote-repository>
+      <option name="id" value="djl.ai" />
+      <option name="name" value="djl.ai" />
+      <option name="url" value="https://oss.sonatype.org/content/repositories/snapshots/" />
+    </remote-repository>
+    <remote-repository>
       <option name="id" value="payara" />
       <option name="name" value="payara" />
       <option name="url" value="https://nexus.payara.fish/repository/payara-artifacts/" />
