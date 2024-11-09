@@ -3,6 +3,7 @@ package secondbrain.domain.vector;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 @ApplicationScoped
 public class SimpleSentenceSplitter implements SentenceSplitter {
@@ -12,6 +13,8 @@ public class SimpleSentenceSplitter implements SentenceSplitter {
             return List.of();
         }
 
-        return List.of(document.split("\\r\\n|\\r|\\n|\\.|;|!|\\?"));
+        return Stream.of(document.split("\\r\\n|\\r|\\n|\\.|;|!|\\?"))
+                .filter(sentence -> !sentence.isBlank())
+                .toList();
     }
 }

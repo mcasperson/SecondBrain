@@ -14,6 +14,7 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
@@ -165,6 +166,10 @@ public class GoogleDocs implements Tool {
         String retValue = document.document();
         final List<String> responseSentences = sentenceSplitter.splitDocument(document.document());
         for (var i = 0; i < responseSentences.size(); ++i) {
+            if (StringUtils.isBlank(responseSentences.get(i))) {
+                continue;
+            }
+
             var closestMatch = document.getClosestSentence(
                     sentenceVectorizer.vectorize(responseSentences.get(i)).vector(),
                     similarityCalculator,

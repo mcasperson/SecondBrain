@@ -1,6 +1,7 @@
 package secondbrain.domain.vector;
 
 import ai.djl.huggingface.translator.TextEmbeddingTranslatorFactory;
+import ai.djl.inference.Predictor;
 import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.training.util.ProgressBar;
@@ -11,9 +12,24 @@ import java.util.HashMap;
 import java.util.Map;
 
 @ApplicationScoped
-public class JdlSentenceVectorizer implements SentenceVectorizer {
-    String DJL_MODEL = "sentence-transformers/all-MiniLM-L6-v2";
-    String DJL_PATH = "djl://ai.djl.huggingface.pytorch/" + DJL_MODEL;
+public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable {
+    private static final String DJL_MODEL = "sentence-transformers/all-MiniLM-L6-v2";
+    private static final String DJL_PATH = "djl://ai.djl.huggingface.pytorch/" + DJL_MODEL;
+
+    private Predictor<String, float[]> predictor;
+
+    public JdlSentenceVectorizer() {
+        this.predictor = Try.of(() -> Criteria.builder()
+                .setTypes(String.class, float[].class)
+                .optModelUrls(DJL_PATH)
+                .optEngine("PyTorch")
+                .optTranslatorFactory(new TextEmbeddingTranslatorFactory())
+                .optProgress(new ProgressBar())
+                .build())
+                .mapTry(Criteria::loadModel)
+                .mapTry(ZooModel::newPredictor)
+                .getOrElseThrow((Throwable e) -> new RuntimeException("Error while loading model", e));
+    }
 
     private Map<String, String> getDJLConfig() {
         final Map<String, String> options = new HashMap<String, String>();
@@ -25,17 +41,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer {
     }
 
     public RagStringContext vectorize(final String text) {
-        return Try.of(() ->
-                        Criteria.builder()
-                                .setTypes(String.class, float[].class)
-                                .optModelUrls(DJL_PATH)
-                                .optEngine("PyTorch")
-                                .optTranslatorFactory(new TextEmbeddingTranslatorFactory())
-                                .optProgress(new ProgressBar())
-                                .build())
-                .mapTry(Criteria::loadModel)
-                .mapTry(ZooModel::newPredictor)
-                .mapTry(predictor -> predictor.predict(text))
+        return Try.of(() -> predictor.predict(text))
                 .map(embeddings -> new Vector(floatToDouble(embeddings)))
                 .map(vector -> new RagStringContext(text, vector))
                 .getOrElseThrow((Throwable e) -> new RuntimeException("Error while getting embeddings", e));
@@ -47,5 +53,10 @@ public class JdlSentenceVectorizer implements SentenceVectorizer {
             doubleArray[i] = (double) values[i];
         }
         return doubleArray;
+    }
+
+    @Override
+    public void close() throws Exception {
+        predictor.close();
     }
 }
