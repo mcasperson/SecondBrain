@@ -14,7 +14,7 @@ FROM payara/micro
 USER root
 # Pytorch, used by the Java Deep Learning library (JDL), assumes many GLIBC libraries.
 # We need to install gcompat to provide these libraries.
-RUN apk add --no-cache libstdc++ gcompat
+RUN apk add --no-cache libstdc++ gcompat libgomp
 USER payara
 COPY --from=build /usr/src/app/web/target/secondbrain-web-*.war $DEPLOY_DIR
 EXPOSE 8080
