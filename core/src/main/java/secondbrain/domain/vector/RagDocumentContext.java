@@ -73,6 +73,7 @@ public record RagDocumentContext(String document, List<RagStringContext> sentenc
      * @return The annotated result
      */
     public String annotateDocumentContext(final float minSimilarity,
+                                          final int minWords,
                                           final SentenceSplitter sentenceSplitter,
                                           final SimilarityCalculator similarityCalculator,
                                           final SentenceVectorizer sentenceVectorizer) {
@@ -81,6 +82,14 @@ public record RagDocumentContext(String document, List<RagStringContext> sentenc
         for (var sentence : sentenceSplitter.splitDocument(document())) {
 
             if (StringUtils.isBlank(sentence)) {
+                continue;
+            }
+
+            /*
+                Skip sentences that are too short to be useful. This avoids trying to match
+                short items in bullet point lists.
+             */
+            if (sentence.split("\\s+").length < minWords) {
                 continue;
             }
 

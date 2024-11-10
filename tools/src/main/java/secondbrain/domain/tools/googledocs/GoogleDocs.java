@@ -162,7 +162,7 @@ public class GoogleDocs implements Tool {
                 .map(doc -> documentToContext(doc, documentId))
                 .map(doc -> buildToolPrompt(doc, prompt))
                 .map(this::callOllama)
-                .map(result -> result.annotateDocumentContext(parsedMinSimilarity, sentenceSplitter, similarityCalculator, sentenceVectorizer))
+                .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 5, sentenceSplitter, similarityCalculator, sentenceVectorizer))
                 .map(response -> response
                         + System.lineSeparator() + System.lineSeparator()
                         + "* [Document](https://docs.google.com/document/d/" + documentId + ")"
