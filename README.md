@@ -45,6 +45,7 @@ Secondbrain is distributed as a Docker image and run in parallel with Ollama usi
 5. Create
    a [GitHub access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
 6. Open https://localhost:8181, paste in your access token, and click `Submit` to answer the default query
+7. Optional: Run `docker exec secondbrain-ollama-1 ollama ps` to see the status of the Ollama service
 
 ## Project Structure
 
