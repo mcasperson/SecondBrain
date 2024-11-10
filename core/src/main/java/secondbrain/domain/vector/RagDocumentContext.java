@@ -12,7 +12,7 @@ import java.util.PriorityQueue;
 import static java.util.Comparator.comparing;
 
 /**
- * Represents a document made up of many individual context strings.
+ * Represents a document made up of many individual context sentences.
  * <p>
  * This record is used to capture the information used to answer a prompt through many different stages:
  * - The original document
@@ -68,7 +68,10 @@ public record RagDocumentContext(String document, List<RagStringContext> sentenc
     }
 
     /**
-     * Annotate the document with the closest matching sentence from the source sentences..
+     * Annotate the document with the closest matching sentence from the source sentences.
+     * This overcomes one of the problems with LLMs where you are not quite sure where it
+     * got its answer from. By annotating the document with the source sentence, you can
+     * quickly determine where the LLMs answer came from.
      *
      * @return The annotated result
      */

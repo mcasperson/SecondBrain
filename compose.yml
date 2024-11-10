@@ -16,6 +16,8 @@ services:
       SB_OLLAMA_URL: http://ollama:11434
       # Set this to true to enable debug logging
       SB_TOOLS_DEBUG: false
+      # Define the model to use by SecondBrain
+      SB_OLLAMA_MODEL: llama3.2
     pull_policy: always
 
   ollama:
@@ -23,7 +25,7 @@ services:
     restart: always
     volumes:
       - ollama:/root/.ollama
-# Uncomment these lines to enable GPU support
+    # Uncomment these lines to enable GPU support
 #    deploy:
 #      resources:
 #        reservations:
