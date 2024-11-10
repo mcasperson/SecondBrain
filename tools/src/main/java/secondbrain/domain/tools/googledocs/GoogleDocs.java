@@ -14,7 +14,6 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -26,10 +25,12 @@ import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.vector.*;
+import secondbrain.domain.vector.RagDocumentContext;
+import secondbrain.domain.vector.SentenceSplitter;
+import secondbrain.domain.vector.SentenceVectorizer;
+import secondbrain.domain.vector.SimilarityCalculator;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaResponse;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -125,6 +126,9 @@ public class GoogleDocs implements Tool {
                 .recover(error -> defaultExpires)
                 .get();
 
+        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
+                .recover(throwable -> 0.5f)
+                .get();
 
         final Try<HttpRequestInitializer> token = Try
                 // Start assuming an encrypted access token was sent from the browser
@@ -158,7 +162,7 @@ public class GoogleDocs implements Tool {
                 .map(doc -> documentToContext(doc, documentId))
                 .map(doc -> buildToolPrompt(doc, prompt))
                 .map(this::callOllama)
-                .map(this::annotateDocumentContext)
+                .map(result -> result.annotateDocumentContext(parsedMinSimilarity, sentenceSplitter, similarityCalculator, sentenceVectorizer))
                 .map(response -> response
                         + System.lineSeparator() + System.lineSeparator()
                         + "* [Document](https://docs.google.com/document/d/" + documentId + ")"
@@ -167,60 +171,12 @@ public class GoogleDocs implements Tool {
                 .get();
     }
 
-    /**
-     * Annotate the document with the closest matching sentence from the source context.
-     * @param document The document to annotate
-     * @return The annotated result
-     */
-    private String annotateDocumentContext(final RagDocumentContext document) {
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
-                .get();
-
-        String retValue = document.document();
-        int index = 1;
-        for (var sentence : sentenceSplitter.splitDocument(document.document())) {
-
-            if (StringUtils.isBlank(sentence)) {
-                continue;
-            }
-
-            /*
-                Find the closest matching sentence from the source context over the
-                minimum similarity threshold. Ignore any failures.
-             */
-            var closestMatch = Try.of(() -> document.getClosestSentence(
-                    sentenceVectorizer.vectorize(sentence).vector(),
-                    similarityCalculator,
-                    parsedMinSimilarity))
-                    .onFailure(throwable -> System.err.println("Failed to get closest sentence: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                    .getOrElse(() -> null);
-
-            if (closestMatch != null) {
-                // Annotate the original document
-                retValue = retValue.replace(sentence, sentence + " [" + index + "]");
-
-                // The start of the list of annotations has an extra line break
-                if (index == 1) {
-                    retValue += System.lineSeparator();
-                }
-
-                // Make a note of the source sentence
-                retValue += System.lineSeparator()
-                        + "* [" + index + "]: " + closestMatch.context();
-
-                ++index;
-            }
-        }
-
-        return retValue;
-    }
 
     private RagDocumentContext getDocumentContext(final String document) {
         return Try.of(() -> sentenceSplitter.splitDocument(document))
                 .map(sentences -> new RagDocumentContext(document, sentences.stream()
-                    .map(sentenceVectorizer::vectorize)
-                    .collect(Collectors.toList())))
+                        .map(sentenceVectorizer::vectorize)
+                        .collect(Collectors.toList())))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext(document, List.of()))
