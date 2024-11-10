@@ -29,3 +29,5 @@ tools/target
 web/target
 cli/target
 out
+
+compose-*.yml
