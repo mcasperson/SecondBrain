@@ -11,6 +11,8 @@ import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
 import secondbrain.domain.response.ResponseValidation;
 
+import java.util.logging.Logger;
+
 import static io.vavr.control.Try.of;
 
 @ApplicationScoped
@@ -22,7 +24,14 @@ public class OllamaClient {
     @Inject
     private ResponseValidation responseValidation;
 
+    @Inject
+    private Logger logger;
+
     public OllamaResponse getTools(final Client client, final OllamaGenerateBody body) {
+        logger.info("OllamaClient.getTools()");
+        logger.info("Called with prompt: " + body.prompt());
+        logger.info("Called with model: " + body.model());
+
         return Try.withResources(() -> client.target(uri + "/api/generate")
                         .request()
                         .header("Content-Type", "application/json")

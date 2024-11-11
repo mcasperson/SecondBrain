@@ -40,6 +40,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.*;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -69,6 +70,9 @@ public class GoogleDocs implements Tool {
     @Inject
     @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
     String minSimilarity;
+
+    @Inject
+    private Logger logger;
 
     @Inject
     private OllamaClient ollamaClient;
