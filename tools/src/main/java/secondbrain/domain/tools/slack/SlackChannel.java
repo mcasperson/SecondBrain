@@ -11,6 +11,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
@@ -19,9 +20,12 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.vector.RagDocumentContext;
+import secondbrain.domain.vector.SentenceSplitter;
+import secondbrain.domain.vector.SentenceVectorizer;
+import secondbrain.domain.vector.SimilarityCalculator;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaResponse;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -30,6 +34,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Dependent
 public class SlackChannel implements Tool {
@@ -50,6 +55,19 @@ public class SlackChannel implements Tool {
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
     Optional<String> slackAccessToken;
+
+    @Inject
+    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
+    String minSimilarity;
+
+    @Inject
+    private SentenceSplitter sentenceSplitter;
+
+    @Inject
+    private SimilarityCalculator similarityCalculator;
+
+    @Inject
+    private SentenceVectorizer sentenceVectorizer;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -84,6 +102,10 @@ public class SlackChannel implements Tool {
                 .replaceFirst("^#", "");
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "7")))
                 .recover(throwable -> 7)
+                .get();
+
+        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
+                .recover(throwable -> 0.5f)
                 .get();
 
         final String oldest = Long.valueOf(LocalDateTime.now(ZoneId.systemDefault())
@@ -141,10 +163,12 @@ public class SlackChannel implements Tool {
             return "The user and channel IDs could not be replaced";
         }
 
-        final String messageContext = buildToolPrompt(messagesWithUsersReplaced.get(), prompt);
 
-        return Try.of(() -> callOllama(messageContext))
-                .map(response -> response.response()
+        return Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get()))
+                .map(messageContext -> buildToolPrompt(messageContext, prompt))
+                .map(this::callOllama)
+                .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 5, sentenceSplitter, similarityCalculator, sentenceVectorizer))
+                .map(response -> response
                         + System.lineSeparator() + System.lineSeparator()
                         + "* [Slack Channel](https://app.slack.com/client/" + id.get().teamId() + "/" + id.get().channelId() + ")")
                 .recover(throwable -> "Failed to call Ollama: " + throwable.getMessage())
@@ -162,8 +186,8 @@ public class SlackChannel implements Tool {
     }
 
 
-    private String buildToolPrompt(final String context, final String prompt) {
-        return """
+    private RagDocumentContext buildToolPrompt(final RagDocumentContext context, final String prompt) {
+        return new RagDocumentContext("""
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
                 You are professional agent that understands Slack conversations.
@@ -172,10 +196,22 @@ public class SlackChannel implements Tool {
                 You must consider any message with the tokens "<!here>" or "<!channel>" to be important.
                 Here are the messages:
                 """
-                + context.substring(0, Math.min(context.length(), NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
+                + context.document().substring(0, Math.min(context.document().length(), NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                 + "<|eot_id|><|start_header_id|>user<|end_header_id|>"
                 + prompt
-                + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>".stripLeading();
+                + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>".stripLeading(),
+                context.sentences());
+    }
+
+    private RagDocumentContext getDocumentContext(final String document) {
+        return Try.of(() -> sentenceSplitter.splitDocument(document))
+                .map(sentences -> new RagDocumentContext(document, sentences.stream()
+                        .map(sentenceVectorizer::vectorize)
+                        .collect(Collectors.toList())))
+                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                // If we can't vectorize the sentences, just return the document
+                .recover(e -> new RagDocumentContext(document, List.of()))
+                .get();
     }
 
 
@@ -187,11 +223,13 @@ public class SlackChannel implements Tool {
     }
 
 
-    private OllamaResponse callOllama(final String llmPrompt) {
+    private RagDocumentContext callOllama(final RagDocumentContext llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
-                        new OllamaGenerateBody(model, llmPrompt, false))).get();
+                        new OllamaGenerateBody(model, llmPrompt.document(), false)))
+                .map(response -> new RagDocumentContext(response.response(), llmPrompt.sentences()))
+                .get();
     }
 
 
