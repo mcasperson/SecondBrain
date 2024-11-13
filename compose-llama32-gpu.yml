@@ -1,0 +1,42 @@
+services:
+  secondbrain:
+    image: ghcr.io/mcasperson/secondbrain
+    restart: always
+    ports:
+      - "8080:8080"
+      - "8181:8181"
+    environment:
+      # These values must be updated to use the details of your own Slack App
+      # if you wish to use the Oauth login flow: https://api.slack.com/apps
+      SB_SLACK_CLIENTID: 1234567890.1234567890
+      SB_SLACK_CLIENTSECRET: 123456789
+      # You should change this to a random value
+      SB_ENCRYPTION_PASSWORD: 123456789
+      # This value refers to the sibling container
+      SB_OLLAMA_URL: http://ollama:11434
+      # Set this to true to enable debug logging
+      SB_TOOLS_DEBUG: false
+      # Define the model to use by SecondBrain.
+      # Try "llama3.1" for a larger model, or "llama3.2" for a smaller model.
+      # Remember, each model needs to be pulled with the command below.
+      # docker exec secondbrain-ollama-1 ollama pull <model name>
+      # for example
+      # docker exec secondbrain-ollama-1 ollama pull llama3.2
+      SB_OLLAMA_MODEL: llama3.2
+    pull_policy: always
+
+  ollama:
+    image: ollama/ollama
+    restart: always
+    volumes:
+      - ollama:/root/.ollama
+    # Uncomment these lines to enable GPU support
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
+volumes:
+  ollama:
