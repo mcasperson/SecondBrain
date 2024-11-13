@@ -30,7 +30,6 @@ services:
     restart: always
     volumes:
       - ollama:/root/.ollama
-    # Uncomment these lines to enable GPU support
     deploy:
       resources:
         reservations:
