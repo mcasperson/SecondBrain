@@ -12,6 +12,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
+import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -19,11 +20,9 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaResponse;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Dependent
 public class SlackSearch implements Tool {
@@ -46,6 +45,9 @@ public class SlackSearch implements Tool {
     Optional<String> slackAccessToken;
 
     @Inject
+    private KeywordExtractor keywordExtractor;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -64,7 +66,7 @@ public class SlackSearch implements Tool {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("keywords", "Comma separated list of keywords defined in the prompt", "")
+                new ToolArguments("keywords", "Optional comma separated list of keywords defined in the prompt", "")
         );
     }
 
@@ -74,13 +76,16 @@ public class SlackSearch implements Tool {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final String keywordsRaw = argsAccessor.getArgument(arguments, "keywords", "").trim();
+        final List<String> keywords = Stream.of(argsAccessor
+                        .getArgument(arguments, "keywords", "")
+                        .split(","))
+                .map(String::trim)
+                .toList();
 
-        if (StringUtils.isBlank(keywordsRaw)) {
-            return "No keywords provided";
-        }
+        final List<String> keywordsGenerated = keywordExtractor.getKeywords(prompt);
+        keywordsGenerated.addAll(keywords);
 
-        final String[] keywords = keywordsRaw.split(",");
+        final Set<String> combinedKeywords = new HashSet<>(keywordsGenerated);
 
         final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
         textEncryptor.setPassword(encryptionPassword);
@@ -99,7 +104,7 @@ public class SlackSearch implements Tool {
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
 
-        var searchResult = Try.of(() -> client.searchAll(r -> r.token(accessToken.get()).query(String.join(" ", keywords))));
+        var searchResult = Try.of(() -> client.searchAll(r -> r.token(accessToken.get()).query(String.join(" ", combinedKeywords))));
 
         if (searchResult.isFailure()) {
             return "Could not search messages";
