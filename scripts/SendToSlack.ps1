@@ -25,6 +25,7 @@ Function Invoke-CustomCommand
     $pinfo.EnvironmentVariables["PATH"] = $newPath
     $p = New-Object System.Diagnostics.Process
 
+    # See https://stackoverflow.com/questions/13113624/captured-output-of-command-run-by-powershell-is-sometimes-incomplete
     Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action {
         $global:stdOut.AppendLine($EventArgs.Data)
     } | Out-Null
