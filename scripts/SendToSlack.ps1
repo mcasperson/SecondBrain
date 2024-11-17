@@ -1,5 +1,6 @@
 $global:stdOut = [System.Text.StringBuilder]::new()
 $global:stdErr = [System.Text.StringBuilder]::new()
+$global:myprocessrunning = $true
 
 Function Invoke-CustomCommand
 {
@@ -25,13 +26,18 @@ Function Invoke-CustomCommand
     $pinfo.EnvironmentVariables["PATH"] = $newPath
     $p = New-Object System.Diagnostics.Process
 
-    # See https://stackoverflow.com/questions/13113624/captured-output-of-command-run-by-powershell-is-sometimes-incomplete
     Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action {
+        #Write-Host $EventArgs.Data
         $global:stdOut.AppendLine($EventArgs.Data)
     } | Out-Null
 
     Register-ObjectEvent -InputObject $p -EventName "ErrorDataReceived" -Action {
+        #Write-Host $EventArgs.Data
         $global:stdErr.AppendLine($EventArgs.Data)
+    } | Out-Null
+
+    Register-ObjectEvent -InputObject $p -EventName "Exited" -action {
+        $global:myprocessrunning = $false
     } | Out-Null
 
     $p.StartInfo = $pinfo
@@ -40,7 +46,18 @@ Function Invoke-CustomCommand
     $p.BeginErrorReadLine()
     $p.BeginOutputReadLine()
 
-    $p.WaitForExit()
+    # Wait 10 minutes before forcibly killing the process
+    $processTimeout = 1000 * 60 * 10
+    while (($global:myprocessrunning -eq $true) -and ($processTimeout -gt 0))
+    {
+        # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
+        $processTimeout -= 50
+        Start-Sleep -m 50
+    }
+    if ($processTimeout -le 0)
+    {
+        $p.Kill()
+    }
 
     $executionResults = [pscustomobject]@{
         StdOut = $global:stdOut.ToString()
@@ -50,8 +67,6 @@ Function Invoke-CustomCommand
 
     return $executionResults
 }
-
-#[Management.Automation.Runspaces.Runspace]::DefaultRunspace = [RunspaceFactory]::CreateRunspace()
 
 # Powershell has to be set to parse the output of an executable as UTF8
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
