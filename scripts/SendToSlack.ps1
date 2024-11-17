@@ -13,6 +13,7 @@ Function Invoke-CustomCommand
 
     $global:stdOut.Clear()
     $global:stdErr.Clear()
+    $global:myprocessrunning = $true
 
     $path += $env:PATH
     $newPath = $path -join [IO.Path]::PathSeparator
