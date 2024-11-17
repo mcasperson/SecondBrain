@@ -20,9 +20,9 @@ public class SimpleSentenceSplitter implements SentenceSplitter {
                 .filter(sentence -> !sentence.isBlank())
                 .map(String::trim)
                 // Remove list formatting
-                .map(sentence -> sentence.replaceFirst("^* ", ""))
-                .map(sentence -> sentence.replaceFirst("^- ", ""))
-                .map(sentence -> sentence.replaceFirst("^\\d+. ", ""))
+                .map(sentence -> sentence.replaceFirst("^\\*", ""))
+                .map(sentence -> sentence.replaceFirst("^-", ""))
+                .map(sentence -> sentence.replaceFirst("^\\d+.", ""))
                 .toList();
     }
 }
