@@ -1,3 +1,6 @@
+$global:stdOut = [System.Text.StringBuilder]::new()
+$global:stdErr = [System.Text.StringBuilder]::new()
+
 Function Invoke-CustomCommand
 {
     Param (
@@ -21,53 +24,33 @@ Function Invoke-CustomCommand
     $pinfo.Arguments = $commandArguments
     $pinfo.EnvironmentVariables["PATH"] = $newPath
     $p = New-Object System.Diagnostics.Process
+
+    Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action {
+        $global:stdOut.AppendLine($EventArgs.Data)
+    } | Out-Null
+
+    Register-ObjectEvent -InputObject $p -EventName "ErrorDataReceived" -Action {
+        $global:stdErr.AppendLine($EventArgs.Data)
+    } | Out-Null
+
     $p.StartInfo = $pinfo
     $p.Start() | Out-Null
 
-    # Capture output during process execution so we don't hang
-    # if there is too much output.
-    # Microsoft documents a C# solution here:
-    # https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.processstartinfo.redirectstandardoutput?view=net-7.0&redirectedfrom=MSDN#remarks
-    # This code is based on https://stackoverflow.com/a/74748844
-    $stdOut = [System.Text.StringBuilder]::new()
-    $stdErr = [System.Text.StringBuilder]::new()
-    do
-    {
-        if (!$p.StandardOutput.EndOfStream)
-        {
-            $stdOut.AppendLine($p.StandardOutput.ReadLine())
-        }
-        if (!$p.StandardError.EndOfStream)
-        {
-            $stdErr.AppendLine($p.StandardError.ReadLine())
-        }
-
-        Start-Sleep -Milliseconds 10
-    }
-    while (-not $p.HasExited)
-
-    # Capture any standard output generated between our last poll and process end.
-    while (!$p.StandardOutput.EndOfStream)
-    {
-        $stdOut.AppendLine($p.StandardOutput.ReadLine())
-    }
-
-    # Capture any error output generated between our last poll and process end.
-    while (!$p.StandardError.EndOfStream)
-    {
-        $stdErr.AppendLine($p.StandardError.ReadLine())
-    }
+    $p.BeginErrorReadLine()
+    $p.BeginOutputReadLine()
 
     $p.WaitForExit()
 
     $executionResults = [pscustomobject]@{
-        StdOut = $stdOut.ToString()
-        StdErr = $stdErr.ToString()
+        StdOut = $global:stdOut.ToString()
+        StdErr = $global:stdErr.ToString()
         ExitCode = $p.ExitCode
     }
 
     return $executionResults
 }
+
+#[Management.Automation.Runspaces.Runspace]::DefaultRunspace = [RunspaceFactory]::CreateRunspace()
 
 # Powershell has to be set to parse the output of an executable as UTF8
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
@@ -78,8 +61,12 @@ $jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
 # Replace the location of the Jar file with your copy of the CLI UberJAR
 $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Summarize 7 days worth of messages from the '$( $args[0] )' Slack channel in the style of a news article with up to 3 paragraphs and a bold heading. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain language. You will be penalized for using emotive or excited language.`" markdn"
 
+echo $result
+
 echo $result.StdOut
 echo $result.StdErr
+
+Add-Content -Path C:\Apps\aiofsauron.log -Value "$( $result.StdOut )`n$( $result.StdErr )"
 
 # Replace this URL with your own Slack web hook
 $uriSlack = $env:SB_SLACK_GENERAL_WEBHOOK
