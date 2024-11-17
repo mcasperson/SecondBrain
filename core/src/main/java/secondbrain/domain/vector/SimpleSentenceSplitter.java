@@ -18,6 +18,7 @@ public class SimpleSentenceSplitter implements SentenceSplitter {
 
         return Stream.of(document.split("\\r\\n|\\r|\\n|\\.|;|!|\\?"))
                 .filter(sentence -> !sentence.isBlank())
+                .map(String::trim)
                 .toList();
     }
 }
