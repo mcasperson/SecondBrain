@@ -26,17 +26,22 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Implementation of the prompt handler.
  */
 @ApplicationScoped
 public class PromptHandlerOllama implements PromptHandler {
-    private static final int TOOL_RETRY = 10;
+    private static final int TOOL_RETRY = 5;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
+
+    @Inject
+    private Logger logger;
 
     @Inject
     private ToolBuilder toolBuilder;
@@ -57,11 +62,22 @@ public class PromptHandlerOllama implements PromptHandler {
 
     public String handlePrompt(final Map<String, String> context, final String prompt) {
 
+        return handlePromptWithRetry(context, prompt, 1);
+    }
+
+    public String handlePromptWithRetry(final Map<String, String> context, final String prompt, int count) {
         return Try.of(() -> getToolsPrompt(prompt))
-                .map(toolPrompt -> selectOllamaTool(toolPrompt, 1))
+                .map(this::selectOllamaTool)
                 .map(this::getToolCallFromToolDefinition)
                 .map(toolCall -> callTool(toolCall.orElse(null), context, prompt))
                 .recover(ProcessingException.class, e -> "Failed to connect to Ollama. You must install Ollama from https://ollama.com/download: " + e.toString())
+                .recoverWith(error -> Try.of(() -> {
+                    // Selecting the wrong tool can manifest itself as an exception
+                    if (count < TOOL_RETRY) {
+                        return handlePromptWithRetry(context, prompt, count + 1);
+                    }
+                    throw error;
+                }))
                 .recover(Throwable.class, e -> "Failed to find a tool or call it: " + ExceptionUtils.getRootCauseMessage(e))
                 .get();
     }
@@ -70,21 +86,14 @@ public class PromptHandlerOllama implements PromptHandler {
      * The LLM will sometimes return invalid JSON for tool selection, so we retry a few times
      *
      * @param toolPrompt The tool prompt
-     * @param count      The retry count
      * @return The selected tool
      */
-    private ToolDefinition selectOllamaTool(final String toolPrompt, int count) {
+    private ToolDefinition selectOllamaTool(final String toolPrompt) {
         return Try.of(() -> callOllama(toolPrompt))
                 .map(OllamaResponse::response)
                 .mapTry(this::parseResponseAsToolDefinitions)
                 .mapTry(validateList::throwIfEmpty)
                 .mapTry(List::getFirst)
-                .recoverWith(error -> Try.of(() -> {
-                    if (count < TOOL_RETRY) {
-                        return selectOllamaTool(toolPrompt, count + 1);
-                    }
-                    throw new Exception("Failed to select a tool with " + TOOL_RETRY + " tries" , error);
-                }))
                 .get();
     }
 
@@ -92,6 +101,8 @@ public class PromptHandlerOllama implements PromptHandler {
         if (toolCall == null) {
             return "No tool found";
         }
+
+        logger.log(Level.INFO, "Calling tool " + toolCall.tool().getName());
 
         return toolCall.call(context, prompt);
     }
