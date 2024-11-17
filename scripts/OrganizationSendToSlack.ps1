@@ -11,6 +11,9 @@ Function Invoke-CustomCommand
         $path = @()
     )
 
+    $global:stdOut.Clear()
+    $global:stdErr.Clear()
+
     $path += $env:PATH
     $newPath = $path -join [IO.Path]::PathSeparator
 
