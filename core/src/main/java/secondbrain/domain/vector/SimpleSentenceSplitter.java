@@ -19,6 +19,10 @@ public class SimpleSentenceSplitter implements SentenceSplitter {
         return Stream.of(document.split("\\r\\n|\\r|\\n|\\.|;|!|\\?"))
                 .filter(sentence -> !sentence.isBlank())
                 .map(String::trim)
+                // Remove list formatting
+                .map(sentence -> sentence.replaceFirst("^* ", ""))
+                .map(sentence -> sentence.replaceFirst("^- ", ""))
+                .map(sentence -> sentence.replaceFirst("^\\d+. ", ""))
                 .toList();
     }
 }

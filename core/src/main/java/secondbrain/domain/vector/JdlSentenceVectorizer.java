@@ -28,7 +28,6 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
                 .optModelUrls(DJL_PATH)
                 .optEngine("PyTorch")
                 .optTranslatorFactory(new TextEmbeddingTranslatorFactory())
-                .optProgress(new ProgressBar())
                 .build())
                 .mapTry(Criteria::loadModel)
                 .mapTry(ZooModel::newPredictor)
