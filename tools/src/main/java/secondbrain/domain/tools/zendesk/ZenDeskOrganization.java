@@ -30,10 +30,7 @@ import secondbrain.infrastructure.zendesk.ZenDeskResponse;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -135,12 +132,16 @@ public class ZenDeskOrganization implements Tool {
         final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
                 (user.get() + "/token:" + token.get()).getBytes(UTF_8))).get(), UTF_8);
 
-        final String query = "type:ticket created>"
-                + LocalDateTime.now(ZoneId.systemDefault()).minusDays(days).format(ISO_LOCAL_DATE)
-                + " organization:" + owner;
+        final List<String> query = new ArrayList<>();
+        query.add("type:ticket created>"
+                + LocalDateTime.now(ZoneId.systemDefault()).minusDays(days).format(ISO_LOCAL_DATE));
+
+        if (!owner.isEmpty()) {
+            query.add("organization:" + owner);
+        }
 
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), query))
+                .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
                         .map(response -> ticketToFirstComment(response, client, authHeader))
                         .map(list -> listLimiter.limitIndividualContextListContent(
                                 list,
