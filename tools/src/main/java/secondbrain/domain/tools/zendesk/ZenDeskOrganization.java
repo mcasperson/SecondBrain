@@ -99,7 +99,10 @@ public class ZenDeskOrganization implements Tool {
     @Override
     public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final String owner = argsAccessor.getArgument(arguments, "organization", "");
-        final List<String> exclude = List.of(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","));
+        final List<String> exclude = Arrays.stream(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","))
+                .map(String::trim)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toList());
 
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "30")))
                 .recover(throwable -> DEFAULT_DURATION)
