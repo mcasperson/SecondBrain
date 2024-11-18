@@ -99,31 +99,33 @@ if ($args.Length -ge 3)
     echo $docsResult.StdOut
 }
 
-$text = "*=== " + $args[1] + " summary ===*`n`n"
-
-if (-not [string]::IsNullOrWhitespace($result.StdOut))
-{
-    $text += "*Slack*`n" + $result.StdOut + "`n`n"
-}
-
-if (-not [string]::IsNullOrWhitespace($ticketResult.StdOut))
-{
-    $text += "*ZenDesk*`n" + $ticketResult.StdOut + "`n`n"
-}
-
-if (-not [string]::IsNullOrWhitespace($docsResult.StdOut))
-{
-    $text += "*CDJ*`n" + $docsResult.StdOut
-}
-
 if ($result.StdOut -ne "" -or $ticketResult.StdOut -ne "" -or $docsResult.StdOut -ne "")
 {
+    $text = "*=== " + $args[1] + " summary ===*`n`n"
+
+    if (-not [string]::IsNullOrWhitespace($result.StdOut))
+    {
+        $text += "*Slack*`n" + $result.StdOut + "`n`n"
+    }
+
+    if (-not [string]::IsNullOrWhitespace($ticketResult.StdOut))
+    {
+        $text += "*ZenDesk*`n" + $ticketResult.StdOut + "`n`n"
+    }
+
+    if (-not [string]::IsNullOrWhitespace($docsResult.StdOut))
+    {
+        $text += "*CDJ*`n" + $docsResult.StdOut
+    }
+
     # Replace this URL with your own Slack web hook
     $uriSlack = $env:SB_SLACK_CUSTOMER_WEBHOOK
     $body = ConvertTo-Json @{
         type = "mrkdwn"
         text = $text
     }
+
+    echo $text
 
     try
     {
