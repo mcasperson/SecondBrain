@@ -167,7 +167,12 @@ public class SlackChannel implements Tool {
         return Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get()))
                 .map(messageContext -> buildToolPrompt(messageContext, prompt))
                 .map(this::callOllama)
-                .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 5, sentenceSplitter, similarityCalculator, sentenceVectorizer))
+                .map(result -> result.annotateDocumentContext(
+                        parsedMinSimilarity,
+                        5,
+                        sentenceSplitter,
+                        similarityCalculator,
+                        sentenceVectorizer))
                 .map(response -> response
                         + System.lineSeparator() + System.lineSeparator()
                         + "* [Slack Channel](https://app.slack.com/client/" + id.get().teamId() + "/" + id.get().channelId() + ")")
