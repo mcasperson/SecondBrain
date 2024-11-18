@@ -1,4 +1,4 @@
-$global:stdOut = [System.Text.StringBuilder]::new()
+$global:stdErr = [System.Text.StringBuilder]::new()
 $global:myprocessrunning = $true
 
 Function Invoke-CustomCommand
@@ -10,7 +10,7 @@ Function Invoke-CustomCommand
         $path = @()
     )
 
-    $global:stdOut.Clear()
+    $global:stdErr.Clear()
     $global:myprocessrunning = $true
 
     $path += $env:PATH
