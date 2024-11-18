@@ -118,9 +118,8 @@ public class SlackSearch implements Tool {
                 .map(this::messageToContext)
                 .collect(Collectors.joining("\n"));
 
-        final String messageContext = buildToolPrompt(searchResults, prompt);
-
-        return Try.of(() -> callOllama(messageContext))
+        return Try.of(() -> buildToolPrompt(searchResults, prompt))
+                .map(this::callOllama)
                 .map(response -> response.response()
                         + System.lineSeparator() + System.lineSeparator()
                         + searchResult.get()

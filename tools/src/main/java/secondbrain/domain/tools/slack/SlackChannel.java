@@ -61,6 +61,9 @@ public class SlackChannel implements Tool {
     String minSimilarity;
 
     @Inject
+    private RagDocumentContextSanitizer ragDocumentContextSanitizer;
+
+    @Inject
     private SentenceSplitter sentenceSplitter;
 
     @Inject
@@ -165,6 +168,7 @@ public class SlackChannel implements Tool {
 
 
         return Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get()))
+                .map(ragDocumentContextSanitizer::sanitize)
                 .map(messageContext -> buildToolPrompt(messageContext, prompt))
                 .map(this::callOllama)
                 .map(result -> result.annotateDocumentContext(
