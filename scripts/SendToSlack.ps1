@@ -73,6 +73,21 @@ Function Invoke-CustomCommand
     return $executionResults
 }
 
+Function Get-FullException
+{
+    Param ($error)
+
+    $e = $error.Exception
+
+    $msg = $e.Message
+    while ($e.InnerException)
+    {
+        $e = $e.InnerException
+        $msg += "`n" + $e.Message
+    }
+    return $msg
+}
+
 # Powershell has to be set to parse the output of an executable as UTF8
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
@@ -103,4 +118,5 @@ try
 catch
 {
     Write-Error (Get-Date) ": Update to Slack went wrong..."
+    Write-Error (Get-FullException $_)
 }
