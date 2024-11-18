@@ -2,7 +2,6 @@ package secondbrain.domain.handler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vavr.control.Try;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -11,6 +10,7 @@ import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.toolbuilder.ToolBuilder;
 import secondbrain.domain.tooldefs.Tool;
@@ -26,6 +26,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Implementation of the prompt handler.
@@ -37,6 +39,9 @@ public class PromptHandlerOllama implements PromptHandler {
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
+
+    @Inject
+    private Logger logger;
 
     @Inject
     private ToolBuilder toolBuilder;
@@ -57,11 +62,22 @@ public class PromptHandlerOllama implements PromptHandler {
 
     public String handlePrompt(final Map<String, String> context, final String prompt) {
 
+        return handlePromptWithRetry(context, prompt, 1);
+    }
+
+    public String handlePromptWithRetry(final Map<String, String> context, final String prompt, int count) {
         return Try.of(() -> getToolsPrompt(prompt))
-                .map(toolPrompt -> selectOllamaTool(toolPrompt, 1))
+                .map(this::selectOllamaTool)
                 .map(this::getToolCallFromToolDefinition)
-                .map(toolCall -> callTool(toolCall.orElse(null), context, prompt))
+                .map(toolCall -> callTool(toolCall, context, prompt))
                 .recover(ProcessingException.class, e -> "Failed to connect to Ollama. You must install Ollama from https://ollama.com/download: " + e.toString())
+                .recoverWith(error -> Try.of(() -> {
+                    // Selecting the wrong tool can manifest itself as an exception
+                    if (count < TOOL_RETRY) {
+                        return handlePromptWithRetry(context, prompt, count + 1);
+                    }
+                    throw error;
+                }))
                 .recover(Throwable.class, e -> "Failed to find a tool or call it: " + ExceptionUtils.getRootCauseMessage(e))
                 .get();
     }
@@ -70,21 +86,14 @@ public class PromptHandlerOllama implements PromptHandler {
      * The LLM will sometimes return invalid JSON for tool selection, so we retry a few times
      *
      * @param toolPrompt The tool prompt
-     * @param count      The retry count
      * @return The selected tool
      */
-    private ToolDefinition selectOllamaTool(final String toolPrompt, int count) {
+    private ToolDefinition selectOllamaTool(final String toolPrompt) {
         return Try.of(() -> callOllama(toolPrompt))
                 .map(OllamaResponse::response)
                 .mapTry(this::parseResponseAsToolDefinitions)
                 .mapTry(validateList::throwIfEmpty)
                 .mapTry(List::getFirst)
-                .recoverWith(error -> Try.of(() -> {
-                    if (count < TOOL_RETRY) {
-                        return selectOllamaTool(toolPrompt, count + 1);
-                    }
-                    throw error;
-                }))
                 .get();
     }
 
@@ -92,6 +101,8 @@ public class PromptHandlerOllama implements PromptHandler {
         if (toolCall == null) {
             return "No tool found";
         }
+
+        logger.log(Level.INFO, "Calling tool " + toolCall.tool().getName());
 
         return toolCall.call(context, prompt);
     }
@@ -121,9 +132,11 @@ public class PromptHandlerOllama implements PromptHandler {
         return Arrays.stream(tool).map(t -> new ToolDefinition(t.toolName(), List.of())).toList();
     }
 
-    private Optional<ToolCall> getToolCallFromToolDefinition(final ToolDefinition toolDefinition) {
+    @Nullable
+    private ToolCall getToolCallFromToolDefinition(final ToolDefinition toolDefinition) {
         return tools.stream().filter(tool -> tool.getName().equals(toolDefinition.toolName()))
                 .findFirst()
-                .map(tool -> new ToolCall(tool, toolDefinition));
+                .map(tool -> new ToolCall(tool, toolDefinition))
+                .orElse(null);
     }
 }
