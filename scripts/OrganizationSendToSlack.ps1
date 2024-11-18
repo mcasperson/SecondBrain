@@ -99,7 +99,7 @@ if ($args.Length -ge 3)
     echo $docsResult.StdOut
 }
 
-if ($result.StdOut -ne "" -or $ticketResult.StdOut -ne "" -or $docsResult.StdOut -ne "")
+if (-not [string]::IsNullOrWhitespace($result.StdOut) -or -not [string]::IsNullOrWhitespace($ticketResult.StdOut) -or -not [string]::IsNullOrWhitespace($docsResult.StdOut))
 {
     $text = "*=== " + $args[1] + " summary ===*`n`n"
 
