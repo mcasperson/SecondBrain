@@ -1,5 +1,4 @@
 $global:stdOut = [System.Text.StringBuilder]::new()
-$global:stdErr = [System.Text.StringBuilder]::new()
 $global:myprocessrunning = $true
 
 Function Invoke-CustomCommand
@@ -12,7 +11,6 @@ Function Invoke-CustomCommand
     )
 
     $global:stdOut.Clear()
-    $global:stdErr.Clear()
     $global:myprocessrunning = $true
 
     $path += $env:PATH
@@ -30,16 +28,16 @@ Function Invoke-CustomCommand
     $pinfo.EnvironmentVariables["PATH"] = $newPath
     $p = New-Object System.Diagnostics.Process
 
-    Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action {
-        #Write-Host $EventArgs.Data
-        $global:stdOut.AppendLine($EventArgs.Data)
-    } | Out-Null
-
+    # https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.process.standardoutput
+    # Reading from one stream must be async
+    # We read the error stream, because events can be handled out of order,
+    # and it is better to have this happen with debug output
     Register-ObjectEvent -InputObject $p -EventName "ErrorDataReceived" -Action {
-        #Write-Host $EventArgs.Data
         $global:stdErr.AppendLine($EventArgs.Data)
     } | Out-Null
 
+    # We must wait for the Exited event rather than WaitForExit()
+    # because WaitForExit() can result in events being missed
     Register-ObjectEvent -InputObject $p -EventName "Exited" -action {
         $global:myprocessrunning = $false
     } | Out-Null
@@ -48,23 +46,25 @@ Function Invoke-CustomCommand
     $p.Start() | Out-Null
 
     $p.BeginErrorReadLine()
-    $p.BeginOutputReadLine()
 
     # Wait 10 minutes before forcibly killing the process
-    $processTimeout = 1000 * 60 * 10
+    $processTimeout = 3000 * 60 * 10
     while (($global:myprocessrunning -eq $true) -and ($processTimeout -gt 0))
     {
         # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
         $processTimeout -= 50
         Start-Sleep -m 50
     }
+
+    $output = $p.StandardOutput.ReadToEnd()
+
     if ($processTimeout -le 0)
     {
         $p.Kill()
     }
 
     $executionResults = [pscustomobject]@{
-        StdOut = $global:stdOut.ToString()
+        StdOut = $output
         StdErr = $global:stdErr.ToString()
         ExitCode = $p.ExitCode
     }
