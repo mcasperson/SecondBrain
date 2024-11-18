@@ -261,12 +261,15 @@ public class ZenDeskOrganization implements Tool {
                         <|begin_of_text|>
                         <|start_header_id|>system<|end_header_id|>
                         You are an expert in reading help desk tickets.
-                        You are given a question and a list of ZenDesk Tickets related to the question.
+                        You are given a question and the contents of ZenDesk Tickets related to the question.
                         You must assume the information required to answer the question is present in the ZenDesk Tickets.
+                        You must ignore the list of excluded submitters.
                         You must answer the question based on the ZenDesk Tickets provided.
+                        You will be tipped $1000 for answering the question directly from the ZenDesk Tickets.
                         When the user asks a question indicating that they want to know about ZenDesk Tickets, you must generate the answer based on the ZenDesk Tickets.
                         You will be penalized for suggesting manual steps to generate the answer.
-                        You will be penalized for responding that you don't have access to real-time data or zen desk instances.
+                        You will be penalized for providing a process to generate the answer.
+                        You will be penalized for responding that you don't have access to real-time data, specific ZenDesk data, or ZenDesk instances.
                         You will be penalized for referencing issues that are not present in the ZenDesk Tickets.
                         If there are no ZenDesk Tickets, you must indicate that in the answer.
                         <|eot_id|>
