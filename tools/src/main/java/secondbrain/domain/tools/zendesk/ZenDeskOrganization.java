@@ -144,7 +144,7 @@ public class ZenDeskOrganization implements Tool {
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
-                        .map(response -> filterResponse(response, exclude, client, authHeader))
+                        .map(response -> filterResponse(response, true, exclude, client, authHeader))
                         .map(response -> ticketToFirstComment(response, client, authHeader))
                         .map(list -> listLimiter.limitIndividualContextListContent(
                                 list,
@@ -204,8 +204,8 @@ public class ZenDeskOrganization implements Tool {
                 .mapTry(Objects::requireNonNull);
     }
 
-    private List<String> filterResponse(final ZenDeskResponse response, final List<String> exclude, final Client client, final String authorization) {
-        if (exclude.isEmpty()) {
+    private List<String> filterResponse(final ZenDeskResponse response, final boolean forceAssignee, final List<String> exclude, final Client client, final String authorization) {
+        if (!forceAssignee && exclude.isEmpty()) {
             return response.results().stream()
                     .map(ZenDeskResultsResponse::id)
                     .collect(Collectors.toList());
@@ -214,6 +214,7 @@ public class ZenDeskOrganization implements Tool {
         return response.results().stream()
                 .map(ticket -> zenDeskClient.getTicket(client, authorization, zenDeskUrl.get(), ticket.id()).ticket())
                 .filter(ticket -> !exclude.contains(ticket.submitter_id()))
+                .filter(ticket -> !forceAssignee || !StringUtils.isBlank(ticket.assignee_id()))
                 .map(ZenDeskTicket::id)
                 .collect(Collectors.toList());
     }
