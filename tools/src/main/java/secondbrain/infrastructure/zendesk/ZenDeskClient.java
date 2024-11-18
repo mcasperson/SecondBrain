@@ -21,7 +21,7 @@ public class ZenDeskClient {
 
         return Try.withResources(() -> client.target(url + "/api/v2/search.json")
                         .queryParam("query", query)
-                        .queryParam("sort_by", "id")
+                        .queryParam("sort_by", "created_at")
                         .queryParam("sort_order", "desc")
                         .request()
                         .header("Authorization", authorization)
@@ -29,6 +29,23 @@ public class ZenDeskClient {
                         .get())
                 .of(response -> Try.of(() -> responseValidation.validate(response))
                         .map(r -> r.readEntity(ZenDeskResponse.class))
+                        .get())
+                .get();
+    }
+
+    public ZenDeskTicketResponse getTicket(
+            final Client client,
+            final String authorization,
+            final String url,
+            final String id) {
+
+        return Try.withResources(() -> client.target(url + "/api/v2/tickets/" + id + ".json")
+                        .request()
+                        .header("Authorization", authorization)
+                        .header("Accept", "application/json")
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response))
+                        .map(r -> r.readEntity(ZenDeskTicketResponse.class))
                         .get())
                 .get();
     }

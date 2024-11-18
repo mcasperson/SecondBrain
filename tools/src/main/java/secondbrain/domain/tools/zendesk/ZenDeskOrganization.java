@@ -23,10 +23,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
-import secondbrain.infrastructure.zendesk.ZenDeskClient;
-import secondbrain.infrastructure.zendesk.ZenDeskCommentResponse;
-import secondbrain.infrastructure.zendesk.ZenDeskCommentsResponse;
-import secondbrain.infrastructure.zendesk.ZenDeskResponse;
+import secondbrain.infrastructure.zendesk.*;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -95,12 +92,14 @@ public class ZenDeskOrganization implements Tool {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(new ToolArguments("organization", "The name of the ZenDesk organization", ""),
+                new ToolArguments("excludeSubmitters", "A comma separated list of submitters to exclude", ""),
                 new ToolArguments("days", "The number of days worth of tickets to return", DEFAULT_DURATION + ""));
     }
 
     @Override
     public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final String owner = argsAccessor.getArgument(arguments, "organization", "");
+        final List<String> exclude = List.of(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","));
 
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "30")))
                 .recover(throwable -> DEFAULT_DURATION)
@@ -142,6 +141,7 @@ public class ZenDeskOrganization implements Tool {
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
+                        .map(response -> filterResponse(response, exclude, client, authHeader))
                         .map(response -> ticketToFirstComment(response, client, authHeader))
                         .map(list -> listLimiter.limitIndividualContextListContent(
                                 list,
@@ -201,13 +201,27 @@ public class ZenDeskOrganization implements Tool {
                 .mapTry(Objects::requireNonNull);
     }
 
+    private List<String> filterResponse(final ZenDeskResponse response, final List<String> exclude, final Client client, final String authorization) {
+        if (exclude.isEmpty()) {
+            return response.results().stream()
+                    .map(ZenDeskResultsResponse::id)
+                    .collect(Collectors.toList());
+        }
 
-    private List<IndividualContext<String>> ticketToFirstComment(final ZenDeskResponse response,
+        return response.results().stream()
+                .map(ticket -> zenDeskClient.getTicket(client, authorization, zenDeskUrl.get(), ticket.id()).ticket())
+                .filter(ticket -> !exclude.contains(ticket.submitter_id()))
+                .map(ZenDeskTicket::id)
+                .collect(Collectors.toList());
+    }
+
+
+    private List<IndividualContext<String>> ticketToFirstComment(final List<String> ids,
                                                                  final Client client,
                                                                  final String authorization) {
-        return response.results().stream()
+        return ids.stream()
                 // Get the context associated with the ticket
-                .map(ticket -> new IndividualContext<>(ticket.id(), zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id())))
+                .map(id -> new IndividualContext<>(id, zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), id)))
                 // Get the first comment, or an empty list
                 .map(comments -> new IndividualContext<>(comments.id(), ticketToBody(comments.context(), 1)))
                 // Get the comment body as a LLM context string
