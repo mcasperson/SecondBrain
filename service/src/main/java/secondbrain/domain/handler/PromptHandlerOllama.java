@@ -2,7 +2,6 @@ package secondbrain.domain.handler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vavr.control.Try;
-import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -11,6 +10,7 @@ import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.toolbuilder.ToolBuilder;
 import secondbrain.domain.tooldefs.Tool;
@@ -69,7 +69,7 @@ public class PromptHandlerOllama implements PromptHandler {
         return Try.of(() -> getToolsPrompt(prompt))
                 .map(this::selectOllamaTool)
                 .map(this::getToolCallFromToolDefinition)
-                .map(toolCall -> callTool(toolCall.orElse(null), context, prompt))
+                .map(toolCall -> callTool(toolCall, context, prompt))
                 .recover(ProcessingException.class, e -> "Failed to connect to Ollama. You must install Ollama from https://ollama.com/download: " + e.toString())
                 .recoverWith(error -> Try.of(() -> {
                     // Selecting the wrong tool can manifest itself as an exception
@@ -132,9 +132,11 @@ public class PromptHandlerOllama implements PromptHandler {
         return Arrays.stream(tool).map(t -> new ToolDefinition(t.toolName(), List.of())).toList();
     }
 
-    private Optional<ToolCall> getToolCallFromToolDefinition(final ToolDefinition toolDefinition) {
+    @Nullable
+    private ToolCall getToolCallFromToolDefinition(final ToolDefinition toolDefinition) {
         return tools.stream().filter(tool -> tool.getName().equals(toolDefinition.toolName()))
                 .findFirst()
-                .map(tool -> new ToolCall(tool, toolDefinition));
+                .map(tool -> new ToolCall(tool, toolDefinition))
+                .orElse(null);
     }
 }
