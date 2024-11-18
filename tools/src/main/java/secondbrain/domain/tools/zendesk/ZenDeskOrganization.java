@@ -133,8 +133,8 @@ public class ZenDeskOrganization implements Tool {
                 (user.get() + "/token:" + token.get()).getBytes(UTF_8))).get(), UTF_8);
 
         final List<String> query = new ArrayList<>();
-        query.add("type:ticket created>"
-                + LocalDateTime.now(ZoneId.systemDefault()).minusDays(days).format(ISO_LOCAL_DATE));
+        query.add("type:ticket");
+        query.add("created>" + LocalDateTime.now(ZoneId.systemDefault()).minusDays(days).format(ISO_LOCAL_DATE));
 
         if (!owner.isEmpty()) {
             query.add("organization:" + owner);

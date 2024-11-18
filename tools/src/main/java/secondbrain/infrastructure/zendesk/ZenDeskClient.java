@@ -21,6 +21,8 @@ public class ZenDeskClient {
 
         return Try.withResources(() -> client.target(url + "/api/v2/search.json")
                         .queryParam("query", query)
+                        .queryParam("sort_by", "id")
+                        .queryParam("sort_order", "desc")
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
