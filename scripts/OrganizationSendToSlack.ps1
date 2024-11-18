@@ -38,6 +38,7 @@ Function Invoke-CustomCommand
 
     # We must wait for the Exited event rather than WaitForExit()
     # because WaitForExit() can result in events being missed
+    # https://stackoverflow.com/questions/13113624/captured-output-of-command-run-by-powershell-is-sometimes-incomplete
     Register-ObjectEvent -InputObject $p -EventName "Exited" -action {
         $global:myprocessrunning = $false
     } | Out-Null
