@@ -22,6 +22,7 @@ public class SimpleSentenceSplitter implements SentenceSplitter {
                 // Remove list formatting
                 .map(sentence -> sentence.replaceFirst("^\\* ", ""))
                 .map(sentence -> sentence.replaceFirst("^• ", ""))
+                .map(sentence -> sentence.replaceFirst("^◦ ", ""))
                 .map(sentence -> sentence.replaceFirst("^- ", ""))
                 .map(sentence -> sentence.replaceFirst("^\\d+\\. ", ""))
                 .toList();
