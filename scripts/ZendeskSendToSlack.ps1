@@ -99,7 +99,7 @@ $ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.toolmodel=llama3.2`" `"
 echo "ZenDesk StdOut"
 echo $ticketResult.StdOut
 
-if ($ticketResult -contains "No tickets found")
+if ($ticketResult.StdOut -contains "No tickets found")
 {
     exit 0
 }
