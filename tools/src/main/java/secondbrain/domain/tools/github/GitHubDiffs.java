@@ -10,8 +10,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.IndividualContext;
-import secondbrain.domain.context.MergedContext;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.limit.ListLimiter;
@@ -22,7 +22,6 @@ import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.GitHubCommitResponse;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
-import secondbrain.infrastructure.ollama.OllamaResponseWithContext;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -139,14 +138,17 @@ public class GitHubDiffs implements Tool {
                         dateParser.parseDate(endDate).format(FORMATTER),
                         authHeader))
                 .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader))
-                .map(list -> listLimiter.limitIndividualContextListContent(list, NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
+                .map(list -> listLimiter.limitListContent(
+                        list,
+                        RagDocumentContext::document,
+                        NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                 .map(this::mergeContext)
                 .map(diffs -> buildToolPrompt(diffs, prompt))
                 .map(this::callOllama)
-                .map(response -> response.ollamaResponse().response()
+                .map(response -> response.combinedDocument()
                         + System.lineSeparator() + System.lineSeparator()
                         + "Diffs:" + System.lineSeparator()
-                        + urlsToLinks(response.ids())
+                        + urlsToLinks(response.getIds())
                         + debugToolArgs.debugArgs(arguments, true))
                 .recover(throwable -> "Failed to get diffs: " + throwable.getMessage())
                 .get();
@@ -159,25 +161,31 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    private MergedContext mergeContext(final List<IndividualContext<String>> context) {
-        return new MergedContext(
+    private RagMultiDocumentContext mergeContext(final List<RagDocumentContext> context) {
+        return new RagMultiDocumentContext(
                 context.stream()
-                        .map(IndividualContext::id)
-                        .collect(Collectors.toList()),
-                context.stream()
-                        .map(IndividualContext::context)
-                        .collect(Collectors.joining("\n")));
+                        .map(RagDocumentContext::document)
+                        .collect(Collectors.joining("\n")),
+                context);
     }
 
 
-    private List<IndividualContext<String>> convertCommitsToDiffs(
+    private List<RagDocumentContext> convertCommitsToDiffs(
             final List<GitHubCommitResponse> commitsResponse,
             final String owner,
             final String repo,
             final String authorization) {
-        return commitsResponse.stream().map(commit -> new IndividualContext<>(
-                commit.html_url(),
-                diffToContext(owner, repo, commit, authorization))).toList();
+
+        /*
+            Note that we don't vectorize the indvidual diffs. It is not clear what kind of
+            vector space makes sense for diffs. The use of RagDocumentContext is mostly
+            a placeholder that allows us to inject vectors at a later date.
+         */
+
+        return commitsResponse.stream().map(commit -> new RagDocumentContext(
+                diffToContext(owner, repo, commit, authorization),
+                List.of(), // What vectors makes sense for diffs?
+                commit.html_url())).toList();
     }
 
 
@@ -211,7 +219,7 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    private OllamaResponseWithContext callOllama(final MergedContext llmPrompt) {
+    private RagMultiDocumentContext callOllama(final RagMultiDocumentContext llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
@@ -231,8 +239,8 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    public MergedContext buildToolPrompt(final MergedContext context, final String prompt) {
-        return new MergedContext(context.ids(), """
+    public RagMultiDocumentContext buildToolPrompt(final RagMultiDocumentContext context, final String prompt) {
+        return new RagMultiDocumentContext("""
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>
                 You are an expert in reading Git diffs.
@@ -250,6 +258,7 @@ public class GitHubDiffs implements Tool {
                 + "\n<|start_header_id|>user<|end_header_id|>"
                 + prompt
                 + "<|eot_id|>"
-                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading());
+                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading(),
+                context.individualContexts());
     }
 }

@@ -1,4 +1,4 @@
-package secondbrain.domain.vector;
+package secondbrain.domain.context;
 
 import jakarta.enterprise.context.ApplicationScoped;
 

@@ -1,8 +1,8 @@
 package secondbrain.domain.tools.slack;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import secondbrain.domain.vector.RagDocumentContext;
-import secondbrain.domain.vector.RagStringContext;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagStringContext;
 
 /**
  * Removes anything that looks like a URL from the context of a document. This ensures the context is clean and

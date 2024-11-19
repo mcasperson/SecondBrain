@@ -1,8 +1,6 @@
-package secondbrain.domain.vector;
+package secondbrain.domain.context;
 
-import io.vavr.control.Try;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.Nullable;
 
@@ -12,20 +10,25 @@ import java.util.PriorityQueue;
 import static java.util.Comparator.comparing;
 
 /**
- * Represents a document made up of many individual context sentences.
+ * Represents a single document made up of many individual context sentences.
  * <p>
- * This record is used to capture the information used to answer a prompt through many different stages:
- * - The original document
- * - The original document formatted as a prompt to be passed to an LLM
- * - The answer from an LLM
+ * When the context passed to an LLM is just a single document, the RagDocumentContext is
+ * all that is needed to capture the context and the individual sentences that make up
+ * context.
  * <p>
- * As the document is processed, it retains the sentences that made up the original document (i.e. the document
- * attribute changes, by the sentences do not). This is how we eventually link source material to the generated answer.
+ * When multiple documents make up the context passed to an LLM, the RagMultiDocumentContext
+ * class is used to capture many RagDocumentContext instances.
  *
  * @param document  The document
  * @param sentences The individual context strings that make up the documents
+ * @param id        The ID of the document
  */
-public record RagDocumentContext(String document, List<RagStringContext> sentences) {
+public record RagDocumentContext(String document, List<RagStringContext> sentences, String id) {
+
+    public RagDocumentContext(String document, List<RagStringContext> sentences) {
+        this(document, sentences, "");
+    }
+
     /**
      * Given a vector, find the closest sentence in the list of sentences.
      *
@@ -35,7 +38,7 @@ public record RagDocumentContext(String document, List<RagStringContext> sentenc
      * @return The closest sentence, or null if none are close enough
      */
     @Nullable
-    private RagStringContext getClosestSentence(
+    public RagMatchedStringContext getClosestSentence(
             final Vector vector,
             final SimilarityCalculator similarityCalculator,
             final double minSimilarity) {
@@ -64,7 +67,7 @@ public record RagDocumentContext(String document, List<RagStringContext> sentenc
             return null;
         }
 
-        return bestSimilarity.getLeft();
+        return new RagMatchedStringContext(bestSimilarity.getLeft().context(), bestSimilarity.getRight());
     }
 
     /**
@@ -100,12 +103,10 @@ public record RagDocumentContext(String document, List<RagStringContext> sentenc
                 Find the closest matching sentence from the source context over the
                 minimum similarity threshold. Ignore any failures.
              */
-            var closestMatch = Try.of(() -> getClosestSentence(
-                            sentenceVectorizer.vectorize(sentence).vector(),
-                            similarityCalculator,
-                            minSimilarity))
-                    .onFailure(throwable -> System.err.println("Failed to get closest sentence: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                    .getOrElse(() -> null);
+            var closestMatch = getClosestSentence(
+                    sentenceVectorizer.vectorize(sentence).vector(),
+                    similarityCalculator,
+                    minSimilarity);
 
             if (closestMatch != null) {
                 // Annotate the original document

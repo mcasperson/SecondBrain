@@ -1,6 +1,8 @@
 package secondbrain.domain.vector;
 
 import org.junit.jupiter.api.Test;
+import secondbrain.domain.context.JdlSentenceVectorizer;
+import secondbrain.domain.context.RagStringContext;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 

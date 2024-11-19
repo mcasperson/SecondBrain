@@ -7,6 +7,7 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
 import secondbrain.domain.response.ResponseValidation;
@@ -53,8 +54,8 @@ public class OllamaClient {
                 .get();
     }
 
-    public OllamaResponseWithContext getTools(final Client client, final OllamaGenerateBodyWithContext body) {
-        final OllamaResponse response = getTools(client, new OllamaGenerateBody(body.model(), body.prompt().context(), body.stream()));
-        return new OllamaResponseWithContext(body.prompt().ids(), response);
+    public RagMultiDocumentContext getTools(final Client client, final OllamaGenerateBodyWithContext body) {
+        final OllamaResponse response = getTools(client, new OllamaGenerateBody(body.model(), body.prompt().combinedDocument(), body.stream()));
+        return new RagMultiDocumentContext(response.response(), body.prompt().individualContexts());
     }
 }

@@ -1,4 +1,4 @@
-package secondbrain.domain.vector;
+package secondbrain.domain.context;
 
 /**
  * Calculate the similarity between two vectors.
