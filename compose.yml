@@ -23,6 +23,11 @@ services:
       # for example
       # docker exec secondbrain-ollama-1 ollama pull llama3.2
       SB_OLLAMA_MODEL: llama3.2
+      # The model used to select a tool should always been llama3.1 or llama3.2
+      # as these models have been trained to select tools. The model used here
+      # must also be pulled:
+      # docker exec secondbrain-ollama-1 ollama pull llama3.2
+      SB_OLLAMA_TOOLMODEL: llama3.2
     pull_policy: always
 
   ollama:
