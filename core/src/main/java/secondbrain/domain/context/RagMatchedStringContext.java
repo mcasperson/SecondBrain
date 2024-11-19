@@ -6,5 +6,5 @@ package secondbrain.domain.context;
  * @param context The context string
  * @param match   How closely the context matched the input
  */
-public record RagMatchedStringContext(String context, double match) {
+public record RagMatchedStringContext(String context, double match, String id) {
 }

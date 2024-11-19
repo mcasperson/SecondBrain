@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * RagDocumentContext captures the details of a single document to be passed to the LLM. RagMultiDocumentContext
@@ -55,7 +56,8 @@ public record RagMultiDocumentContext(String combinedDocument, List<RagDocumentC
                             sentenceVectorizer.vectorize(sentence).vector(),
                             similarityCalculator,
                             minSimilarity))
-                    .sorted(Comparator.comparingDouble(ragMatchedStringContext -> ragMatchedStringContext != null ? ragMatchedStringContext.match() : 0))
+                    .filter(Objects::nonNull)
+                    .sorted(Comparator.comparingDouble(RagMatchedStringContext::match))
                     .toList();
 
             if (!closestMatch.isEmpty()) {

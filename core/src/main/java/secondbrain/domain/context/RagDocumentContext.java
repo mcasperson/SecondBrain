@@ -67,7 +67,7 @@ public record RagDocumentContext(String document, List<RagStringContext> sentenc
             return null;
         }
 
-        return new RagMatchedStringContext(bestSimilarity.getLeft().context(), bestSimilarity.getRight());
+        return new RagMatchedStringContext(bestSimilarity.getLeft().context(), bestSimilarity.getRight(), id);
     }
 
     /**
