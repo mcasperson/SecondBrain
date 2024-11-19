@@ -29,7 +29,7 @@ public class Llama32ValidateInputs implements ValidateInputs {
         final String arg = getCommaSeparatedList(input);
 
         if (!prompt.contains(arg)) {
-            return ""
+            return "";
         }
 
         return arg;
