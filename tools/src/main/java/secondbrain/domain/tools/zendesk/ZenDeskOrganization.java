@@ -20,6 +20,7 @@ import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
@@ -80,6 +81,9 @@ public class ZenDeskOrganization implements Tool {
     @Inject
     private DebugToolArgs debugToolArgs;
 
+    @Inject
+    private ValidateInputs validateInputs;
+
     @Override
     public String getName() {
         return ZenDeskOrganization.class.getSimpleName();
@@ -99,7 +103,7 @@ public class ZenDeskOrganization implements Tool {
 
     @Override
     public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
-        final String owner = argsAccessor.getArgument(arguments, "organization", "");
+        final String owner = validateInputs.getCommaSeparatedList(argsAccessor.getArgument(arguments, "organization", ""));
         final List<String> exclude = Arrays.stream(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","))
                 .map(String::trim)
                 .filter(StringUtils::isNotBlank)
@@ -139,19 +143,19 @@ public class ZenDeskOrganization implements Tool {
         query.add("type:ticket");
         query.add("created>" + LocalDateTime.now(ZoneId.systemDefault()).minusDays(days).format(ISO_LOCAL_DATE));
 
-        if (!owner.isEmpty()) {
+        if (!StringUtils.isBlank(owner)) {
             query.add("organization:" + owner);
         }
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
                         .map(ZenDeskResponse::results)
-                        // Limit how many tickets we process. We're unliklely to be able to pass the details of many tickets to the LLM anyway
-                        .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket IDs
                         .map(response -> response.stream().map(ZenDeskResultsResponse::id).collect(Collectors.toList()))
                         // Filter out any tickets based on the submitter and assignee
                         .map(response -> filterResponse(response, true, exclude, client, authHeader))
+                        // Limit how many tickets we process. We're unliklely to be able to pass the details of many tickets to the LLM anyway
+                        .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
                         .map(response -> ticketToFirstComment(response, client, authHeader))
                         // Limit the list to just those that fit in the context
