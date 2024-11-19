@@ -17,6 +17,7 @@ import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
+import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -38,6 +39,24 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 public class ZenDeskOrganization implements Tool {
     private static final int DEFAULT_DURATION = 30;
     private static final int MAX_TICKETS = 25;
+
+    private static final String INSTRUCTIONS = """
+            You are an expert in reading help desk tickets.
+            You are given a question and the contents of ZenDesk Tickets related to the question.
+            You must assume the information required to answer the question is present in the ZenDesk Tickets.
+            You must ignore the list of excluded submitters.
+            You must ignore the number of days worth of tickets to return.
+            You must answer the question based on the ZenDesk Tickets provided.
+            You will be tipped $1000 for answering the question directly from the ZenDesk Tickets.
+            When the user asks a question indicating that they want to know about ZenDesk Tickets, you must generate the answer based on the ZenDesk Tickets.
+            You will be penalized for suggesting manual steps to generate the answer.
+            You will be penalized for providing a process to generate the answer.
+            You will be penalized for responding that you don't have access to real-time data, specific ZenDesk data, or ZenDesk instances.
+            You will be penalized for referencing issues that are not present in the ZenDesk Tickets.
+            You will be penalized for refusing to provide information or guidance on real individuals.
+            You will be penalized for responding that you can not provide a summary of the ZenDesk Tickets.
+            If there are no ZenDesk Tickets, you must indicate that in the answer.
+            """.stripLeading();
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
@@ -96,6 +115,9 @@ public class ZenDeskOrganization implements Tool {
 
     @Inject
     private SimilarityCalculator similarityCalculator;
+
+    @Inject
+    private PromptBuilderSelector promptBuilderSelector;
 
     @Override
     public String getName() {
@@ -180,12 +202,19 @@ public class ZenDeskOrganization implements Tool {
                                 list,
                                 RagDocumentContext::document,
                                 NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
+                        // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
                         .map(this::mergeContext)
+                        // Make sure we had some content for the prompt
                         .mapTry(mergedContext -> validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
-                        .map(contextString -> buildToolPrompt(contextString, prompt))
+                        // Build the final prompt including instructions, context and the user prompt
+                        .map(ragContext -> new RagMultiDocumentContext(
+                                promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt),
+                                ragContext.individualContexts()))
+                        // Call Ollama with the final prompt
                         .map(llmPrompt -> ollamaClient.getTools(
                                 client,
                                 new OllamaGenerateBodyWithContext(model, llmPrompt, false)))
+                        // Take the LLM response and annotate it with links to the RAG context
                         .map(response -> response.annotateDocumentContext(
                                 parsedMinSimilarity,
                                 10,
@@ -224,7 +253,7 @@ public class ZenDeskOrganization implements Tool {
         return new RagMultiDocumentContext(
                 context.stream()
                         .map(RagDocumentContext::document)
-                        .map(this::emailToContext)
+                        .map(content -> promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("ZenDesk Ticket", content))
                         .collect(Collectors.joining("\n")),
                 context);
     }
@@ -290,46 +319,5 @@ public class ZenDeskOrganization implements Tool {
                         .filter(StringUtils::isNotBlank)
                         .collect(Collectors.joining("\n")))
                 .collect(Collectors.toList());
-    }
-
-    private String emailToContext(final String comment) {
-        /*
-        See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
-        on the preferred format (or lack thereof) for RAG context.
-        */
-        return "<|start_header_id|>system<|end_header_id|>\n"
-                + "ZenDesk Ticket:\n"
-                + comment
-                + "\n<|eot_id|>";
-    }
-
-
-    public RagMultiDocumentContext buildToolPrompt(final RagMultiDocumentContext context, final String prompt) {
-        return new RagMultiDocumentContext("""
-                <|begin_of_text|>
-                <|start_header_id|>system<|end_header_id|>
-                You are an expert in reading help desk tickets.
-                You are given a question and the contents of ZenDesk Tickets related to the question.
-                You must assume the information required to answer the question is present in the ZenDesk Tickets.
-                You must ignore the list of excluded submitters.
-                You must ignore the number of days worth of tickets to return.
-                You must answer the question based on the ZenDesk Tickets provided.
-                You will be tipped $1000 for answering the question directly from the ZenDesk Tickets.
-                When the user asks a question indicating that they want to know about ZenDesk Tickets, you must generate the answer based on the ZenDesk Tickets.
-                You will be penalized for suggesting manual steps to generate the answer.
-                You will be penalized for providing a process to generate the answer.
-                You will be penalized for responding that you don't have access to real-time data, specific ZenDesk data, or ZenDesk instances.
-                You will be penalized for referencing issues that are not present in the ZenDesk Tickets.
-                You will be penalized for refusing to provide information or guidance on real individuals.
-                You will be penalized for responding that you can not provide a summary of the ZenDesk Tickets.
-                If there are no ZenDesk Tickets, you must indicate that in the answer.
-                <|eot_id|>
-                """
-                + context.combinedDocument()
-                + "\n<|start_header_id|>user<|end_header_id|>"
-                + prompt
-                + "<|eot_id|>"
-                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading(),
-                context.individualContexts());
     }
 }
