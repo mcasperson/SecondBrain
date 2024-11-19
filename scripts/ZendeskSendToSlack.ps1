@@ -94,10 +94,15 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 
 $jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
 
-$ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.model=llama3.1`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Given 7 days worth of ZenDesk tickets, provide a summary of the common questions and problems in the style of a news article with up to 5 paragraphs. You will be penalized for showing category percentages. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language. You will be penalized for including a summary paragraph.`" markdn"
+$ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.toolmodel=llama3.2`" `"-Dsb.ollama.model=gemma2`" `"-Dsb.ollama.contextlength=8000`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Given 2 days worth of ZenDesk tickets, provide a summary of the common questions and problems in the style of a news article with up to 5 paragraphs. You will be penalized for showing category percentages. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language. You will be penalized for including a summary paragraph.`" markdn"
 
 echo "ZenDesk StdOut"
 echo $ticketResult.StdOut
+
+if ($ticketResult -contains "No tickets found")
+{
+    exit 0
+}
 
 # Replace this URL with your own Slack web hook
 $uriSlack = $env:SB_SLACK_ZENDESK_WEBHOOK
