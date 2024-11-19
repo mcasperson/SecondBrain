@@ -11,5 +11,5 @@ try
 }
 catch
 {
-    Write-Error (Get-Date) ": Update to Slack went wrong..."
+    Write-Error "$( Get-Date ) : Update to Slack went wrong..."
 }

@@ -149,7 +149,7 @@ if (-not [string]::IsNullOrWhitespace($result.StdOut) -or -not [string]::IsNullO
     }
     catch
     {
-        Write-Error (Get-Date) ": Update to Slack went wrong..."
+        Write-Error "$( Get-Date ) : Update to Slack went wrong..."
         Write-Error (Get-FullException $_)
     }
 }
