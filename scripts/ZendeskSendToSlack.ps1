@@ -96,7 +96,7 @@ $jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
 #$jarFile = "../cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
 
-$ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.toolmodel=llama3.2`" `"-Dsb.ollama.model=gemma2`" `"-Dsb.ollama.contextlength=8000`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Given 2 days worth of ZenDesk tickets, provide a summary of the questions and problems in the style of a news article with up to 5 paragraphs. You must carefully consider each ticket when genering the summary. You will be penalized for showing category percentages. You will be penalized for including ticket IDs or reference numbers. Use plain and professional language. You will be penalized for using emotive or excited language. You will be penalized for including a generic final summary paragraph. You will be tipped $1000 for including every ticket in the summary.`" markdn"
+$ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.toolmodel=llama3.2`" `"-Dsb.ollama.model=gemma2`" `"-Dsb.ollama.contextlength=8000`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Given 2 days worth of ZenDesk tickets, provide a summary of the questions and problems in the style of a news article with up to 5 paragraphs. You must carefully consider each ticket when genering the summary. You will be penalized for showing category percentages. You will be penalized for including ticket IDs or reference numbers. Use plain and professional language. You will be penalized for using emotive or excited language. You will be penalized for including a generic final summary paragraph. You will be tipped $1000 for including every ticket in the summary. You will be penalized for offering to provide more help.`" markdn"
 
 echo "ZenDesk StdOut"
 echo $ticketResult.StdOut
