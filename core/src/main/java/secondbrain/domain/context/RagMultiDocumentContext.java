@@ -71,7 +71,7 @@ public record RagMultiDocumentContext(String combinedDocument, List<RagDocumentC
 
                 // Make a note of the source sentence
                 retValue += System.lineSeparator()
-                        + "* [" + index + "]: " + closestMatch.getLast().context();
+                        + "* [" + index + "]: " + closestMatch.getLast().context() + " (" + closestMatch.getLast().id() + ")";
                 ++index;
             }
         }
