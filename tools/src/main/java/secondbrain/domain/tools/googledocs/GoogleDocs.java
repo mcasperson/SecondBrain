@@ -162,7 +162,7 @@ public class GoogleDocs implements Tool {
                 .map(doc -> documentToContext(doc, documentId))
                 .map(doc -> buildToolPrompt(doc, prompt))
                 .map(this::callOllama)
-                .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 5, sentenceSplitter, similarityCalculator, sentenceVectorizer))
+                .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 10, sentenceSplitter, similarityCalculator, sentenceVectorizer))
                 .map(response -> response
                         + System.lineSeparator() + System.lineSeparator()
                         + "* [Document](https://docs.google.com/document/d/" + documentId + ")"
@@ -173,7 +173,7 @@ public class GoogleDocs implements Tool {
 
 
     private RagDocumentContext getDocumentContext(final String document) {
-        return Try.of(() -> sentenceSplitter.splitDocument(document))
+        return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext(document, sentences.stream()
                         .map(sentenceVectorizer::vectorize)
                         .collect(Collectors.toList())))

@@ -188,7 +188,7 @@ public class ZenDeskOrganization implements Tool {
                                 new OllamaGenerateBodyWithContext(model, llmPrompt, false)))
                         .map(response -> response.annotateDocumentContext(
                                 parsedMinSimilarity,
-                                5,
+                                10,
                                 sentenceSplitter,
                                 similarityCalculator,
                                 sentenceVectorizer)
@@ -270,7 +270,7 @@ public class ZenDeskOrganization implements Tool {
     }
 
     private RagDocumentContext getDocumentContext(final String document, final String id) {
-        return Try.of(() -> sentenceSplitter.splitDocument(document))
+        return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext(document, sentences.stream()
                         .map(sentenceVectorizer::vectorize)
                         .collect(Collectors.toList()), id))

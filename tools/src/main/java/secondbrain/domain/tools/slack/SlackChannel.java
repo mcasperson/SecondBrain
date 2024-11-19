@@ -173,7 +173,7 @@ public class SlackChannel implements Tool {
                 .map(this::callOllama)
                 .map(result -> result.annotateDocumentContext(
                         parsedMinSimilarity,
-                        5,
+                        10,
                         sentenceSplitter,
                         similarityCalculator,
                         sentenceVectorizer))
@@ -213,7 +213,7 @@ public class SlackChannel implements Tool {
     }
 
     private RagDocumentContext getDocumentContext(final String document) {
-        return Try.of(() -> sentenceSplitter.splitDocument(document))
+        return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext(document, sentences.stream()
                         .map(sentenceVectorizer::vectorize)
                         .collect(Collectors.toList())))

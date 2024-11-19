@@ -33,17 +33,9 @@ public record RagMultiDocumentContext(String combinedDocument, List<RagDocumentC
                                           final SentenceVectorizer sentenceVectorizer) {
         String retValue = combinedDocument();
         int index = 1;
-        for (var sentence : sentenceSplitter.splitDocument(combinedDocument())) {
+        for (var sentence : sentenceSplitter.splitDocument(combinedDocument(), minWords)) {
 
             if (StringUtils.isBlank(sentence)) {
-                continue;
-            }
-
-            /*
-                Skip sentences that are too short to be useful. This avoids trying to match
-                short items in bullet point lists.
-             */
-            if (sentence.split("\\s+").length < minWords) {
                 continue;
             }
 
