@@ -36,6 +36,7 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 @ApplicationScoped
 public class ZenDeskOrganization implements Tool {
     private static final int DEFAULT_DURATION = 30;
+    private static final int MAX_TICKETS = 25;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
@@ -144,8 +145,16 @@ public class ZenDeskOrganization implements Tool {
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
+                        .map(ZenDeskResponse::results)
+                        // Limit how many tickets we process. We're unliklely to be able to pass the details of many tickets to the LLM anyway
+                        .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
+                        // Get the ticket IDs
+                        .map(response -> response.stream().map(ZenDeskResultsResponse::id).collect(Collectors.toList()))
+                        // Filter out any tickets based on the submitter and assignee
                         .map(response -> filterResponse(response, true, exclude, client, authHeader))
+                        // Get the ticket comments (i.e. the initial email)
                         .map(response -> ticketToFirstComment(response, client, authHeader))
+                        // Limit the list to just those that fit in the context
                         .map(list -> listLimiter.limitIndividualContextListContent(
                                 list,
                                 NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
@@ -204,15 +213,13 @@ public class ZenDeskOrganization implements Tool {
                 .mapTry(Objects::requireNonNull);
     }
 
-    private List<String> filterResponse(final ZenDeskResponse response, final boolean forceAssignee, final List<String> exclude, final Client client, final String authorization) {
+    private List<String> filterResponse(final List<String> ids, final boolean forceAssignee, final List<String> exclude, final Client client, final String authorization) {
         if (!forceAssignee && exclude.isEmpty()) {
-            return response.results().stream()
-                    .map(ZenDeskResultsResponse::id)
-                    .collect(Collectors.toList());
+            return ids;
         }
 
-        return response.results().stream()
-                .map(ticket -> zenDeskClient.getTicket(client, authorization, zenDeskUrl.get(), ticket.id()).ticket())
+        return ids.stream()
+                .map(ticket -> zenDeskClient.getTicket(client, authorization, zenDeskUrl.get(), ticket).ticket())
                 .filter(ticket -> !exclude.contains(ticket.submitter_id()))
                 .filter(ticket -> !forceAssignee || !StringUtils.isBlank(ticket.assignee_id()))
                 .map(ZenDeskTicket::id)
@@ -240,6 +247,9 @@ public class ZenDeskOrganization implements Tool {
                 .stream()
                 .limit(limit)
                 .map(ZenDeskCommentResponse::body)
+                .map(body -> Arrays.stream(body.split("\\r\\n|\\r|\\n"))
+                        .filter(StringUtils::isNotBlank)
+                        .collect(Collectors.joining("\n")))
                 .collect(Collectors.toList());
     }
 
@@ -264,6 +274,7 @@ public class ZenDeskOrganization implements Tool {
                         You are given a question and the contents of ZenDesk Tickets related to the question.
                         You must assume the information required to answer the question is present in the ZenDesk Tickets.
                         You must ignore the list of excluded submitters.
+                        You must ignore the number of days worth of tickets to return.
                         You must answer the question based on the ZenDesk Tickets provided.
                         You will be tipped $1000 for answering the question directly from the ZenDesk Tickets.
                         When the user asks a question indicating that they want to know about ZenDesk Tickets, you must generate the answer based on the ZenDesk Tickets.
@@ -271,6 +282,8 @@ public class ZenDeskOrganization implements Tool {
                         You will be penalized for providing a process to generate the answer.
                         You will be penalized for responding that you don't have access to real-time data, specific ZenDesk data, or ZenDesk instances.
                         You will be penalized for referencing issues that are not present in the ZenDesk Tickets.
+                        You will be penalized for refusing to provide information or guidance on real individuals.
+                        You will be penalized for responding that you can not provide a summary of the ZenDesk Tickets.
                         If there are no ZenDesk Tickets, you must indicate that in the answer.
                         <|eot_id|>
                         """
