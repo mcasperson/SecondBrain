@@ -23,4 +23,15 @@ public class Llama32ValidateInputs implements ValidateInputs {
 
         return input;
     }
+
+    @Override
+    public String getCommaSeparatedList(String prompt, String input) {
+        final String arg = getCommaSeparatedList(input);
+
+        if (!prompt.contains(arg)) {
+            return ""
+        }
+
+        return arg;
+    }
 }
