@@ -17,13 +17,13 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.SentenceSplitter;
+import secondbrain.domain.context.SentenceVectorizer;
+import secondbrain.domain.context.SimilarityCalculator;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.vector.RagDocumentContext;
-import secondbrain.domain.vector.SentenceSplitter;
-import secondbrain.domain.vector.SentenceVectorizer;
-import secondbrain.domain.vector.SimilarityCalculator;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 
@@ -173,7 +173,7 @@ public class SlackChannel implements Tool {
                 .map(this::callOllama)
                 .map(result -> result.annotateDocumentContext(
                         parsedMinSimilarity,
-                        5,
+                        10,
                         sentenceSplitter,
                         similarityCalculator,
                         sentenceVectorizer))
@@ -213,7 +213,7 @@ public class SlackChannel implements Tool {
     }
 
     private RagDocumentContext getDocumentContext(final String document) {
-        return Try.of(() -> sentenceSplitter.splitDocument(document))
+        return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext(document, sentences.stream()
                         .map(sentenceVectorizer::vectorize)
                         .collect(Collectors.toList())))

@@ -7,13 +7,13 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.IndividualContext;
-import secondbrain.domain.context.MergedContext;
+import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
@@ -56,6 +56,10 @@ public class ZenDeskOrganization implements Tool {
     String encryptionPassword;
 
     @Inject
+    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
+    String minSimilarity;
+
+    @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
 
@@ -84,6 +88,15 @@ public class ZenDeskOrganization implements Tool {
     @Inject
     private ValidateInputs validateInputs;
 
+    @Inject
+    private SentenceSplitter sentenceSplitter;
+
+    @Inject
+    private SentenceVectorizer sentenceVectorizer;
+
+    @Inject
+    private SimilarityCalculator similarityCalculator;
+
     @Override
     public String getName() {
         return ZenDeskOrganization.class.getSimpleName();
@@ -111,6 +124,10 @@ public class ZenDeskOrganization implements Tool {
 
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "30")))
                 .recover(throwable -> DEFAULT_DURATION)
+                .get();
+
+        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
+                .recover(throwable -> 0.5f)
                 .get();
 
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
@@ -159,19 +176,25 @@ public class ZenDeskOrganization implements Tool {
                         // Get the ticket comments (i.e. the initial email)
                         .map(response -> ticketToFirstComment(response, client, authHeader))
                         // Limit the list to just those that fit in the context
-                        .map(list -> listLimiter.limitIndividualContextListContent(
+                        .map(list -> listLimiter.limitListContent(
                                 list,
+                                RagDocumentContext::document,
                                 NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                         .map(this::mergeContext)
-                        .mapTry(mergedContext -> validateString.throwIfEmpty(mergedContext, MergedContext::context))
+                        .mapTry(mergedContext -> validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                         .map(contextString -> buildToolPrompt(contextString, prompt))
                         .map(llmPrompt -> ollamaClient.getTools(
                                 client,
                                 new OllamaGenerateBodyWithContext(model, llmPrompt, false)))
-                        .map(response -> response.ollamaResponse().response()
+                        .map(response -> response.annotateDocumentContext(
+                                parsedMinSimilarity,
+                                10,
+                                sentenceSplitter,
+                                similarityCalculator,
+                                sentenceVectorizer)
                                 + System.lineSeparator() + System.lineSeparator()
                                 + "Tickets:" + System.lineSeparator()
-                                + idsToLinks(url.get(), response.ids())
+                                + idsToLinks(url.get(), response.getIds())
                                 + debugToolArgs.debugArgs(arguments, true))
                         .recover(EmptyString.class, "No tickets found")
                         .recover(throwable -> "Failed to get tickets or context: " + throwable.getMessage())
@@ -197,14 +220,13 @@ public class ZenDeskOrganization implements Tool {
         return url + "/agent/tickets/" + id;
     }
 
-    private MergedContext mergeContext(final List<IndividualContext<String>> context) {
-        return new MergedContext(
+    private RagMultiDocumentContext mergeContext(final List<RagDocumentContext> context) {
+        return new RagMultiDocumentContext(
                 context.stream()
-                        .map(IndividualContext::id)
-                        .collect(Collectors.toList()),
-                context.stream()
-                        .map(IndividualContext::context)
-                        .collect(Collectors.joining("\n")));
+                        .map(RagDocumentContext::document)
+                        .map(this::emailToContext)
+                        .collect(Collectors.joining("\n")),
+                context);
     }
 
 
@@ -231,18 +253,31 @@ public class ZenDeskOrganization implements Tool {
     }
 
 
-    private List<IndividualContext<String>> ticketToFirstComment(final List<String> ids,
-                                                                 final Client client,
-                                                                 final String authorization) {
+    private List<RagDocumentContext> ticketToFirstComment(final List<String> ids,
+                                                          final Client client,
+                                                          final String authorization) {
         return ids.stream()
                 // Get the context associated with the ticket
                 .map(id -> new IndividualContext<>(id, zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), id)))
                 // Get the first comment, or an empty list
                 .map(comments -> new IndividualContext<>(comments.id(), ticketToBody(comments.context(), 1)))
                 // Get the comment body as a LLM context string
-                .map(comments -> new IndividualContext<>(comments.id(), diffToContext(comments.context())))
+                .map(comments -> new IndividualContext<>(comments.id(), String.join("\n", comments.context())))
+                // Get the LLM context string as a RAG context, complete with vectorized sentences
+                .map(comments -> getDocumentContext(comments.context(), comments.id()))
                 // Get a list of context strings
                 .collect(Collectors.toList());
+    }
+
+    private RagDocumentContext getDocumentContext(final String document, final String id) {
+        return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
+                .map(sentences -> new RagDocumentContext(document, sentences.stream()
+                        .map(sentenceVectorizer::vectorize)
+                        .collect(Collectors.toList()), id))
+                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                // If we can't vectorize the sentences, just return the document
+                .recover(e -> new RagDocumentContext(document, List.of(), id))
+                .get();
     }
 
     private List<String> ticketToBody(final ZenDeskCommentsResponse comments, final int limit) {
@@ -257,44 +292,44 @@ public class ZenDeskOrganization implements Tool {
                 .collect(Collectors.toList());
     }
 
-    private String diffToContext(final List<String> comment) {
+    private String emailToContext(final String comment) {
         /*
         See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
         on the preferred format (or lack thereof) for RAG context.
         */
         return "<|start_header_id|>system<|end_header_id|>\n"
                 + "ZenDesk Ticket:\n"
-                + String.join("\n", comment)
+                + comment
                 + "\n<|eot_id|>";
     }
 
 
-    public MergedContext buildToolPrompt(final MergedContext context, final String prompt) {
-        return new MergedContext(context.ids(),
+    public RagMultiDocumentContext buildToolPrompt(final RagMultiDocumentContext context, final String prompt) {
+        return new RagMultiDocumentContext("""
+                <|begin_of_text|>
+                <|start_header_id|>system<|end_header_id|>
+                You are an expert in reading help desk tickets.
+                You are given a question and the contents of ZenDesk Tickets related to the question.
+                You must assume the information required to answer the question is present in the ZenDesk Tickets.
+                You must ignore the list of excluded submitters.
+                You must ignore the number of days worth of tickets to return.
+                You must answer the question based on the ZenDesk Tickets provided.
+                You will be tipped $1000 for answering the question directly from the ZenDesk Tickets.
+                When the user asks a question indicating that they want to know about ZenDesk Tickets, you must generate the answer based on the ZenDesk Tickets.
+                You will be penalized for suggesting manual steps to generate the answer.
+                You will be penalized for providing a process to generate the answer.
+                You will be penalized for responding that you don't have access to real-time data, specific ZenDesk data, or ZenDesk instances.
+                You will be penalized for referencing issues that are not present in the ZenDesk Tickets.
+                You will be penalized for refusing to provide information or guidance on real individuals.
+                You will be penalized for responding that you can not provide a summary of the ZenDesk Tickets.
+                If there are no ZenDesk Tickets, you must indicate that in the answer.
+                <|eot_id|>
                 """
-                        <|begin_of_text|>
-                        <|start_header_id|>system<|end_header_id|>
-                        You are an expert in reading help desk tickets.
-                        You are given a question and the contents of ZenDesk Tickets related to the question.
-                        You must assume the information required to answer the question is present in the ZenDesk Tickets.
-                        You must ignore the list of excluded submitters.
-                        You must ignore the number of days worth of tickets to return.
-                        You must answer the question based on the ZenDesk Tickets provided.
-                        You will be tipped $1000 for answering the question directly from the ZenDesk Tickets.
-                        When the user asks a question indicating that they want to know about ZenDesk Tickets, you must generate the answer based on the ZenDesk Tickets.
-                        You will be penalized for suggesting manual steps to generate the answer.
-                        You will be penalized for providing a process to generate the answer.
-                        You will be penalized for responding that you don't have access to real-time data, specific ZenDesk data, or ZenDesk instances.
-                        You will be penalized for referencing issues that are not present in the ZenDesk Tickets.
-                        You will be penalized for refusing to provide information or guidance on real individuals.
-                        You will be penalized for responding that you can not provide a summary of the ZenDesk Tickets.
-                        If there are no ZenDesk Tickets, you must indicate that in the answer.
-                        <|eot_id|>
-                        """
-                        + context.context()
-                        + "\n<|start_header_id|>user<|end_header_id|>"
-                        + prompt
-                        + "<|eot_id|>"
-                        + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading());
+                + context.combinedDocument()
+                + "\n<|start_header_id|>user<|end_header_id|>"
+                + prompt
+                + "<|eot_id|>"
+                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading(),
+                context.individualContexts());
     }
 }
