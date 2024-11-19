@@ -40,6 +40,15 @@ public class PromptHandlerOllama implements PromptHandler {
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
 
+    /**
+     * The model to select a tool can be specifically defined. This allows tool calling
+     * to use one model, and the tool itself to use another. If this setting is not defined,
+     * the model defined by sb.ollama.model will be used.
+     */
+    @Inject
+    @ConfigProperty(name = "sb.ollama.toolmodel")
+    Optional<String> toolModel;
+
     @Inject
     private Logger logger;
 
@@ -116,7 +125,7 @@ public class PromptHandlerOllama implements PromptHandler {
                 .of(client ->
                         ollamaClient.getTools(
                                 client,
-                                new OllamaGenerateBody(model, llmPrompt, false)))
+                                new OllamaGenerateBody(toolModel.orElse(model), llmPrompt, false)))
                 .get();
     }
 
