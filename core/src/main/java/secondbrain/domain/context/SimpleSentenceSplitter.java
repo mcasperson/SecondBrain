@@ -18,6 +18,7 @@ public class SimpleSentenceSplitter implements SentenceSplitter {
 
         return Stream.of(document.split("\\r\\n|\\r|\\n|\\.|;|!|\\?"))
                 .filter(sentence -> !sentence.isBlank())
+                .filter(sentence -> sentence.split("\\s+").length >= 5)
                 .map(String::trim)
                 // Remove list formatting
                 .map(sentence -> sentence.replaceFirst("^\\* ", ""))
