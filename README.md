@@ -59,6 +59,22 @@ The project is split into modules:
 
 ![Architecture](architecture.png)
 
+# Model selection
+
+SecondBrain supports switching between different LLMs by changing the `sb.ollama.model` configuration value. The
+following models are supported:
+
+* `llama3.1` - Facebook's open source LLM.
+* `llama3.2` - Facebook's open source LLM.
+* `gemma2` - Google's open source LLM model.
+* `phi3` - Microsoft's Phi model.
+* `qwen2` - Alibaba's Qwen model.
+
+Support for new models requires implementing the `secondbrain.domain.prompt.PromptBuilder` interface.
+
+Note that the function calling feature of SecondBrain only supports `llama3.1` and `llama3.2` models. Function calling
+is configured via the `sb.ollama.toolmodel` configuration value.
+
 # Configuration
 
 SecondBrain is configured via MicroProfile Config. Note that MicroProfile allows these configuration values to be set
