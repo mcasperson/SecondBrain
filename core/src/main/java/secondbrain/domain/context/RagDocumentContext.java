@@ -29,6 +29,13 @@ public record RagDocumentContext(String document, List<RagStringContext> sentenc
         this(document, sentences, "");
     }
 
+    /**
+     * The document held by this object often needs to undergo some transformation, from raw text, to being sanitized,
+     * to being marked up, as part of a LLM template. The sentences never change though.
+     *
+     * @param document The new document
+     * @return A new copy of this object with the new document
+     */
     public RagDocumentContext updateDocument(final String document) {
         return new RagDocumentContext(document, sentences, id);
     }
