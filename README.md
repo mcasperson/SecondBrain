@@ -71,13 +71,16 @@ environment variables, system properties, and configuration files:
 * `sb.zendesk.user` - The ZenDesk user
 * `sb.zendesk.url` - The ZenDesk url
 * `sb.google.serviceaccountjson` - The Google service account JSON file used to authenticate with Google APIs
-* `sb.ollama.url` - The URL of the Ollama service (defaults to http://localhost:11434)
-* `sb.ollama.model` - The model to use in Ollama (defaults to `llama3.2`)
-* `sb.ollama.contentlength` - The content window length to use in Ollama (defaults to `7000 * 4`, where each token is
+* `sb.ollama.url` - The URL of the Ollama service. (defaults to http://localhost:11434)
+* `sb.ollama.model` - The model to use in Ollama. Supports `llama3.x`, `gemma2`, `phi3`, `qwen2`. See classes that
+  implement `secondbrain.domain.prompt.PromptBuilder`. (defaults to `llama3.2`)
+* `sb.ollama.toolmodel` - The model to use in Ollama to select a tool. This only supports llama3 models (i.e. `llama3.1`
+  or `llama3.2`). (defaults to `llama3.2`)
+* `sb.ollama.contentlength` - The content window length to use in Ollama. (defaults to `7000 * 4`, where each token is
   assumed to be 4 characters)
-* `sb.encryption.password` - The password to use for encrypting sensitive data stored by web clients (defaults to
+* `sb.encryption.password` - The password to use for encrypting sensitive data stored by web clients. (defaults to
   `12345678`)
-* `sb.tools.debug` - Whether to log debug information about the tool in the response (defaults to `false`)
+* `sb.tools.debug` - Whether to log debug information about the tool in the response. (defaults to `false`)
 
 ### Google login
 
