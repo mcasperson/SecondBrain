@@ -21,6 +21,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.context.SimilarityCalculator;
+import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -39,6 +40,12 @@ import java.util.stream.Collectors;
 @Dependent
 public class SlackChannel implements Tool {
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
+    private static final String INSTRUCTIONS = """
+            You are professional agent that understands Slack conversations.
+            You are given the history of a Slack channel and asked to answer questions based on the messages provided.
+            The tokens "<!here>" and "<!channel>" are used to notify all members of the channel.
+            You must consider any message with the tokens "<!here>" or "<!channel>" to be important.
+            """;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
@@ -77,6 +84,9 @@ public class SlackChannel implements Tool {
 
     @Inject
     private OllamaClient ollamaClient;
+
+    @Inject
+    private PromptBuilderSelector promptBuilderSelector;
 
     @Override
     public String getName() {
@@ -169,7 +179,12 @@ public class SlackChannel implements Tool {
 
         return Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get()))
                 .map(ragDocumentContextSanitizer::sanitize)
-                .map(messageContext -> buildToolPrompt(messageContext, prompt))
+                .map(ragContext -> new RagDocumentContext(
+                        promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
+                                INSTRUCTIONS,
+                                ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
+                                prompt),
+                        ragContext.sentences()))
                 .map(this::callOllama)
                 .map(result -> result.annotateDocumentContext(
                         parsedMinSimilarity,
@@ -194,29 +209,13 @@ public class SlackChannel implements Tool {
                 .findFirst();
     }
 
-
-    private RagDocumentContext buildToolPrompt(final RagDocumentContext context, final String prompt) {
-        return new RagDocumentContext("""
-                <|begin_of_text|>
-                <|start_header_id|>system<|end_header_id|>
-                You are professional agent that understands Slack conversations.
-                You are given the history of a Slack channel and asked to answer questions based on the messages provided.
-                The tokens "<!here>" and "<!channel>" are used to notify all members of the channel.
-                You must consider any message with the tokens "<!here>" or "<!channel>" to be important.
-                Here are the messages:
-                """
-                + context.document().substring(0, Math.min(context.document().length(), NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
-                + "<|eot_id|><|start_header_id|>user<|end_header_id|>"
-                + prompt
-                + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>".stripLeading(),
-                context.sentences());
-    }
-
     private RagDocumentContext getDocumentContext(final String document) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
-                .map(sentences -> new RagDocumentContext(document, sentences.stream()
-                        .map(sentenceVectorizer::vectorize)
-                        .collect(Collectors.toList())))
+                .map(sentences -> new RagDocumentContext(
+                        promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Message", document),
+                        sentences.stream()
+                                .map(sentenceVectorizer::vectorize)
+                                .collect(Collectors.toList())))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext(document, List.of()))

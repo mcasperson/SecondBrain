@@ -25,8 +25,16 @@ import static java.util.Comparator.comparing;
  */
 public record RagDocumentContext(String document, List<RagStringContext> sentences, String id) {
 
-    public RagDocumentContext(String document, List<RagStringContext> sentences) {
+    public RagDocumentContext(final String document, final List<RagStringContext> sentences) {
         this(document, sentences, "");
+    }
+
+    public String getDocumentLeft(final int length) {
+        if (length <= 0) {
+            return "";
+        }
+
+        return document.substring(0, Math.min(document.length(), length));
     }
 
     /**

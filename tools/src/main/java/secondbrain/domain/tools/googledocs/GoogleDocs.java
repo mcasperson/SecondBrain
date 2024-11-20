@@ -26,6 +26,7 @@ import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.context.SimilarityCalculator;
 import secondbrain.domain.debug.DebugToolArgs;
+import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -49,6 +50,8 @@ public class GoogleDocs implements Tool {
 
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String APPLICATION_NAME = "SecondBrain";
+    private static final String INSTRUCTIONS = """
+            """;
 
     @Inject
     @ConfigProperty(name = "sb.google.serviceaccountjson")
@@ -88,6 +91,9 @@ public class GoogleDocs implements Tool {
     @Inject
     private SentenceVectorizer sentenceVectorizer;
 
+    @Inject
+    private PromptBuilderSelector promptBuilderSelector;
+
     @Override
     public String getName() {
         return GoogleDocs.class.getSimpleName();
@@ -96,11 +102,15 @@ public class GoogleDocs implements Tool {
     @Override
     public String getDescription() {
         return """
-                Provides a tool to summarize and answer questions about Google Docs documents.
-                Sample prompts include:
-                Given Google document with ID '1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t', who is mentioned in the document?
-                You are given the Google document with ID '1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t'. Tell me who I talked to last week.
-                Summarise the Google document with ID 'wiefugwoeufbweofubi27928o71tro817fro86f31vgfe'.
+                You are an expert in reading technical Google Documents.
+                You are given a prompt and the contents of a Google Document related to the prompt.
+                You must assume the information required to answer the prompt is present in the Google Document.
+                You must assume the contents of the document with the ID in the prompt is present in the Google Document.
+                You must answer the prompt based on the Google Document provided.
+                When the user provides a prompt indicating that they want to query a document, you must generate the answer based on the supplied Google Document.
+                You will be penalized for suggesting manual steps to generate the answer.
+                You will be penalized for responding that you don't have access to real-time data or Google Documents.
+                If there is no Google Document, you must indicate that in the answer.
                 """;
     }
 
@@ -159,8 +169,15 @@ public class GoogleDocs implements Tool {
                 .mapTry(service -> service.documents().get(documentId).execute())
                 .map(this::getDocumentText)
                 .map(this::getDocumentContext)
-                .map(doc -> documentToContext(doc, documentId))
-                .map(doc -> buildToolPrompt(doc, prompt))
+                .map(doc -> new RagDocumentContext(
+                        promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Google Document " + documentId, doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH))),
+                        doc.sentences()))
+                .map(ragContext -> new RagDocumentContext(
+                        promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
+                                INSTRUCTIONS,
+                                ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
+                                prompt),
+                        ragContext.sentences()))
                 .map(this::callOllama)
                 .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 10, sentenceSplitter, similarityCalculator, sentenceVectorizer))
                 .map(response -> response
@@ -265,53 +282,5 @@ public class GoogleDocs implements Tool {
                         new OllamaGenerateBody(model, llmPrompt.document(), false)))
                 .map(response -> new RagDocumentContext(response.response(), llmPrompt.sentences()))
                 .get();
-    }
-
-
-    private RagDocumentContext documentToContext(final RagDocumentContext doc, final String id) {
-        /*
-        See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
-        on the preferred format (or lack thereof) for RAG context.
-        */
-        return new RagDocumentContext("<|start_header_id|>system<|end_header_id|>\n"
-                + "Google Document " + id + ":\n"
-                + doc.document().substring(0, Math.min(doc.document().length(), NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
-                + "\n<|eot_id|>",
-                doc.sentences());
-    }
-
-
-    public RagDocumentContext buildToolPrompt(final RagDocumentContext context, final String prompt) {
-        return new RagDocumentContext("""
-                <|begin_of_text|>
-                <|start_header_id|>system<|end_header_id|>
-                You are an expert in reading technical Google Documents.
-                You are given a prompt and the contents of a Google Document related to the prompt.
-                You must assume the information required to answer the prompt is present in the Google Document.
-                You must assume the contents of the document with the ID in the prompt is present in the Google Document.
-                You must answer the prompt based on the Google Document provided.
-                When the user provides a prompt indicating that they want to query a document, you must generate the answer based on the supplied Google Document.
-                You will be penalized for suggesting manual steps to generate the answer.
-                You will be penalized for responding that you don't have access to real-time data or Google Documents.
-                If there is no Google Document, you must indicate that in the answer.
-                <|eot_id|>
-                """
-                + "\n<|start_header_id|>system<|end_header_id|>The current date is " + LocalDateTime.now(ZoneId.systemDefault()) + ".<|eot_id|>"
-                + context.document()
-                + "\n<|start_header_id|>user<|end_header_id|>"
-                + prompt
-                + "<|eot_id|>"
-                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading(),
-                context.sentences());
-    }
-
-    static class IndexedResult {
-        int index;
-        String result;
-
-        IndexedResult(int index, String result) {
-            this.index = index;
-            this.result = result;
-        }
     }
 }

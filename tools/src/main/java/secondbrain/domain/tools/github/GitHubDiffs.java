@@ -15,6 +15,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.limit.ListLimiter;
+import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -39,6 +40,17 @@ public class GitHubDiffs implements Tool {
     private static final String DEFAULT_BRANCH = "main";
     private static final int DEFAULT_DURATION = 30;
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final String INSTRUCTIONS = """
+            You are an expert in reading Git diffs.
+            You are given a question and a list of Git Diffs related to the question.
+            You must assume the Git Diffs capture the changes to the Git repository mentioned in the question.
+            You must assume the information required to answer the question is present in the Git Diffs.
+            You must answer the question based on the Git Diffs provided.
+            When the user asks a question indicating that they want to know the changes in the repository, you must generate the answer based on the Git Diffs.
+            You will be penalized for suggesting manual steps to generate the answer.
+            You will be penalized for responding that you don't have access to real-time data or repositories.
+            If there are no Git Diffs, you must indicate that in the answer.
+            """;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
@@ -73,6 +85,9 @@ public class GitHubDiffs implements Tool {
 
     @Inject
     private ListLimiter listLimiter;
+
+    @Inject
+    private PromptBuilderSelector promptBuilderSelector;
 
     @Override
     public String getName() {
@@ -143,7 +158,12 @@ public class GitHubDiffs implements Tool {
                         RagDocumentContext::document,
                         NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                 .map(this::mergeContext)
-                .map(diffs -> buildToolPrompt(diffs, prompt))
+                .map(ragContext -> new RagMultiDocumentContext(
+                        promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
+                                INSTRUCTIONS,
+                                ragContext.combinedDocument(),
+                                prompt),
+                        ragContext.individualContexts()))
                 .map(this::callOllama)
                 .map(response -> response.combinedDocument()
                         + System.lineSeparator() + System.lineSeparator()
@@ -183,7 +203,7 @@ public class GitHubDiffs implements Tool {
          */
 
         return commitsResponse.stream().map(commit -> new RagDocumentContext(
-                diffToContext(owner, repo, commit, authorization),
+                promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Git Diff", getCommitDiff(owner, repo, commit.sha(), authorization)),
                 List.of(), // What vectors makes sense for diffs?
                 commit.html_url())).toList();
     }
@@ -202,23 +222,6 @@ public class GitHubDiffs implements Tool {
                 .get();
     }
 
-
-    private String diffToContext(
-            final String owner,
-            final String repo,
-            final GitHubCommitResponse commit,
-            final String authorization) {
-        /*
-        See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
-        on the preferred format (or lack thereof) for RAG context.
-        */
-        return "<|start_header_id|>system<|end_header_id|>\n"
-                + "Git Diff:\n"
-                + getCommitDiff(owner, repo, commit.sha(), authorization)
-                + "\n<|eot_id|>";
-    }
-
-
     private RagMultiDocumentContext callOllama(final RagMultiDocumentContext llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
@@ -236,29 +239,5 @@ public class GitHubDiffs implements Tool {
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> gitHubClient.getDiff(client, owner, repo, sha, authorization)).get();
-    }
-
-
-    public RagMultiDocumentContext buildToolPrompt(final RagMultiDocumentContext context, final String prompt) {
-        return new RagMultiDocumentContext("""
-                <|begin_of_text|>
-                <|start_header_id|>system<|end_header_id|>
-                You are an expert in reading Git diffs.
-                You are given a question and a list of Git Diffs related to the question.
-                You must assume the Git Diffs capture the changes to the Git repository mentioned in the question.
-                You must assume the information required to answer the question is present in the Git Diffs.
-                You must answer the question based on the Git Diffs provided.
-                When the user asks a question indicating that they want to know the changes in the repository, you must generate the answer based on the Git Diffs.
-                You will be penalized for suggesting manual steps to generate the answer.
-                You will be penalized for responding that you don't have access to real-time data or repositories.
-                If there are no Git Diffs, you must indicate that in the answer.
-                <|eot_id|>
-                """
-                + context
-                + "\n<|start_header_id|>user<|end_header_id|>"
-                + prompt
-                + "<|eot_id|>"
-                + "\n<|start_header_id|>assistant<|end_header_id|>".stripLeading(),
-                context.individualContexts());
     }
 }

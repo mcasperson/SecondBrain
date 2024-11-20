@@ -7,12 +7,12 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.keyword.KeywordExtractor;
+import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -26,7 +26,10 @@ import java.util.stream.Stream;
 
 @Dependent
 public class SlackSearch implements Tool {
-    private static final int MINIMUM_MESSAGE_LENGTH = 300;
+    private static final String INSTRUCTIONS = """
+            You are professional agent that understands Slack conversations.
+            You are given Slack search results and asked to answer questions based on the messages provided.
+            """;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
@@ -52,6 +55,9 @@ public class SlackSearch implements Tool {
 
     @Inject
     private OllamaClient ollamaClient;
+
+    @Inject
+    private PromptBuilderSelector promptBuilderSelector;
 
     @Override
     public String getName() {
@@ -115,10 +121,13 @@ public class SlackSearch implements Tool {
                 .getMatches()
                 .stream()
                 .map(MatchedItem::getText)
-                .map(this::messageToContext)
+                .map(message -> promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Slack Messages", message))
                 .collect(Collectors.joining("\n"));
 
-        return Try.of(() -> buildToolPrompt(searchResults, prompt))
+        return Try.of(() -> promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
+                        INSTRUCTIONS,
+                        searchResults,
+                        prompt))
                 .map(this::callOllama)
                 .map(response -> response.response()
                         + System.lineSeparator() + System.lineSeparator()
@@ -135,34 +144,6 @@ public class SlackSearch implements Tool {
                 .get();
 
     }
-
-    private String messageToContext(final String message) {
-        /*
-        See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
-        on the preferred format (or lack thereof) for RAG context.
-        */
-        return "<|start_header_id|>system<|end_header_id|>\n"
-                + "Slack Message:\n"
-                + message
-                + "\n<|eot_id|>";
-    }
-
-
-    private String buildToolPrompt(final String context, final String prompt) {
-        return """
-                <|begin_of_text|>
-                <|start_header_id|>system<|end_header_id|>
-                You are professional agent that understands Slack conversations.
-                You are given Slack search results and asked to answer questions based on the messages provided.
-                Here are the messages:
-                """
-                + "<|eot_id|>"
-                + context.substring(0, Math.min(context.length(), NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
-                + "<|start_header_id|>user<|end_header_id|>"
-                + prompt
-                + "<|eot_id|><|start_header_id|>assistant<|end_header_id|>".stripLeading();
-    }
-
 
     private OllamaResponse callOllama(final String llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
