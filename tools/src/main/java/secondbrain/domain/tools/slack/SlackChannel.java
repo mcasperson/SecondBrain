@@ -179,12 +179,12 @@ public class SlackChannel implements Tool {
 
         return Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get()))
                 .map(ragDocumentContextSanitizer::sanitize)
-                .map(ragContext -> new RagDocumentContext(
-                        promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
+                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
+                        .getPromptBuilder(model)
+                        .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
-                                prompt),
-                        ragContext.sentences()))
+                                prompt)))
                 .map(this::callOllama)
                 .map(result -> result.annotateDocumentContext(
                         parsedMinSimilarity,

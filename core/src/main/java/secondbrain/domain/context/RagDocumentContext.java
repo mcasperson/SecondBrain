@@ -29,6 +29,10 @@ public record RagDocumentContext(String document, List<RagStringContext> sentenc
         this(document, sentences, "");
     }
 
+    public RagDocumentContext updateDocument(final String document) {
+        return new RagDocumentContext(document, sentences, id);
+    }
+
     public String getDocumentLeft(final int length) {
         if (length <= 0) {
             return "";

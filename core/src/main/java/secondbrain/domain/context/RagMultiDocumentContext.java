@@ -18,6 +18,10 @@ public record RagMultiDocumentContext(String combinedDocument, List<RagDocumentC
         return individualContexts.stream().map(RagDocumentContext::id).toList();
     }
 
+    public RagMultiDocumentContext updateDocument(final String document) {
+        return new RagMultiDocumentContext(document, individualContexts);
+    }
+
     /**
      * Annotate the document with the closest matching sentence from the source sentences.
      * This overcomes one of the problems with LLMs where you are not quite sure where it

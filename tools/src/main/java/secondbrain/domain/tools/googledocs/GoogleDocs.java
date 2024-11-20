@@ -169,15 +169,15 @@ public class GoogleDocs implements Tool {
                 .mapTry(service -> service.documents().get(documentId).execute())
                 .map(this::getDocumentText)
                 .map(this::getDocumentContext)
-                .map(doc -> new RagDocumentContext(
-                        promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Google Document " + documentId, doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH))),
-                        doc.sentences()))
-                .map(ragContext -> new RagDocumentContext(
-                        promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
+                .map(doc -> doc.updateDocument(promptBuilderSelector
+                        .getPromptBuilder(model)
+                        .buildContextPrompt("Google Document " + documentId, doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))))
+                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
+                        .getPromptBuilder(model)
+                        .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
-                                prompt),
-                        ragContext.sentences()))
+                                prompt)))
                 .map(this::callOllama)
                 .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 10, sentenceSplitter, similarityCalculator, sentenceVectorizer))
                 .map(response -> response

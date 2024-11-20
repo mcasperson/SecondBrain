@@ -209,9 +209,9 @@ public class ZenDeskOrganization implements Tool {
                         // Make sure we had some content for the prompt
                         .mapTry(mergedContext -> validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                         // Build the final prompt including instructions, context and the user prompt
-                        .map(ragContext -> new RagMultiDocumentContext(
-                                promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt),
-                                ragContext.individualContexts()))
+                        .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
+                                .getPromptBuilder(model)
+                                .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
                         // Call Ollama with the final prompt
                         .map(llmPrompt -> ollamaClient.getTools(
                                 client,

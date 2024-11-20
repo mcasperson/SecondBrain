@@ -158,12 +158,11 @@ public class GitHubDiffs implements Tool {
                         RagDocumentContext::document,
                         NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                 .map(this::mergeContext)
-                .map(ragContext -> new RagMultiDocumentContext(
+                .map(ragContext -> ragContext.updateDocument(
                         promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.combinedDocument(),
-                                prompt),
-                        ragContext.individualContexts()))
+                                prompt)))
                 .map(this::callOllama)
                 .map(response -> response.combinedDocument()
                         + System.lineSeparator() + System.lineSeparator()
