@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ZenDeskResponse(List<ZenDeskResultsResponse> results, Integer next_page) {
+public record ZenDeskResponse(List<ZenDeskResultsResponse> results, String next_page) {
     public List<ZenDeskResultsResponse> getResults() {
         return Objects.requireNonNullElse(results, List.of());
     }

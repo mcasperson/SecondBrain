@@ -9,6 +9,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.args.ArgsAccessor;
@@ -148,6 +149,10 @@ public class ZenDeskOrganization implements Tool {
 
         final String recipient = argsAccessor.getArgument(arguments, "recipient", "");
 
+        // These arguments get swapped by the LLM all the time, so we need to fix them
+        final String fixedRecipient = EmailValidator.getInstance().isValid(owner) && StringUtils.isBlank(recipient) ? owner : recipient;
+        final String fixedOwner = sanitizeOwner(EmailValidator.getInstance().isValid(owner) && StringUtils.isBlank(recipient) ? "" : owner);
+
         final List<String> exclude = Arrays.stream(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","))
                 .map(String::trim)
                 .filter(StringUtils::isNotBlank)
@@ -191,7 +196,7 @@ public class ZenDeskOrganization implements Tool {
         query.add("type:ticket");
         query.add("created>" + LocalDateTime.now(ZoneId.systemDefault()).minusDays(days).format(ISO_LOCAL_DATE));
 
-        if (!StringUtils.isBlank(owner)) {
+        if (!StringUtils.isBlank(fixedOwner)) {
             query.add("organization:" + owner);
         }
 
@@ -199,7 +204,7 @@ public class ZenDeskOrganization implements Tool {
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
 
                         // Filter out any tickets based on the submitter and assignee
-                        .map(response -> filterResponse(response, true, exclude, recipient))
+                        .map(response -> filterResponse(response, true, exclude, fixedRecipient))
                         // Limit how many tickets we process. We're unliklely to be able to pass the details of many tickets to the LLM anyway
                         .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
@@ -325,5 +330,17 @@ public class ZenDeskOrganization implements Tool {
                         .filter(StringUtils::isNotBlank)
                         .collect(Collectors.joining("\n")))
                 .collect(Collectors.toList());
+    }
+
+    private String sanitizeOwner(final String owner) {
+        if (StringUtils.isBlank(owner)) {
+            return "";
+        }
+
+        if ("zendesk".equalsIgnoreCase(owner)) {
+            return "";
+        }
+
+        return owner;
     }
 }
