@@ -348,7 +348,19 @@ public class ZenDeskOrganization implements Tool {
             return "";
         }
 
-        if ("zendesk".equalsIgnoreCase(owner)) {
+        // A bunch of hallucinations that we need to ignore
+        final String[] invalid = {
+                "zendesk",
+                "support",
+                "helpdesk",
+                "help desk",
+                "help",
+                "desk",
+                "supportdesk",
+                "support desk",
+                "your organization name"};
+
+        if (Arrays.stream(invalid).anyMatch(owner::equalsIgnoreCase)) {
             return "";
         }
 
