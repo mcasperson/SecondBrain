@@ -150,8 +150,8 @@ public class ZenDeskOrganization implements Tool {
         final String recipient = argsAccessor.getArgument(arguments, "recipient", "");
 
         // These arguments get swapped by the LLM all the time, so we need to fix them
-        final String fixedRecipient = EmailValidator.getInstance().isValid(owner) && StringUtils.isBlank(recipient) ? owner : recipient;
-        final String fixedOwner = sanitizeOwner(EmailValidator.getInstance().isValid(owner) && StringUtils.isBlank(recipient) ? "" : owner);
+        final String fixedRecipient = sanitizeRecipient(EmailValidator.getInstance().isValid(sanitizeRecipient(owner)) && StringUtils.isBlank(recipient) ? owner : recipient);
+        final String fixedOwner = sanitizeOwner(EmailValidator.getInstance().isValid(sanitizeRecipient(owner)) && StringUtils.isBlank(recipient) ? "" : owner);
 
         final List<String> exclude = Arrays.stream(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","))
                 .map(String::trim)
@@ -342,5 +342,20 @@ public class ZenDeskOrganization implements Tool {
         }
 
         return owner;
+    }
+
+    private String sanitizeRecipient(final String recipient) {
+        if (StringUtils.isBlank(recipient)) {
+            return "";
+        }
+
+        // find the first thing that looks like an email address
+        return Arrays.stream(recipient.split(" "))
+                .filter(StringUtils::isNotBlank)
+                .map(String::trim)
+                .filter(e -> EmailValidator.getInstance().isValid(e))
+                .limit(1)
+                .findFirst()
+                .orElse("");
     }
 }
