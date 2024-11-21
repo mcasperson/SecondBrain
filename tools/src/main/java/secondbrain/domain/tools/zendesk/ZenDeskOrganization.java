@@ -191,8 +191,6 @@ public class ZenDeskOrganization implements Tool {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
                         .map(ZenDeskResponse::results)
-                        // Get the ticket IDs
-                        .map(response -> response.stream().map(ZenDeskResultsResponse::id).collect(Collectors.toList()))
                         // Filter out any tickets based on the submitter and assignee
                         .map(response -> filterResponse(response, true, exclude, client, authHeader))
                         // Limit how many tickets we process. We're unliklely to be able to pass the details of many tickets to the LLM anyway
@@ -270,26 +268,24 @@ public class ZenDeskOrganization implements Tool {
                 .mapTry(Objects::requireNonNull);
     }
 
-    private List<String> filterResponse(final List<String> ids, final boolean forceAssignee, final List<String> exclude, final Client client, final String authorization) {
+    private List<ZenDeskResultsResponse> filterResponse(final List<ZenDeskResultsResponse> tickets, final boolean forceAssignee, final List<String> exclude, final Client client, final String authorization) {
         if (!forceAssignee && exclude.isEmpty()) {
-            return ids;
+            return tickets;
         }
 
-        return ids.stream()
-                .map(ticket -> zenDeskClient.getTicket(client, authorization, zenDeskUrl.get(), ticket).ticket())
+        return tickets.stream()
                 .filter(ticket -> !exclude.contains(ticket.submitter_id()))
                 .filter(ticket -> !forceAssignee || !StringUtils.isBlank(ticket.assignee_id()))
-                .map(ZenDeskTicket::id)
                 .collect(Collectors.toList());
     }
 
 
-    private List<RagDocumentContext> ticketToFirstComment(final List<String> ids,
+    private List<RagDocumentContext> ticketToFirstComment(final List<ZenDeskResultsResponse> tickets,
                                                           final Client client,
                                                           final String authorization) {
-        return ids.stream()
+        return tickets.stream()
                 // Get the context associated with the ticket
-                .map(id -> new IndividualContext<>(id, zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), id)))
+                .map(ticket -> new IndividualContext<>(ticket.id(), zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id())))
                 // Get the first comment, or an empty list
                 .map(comments -> new IndividualContext<>(comments.id(), ticketToBody(comments.context(), 1)))
                 // Get the comment body as a LLM context string
