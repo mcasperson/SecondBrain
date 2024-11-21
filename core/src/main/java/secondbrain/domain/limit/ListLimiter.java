@@ -38,5 +38,5 @@ public interface ListLimiter {
      * @param limit The maximum length of the list
      * @return The list with content limited to the specified length
      */
-    List<IndividualContext<String>> limitIndividualContextListContent(List<IndividualContext<String>> list, int limit);
+    <U> List<IndividualContext<String, U>> limitIndividualContextListContent(List<IndividualContext<String, U>> list, int limit);
 }

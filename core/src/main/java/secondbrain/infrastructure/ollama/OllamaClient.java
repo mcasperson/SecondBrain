@@ -54,8 +54,8 @@ public class OllamaClient {
                 .get();
     }
 
-    public RagMultiDocumentContext getTools(final Client client, final OllamaGenerateBodyWithContext body) {
+    public <T> RagMultiDocumentContext<T> getTools(final Client client, final OllamaGenerateBodyWithContext<T> body) {
         final OllamaResponse response = getTools(client, new OllamaGenerateBody(body.model(), body.prompt().combinedDocument(), body.stream()));
-        return new RagMultiDocumentContext(response.response(), body.prompt().individualContexts());
+        return new RagMultiDocumentContext<>(response.response(), body.prompt().individualContexts());
     }
 }

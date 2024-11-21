@@ -217,15 +217,17 @@ public class ZenDeskOrganization implements Tool {
                         // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
                         .map(this::mergeContext)
                         // Make sure we had some content for the prompt
-                        .mapTry(mergedContext -> validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
+                        .mapTry(mergedContext ->
+                                validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                         // Build the final prompt including instructions, context and the user prompt
-                        .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                                .getPromptBuilder(model)
-                                .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
+                        .map(ragContext -> ragContext.updateDocument(
+                                promptBuilderSelector
+                                        .getPromptBuilder(model)
+                                        .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
                         // Call Ollama with the final prompt
                         .map(llmPrompt -> ollamaClient.getTools(
                                 client,
-                                new OllamaGenerateBodyWithContext(model, llmPrompt, false)))
+                                new OllamaGenerateBodyWithContext<>(model, llmPrompt, false)))
                         // Take the LLM response and annotate it with links to the RAG context
                         .map(response -> response.annotateDocumentContext(
                                 parsedMinSimilarity,
@@ -235,7 +237,7 @@ public class ZenDeskOrganization implements Tool {
                                 sentenceVectorizer)
                                 + System.lineSeparator() + System.lineSeparator()
                                 + "Tickets:" + System.lineSeparator()
-                                + idsToLinks(url.get(), response.getIds())
+                                + idsToLinks(url.get(), response.getMetas())
                                 + debugToolArgs.debugArgs(arguments, true))
                         .recover(EmptyString.class, "No tickets found")
                         .recover(throwable -> "Failed to get tickets or context: " + throwable.getMessage())
@@ -247,13 +249,13 @@ public class ZenDeskOrganization implements Tool {
      * Display a Markdown list of the ticket IDs with links to the tickets. This helps users understand
      * where the information is coming from.
      *
-     * @param url The ZenDesk url
-     * @param ids The list of ticket IDs
+     * @param url   The ZenDesk url
+     * @param metas The list of ticket metadata
      * @return A Markdown list of source tickets
      */
-    private String idsToLinks(final String url, final List<String> ids) {
-        return ids.stream()
-                .map(id -> "* [" + id + "](" + idToLink(url, id) + ")")
+    private String idsToLinks(final String url, final List<ZenDeskResultsResponse> metas) {
+        return metas.stream()
+                .map(meta -> "* [" + meta.id() + " " + meta.subject() + "](" + idToLink(url, meta.id()) + ")")
                 .collect(Collectors.joining("\n"));
     }
 
@@ -261,8 +263,8 @@ public class ZenDeskOrganization implements Tool {
         return url + "/agent/tickets/" + id;
     }
 
-    private RagMultiDocumentContext mergeContext(final List<RagDocumentContext> context) {
-        return new RagMultiDocumentContext(
+    private RagMultiDocumentContext<ZenDeskResultsResponse> mergeContext(final List<RagDocumentContext<ZenDeskResultsResponse>> context) {
+        return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(RagDocumentContext::document)
                         .map(content -> promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("ZenDesk Ticket", content))
@@ -293,30 +295,39 @@ public class ZenDeskOrganization implements Tool {
     }
 
 
-    private List<RagDocumentContext> ticketToFirstComment(final List<ZenDeskResultsResponse> tickets,
-                                                          final Client client,
-                                                          final String authorization) {
+    private List<RagDocumentContext<ZenDeskResultsResponse>> ticketToFirstComment(final List<ZenDeskResultsResponse> tickets,
+                                                                                  final Client client,
+                                                                                  final String authorization) {
         return tickets.stream()
                 // Get the context associated with the ticket
-                .map(ticket -> new IndividualContext<>(ticket.id(), zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id())))
+                .map(ticket -> new IndividualContext<>(
+                        ticket.id(),
+                        zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id()),
+                        ticket))
                 // Get the first comment, or an empty list
-                .map(comments -> new IndividualContext<>(comments.id(), ticketToBody(comments.context(), 1)))
+                .map(comments -> comments.updateContext(
+                        ticketToBody(comments.context(), 1)))
                 // Get the comment body as a LLM context string
-                .map(comments -> new IndividualContext<>(comments.id(), String.join("\n", comments.context())))
+                .map(comments -> comments.updateContext(
+                        String.join("\n", comments.context())))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
-                .map(comments -> getDocumentContext(comments.context(), comments.id()))
+                .map(comments -> getDocumentContext(comments.context(), comments.id(), comments.meta()))
                 // Get a list of context strings
                 .collect(Collectors.toList());
     }
 
-    private RagDocumentContext getDocumentContext(final String document, final String id) {
+    private RagDocumentContext<ZenDeskResultsResponse> getDocumentContext(final String document, final String id, final ZenDeskResultsResponse meta) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
-                .map(sentences -> new RagDocumentContext(document, sentences.stream()
-                        .map(sentenceVectorizer::vectorize)
-                        .collect(Collectors.toList()), id))
+                .map(sentences -> new RagDocumentContext<ZenDeskResultsResponse>(
+                        document,
+                        sentences.stream()
+                                .map(sentenceVectorizer::vectorize)
+                                .collect(Collectors.toList()),
+                        id,
+                        meta))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext(document, List.of(), id))
+                .recover(e -> new RagDocumentContext<>(document, List.of(), id, meta))
                 .get();
     }
 

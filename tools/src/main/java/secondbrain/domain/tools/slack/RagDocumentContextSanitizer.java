@@ -10,8 +10,9 @@ import secondbrain.domain.context.RagStringContext;
  */
 @ApplicationScoped
 public class RagDocumentContextSanitizer {
-    public RagDocumentContext sanitize(final RagDocumentContext ragDocumentContext) {
-        return new RagDocumentContext(ragDocumentContext.document(),
+    public <T> RagDocumentContext<T> sanitize(final RagDocumentContext<T> ragDocumentContext) {
+        return new RagDocumentContext<>(
+                ragDocumentContext.document(),
                 ragDocumentContext.sentences().stream()
                         .map(sentence -> new RagStringContext(
                                 sentence.context()
@@ -20,6 +21,8 @@ public class RagDocumentContextSanitizer {
                                         .replaceAll("<", " "),
                                 sentence.vector()
                         ))
-                        .toList());
+                        .toList(),
+                ragDocumentContext.id(),
+                ragDocumentContext.meta());
     }
 }

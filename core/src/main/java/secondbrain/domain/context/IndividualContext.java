@@ -14,5 +14,15 @@ package secondbrain.domain.context;
  * @param id      The external source ID
  * @param context The external source context.
  */
-public record IndividualContext<T>(String id, T context) {
+public record IndividualContext<T, U>(String id, T context, U meta) {
+    /**
+     * Updates the context of the IndividualContext. The type of the context is frequently changed
+     * as the context is processed and transformed.
+     *
+     * @param context The new context
+     * @return A new copy of this object with the new context
+     */
+    public <W> IndividualContext<W, U> updateContext(W context) {
+        return new IndividualContext<>(id, context, meta);
+    }
 }

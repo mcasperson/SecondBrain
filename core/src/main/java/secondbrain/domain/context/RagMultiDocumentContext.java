@@ -13,9 +13,13 @@ import java.util.Objects;
  * @param combinedDocument   The combined context to be sent to the LLM
  * @param individualContexts The individual documents that all contribute to the combined context
  */
-public record RagMultiDocumentContext(String combinedDocument, List<RagDocumentContext> individualContexts) {
+public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocumentContext<T>> individualContexts) {
     public List<String> getIds() {
         return individualContexts.stream().map(RagDocumentContext::id).toList();
+    }
+
+    public List<T> getMetas() {
+        return individualContexts.stream().map(RagDocumentContext::meta).toList();
     }
 
     /**
@@ -25,8 +29,8 @@ public record RagMultiDocumentContext(String combinedDocument, List<RagDocumentC
      * @param document The new document
      * @return A new copy of this object with the new document
      */
-    public RagMultiDocumentContext updateDocument(final String document) {
-        return new RagMultiDocumentContext(document, individualContexts);
+    public RagMultiDocumentContext<T> updateDocument(final String document) {
+        return new RagMultiDocumentContext<T>(document, individualContexts);
     }
 
     /**

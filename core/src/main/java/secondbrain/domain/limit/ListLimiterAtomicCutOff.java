@@ -47,8 +47,8 @@ public class ListLimiterAtomicCutOff implements ListLimiter {
     }
 
     @Override
-    public List<IndividualContext<String>> limitIndividualContextListContent(
-            final List<IndividualContext<String>> list,
+    public <U> List<IndividualContext<String, U>> limitIndividualContextListContent(
+            final List<IndividualContext<String, U>> list,
             final int limit) {
         if (limit <= 0) {
             return List.of();

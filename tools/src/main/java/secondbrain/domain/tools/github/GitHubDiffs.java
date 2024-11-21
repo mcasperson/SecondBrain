@@ -180,7 +180,7 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    private RagMultiDocumentContext mergeContext(final List<RagDocumentContext> context) {
+    private RagMultiDocumentContext mergeContext(final List<RagDocumentContext<Void>> context) {
         return new RagMultiDocumentContext(
                 context.stream()
                         .map(RagDocumentContext::document)
@@ -189,7 +189,7 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    private List<RagDocumentContext> convertCommitsToDiffs(
+    private List<RagDocumentContext<Void>> convertCommitsToDiffs(
             final List<GitHubCommitResponse> commitsResponse,
             final String owner,
             final String repo,
@@ -201,7 +201,7 @@ public class GitHubDiffs implements Tool {
             a placeholder that allows us to inject vectors at a later date.
          */
 
-        return commitsResponse.stream().map(commit -> new RagDocumentContext(
+        return commitsResponse.stream().map(commit -> new RagDocumentContext<Void>(
                 promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Git Diff", getCommitDiff(owner, repo, commit.sha(), authorization)),
                 List.of(), // What vectors makes sense for diffs?
                 commit.html_url())).toList();

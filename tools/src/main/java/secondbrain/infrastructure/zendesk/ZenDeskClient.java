@@ -7,7 +7,9 @@ import jakarta.ws.rs.client.Client;
 import org.apache.commons.collections4.ListUtils;
 import secondbrain.domain.response.ResponseValidation;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @ApplicationScoped
 public class ZenDeskClient {
@@ -15,6 +17,8 @@ public class ZenDeskClient {
         Don't recurse forever, because LLMs can't deal with large results anyway.
      */
     private static final int MAX_PAGES = 5;
+
+    private static final Map<String, String> ORGANIZATION_CACHE = new HashMap<>();
 
     @Inject
     private ResponseValidation responseValidation;
@@ -91,5 +95,39 @@ public class ZenDeskClient {
                         .map(r -> r.readEntity(ZenDeskCommentsResponse.class))
                         .get())
                 .get();
+    }
+
+    public ZenDeskOrganizationResponse getOrganization(
+            final Client client,
+            final String authorization,
+            final String url,
+            final String orgId) {
+
+        return Try.withResources(() -> client.target(url + "/api/v2/organizations/" + orgId + "/comments")
+                        .request()
+                        .header("Authorization", authorization)
+                        .header("Accept", "application/json")
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response))
+                        .map(r -> r.readEntity(ZenDeskOrganizationResponse.class))
+                        .get())
+                .get();
+    }
+
+    public ZenDeskOrganizationResponse getOrganizationCached(
+            final Client client,
+            final String authorization,
+            final String url,
+            final String orgId) {
+
+        if (ORGANIZATION_CACHE.containsKey(orgId)) {
+            return new ZenDeskOrganizationResponse(ORGANIZATION_CACHE.get(orgId), orgId);
+        }
+
+        final String name = getOrganization(client, authorization, url, orgId).name();
+
+        ORGANIZATION_CACHE.put(orgId, name);
+
+        return new ZenDeskOrganizationResponse(orgId, name);
     }
 }
