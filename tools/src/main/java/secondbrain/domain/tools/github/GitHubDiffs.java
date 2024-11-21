@@ -180,8 +180,8 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    private RagMultiDocumentContext mergeContext(final List<RagDocumentContext<Void>> context) {
-        return new RagMultiDocumentContext(
+    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context) {
+        return new RagMultiDocumentContext<Void>(
                 context.stream()
                         .map(RagDocumentContext::document)
                         .collect(Collectors.joining("\n")),
@@ -221,11 +221,11 @@ public class GitHubDiffs implements Tool {
                 .get();
     }
 
-    private RagMultiDocumentContext callOllama(final RagMultiDocumentContext llmPrompt) {
+    private RagMultiDocumentContext<Void> callOllama(final RagMultiDocumentContext<Void> llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
-                        new OllamaGenerateBodyWithContext(model, llmPrompt, false)))
+                        new OllamaGenerateBodyWithContext<Void>(model, llmPrompt, false)))
                 .get();
     }
 

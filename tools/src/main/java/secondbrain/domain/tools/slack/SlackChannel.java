@@ -209,16 +209,16 @@ public class SlackChannel implements Tool {
                 .findFirst();
     }
 
-    private RagDocumentContext getDocumentContext(final String document) {
+    private RagDocumentContext<Void> getDocumentContext(final String document) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
-                .map(sentences -> new RagDocumentContext(
+                .map(sentences -> new RagDocumentContext<Void>(
                         promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Message", document),
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList())))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext(document, List.of()))
+                .recover(e -> new RagDocumentContext<Void>(document, List.of()))
                 .get();
     }
 
@@ -231,12 +231,12 @@ public class SlackChannel implements Tool {
     }
 
 
-    private RagDocumentContext callOllama(final RagDocumentContext llmPrompt) {
+    private RagDocumentContext<Void> callOllama(final RagDocumentContext<Void> llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
                         new OllamaGenerateBody(model, llmPrompt.document(), false)))
-                .map(response -> new RagDocumentContext(response.response(), llmPrompt.sentences()))
+                .map(response -> new RagDocumentContext<Void>(response.response(), llmPrompt.sentences()))
                 .get();
     }
 
