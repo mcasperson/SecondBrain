@@ -133,6 +133,7 @@ public class ZenDeskOrganization implements Tool {
     public List<ToolArguments> getArguments() {
         return List.of(new ToolArguments("organization", "The name of the ZenDesk organization", ""),
                 new ToolArguments("excludeSubmitters", "A comma separated list of submitters to exclude", ""),
+                new ToolArguments("recipient", "The recipient email address that tickets must be sent to", ""),
                 new ToolArguments("days", "The number of days worth of tickets to return", DEFAULT_DURATION + ""));
     }
 
@@ -141,6 +142,9 @@ public class ZenDeskOrganization implements Tool {
         final String owner = validateInputs.getCommaSeparatedList(
                 prompt,
                 argsAccessor.getArgument(arguments, "organization", ""));
+
+        final String recipient = argsAccessor.getArgument(arguments, "recipient", "");
+
         final List<String> exclude = Arrays.stream(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","))
                 .map(String::trim)
                 .filter(StringUtils::isNotBlank)
@@ -192,7 +196,7 @@ public class ZenDeskOrganization implements Tool {
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
                         .map(ZenDeskResponse::results)
                         // Filter out any tickets based on the submitter and assignee
-                        .map(response -> filterResponse(response, true, exclude))
+                        .map(response -> filterResponse(response, true, exclude, recipient))
                         // Limit how many tickets we process. We're unliklely to be able to pass the details of many tickets to the LLM anyway
                         .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
@@ -268,14 +272,15 @@ public class ZenDeskOrganization implements Tool {
                 .mapTry(Objects::requireNonNull);
     }
 
-    private List<ZenDeskResultsResponse> filterResponse(final List<ZenDeskResultsResponse> tickets, final boolean forceAssignee, final List<String> exclude) {
-        if (!forceAssignee && exclude.isEmpty()) {
+    private List<ZenDeskResultsResponse> filterResponse(final List<ZenDeskResultsResponse> tickets, final boolean forceAssignee, final List<String> exclude, final String recipient) {
+        if (!forceAssignee && exclude.isEmpty() && StringUtils.isBlank(recipient)) {
             return tickets;
         }
 
         return tickets.stream()
                 .filter(ticket -> !exclude.contains(ticket.submitter_id()))
                 .filter(ticket -> !forceAssignee || !StringUtils.isBlank(ticket.assignee_id()))
+                .filter(ticket -> StringUtils.isBlank(recipient) || recipient.equals(ticket.recipient()))
                 .collect(Collectors.toList());
     }
 
