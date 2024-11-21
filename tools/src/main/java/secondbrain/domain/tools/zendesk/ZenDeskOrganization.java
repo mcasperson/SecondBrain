@@ -192,7 +192,7 @@ public class ZenDeskOrganization implements Tool {
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
                         .map(ZenDeskResponse::results)
                         // Filter out any tickets based on the submitter and assignee
-                        .map(response -> filterResponse(response, true, exclude, client, authHeader))
+                        .map(response -> filterResponse(response, true, exclude))
                         // Limit how many tickets we process. We're unliklely to be able to pass the details of many tickets to the LLM anyway
                         .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
@@ -268,7 +268,7 @@ public class ZenDeskOrganization implements Tool {
                 .mapTry(Objects::requireNonNull);
     }
 
-    private List<ZenDeskResultsResponse> filterResponse(final List<ZenDeskResultsResponse> tickets, final boolean forceAssignee, final List<String> exclude, final Client client, final String authorization) {
+    private List<ZenDeskResultsResponse> filterResponse(final List<ZenDeskResultsResponse> tickets, final boolean forceAssignee, final List<String> exclude) {
         if (!forceAssignee && exclude.isEmpty()) {
             return tickets;
         }
