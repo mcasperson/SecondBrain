@@ -25,7 +25,10 @@ import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
-import secondbrain.infrastructure.zendesk.*;
+import secondbrain.infrastructure.zendesk.ZenDeskClient;
+import secondbrain.infrastructure.zendesk.ZenDeskCommentResponse;
+import secondbrain.infrastructure.zendesk.ZenDeskCommentsResponse;
+import secondbrain.infrastructure.zendesk.ZenDeskResultsResponse;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -194,7 +197,7 @@ public class ZenDeskOrganization implements Tool {
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
-                        .map(ZenDeskResponse::results)
+
                         // Filter out any tickets based on the submitter and assignee
                         .map(response -> filterResponse(response, true, exclude, recipient))
                         // Limit how many tickets we process. We're unliklely to be able to pass the details of many tickets to the LLM anyway
