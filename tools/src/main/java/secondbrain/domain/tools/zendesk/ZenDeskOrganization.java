@@ -202,7 +202,8 @@ public class ZenDeskOrganization implements Tool {
         query.add("type:ticket");
         query.add("created>" + OffsetDateTime.now(ZoneId.systemDefault())
                 .truncatedTo(ChronoUnit.SECONDS)
-                .minusDays(fixedDays)
+                // Assume one day if nothing was specified
+                .minusDays(fixedDays == 0 && fixedHours == 0 ? 1 : fixedDays)
                 .minusHours(fixedHours)
                 .format(ISO_OFFSET_DATE_TIME));
 
