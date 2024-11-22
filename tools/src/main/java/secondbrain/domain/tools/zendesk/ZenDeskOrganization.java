@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -329,8 +330,9 @@ public class ZenDeskOrganization implements Tool {
                 // Get the context associated with the ticket
                 .map(ticket -> new IndividualContext<>(
                         ticket.id(),
-                        ticket.subject() + "\n"
-                                + ticketToBody(zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id()), 1),
+                        ListUtils.union(
+                                List.of(ticket.subject()),
+                                ticketToBody(zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id()), 1)),
                         ticket))
                 // Get the comment body as a LLM context string
                 .map(comments -> comments.updateContext(
