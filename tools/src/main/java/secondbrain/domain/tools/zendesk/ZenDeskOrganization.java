@@ -156,7 +156,7 @@ public class ZenDeskOrganization implements Tool {
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.toList());
 
-        final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "30")))
+        final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "0")))
                 .recover(throwable -> 0)
                 .get();
 
