@@ -34,7 +34,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class ZenDeskOrganization implements Tool {
@@ -191,7 +191,7 @@ public class ZenDeskOrganization implements Tool {
 
         final List<String> query = new ArrayList<>();
         query.add("type:ticket");
-        query.add("created>" + LocalDateTime.now(ZoneId.systemDefault()).minusDays(days).format(ISO_LOCAL_DATE));
+        query.add("created>" + LocalDateTime.now(ZoneId.systemDefault()).minusDays(days).format(ISO_OFFSET_DATE_TIME));
 
         if (!StringUtils.isBlank(fixedOwner)) {
             query.add("organization:" + owner);
