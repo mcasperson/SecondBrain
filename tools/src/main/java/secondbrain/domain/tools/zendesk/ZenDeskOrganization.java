@@ -28,8 +28,9 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 import secondbrain.infrastructure.zendesk.*;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -191,10 +192,10 @@ public class ZenDeskOrganization implements Tool {
 
         final List<String> query = new ArrayList<>();
         query.add("type:ticket");
-        query.add("created>" + LocalDateTime.now(ZoneId.systemDefault()).minusDays(days).format(ISO_OFFSET_DATE_TIME));
+        query.add("created>" + OffsetDateTime.now(ZoneId.systemDefault()).truncatedTo(ChronoUnit.SECONDS).minusDays(days).format(ISO_OFFSET_DATE_TIME));
 
         if (!StringUtils.isBlank(fixedOwner)) {
-            query.add("organization:" + owner);
+            query.add("organization:" + fixedOwner);
         }
 
         return Try.withResources(ClientBuilder::newClient)
@@ -202,7 +203,7 @@ public class ZenDeskOrganization implements Tool {
 
                         // Filter out any tickets based on the submitter and assignee
                         .map(response -> filterResponse(response, true, exclude, fixedRecipient))
-                        // Limit how many tickets we process. We're unliklely to be able to pass the details of many tickets to the LLM anyway
+                        // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
                         .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
                         .map(response -> ticketToFirstComment(response, client, authHeader))
