@@ -210,6 +210,8 @@ public class ZenDeskOrganization implements Tool {
             query.add("organization:" + fixedOwner);
         }
 
+        final String debugArgs = debugToolArgs.debugArgs(arguments, true);
+
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
 
@@ -248,8 +250,8 @@ public class ZenDeskOrganization implements Tool {
                                 + System.lineSeparator() + System.lineSeparator()
                                 + "Tickets:" + System.lineSeparator()
                                 + idsToLinks(url.get(), response.getMetas(), authHeader)
-                                + debugToolArgs.debugArgs(arguments, true))
-                        .recover(EmptyString.class, "No tickets found")
+                                + debugArgs)
+                        .recover(EmptyString.class, "No tickets found" + debugArgs)
                         .recover(throwable -> "Failed to get tickets or context: " + throwable.getMessage())
                         .get())
                 .get();
