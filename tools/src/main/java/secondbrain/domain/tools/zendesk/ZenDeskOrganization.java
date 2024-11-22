@@ -366,6 +366,8 @@ public class ZenDeskOrganization implements Tool {
                 "supportdesk",
                 "support desk",
                 "organization name",
+                "organization",
+                "name",
                 "your organization name"};
 
         if (Arrays.stream(invalid).anyMatch(owner::equalsIgnoreCase)) {
