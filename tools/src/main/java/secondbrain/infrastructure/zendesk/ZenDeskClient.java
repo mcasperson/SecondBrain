@@ -19,6 +19,7 @@ public class ZenDeskClient {
     private static final int MAX_PAGES = 5;
 
     private static final Map<String, String> ORGANIZATION_CACHE = new HashMap<>();
+    private static final Map<String, String> USER_CACHE = new HashMap<>();
 
     @Inject
     private ResponseValidation responseValidation;
@@ -129,5 +130,39 @@ public class ZenDeskClient {
         ORGANIZATION_CACHE.put(orgId, org.organization().name());
 
         return org.organization();
+    }
+
+    public ZenDeskUserResponse getUser(
+            final Client client,
+            final String authorization,
+            final String url,
+            final String userId) {
+
+        return Try.withResources(() -> client.target(url + "/api/v2/users/" + userId)
+                        .request()
+                        .header("Authorization", authorization)
+                        .header("Accept", "application/json")
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response))
+                        .map(r -> r.readEntity(ZenDeskUserResponse.class))
+                        .get())
+                .get();
+    }
+
+    public ZenDeskUserItemResponse getUserCached(
+            final Client client,
+            final String authorization,
+            final String url,
+            final String userId) {
+
+        if (USER_CACHE.containsKey(userId)) {
+            return new ZenDeskUserItemResponse(USER_CACHE.get(userId), userId);
+        }
+
+        final ZenDeskUserResponse org = getUser(client, authorization, url, userId);
+
+        USER_CACHE.put(userId, org.user().name());
+
+        return org.user();
     }
 }

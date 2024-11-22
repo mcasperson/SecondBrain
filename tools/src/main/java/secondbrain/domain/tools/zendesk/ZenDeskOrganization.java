@@ -276,6 +276,11 @@ public class ZenDeskOrganization implements Tool {
                                         + Try.of(() -> zenDeskClient.getOrganizationCached(client, authHeader, url, meta.organization_id()))
                                         .map(ZenDeskOrganizationItemResponse::name)
                                         .getOrElse("Unknown Organization")
+                                        + " - "
+                                        // Best effort to get the username, but don't treat this as a failure
+                                        + Try.of(() -> zenDeskClient.getUserCached(client, authHeader, url, meta.assignee_id()))
+                                        .map(ZenDeskUserItemResponse::name)
+                                        .getOrElse("Unknown User")
                                         + "](" + idToLink(url, meta.id()) + ")")
                         .collect(Collectors.joining("\n")))
                 .get();
@@ -383,7 +388,8 @@ public class ZenDeskOrganization implements Tool {
                 "organization name",
                 "organization",
                 "name",
-                "your organization name"};
+                "your organization name",
+                "null"};
 
         if (Arrays.stream(invalid).anyMatch(owner::equalsIgnoreCase)) {
             return "";
