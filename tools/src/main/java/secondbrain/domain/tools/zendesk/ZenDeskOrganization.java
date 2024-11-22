@@ -39,7 +39,6 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class ZenDeskOrganization implements Tool {
-    private static final int DEFAULT_DURATION = 30;
     private static final int MAX_TICKETS = 25;
 
     private static final String INSTRUCTIONS = """
@@ -136,7 +135,8 @@ public class ZenDeskOrganization implements Tool {
         return List.of(new ToolArguments("organization", "The name of the ZenDesk organization", ""),
                 new ToolArguments("excludeSubmitters", "A comma separated list of submitters to exclude", ""),
                 new ToolArguments("recipient", "The recipient email address that tickets must be sent to", ""),
-                new ToolArguments("days", "The number of days worth of tickets to return", DEFAULT_DURATION + ""));
+                new ToolArguments("days", "The number of days worth of tickets to return", "0"),
+                new ToolArguments("hours", "The number of hours worth of tickets to return", "0"));
     }
 
     @Override
@@ -157,7 +157,11 @@ public class ZenDeskOrganization implements Tool {
                 .collect(Collectors.toList());
 
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "30")))
-                .recover(throwable -> DEFAULT_DURATION)
+                .recover(throwable -> 0)
+                .get();
+
+        final int hours = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "hours", "0")))
+                .recover(throwable -> 0)
                 .get();
 
         final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
@@ -192,7 +196,11 @@ public class ZenDeskOrganization implements Tool {
 
         final List<String> query = new ArrayList<>();
         query.add("type:ticket");
-        query.add("created>" + OffsetDateTime.now(ZoneId.systemDefault()).truncatedTo(ChronoUnit.SECONDS).minusDays(days).format(ISO_OFFSET_DATE_TIME));
+        query.add("created>" + OffsetDateTime.now(ZoneId.systemDefault())
+                .truncatedTo(ChronoUnit.SECONDS)
+                .minusDays(days)
+                .minusHours(hours)
+                .format(ISO_OFFSET_DATE_TIME));
 
         if (!StringUtils.isBlank(fixedOwner)) {
             query.add("organization:" + fixedOwner);
