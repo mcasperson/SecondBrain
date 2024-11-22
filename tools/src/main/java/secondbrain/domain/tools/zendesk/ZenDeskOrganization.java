@@ -329,11 +329,9 @@ public class ZenDeskOrganization implements Tool {
                 // Get the context associated with the ticket
                 .map(ticket -> new IndividualContext<>(
                         ticket.id(),
-                        zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id()),
+                        ticket.subject() + "\n"
+                                + ticketToBody(zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id()), 1),
                         ticket))
-                // Get the first comment, or an empty list
-                .map(comments -> comments.updateContext(
-                        ticketToBody(comments.context(), 1)))
                 // Get the comment body as a LLM context string
                 .map(comments -> comments.updateContext(
                         String.join("\n", comments.context())))
