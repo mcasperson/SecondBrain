@@ -26,10 +26,7 @@ import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
-import secondbrain.infrastructure.zendesk.ZenDeskClient;
-import secondbrain.infrastructure.zendesk.ZenDeskCommentResponse;
-import secondbrain.infrastructure.zendesk.ZenDeskCommentsResponse;
-import secondbrain.infrastructure.zendesk.ZenDeskResultsResponse;
+import secondbrain.infrastructure.zendesk.*;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -237,7 +234,7 @@ public class ZenDeskOrganization implements Tool {
                                 sentenceVectorizer)
                                 + System.lineSeparator() + System.lineSeparator()
                                 + "Tickets:" + System.lineSeparator()
-                                + idsToLinks(url.get(), response.getMetas())
+                                + idsToLinks(url.get(), response.getMetas(), authHeader)
                                 + debugToolArgs.debugArgs(arguments, true))
                         .recover(EmptyString.class, "No tickets found")
                         .recover(throwable -> "Failed to get tickets or context: " + throwable.getMessage())
@@ -253,10 +250,19 @@ public class ZenDeskOrganization implements Tool {
      * @param metas The list of ticket metadata
      * @return A Markdown list of source tickets
      */
-    private String idsToLinks(final String url, final List<ZenDeskResultsResponse> metas) {
-        return metas.stream()
-                .map(meta -> "* [" + meta.id() + " " + meta.subject() + "](" + idToLink(url, meta.id()) + ")")
-                .collect(Collectors.joining("\n"));
+    private String idsToLinks(final String url, final List<ZenDeskResultsResponse> metas, final String authHeader) {
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> metas.stream()
+                        .map(meta ->
+                                "* [" + meta.id() + " - "
+                                        + meta.subject() + " - "
+                                        // Best effort to get the organization name, but don't treat this as a failure
+                                        + Try.of(() -> zenDeskClient.getOrganizationCached(client, authHeader, url, meta.organization_id()))
+                                        .map(ZenDeskOrganizationItemResponse::name)
+                                        .getOrElse("Unknown Organization")
+                                        + "](" + idToLink(url, meta.id()) + ")")
+                        .collect(Collectors.joining("\n")))
+                .get();
     }
 
     private String idToLink(final String url, final String id) {

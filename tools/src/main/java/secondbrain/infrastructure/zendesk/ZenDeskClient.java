@@ -103,7 +103,7 @@ public class ZenDeskClient {
             final String url,
             final String orgId) {
 
-        return Try.withResources(() -> client.target(url + "/api/v2/organizations/" + orgId + "/comments")
+        return Try.withResources(() -> client.target(url + "/api/v2/organizations/" + orgId)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
@@ -114,20 +114,20 @@ public class ZenDeskClient {
                 .get();
     }
 
-    public ZenDeskOrganizationResponse getOrganizationCached(
+    public ZenDeskOrganizationItemResponse getOrganizationCached(
             final Client client,
             final String authorization,
             final String url,
             final String orgId) {
 
         if (ORGANIZATION_CACHE.containsKey(orgId)) {
-            return new ZenDeskOrganizationResponse(ORGANIZATION_CACHE.get(orgId), orgId);
+            return new ZenDeskOrganizationItemResponse(ORGANIZATION_CACHE.get(orgId), orgId);
         }
 
-        final String name = getOrganization(client, authorization, url, orgId).name();
+        final ZenDeskOrganizationResponse org = getOrganization(client, authorization, url, orgId);
 
-        ORGANIZATION_CACHE.put(orgId, name);
+        ORGANIZATION_CACHE.put(orgId, org.organization().name());
 
-        return new ZenDeskOrganizationResponse(orgId, name);
+        return org.organization();
     }
 }
