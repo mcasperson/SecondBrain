@@ -164,6 +164,10 @@ public class ZenDeskOrganization implements Tool {
                 .recover(throwable -> 0)
                 .get();
 
+        // days and hours get mixed up all the time
+        final int fixedDays = prompt.contains("day") && !prompt.contains("hour") && days == 0 && hours != 0 ? hours : days;
+        final int fixedHours = prompt.contains("hour") && !prompt.contains("day") && hours == 0 && days != 0 ? days : hours;
+
         final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
                 .recover(throwable -> 0.5f)
                 .get();
@@ -198,8 +202,8 @@ public class ZenDeskOrganization implements Tool {
         query.add("type:ticket");
         query.add("created>" + OffsetDateTime.now(ZoneId.systemDefault())
                 .truncatedTo(ChronoUnit.SECONDS)
-                .minusDays(days)
-                .minusHours(hours)
+                .minusDays(fixedDays)
+                .minusHours(fixedHours)
                 .format(ISO_OFFSET_DATE_TIME));
 
         if (!StringUtils.isBlank(fixedOwner)) {
