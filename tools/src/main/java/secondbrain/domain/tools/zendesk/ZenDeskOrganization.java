@@ -135,8 +135,8 @@ public class ZenDeskOrganization implements Tool {
         return List.of(new ToolArguments("organization", "The name of the ZenDesk organization", ""),
                 new ToolArguments("excludeSubmitters", "A comma separated list of submitters to exclude", ""),
                 new ToolArguments("recipient", "The recipient email address that tickets must be sent to", ""),
-                new ToolArguments("days", "The number of days worth of tickets to return", "0"),
-                new ToolArguments("hours", "The number of hours worth of tickets to return", "0"));
+                new ToolArguments("days", "The optional number of days worth of tickets to return", "0"),
+                new ToolArguments("hours", "The optional number of hours worth of tickets to return", "0"));
     }
 
     @Override
@@ -164,9 +164,9 @@ public class ZenDeskOrganization implements Tool {
                 .recover(throwable -> 0)
                 .get();
 
-        // days and hours get mixed up all the time
-        final int fixedDays = prompt.contains("day") && !prompt.contains("hour") && days == 0 && hours != 0 ? hours : days;
-        final int fixedHours = prompt.contains("hour") && !prompt.contains("day") && hours == 0 && days != 0 ? days : hours;
+        // days and hours get mixed up all the time.
+        final int fixedDays = switchArguments(prompt, days, hours, "day", "hour");
+        final int fixedHours = switchArguments(prompt, hours, days, "hour", "day");
 
         final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
                 .recover(throwable -> 0.5f)
@@ -402,5 +402,21 @@ public class ZenDeskOrganization implements Tool {
                 .limit(1)
                 .findFirst()
                 .orElse("");
+    }
+
+    private int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {
+        // If the prompt did not mention the keyword for the first argument, assume that it was never mentioned, and return 0
+        if (!prompt.contains(aPromptKeyword)) {
+            return 0;
+        }
+
+        // If the prompt did mention the first argument, but did not mention the keyword for the second argument,
+        // and the first argument is 0, assume the LLM switched things up, and return the second argument
+        if (!prompt.contains(bPromptKeyword) && a == 0) {
+            return b;
+        }
+
+        // If both the first and second keywords were mentioned, we just have to trust the LLM
+        return a;
     }
 }
