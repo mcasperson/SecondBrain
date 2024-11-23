@@ -91,7 +91,7 @@ public class ZenDeskOrganization implements Tool {
     String limit;
 
     @Inject
-    @Identifier("RemoveSpacing")
+    @Identifier("removeSpacing")
     private SanitizeDocument removeSpacing;
 
     @Inject
