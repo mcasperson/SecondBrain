@@ -1,5 +1,6 @@
 package secondbrain.domain.tools.zendesk;
 
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -90,7 +91,7 @@ public class ZenDeskOrganization implements Tool {
     String limit;
 
     @Inject
-    @Named("RemoveSpacing")
+    @Identifier("RemoveSpacing")
     private SanitizeDocument removeSpacing;
 
     @Inject

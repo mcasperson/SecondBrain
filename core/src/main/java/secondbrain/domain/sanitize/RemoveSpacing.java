@@ -1,5 +1,6 @@
 package secondbrain.domain.sanitize;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
 import org.apache.commons.lang.StringUtils;
@@ -7,7 +8,7 @@ import org.apache.commons.lang.StringUtils;
 import java.util.Arrays;
 
 @ApplicationScoped
-@Named
+@Identifier("removeSpacing")
 public class RemoveSpacing implements SanitizeDocument {
     @Override
     public String sanitize(final String document) {

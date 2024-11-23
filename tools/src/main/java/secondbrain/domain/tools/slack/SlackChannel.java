@@ -6,6 +6,7 @@ import com.slack.api.methods.response.conversations.ConversationsHistoryResponse
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.model.ConversationType;
 import com.slack.api.model.Message;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.Tuple;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
@@ -70,7 +71,7 @@ public class SlackChannel implements Tool {
     String minSimilarity;
 
     @Inject
-    @Named("removeMarkdnUrls")
+    @Identifier("removeMarkdnUrls")
     private SanitizeDocument removeMarkdnUrls;
 
     @Inject
