@@ -10,6 +10,7 @@ import io.vavr.Tuple;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -22,6 +23,7 @@ import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.context.SimilarityCalculator;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -68,7 +70,8 @@ public class SlackChannel implements Tool {
     String minSimilarity;
 
     @Inject
-    private RagDocumentContextSanitizer ragDocumentContextSanitizer;
+    @Named("removeMarkdnUrls")
+    private SanitizeDocument removeMarkdnUrls;
 
     @Inject
     private SentenceSplitter sentenceSplitter;
@@ -178,7 +181,6 @@ public class SlackChannel implements Tool {
 
 
         return Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get()))
-                .map(ragDocumentContextSanitizer::sanitize)
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
@@ -211,6 +213,8 @@ public class SlackChannel implements Tool {
 
     private RagDocumentContext<Void> getDocumentContext(final String document) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
+                // Strip out any URLs from the sentences
+                .map(sentences -> sentences.stream().map(removeMarkdnUrls::sanitize).toList())
                 .map(sentences -> new RagDocumentContext<Void>(
                         promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Message", document),
                         sentences.stream()

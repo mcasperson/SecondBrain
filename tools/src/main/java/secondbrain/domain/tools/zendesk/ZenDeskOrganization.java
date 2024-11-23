@@ -3,6 +3,7 @@ package secondbrain.domain.tools.zendesk;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
@@ -19,6 +20,7 @@ import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -86,6 +88,10 @@ public class ZenDeskOrganization implements Tool {
     @Inject
     @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
     String limit;
+
+    @Inject
+    @Named("RemoveSpacing")
+    private SanitizeDocument removeSpacing;
 
     @Inject
     private ValidateString validateString;
@@ -241,6 +247,8 @@ public class ZenDeskOrganization implements Tool {
                         .map(llmPrompt -> ollamaClient.getTools(
                                 client,
                                 new OllamaGenerateBodyWithContext<>(model, llmPrompt, false)))
+                        // Clean up the response
+                        .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())))
                         // Take the LLM response and annotate it with links to the RAG context
                         .map(response -> response.annotateDocumentContext(
                                 parsedMinSimilarity,
