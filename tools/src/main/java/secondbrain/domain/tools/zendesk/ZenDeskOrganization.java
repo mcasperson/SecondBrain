@@ -4,7 +4,6 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
@@ -95,6 +94,14 @@ public class ZenDeskOrganization implements Tool {
     private SanitizeDocument removeSpacing;
 
     @Inject
+    @Identifier("sanitizeEmail")
+    private SanitizeDocument sanitizeEmail;
+
+    @Inject
+    @Identifier("sanitizeOrganization")
+    private SanitizeDocument sanitizeOrganization;
+
+    @Inject
     private ValidateString validateString;
 
     @Inject
@@ -155,8 +162,8 @@ public class ZenDeskOrganization implements Tool {
         final String recipient = argsAccessor.getArgument(arguments, "recipient", "");
 
         // These arguments get swapped by the LLM all the time, so we need to fix them
-        final String fixedRecipient = sanitizeRecipient(EmailValidator.getInstance().isValid(sanitizeRecipient(owner)) && StringUtils.isBlank(recipient) ? owner : recipient);
-        final String fixedOwner = sanitizeOwner(EmailValidator.getInstance().isValid(sanitizeRecipient(owner)) && StringUtils.isBlank(recipient) ? "" : owner);
+        final String fixedRecipient = sanitizeEmail.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner)) && StringUtils.isBlank(recipient) ? owner : recipient);
+        final String fixedOwner = sanitizeOrganization.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner)) && StringUtils.isBlank(recipient) ? "" : owner);
 
         final List<String> exclude = Arrays.stream(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","))
                 .map(String::trim)
@@ -374,49 +381,6 @@ public class ZenDeskOrganization implements Tool {
                         .filter(StringUtils::isNotBlank)
                         .collect(Collectors.joining("\n")))
                 .collect(Collectors.toList());
-    }
-
-    private String sanitizeOwner(final String owner) {
-        if (StringUtils.isBlank(owner)) {
-            return "";
-        }
-
-        // A bunch of hallucinations that we need to ignore
-        final String[] invalid = {
-                "zendesk",
-                "support",
-                "helpdesk",
-                "help desk",
-                "help",
-                "desk",
-                "supportdesk",
-                "support desk",
-                "organization name",
-                "organization",
-                "name",
-                "your organization name",
-                "null"};
-
-        if (Arrays.stream(invalid).anyMatch(owner::equalsIgnoreCase)) {
-            return "";
-        }
-
-        return owner;
-    }
-
-    private String sanitizeRecipient(final String recipient) {
-        if (StringUtils.isBlank(recipient)) {
-            return "";
-        }
-
-        // find the first thing that looks like an email address
-        return Arrays.stream(recipient.split(" "))
-                .filter(StringUtils::isNotBlank)
-                .map(String::trim)
-                .filter(e -> EmailValidator.getInstance().isValid(e))
-                .limit(1)
-                .findFirst()
-                .orElse("");
     }
 
     private int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {
