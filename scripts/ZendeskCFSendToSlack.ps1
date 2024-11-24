@@ -101,11 +101,6 @@ $ticketResult = Invoke-CustomCommand java "`"-Dsb.zendesk.user=$( $env:SB_ZENDES
 echo "ZenDesk StdOut"
 echo $ticketResult.StdOut
 
-if ($ticketResult.StdOut -match "No tickets found")
-{
-    exit 0
-}
-
 # Replace this URL with your own Slack web hook
 $uriSlack = $env:SB_SLACK_ZENDESK_WEBHOOK_CF
 $body = ConvertTo-Json @{
