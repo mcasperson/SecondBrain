@@ -75,9 +75,9 @@ Function Invoke-CustomCommand
 
 Function Get-FullException
 {
-    Param ($error)
+    Param ($err)
 
-    $e = $error.Exception
+    $e = $err.Exception
 
     $msg = $e.Message
     while ($e.InnerException)
