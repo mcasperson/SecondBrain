@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import org.apache.commons.collections4.ListUtils;
+import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.response.ResponseValidation;
 
 import java.util.HashMap;
@@ -24,7 +25,7 @@ public class ZenDeskClient {
     @Inject
     private ResponseValidation responseValidation;
 
-
+    @Retry
     public List<ZenDeskResultsResponse> getTickets(
             final Client client,
             final String authorization,
@@ -34,6 +35,7 @@ public class ZenDeskClient {
         return getTickets(client, authorization, url, query, 1, MAX_PAGES);
     }
 
+    @Retry
     private List<ZenDeskResultsResponse> getTickets(
             final Client client,
             final String authorization,
@@ -80,7 +82,11 @@ public class ZenDeskClient {
                 .get();
     }
 
-
+    /**
+     * ZenDesk has API rate limits measured in requests per minute, so we
+     * attempt to retry a few times with a delay.
+     */
+    @Retry(delay = 30000, maxRetries = 10)
     public ZenDeskCommentsResponse getComments(
             final Client client,
             final String authorization,
@@ -98,6 +104,7 @@ public class ZenDeskClient {
                 .get();
     }
 
+    @Retry
     public ZenDeskOrganizationResponse getOrganization(
             final Client client,
             final String authorization,
@@ -132,6 +139,7 @@ public class ZenDeskClient {
         return org.organization();
     }
 
+    @Retry
     public ZenDeskUserResponse getUser(
             final Client client,
             final String authorization,

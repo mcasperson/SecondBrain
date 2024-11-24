@@ -16,7 +16,6 @@ public class GitHubClient {
     private ResponseValidation responseValidation;
 
     @Retry
-
     public List<GitHubCommitResponse> getCommits(final Client client, final String owner, final String repo, final String sha, final String until, final String since, final String authorization) {
         return Try.withResources(() -> client.target("https://api.github.com/repos/" + owner + "/" + repo + "/commits")
                         .queryParam("sha", sha)
