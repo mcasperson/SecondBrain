@@ -25,7 +25,11 @@ public class ZenDeskClient {
     @Inject
     private ResponseValidation responseValidation;
 
-    @Retry
+    /**
+     * ZenDesk has API rate limits measured in requests per minute, so we
+     * attempt to retry a few times with a delay.
+     */
+    @Retry(delay = 30000, maxRetries = 10)
     public List<ZenDeskResultsResponse> getTickets(
             final Client client,
             final String authorization,
@@ -35,7 +39,11 @@ public class ZenDeskClient {
         return getTickets(client, authorization, url, query, 1, MAX_PAGES);
     }
 
-    @Retry
+    /**
+     * ZenDesk has API rate limits measured in requests per minute, so we
+     * attempt to retry a few times with a delay.
+     */
+    @Retry(delay = 30000, maxRetries = 10)
     private List<ZenDeskResultsResponse> getTickets(
             final Client client,
             final String authorization,
