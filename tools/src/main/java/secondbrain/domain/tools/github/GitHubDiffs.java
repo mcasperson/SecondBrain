@@ -14,11 +14,13 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
+import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.GitHubCommitResponse;
 import secondbrain.infrastructure.ollama.OllamaClient;
@@ -89,6 +91,9 @@ public class GitHubDiffs implements Tool {
     @Inject
     private PromptBuilderSelector promptBuilderSelector;
 
+    @Inject
+    private ValidateString validateString;
+
     @Override
     public String getName() {
         return GitHubDiffs.class.getSimpleName();
@@ -145,6 +150,8 @@ public class GitHubDiffs implements Tool {
 
         final String authHeader = "Bearer " + token.get();
 
+        final String debugArgs = debugToolArgs.debugArgs(arguments, true);
+
         return Try.of(() -> getCommits(
                         owner,
                         repo,
@@ -158,6 +165,9 @@ public class GitHubDiffs implements Tool {
                         RagDocumentContext::document,
                         NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                 .map(this::mergeContext)
+                // Make sure we had some content for the prompt
+                .mapTry(mergedContext ->
+                        validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                 .map(ragContext -> ragContext.updateDocument(
                         promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
                                 INSTRUCTIONS,
@@ -168,8 +178,9 @@ public class GitHubDiffs implements Tool {
                         + System.lineSeparator() + System.lineSeparator()
                         + "Diffs:" + System.lineSeparator()
                         + urlsToLinks(response.getIds())
-                        + debugToolArgs.debugArgs(arguments, true))
-                .recover(throwable -> "Failed to get diffs: " + throwable.getMessage())
+                        + debugArgs)
+                .recover(EmptyString.class, "No diffs found" + debugArgs)
+                .recover(throwable -> "Failed to get diffs: " + throwable.getMessage() + debugArgs)
                 .get();
     }
 
