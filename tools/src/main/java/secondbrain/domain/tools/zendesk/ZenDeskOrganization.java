@@ -286,8 +286,7 @@ public class ZenDeskOrganization implements Tool {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> metas.stream()
                         .map(meta ->
-                                "* [" + meta.id() + " - "
-                                        + meta.subject() + " - "
+                                "* " + meta.subject() + " - "
                                         // Best effort to get the organization name, but don't treat this as a failure
                                         + Try.of(() -> zenDeskClient.getOrganizationCached(client, authHeader, url, meta.organization_id()))
                                         .map(ZenDeskOrganizationItemResponse::name)
@@ -297,7 +296,7 @@ public class ZenDeskOrganization implements Tool {
                                         + Try.of(() -> zenDeskClient.getUserCached(client, authHeader, url, meta.assignee_id()))
                                         .map(ZenDeskUserItemResponse::name)
                                         .getOrElse("Unknown User")
-                                        + "](" + idToLink(url, meta.id()) + ")")
+                                        + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
                         .collect(Collectors.joining("\n")))
                 .get();
     }
