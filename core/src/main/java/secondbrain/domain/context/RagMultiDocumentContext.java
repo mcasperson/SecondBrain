@@ -2,9 +2,7 @@ package secondbrain.domain.context;
 
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * RagDocumentContext captures the details of a single document to be passed to the LLM. RagMultiDocumentContext
@@ -48,6 +46,9 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                                           final SentenceVectorizer sentenceVectorizer) {
         String retValue = combinedDocument();
         int index = 1;
+
+        final Map<String, Integer> annotationMap = new HashMap<>();
+
         for (var sentence : sentenceSplitter.splitDocument(combinedDocument(), minWords)) {
 
             if (StringUtils.isBlank(sentence)) {
@@ -68,18 +69,31 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                     .toList();
 
             if (!closestMatch.isEmpty()) {
+
+                final boolean fromCache = annotationMap.containsKey(closestMatch.getLast().context());
+
+                final int lookupIndex = fromCache
+                        ? annotationMap.get(closestMatch.getLast().context())
+                        : index;
+
+                if (!fromCache) {
+                    annotationMap.put(closestMatch.getLast().context(), index);
+                    ++index;
+                }
+
                 // Annotate the original document
-                retValue = retValue.replace(sentence, sentence + " [" + index + "]");
+                retValue = retValue.replace(sentence, sentence + " [" + lookupIndex + "]");
 
                 // The start of the list of annotations has an extra line break
-                if (index == 1) {
+                if (lookupIndex == 1) {
                     retValue += System.lineSeparator();
                 }
 
-                // Make a note of the source sentence
-                retValue += System.lineSeparator()
-                        + "* [" + index + "]: " + closestMatch.getLast().context() + " (" + closestMatch.getLast().id() + ")";
-                ++index;
+                if (!fromCache) {
+                    // Make a note of the source sentence
+                    retValue += System.lineSeparator()
+                            + "* [" + lookupIndex + "]: " + closestMatch.getLast().context() + " (" + closestMatch.getLast().id() + ")";
+                }
             }
         }
 

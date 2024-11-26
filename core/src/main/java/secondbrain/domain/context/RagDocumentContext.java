@@ -4,7 +4,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.Nullable;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
 
 import static java.util.Comparator.comparing;
@@ -109,6 +111,7 @@ public record RagDocumentContext<T>(String document, List<RagStringContext> sent
                                           final SentenceVectorizer sentenceVectorizer) {
         String retValue = document();
         int index = 1;
+        final Map<String, Integer> annotationMap = new HashMap<>();
         for (var sentence : sentenceSplitter.splitDocument(document(), minWords)) {
 
             if (StringUtils.isBlank(sentence)) {
@@ -125,19 +128,30 @@ public record RagDocumentContext<T>(String document, List<RagStringContext> sent
                     minSimilarity);
 
             if (closestMatch != null) {
+                final boolean fromCache = annotationMap.containsKey(closestMatch.context());
+
+                final int lookupIndex = fromCache
+                        ? annotationMap.get(closestMatch.context())
+                        : index;
+
+                if (!fromCache) {
+                    annotationMap.put(closestMatch.context(), index);
+                    ++index;
+                }
+
                 // Annotate the original document
-                retValue = retValue.replace(sentence, sentence + " [" + index + "]");
+                retValue = retValue.replace(sentence, sentence + " [" + lookupIndex + "]");
 
                 // The start of the list of annotations has an extra line break
-                if (index == 1) {
+                if (lookupIndex == 1) {
                     retValue += System.lineSeparator();
                 }
 
-                // Make a note of the source sentence
-                retValue += System.lineSeparator()
-                        + "* [" + index + "]: " + closestMatch.context();
-
-                ++index;
+                if (!fromCache) {
+                    // Make a note of the source sentence
+                    retValue += System.lineSeparator()
+                            + "* [" + lookupIndex + "]: " + closestMatch.context();
+                }
             }
         }
 
