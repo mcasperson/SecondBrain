@@ -146,9 +146,10 @@ public class ZenDeskOrganization implements Tool {
 
     @Override
     public List<ToolArguments> getArguments() {
-        return List.of(new ToolArguments("organization", "The name of the ZenDesk organization", ""),
-                new ToolArguments("excludeSubmitters", "A comma separated list of submitters to exclude", ""),
-                new ToolArguments("recipient", "The recipient email address that tickets must be sent to", ""),
+        return List.of(new ToolArguments("organization", "An optional name of the organization", ""),
+                new ToolArguments("excludeOrganization", "An optional comma separated list of organizations to exclude", ""),
+                new ToolArguments("excludeSubmitters", "An optional comma separated list of submitters to exclude", ""),
+                new ToolArguments("recipient", "An optional recipient email address that tickets must be sent to", ""),
                 new ToolArguments("days", "The optional number of days worth of tickets to return", "0"),
                 new ToolArguments("hours", "The optional number of hours worth of tickets to return", "0"));
     }
@@ -158,6 +159,13 @@ public class ZenDeskOrganization implements Tool {
         final String owner = validateInputs.getCommaSeparatedList(
                 prompt,
                 argsAccessor.getArgument(arguments, "organization", ""));
+
+        final List<String> excludedOwner = Arrays.stream(validateInputs.getCommaSeparatedList(
+                        prompt,
+                        argsAccessor.getArgument(arguments, "excludeOrganization", "")).split(","))
+                .map(String::trim)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toList());
 
         final String recipient = argsAccessor.getArgument(arguments, "recipient", "");
 
@@ -231,7 +239,7 @@ public class ZenDeskOrganization implements Tool {
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
 
                         // Filter out any tickets based on the submitter and assignee
-                        .map(response -> filterResponse(response, true, exclude, fixedRecipient))
+                        .map(response -> filterResponse(response, true, exclude, excludedOwner, fixedRecipient))
                         // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
                         .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
@@ -324,13 +332,19 @@ public class ZenDeskOrganization implements Tool {
                 .mapTry(Objects::requireNonNull);
     }
 
-    private List<ZenDeskResultsResponse> filterResponse(final List<ZenDeskResultsResponse> tickets, final boolean forceAssignee, final List<String> exclude, final String recipient) {
+    private List<ZenDeskResultsResponse> filterResponse(
+            final List<ZenDeskResultsResponse> tickets,
+            final boolean forceAssignee,
+            final List<String> exclude,
+            final List<String> excludedOwner,
+            final String recipient) {
         if (!forceAssignee && exclude.isEmpty() && StringUtils.isBlank(recipient)) {
             return tickets;
         }
 
         return tickets.stream()
                 .filter(ticket -> !exclude.contains(ticket.submitter_id()))
+                .filter(ticket -> !excludedOwner.contains(ticket.organization_id()))
                 .filter(ticket -> !forceAssignee || !StringUtils.isBlank(ticket.assignee_id()))
                 .filter(ticket -> StringUtils.isBlank(recipient) || recipient.equals(ticket.recipient()))
                 .collect(Collectors.toList());

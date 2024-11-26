@@ -15,7 +15,7 @@ services:
       # This value refers to the sibling container
       SB_OLLAMA_URL: http://ollama:11434
       # Set this to true to enable debug logging
-      SB_TOOLS_DEBUG: false
+      SB_TOOLS_DEBUG: true
       # Define the model to use by SecondBrain.
       # Try "llama3.1" for a larger model, or "llama3.2" for a smaller model.
       # Remember, each model needs to be pulled with the command below.
