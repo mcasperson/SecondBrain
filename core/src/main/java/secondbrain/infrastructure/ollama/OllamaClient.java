@@ -30,6 +30,7 @@ public class OllamaClient {
 
     public OllamaResponse getTools(final Client client, final OllamaGenerateBody body) {
         logger.info("OllamaClient.getTools()");
+        logger.info("Calling: " + uri);
         logger.info("Called with prompt: " + body.prompt());
         logger.info("Called with model: " + body.model());
 

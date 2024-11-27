@@ -7,9 +7,9 @@ import jakarta.enterprise.inject.spi.InjectionPoint;
 import java.util.logging.Logger;
 
 @ApplicationScoped
-class Loggers {
+public class Loggers {
     @Produces
-    Logger getLogger(final InjectionPoint injectionPoint) {
+    public Logger getLogger(final InjectionPoint injectionPoint) {
         return Logger.getLogger(injectionPoint.getMember().getDeclaringClass()
                 .getSimpleName());
     }
