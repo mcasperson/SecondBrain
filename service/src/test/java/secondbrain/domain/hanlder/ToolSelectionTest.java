@@ -77,9 +77,9 @@ public class ToolSelectionTest {
     }
 
     /**
-     * Accept an 80% pass rate for the test.
+     * Accept an 80% pass rate for the test. The second failure will cause the test to fail.
      */
-    @RepeatedTest(value = 5, failureThreshold = 1)
+    @RepeatedTest(value = 5, failureThreshold = 2)
     void testToolSelection() throws IOException, InterruptedException {
         ollamaContainer.start();
         ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.2");
