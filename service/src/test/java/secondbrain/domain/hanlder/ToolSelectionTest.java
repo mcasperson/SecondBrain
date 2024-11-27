@@ -32,6 +32,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * We have a couple of challenges to deal with when testing LLMs.
+ * <p>
+ * First, we need a test instance of Ollama. Because LLMs are large file, we want to have a persistent directory where
+ * these files will be downloaded into. Testcontainers provides a useful solution here to spin up Ollama, download files,
+ * save them in a shared location, and expose a random port for the test to connect to.
+ * <p>
+ * The second issue is that we need to inject CDI beans into the test classes. Weld Junit 5 takes care of this for us.
+ * <p>
+ * We then need to inject Microprofile configuration values. This is documented
+ * <a href="https://github.com/weld/weld-testing/issues/81#issuecomment-1564002983">here</a>.
+ * <p>
+ * Finally, we need to accept that testing LLMs means we can't assume a 100% success rate. Standard retry logic is not
+ * sufficient as increasing the number of retries essentially increases the acceptable failure rate i.e. retying 3 times
+ * means we accept a success rate of 33%. We need to implement some custom logic to test that our logic has some minimum
+ * success rate, sate 80%.
+ */
 @Testcontainers
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
