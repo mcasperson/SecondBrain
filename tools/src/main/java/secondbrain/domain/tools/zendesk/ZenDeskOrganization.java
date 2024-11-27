@@ -74,6 +74,10 @@ public class ZenDeskOrganization implements Tool {
     Optional<String> zenDeskUrl;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.excludedorgs")
+    Optional<String> zenExcludedOrgs;
+
+    @Inject
     @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
     String encryptionPassword;
 
@@ -166,6 +170,8 @@ public class ZenDeskOrganization implements Tool {
                 .map(String::trim)
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.toList());
+        
+        excludedOwner.addAll(Arrays.stream(zenExcludedOrgs.orElse("").split(",")).toList());
 
         final String recipient = argsAccessor.getArgument(arguments, "recipient", "");
 
