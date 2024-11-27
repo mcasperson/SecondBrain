@@ -66,7 +66,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                                                                 final SentenceVectorizer sentenceVectorizer) {
         int index = 1;
 
-        final Map<RagMatchedStringContext, Integer> annotationMap = new HashMap<>();
+        final Map<RagMatchedStringContext, Integer> annotationMap = new LinkedHashMap<>();
 
         for (var sentence : sentenceSplitter.splitDocument(combinedDocument(), minWords)) {
 
