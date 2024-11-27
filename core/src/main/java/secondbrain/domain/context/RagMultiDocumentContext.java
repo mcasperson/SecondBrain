@@ -44,10 +44,29 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                                           final SentenceSplitter sentenceSplitter,
                                           final SimilarityCalculator similarityCalculator,
                                           final SentenceVectorizer sentenceVectorizer) {
-        String retValue = combinedDocument();
+        return getAnnotations(minSimilarity, minWords, sentenceSplitter, similarityCalculator, sentenceVectorizer)
+                .entrySet()
+                .stream()
+                // Use each of the annotations to update the document inline with the annotation index and then append the annotation
+                .reduce(combinedDocument() + System.lineSeparator(),
+                        (acc, entry) ->
+                                // update the document with the annotation index
+                                acc.replaceAll(entry.getKey().originalContext(), entry.getKey().originalContext() + " [" + entry.getValue() + "]")
+                                        // append the annotation
+                                        + System.lineSeparator()
+                                        + "* [" + entry.getValue() + "]: " + entry.getKey().context() + " (" + entry.getKey().id() + ")",
+                        (acc1, acc2) -> acc1 + acc2)
+                .trim();
+    }
+
+    public Map<RagMatchedStringContext, Integer> getAnnotations(final float minSimilarity,
+                                                                final int minWords,
+                                                                final SentenceSplitter sentenceSplitter,
+                                                                final SimilarityCalculator similarityCalculator,
+                                                                final SentenceVectorizer sentenceVectorizer) {
         int index = 1;
 
-        final Map<String, Integer> annotationMap = new HashMap<>();
+        final Map<RagMatchedStringContext, Integer> annotationMap = new HashMap<>();
 
         for (var sentence : sentenceSplitter.splitDocument(combinedDocument(), minWords)) {
 
@@ -61,6 +80,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
              */
             final List<RagMatchedStringContext> closestMatch = individualContexts().stream()
                     .map(rag -> rag.getClosestSentence(
+                            sentence,
                             sentenceVectorizer.vectorize(sentence).vector(),
                             similarityCalculator,
                             minSimilarity))
@@ -70,33 +90,14 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
 
             if (!closestMatch.isEmpty()) {
 
-                final boolean fromCache = annotationMap.containsKey(closestMatch.getLast().context());
-
-                final int lookupIndex = fromCache
-                        ? annotationMap.get(closestMatch.getLast().context())
-                        : index;
-
+                final boolean fromCache = annotationMap.containsKey(closestMatch.getLast());
                 if (!fromCache) {
-                    annotationMap.put(closestMatch.getLast().context(), index);
+                    annotationMap.put(closestMatch.getLast(), index);
                     ++index;
-                }
-
-                // Annotate the original document
-                retValue = retValue.replace(sentence, sentence + " [" + lookupIndex + "]");
-
-                // The start of the list of annotations has an extra line break
-                if (lookupIndex == 1) {
-                    retValue += System.lineSeparator();
-                }
-
-                if (!fromCache) {
-                    // Make a note of the source sentence
-                    retValue += System.lineSeparator()
-                            + "* [" + lookupIndex + "]: " + closestMatch.getLast().context() + " (" + closestMatch.getLast().id() + ")";
                 }
             }
         }
 
-        return retValue;
+        return annotationMap;
     }
 }

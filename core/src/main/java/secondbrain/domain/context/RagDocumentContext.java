@@ -65,6 +65,7 @@ public record RagDocumentContext<T>(String document, List<RagStringContext> sent
      */
     @Nullable
     public RagMatchedStringContext getClosestSentence(
+            final String context,
             final Vector vector,
             final SimilarityCalculator similarityCalculator,
             final double minSimilarity) {
@@ -93,7 +94,7 @@ public record RagDocumentContext<T>(String document, List<RagStringContext> sent
             return null;
         }
 
-        return new RagMatchedStringContext(bestSimilarity.getLeft().context(), bestSimilarity.getRight(), id);
+        return new RagMatchedStringContext(context, bestSimilarity.getLeft().context(), bestSimilarity.getRight(), id);
     }
 
     /**
@@ -123,6 +124,7 @@ public record RagDocumentContext<T>(String document, List<RagStringContext> sent
                 minimum similarity threshold. Ignore any failures.
              */
             var closestMatch = getClosestSentence(
+                    sentence,
                     sentenceVectorizer.vectorize(sentence).vector(),
                     similarityCalculator,
                     minSimilarity);
