@@ -45,6 +45,7 @@ public class ToolSelectionTest {
 
     @Container
     public GenericContainer<?> ollamaContainer = new GenericContainer<>("ollama/ollama:latest")
+            // Mount a fixed directory where models can be downloaded and reused
             .withFileSystemBind(Paths.get(System.getProperty("java.io.tmpdir")).resolve(Paths.get("secondbrain")).toString(), "/root/.ollama")
             .withExposedPorts(11434);
 
@@ -76,8 +77,7 @@ public class ToolSelectionTest {
     }
 
     @Test
-        //@Disabled
-    void testOllamaContainerIsRunning() throws IOException, InterruptedException {
+    void testToolSelection() throws IOException, InterruptedException {
         ollamaContainer.start();
         ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.2");
         ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.1");
