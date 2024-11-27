@@ -155,6 +155,7 @@ public class ZenDeskOrganization implements Tool {
                 new ToolArguments("excludeOrganization", "An optional comma separated list of organizations to exclude", ""),
                 new ToolArguments("excludeSubmitters", "An optional comma separated list of submitters to exclude", ""),
                 new ToolArguments("recipient", "An optional recipient email address that tickets must be sent to", ""),
+                new ToolArguments("numComments", "The optional number of comments to include in the context", "1"),
                 new ToolArguments("days", "The optional number of days worth of tickets to return", "0"),
                 new ToolArguments("hours", "The optional number of hours worth of tickets to return", "0"));
     }
@@ -185,12 +186,16 @@ public class ZenDeskOrganization implements Tool {
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.toList());
 
+        final int hours = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "hours", "0")))
+                .recover(throwable -> 0)
+                .get();
+
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "0")))
                 .recover(throwable -> 0)
                 .get();
 
-        final int hours = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "hours", "0")))
-                .recover(throwable -> 0)
+        final int numComments = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "numComments", "1")))
+                .recover(throwable -> 1)
                 .get();
 
         // days and hours get mixed up all the time.
@@ -250,7 +255,7 @@ public class ZenDeskOrganization implements Tool {
                         // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
                         .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
-                        .map(response -> ticketToFirstComment(response, client, authHeader))
+                        .map(response -> ticketToFirstComment(response, client, authHeader, numComments))
                         // Limit the list to just those that fit in the context
                         .map(list -> listLimiter.limitListContent(
                                 list,
@@ -360,12 +365,13 @@ public class ZenDeskOrganization implements Tool {
 
     private List<RagDocumentContext<ZenDeskResultsResponse>> ticketToFirstComment(final List<ZenDeskResultsResponse> tickets,
                                                                                   final Client client,
-                                                                                  final String authorization) {
+                                                                                  final String authorization,
+                                                                                  final int numComments) {
         return tickets.stream()
                 // Get the context associated with the ticket
                 .map(ticket -> new IndividualContext<>(
                         ticket.id(),
-                        ticketToBody(zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id()), 1),
+                        ticketToBody(zenDeskClient.getComments(client, authorization, zenDeskUrl.get(), ticket.id()), numComments),
                         ticket))
                 // Get the comment body as a LLM context string
                 .map(comments -> comments.updateContext(

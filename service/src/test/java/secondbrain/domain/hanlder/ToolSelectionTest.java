@@ -14,14 +14,27 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import secondbrain.domain.args.ArgsAccessorSimple;
+import secondbrain.domain.context.CosineSimilarityCalculator;
+import secondbrain.domain.context.JdlSentenceVectorizer;
+import secondbrain.domain.context.SimpleSentenceSplitter;
+import secondbrain.domain.debug.DebugToolArgsKeyValue;
 import secondbrain.domain.json.JsonDeserializerJackson;
+import secondbrain.domain.limit.ListLimiterAtomicCutOff;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.response.OkResponseValidation;
+import secondbrain.domain.sanitize.RemoveSpacing;
+import secondbrain.domain.sanitize.SanitizeEmail;
 import secondbrain.domain.toolbuilder.ToolBuilderLlama3;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
 import secondbrain.domain.tools.smoketest.SmokeTest;
+import secondbrain.domain.tools.zendesk.SanitizeOrganization;
+import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
+import secondbrain.domain.validate.Llama32ValidateInputs;
 import secondbrain.domain.validate.ValidateListEmptyOrNull;
+import secondbrain.domain.validate.ValidateStringBlank;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.io.IOException;
@@ -30,7 +43,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * We have a couple of challenges to deal with when testing LLMs.
@@ -58,7 +70,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @AddBeanClasses(JsonDeserializerJackson.class)
 @AddBeanClasses(ValidateListEmptyOrNull.class)
 @AddBeanClasses(SmokeTest.class)
+@AddBeanClasses(ZenDeskOrganization.class)
 @AddBeanClasses(OllamaClient.class)
+@AddBeanClasses(DebugToolArgsKeyValue.class)
+@AddBeanClasses(ListLimiterAtomicCutOff.class)
+@AddBeanClasses(SimpleSentenceSplitter.class)
+@AddBeanClasses(JdlSentenceVectorizer.class)
+@AddBeanClasses(CosineSimilarityCalculator.class)
+@AddBeanClasses(PromptBuilderSelector.class)
+@AddBeanClasses(ArgsAccessorSimple.class)
+@AddBeanClasses(ValidateStringBlank.class)
+@AddBeanClasses(SanitizeOrganization.class)
+@AddBeanClasses(Llama32ValidateInputs.class)
+@AddBeanClasses(RemoveSpacing.class)
+@AddBeanClasses(SanitizeEmail.class)
 public class ToolSelectionTest {
 
     final @Container
@@ -66,12 +91,15 @@ public class ToolSelectionTest {
             // Mount a fixed directory where models can be downloaded and reused
             .withFileSystemBind(Paths.get(System.getProperty("java.io.tmpdir")).resolve(Paths.get("secondbrain")).toString(), "/root/.ollama")
             .withExposedPorts(11434);
-    private final AtomicInteger counter = new AtomicInteger(0);
+
+    private final AtomicInteger testToolSelectionCounter = new AtomicInteger(0);
+    private final AtomicInteger testZendDeskToolCounter = new AtomicInteger(0);
+
     @Inject
     ToolSelector toolSelector;
 
     /**
-     * https://github.com/weld/weld-testing/issues/81#issuecomment-1564002983
+     * <a href="https://github.com/weld/weld-testing/issues/81#issuecomment-1564002983">...</a>
      */
     @BeforeEach
     void updateConfig() {
@@ -94,19 +122,36 @@ public class ToolSelectionTest {
         );
     }
 
-    @RepeatedTest(value = 5, failureThreshold = 1)
-    void testToolSelection() throws IOException, InterruptedException {
+    @BeforeEach
+    void getModels() throws IOException, InterruptedException {
         ollamaContainer.start();
         ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.2");
         ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.1");
-        assertTrue(ollamaContainer.isRunning());
+    }
 
+    @RepeatedTest(value = 5, failureThreshold = 1)
+    void testToolSelection() {
         try {
             final ToolCall tool = toolSelector.getTool("Perform a smoke test");
             assertEquals("SmokeTest", tool.toolDefinition().toolName());
         } catch (Exception e) {
             // Allow up o one failure, or an 20% failure rate
-            if (counter.incrementAndGet() > 1) {
+            if (testToolSelectionCounter.incrementAndGet() > 1) {
+                throw e;
+            }
+        }
+    }
+
+    @RepeatedTest(value = 5, failureThreshold = 1)
+    void testZendDeskTool() {
+        try {
+            final ToolCall tool = toolSelector.getTool("Given 8 hours worth of ZenDesk tickets, with up to 10 comments, provide a summary of the questions and problems in the style of a news article with up to 3 paragraphs.");
+            assertEquals("ZenDeskOrganization", tool.toolDefinition().toolName());
+            assertEquals("10", tool.toolDefinition().toolArgs().stream().filter(arg -> arg.argName().equals("numComments")).findFirst().get().argValue());
+            assertEquals("8", tool.toolDefinition().toolArgs().stream().filter(arg -> arg.argName().equals("hours")).findFirst().get().argValue());
+        } catch (Exception e) {
+            // Allow up o one failure, or an 20% failure rate
+            if (testZendDeskToolCounter.incrementAndGet() > 1) {
                 throw e;
             }
         }
