@@ -26,7 +26,7 @@ class RagMultiDocumentContextTest {
 
         // Create a multi-document context
         RagMultiDocumentContext<String> multiContext = new RagMultiDocumentContext<>(
-                "This is a test document after processing. It contains multiple sentences after processing.",
+                "This is a test document after processing. This is a test document after processing. It contains multiple sentences after processing.",
                 List.of(context1, context2)
         );
 
@@ -60,7 +60,7 @@ class RagMultiDocumentContextTest {
     static class MockSentenceSplitter implements SentenceSplitter {
         @Override
         public List<String> splitDocument(String document, int minWords) {
-            return List.of("This is a test document after processing", "It contains multiple sentences after processing");
+            return List.of("This is a test document after processing", "This is a test document after processing", "It contains multiple sentences after processing");
         }
     }
 
