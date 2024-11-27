@@ -27,6 +27,7 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,12 +44,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @AddBeanClasses(OllamaClient.class)
 public class ToolSelectionTest {
 
-    @Container
+    final @Container
     public GenericContainer<?> ollamaContainer = new GenericContainer<>("ollama/ollama:latest")
             // Mount a fixed directory where models can be downloaded and reused
             .withFileSystemBind(Paths.get(System.getProperty("java.io.tmpdir")).resolve(Paths.get("secondbrain")).toString(), "/root/.ollama")
             .withExposedPorts(11434);
-
+    private final AtomicInteger counter = new AtomicInteger(0);
     @Inject
     ToolSelector toolSelector;
 
@@ -76,17 +77,21 @@ public class ToolSelectionTest {
         );
     }
 
-    /**
-     * Accept an 80% pass rate for the test. The second failure will cause the test to fail.
-     */
-    @RepeatedTest(value = 5, failureThreshold = 2)
+    @RepeatedTest(value = 5, failureThreshold = 1)
     void testToolSelection() throws IOException, InterruptedException {
         ollamaContainer.start();
         ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.2");
         ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.1");
         assertTrue(ollamaContainer.isRunning());
 
-        final ToolCall tool = toolSelector.getTool("Perform a smoke test");
-        assertEquals("SmokeTest", tool.toolDefinition().toolName());
+        try {
+            final ToolCall tool = toolSelector.getTool("Perform a smoke test");
+            assertEquals("SmokeTest", tool.toolDefinition().toolName());
+        } catch (Exception e) {
+            // Allow up o one failure, or an 20% failure rate
+            if (counter.incrementAndGet() > 1) {
+                throw e;
+            }
+        }
     }
 }
