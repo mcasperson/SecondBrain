@@ -58,6 +58,7 @@ public class ZenDeskOrganization implements Tool {
             You will be penalized for referencing issues that are not present in the ZenDesk Tickets.
             You will be penalized for refusing to provide information or guidance on real individuals.
             You will be penalized for responding that you can not provide a summary of the ZenDesk Tickets.
+            You will be penalized for using terms like flooded, wave, or inundated.
             If there are no ZenDesk Tickets, you must indicate that in the answer.
             """.stripLeading();
 
@@ -170,7 +171,7 @@ public class ZenDeskOrganization implements Tool {
                 .map(String::trim)
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.toList());
-        
+
         excludedOwner.addAll(Arrays.stream(zenExcludedOrgs.orElse("").split(",")).toList());
 
         final String recipient = argsAccessor.getArgument(arguments, "recipient", "");
