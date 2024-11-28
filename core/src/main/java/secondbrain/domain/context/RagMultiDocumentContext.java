@@ -59,6 +59,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                         (acc1, acc2) -> acc1 + acc2)
                 .trim()
                 + System.lineSeparator()
+                + System.lineSeparator()
                 + lookupsToString(lookups);
 
 
