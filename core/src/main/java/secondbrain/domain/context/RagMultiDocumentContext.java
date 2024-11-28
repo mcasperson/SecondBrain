@@ -3,6 +3,7 @@ package secondbrain.domain.context;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * RagDocumentContext captures the details of a single document to be passed to the LLM. RagMultiDocumentContext
@@ -44,60 +45,65 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                                           final SentenceSplitter sentenceSplitter,
                                           final SimilarityCalculator similarityCalculator,
                                           final SentenceVectorizer sentenceVectorizer) {
+
+        final Set<RagSentenceAndOriginal> annotations = getAnnotations(minSimilarity, minWords, sentenceSplitter, similarityCalculator, sentenceVectorizer);
+        final List<RagSentence> lookups = getAnnotationLookup(annotations);
+
         return getAnnotations(minSimilarity, minWords, sentenceSplitter, similarityCalculator, sentenceVectorizer)
-                .entrySet()
                 .stream()
                 // Use each of the annotations to update the document inline with the annotation index and then append the annotation
-                .reduce(combinedDocument() + System.lineSeparator(),
+                .reduce(combinedDocument(),
                         (acc, entry) ->
                                 // update the document with the annotation index
-                                acc.replaceAll(entry.getKey().originalContext(), entry.getKey().originalContext() + " [" + entry.getValue() + "]")
-                                        // append the annotation
-                                        + System.lineSeparator()
-                                        + "* [" + entry.getValue() + "]: " + entry.getKey().context() + " (" + entry.getKey().id() + ")",
+                                acc.replaceAll(entry.originalContext(), entry.originalContext() + " [" + (lookups.indexOf(entry.toRagSentence()) + 1) + "]"),
                         (acc1, acc2) -> acc1 + acc2)
-                .trim();
+                .trim()
+                + System.lineSeparator()
+                + lookupsToString(lookups);
+
+
     }
 
-    public Map<RagMatchedStringContext, Integer> getAnnotations(final float minSimilarity,
-                                                                final int minWords,
-                                                                final SentenceSplitter sentenceSplitter,
-                                                                final SimilarityCalculator similarityCalculator,
-                                                                final SentenceVectorizer sentenceVectorizer) {
-        int index = 1;
+    public String lookupsToString(final List<RagSentence> lookups) {
 
-        final Map<RagMatchedStringContext, Integer> annotationMap = new LinkedHashMap<>();
-
-        for (var sentence : sentenceSplitter.splitDocument(combinedDocument(), minWords)) {
-
-            if (StringUtils.isBlank(sentence)) {
-                continue;
-            }
-
-            /*
-                Find the closest matching sentence from the source context over the
-                minimum similarity threshold. Ignore any failures.
-             */
-            final List<RagMatchedStringContext> closestMatch = individualContexts().stream()
-                    .map(rag -> rag.getClosestSentence(
-                            sentence,
-                            sentenceVectorizer.vectorize(sentence).vector(),
-                            similarityCalculator,
-                            minSimilarity))
-                    .filter(Objects::nonNull)
-                    .sorted(Comparator.comparingDouble(RagMatchedStringContext::match))
-                    .toList();
-
-            if (!closestMatch.isEmpty()) {
-
-                final boolean fromCache = annotationMap.containsKey(closestMatch.getLast());
-                if (!fromCache) {
-                    annotationMap.put(closestMatch.getLast(), index);
-                    ++index;
-                }
-            }
+        final List<String> output = new ArrayList<>();
+        for (int i = 0; i < lookups.size(); i++) {
+            RagSentence lookup = lookups.get(i);
+            output.add("* [" + (i + 1) + "]: " + lookup.sentence() + " (" + lookup.id() + ")");
         }
+        return String.join(System.lineSeparator(), output);
+    }
 
-        return annotationMap;
+    public List<RagSentence> getAnnotationLookup(final Set<RagSentenceAndOriginal> annotations) {
+        return annotations
+                .stream()
+                .map(RagSentenceAndOriginal::toRagSentence)
+                .collect(Collectors.toSet())
+                .stream().toList();
+    }
+
+    public Set<RagSentenceAndOriginal> getAnnotations(final float minSimilarity,
+                                                      final int minWords,
+                                                      final SentenceSplitter sentenceSplitter,
+                                                      final SimilarityCalculator similarityCalculator,
+                                                      final SentenceVectorizer sentenceVectorizer) {
+
+        return sentenceSplitter.splitDocument(combinedDocument(), minWords)
+                .stream()
+                .filter(sentence -> !StringUtils.isBlank(sentence))
+                .map(sentence -> individualContexts.stream()
+                        .map(rag -> rag.getClosestSentence(
+                                sentence,
+                                sentenceVectorizer.vectorize(sentence).vector(),
+                                similarityCalculator,
+                                minSimilarity))
+                        .filter(Objects::nonNull)
+                        .sorted(Comparator.comparingDouble(RagMatchedStringContext::match))
+                        .toList()
+                        .getLast())
+                // Once we have the closest match, the match value is no longer relevant
+                .map(RagMatchedStringContext::toRagSentenceAndOriginal)
+                // Getting a set ensures that we don't have duplicates
+                .collect(Collectors.toSet());
     }
 }

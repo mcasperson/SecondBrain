@@ -3,7 +3,7 @@ package secondbrain.domain.context;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,7 +31,7 @@ class RagMultiDocumentContextTest {
         );
 
         // Get annotations
-        Map<RagMatchedStringContext, Integer> annotations = multiContext.getAnnotations(
+        Set<RagSentenceAndOriginal> annotations = multiContext.getAnnotations(
                 0.8f,  // minSimilarity
                 3,     // minWords
                 sentenceSplitter,
@@ -41,8 +41,13 @@ class RagMultiDocumentContextTest {
 
         // Verify the annotations
         assertEquals(2, annotations.size());
-        assertTrue(annotations.entrySet().stream().anyMatch(e -> e.getKey().context().equals("This is a test document")));
-        assertTrue(annotations.entrySet().stream().anyMatch(e -> e.getKey().context().equals("It contains multiple sentences")));
+        assertTrue(annotations.stream().anyMatch(e -> e.context().equals("This is a test document")));
+        assertTrue(annotations.stream().anyMatch(e -> e.context().equals("It contains multiple sentences")));
+
+        // Get lookups
+        final List<RagSentence> lookups = multiContext.getAnnotationLookup(annotations);
+        assertEquals(2, lookups.size());
+
 
         // Annotate the document
         String annotatedDocument = multiContext.annotateDocumentContext(
@@ -52,8 +57,8 @@ class RagMultiDocumentContextTest {
                 similarityCalculator,
                 sentenceVectorizer
         );
-        assertTrue(annotatedDocument.contains("[1]: This is a test document"));
-        assertTrue(annotatedDocument.contains("[2]: It contains multiple sentences"));
+        assertTrue(annotatedDocument.contains("[2]: This is a test document"));
+        assertTrue(annotatedDocument.contains("[1]: It contains multiple sentences"));
     }
 
     // Mock classes for dependencies
