@@ -59,7 +59,7 @@ The project is split into modules:
 
 ![Architecture](architecture.png)
 
-# Model selection
+## Model selection
 
 SecondBrain supports switching between different LLMs by changing the `sb.ollama.model` configuration value. The
 following models are supported:
@@ -75,7 +75,7 @@ Support for new models requires implementing the `secondbrain.domain.prompt.Prom
 Note that the function calling feature of SecondBrain only supports `llama3.1` and `llama3.2` models. Function calling
 is configured via the `sb.ollama.toolmodel` configuration value.
 
-# Configuration
+## Configuration
 
 SecondBrain is configured via MicroProfile Config. Note that MicroProfile allows these configuration values to be set
 via [a number of different locations](https://smallrye.io/smallrye-config/Main/config/getting-started/), including
@@ -98,7 +98,7 @@ environment variables, system properties, and configuration files:
   `12345678`)
 * `sb.tools.debug` - Whether to log debug information about the tool in the response. (defaults to `false`)
 
-### Google login
+## Google login
 
 The `GoogleDocs` tool can
 use [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials) to
@@ -107,11 +107,6 @@ authenticate with Google APIs. To set this up, you need to run the following com
 ```bash
 gcloud auth application-default login --scopes https://www.googleapis.com/auth/documents.readonly,https://www.googleapis.com/auth/cloud-platform --client-id-file ~/Downloads/client.json
 ```
-
-## Supported LLMs
-
-SecondBrain is built around [Ollama](https://ollama.com/), which a is a local service exposing a huge selection of LLMs.
-This ensures that your data and prompts are kept private and secure.
 
 ## Testing
 
