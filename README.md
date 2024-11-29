@@ -47,6 +47,27 @@ Secondbrain is distributed as a Docker image and run in parallel with Ollama usi
 6. Open https://localhost:8181, paste in your access token, and click `Submit` to answer the default query
 7. Optional: Run `docker exec secondbrain-ollama-1 ollama ps` to see the status of the Ollama service
 
+## Running the CLI
+
+The CLI is useful when you want to automate SecondBrain, usually to run it on a schedule. For example,
+you could summarize a Slack channel every week with a command like:
+
+```bash
+java \
+  -Dsb.ollama.toolmodel=llama3.1 \
+  -Dsb.ollama.model=gemma2 \
+  -Dsb.ollama.contextlength=32000 \
+  -Dstdout.encoding=UTF-8 \
+  -jar secondbrain.jar \
+  "Given 1 days worth of ZenDesk tickets to recipient \"support@example.org\" provide a summary of the questions and problems in the style of a news article with up to 7 paragraphs. You must carefully consider each ticket when generating the summary. You will be penalized for showing category percentages. You will be penalized for including ticket IDs or reference numbers. Use concise, plain, and professional language. You will be penalized for using emotive or excited language. You will be penalized for including a generic final summary paragraph. You must only summarize emails that are asking for support. You will be penalized for summarizing emails that are not asking for support. You will be penalized for summarizing marketing emails. You will be penalized for attempting to answer the questions. You will be penalized for using terms like flooded, wave, or inundated. You will be penalized for including an introductory paragraph."
+```
+
+[ZendeskSendToSlack.ps1](scripts/ZendeskSendToSlack.ps1) is an example PowerShell script that executes the CLI. This script is run with using Windows Task Scheduler with the command:
+
+```PowerShell
+pwsh.exe -file "C:\path\to\ZendeskSendToSlack.ps1"
+```
+
 ## Project Structure
 
 The project is split into modules:
