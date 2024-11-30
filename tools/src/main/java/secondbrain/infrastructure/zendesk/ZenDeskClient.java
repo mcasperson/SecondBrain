@@ -65,7 +65,7 @@ public class ZenDeskClient {
                         .map(r -> r.readEntity(ZenDeskResponse.class))
                         // Recurse if there is a next page and we have not gone too far
                         .map(r -> ListUtils.union(
-                                r.results(),
+                                r.getResults(),
                                 r.next_page() != null && page < maxPage
                                         ? getTickets(client, authorization, url, query, page + 1, maxPage)
                                         : List.of()))
