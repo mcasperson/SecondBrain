@@ -3,6 +3,7 @@ package secondbrain.domain.context;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -55,7 +56,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                 .reduce(combinedDocument(),
                         (acc, entry) ->
                                 // update the document with the annotation index
-                                acc.replaceAll(entry.originalContext(), entry.originalContext() + " [" + (lookups.indexOf(entry.toRagSentence()) + 1) + "]"),
+                                acc.replaceAll(Pattern.quote(entry.originalContext()), entry.originalContext() + " [" + (lookups.indexOf(entry.toRagSentence()) + 1) + "]"),
                         (acc1, acc2) -> acc1 + acc2)
                 .trim()
                 + System.lineSeparator()
