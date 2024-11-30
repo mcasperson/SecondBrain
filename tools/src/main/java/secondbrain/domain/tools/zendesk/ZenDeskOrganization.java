@@ -289,7 +289,7 @@ public class ZenDeskOrganization implements Tool {
                                 + idsToLinks(url.get(), response.getMetas(), authHeader)
                                 + debugArgs)
                         .recover(EmptyString.class, "No tickets found" + debugArgs)
-                        .recover(throwable -> "Failed to get tickets or context: " + throwable.getMessage() + debugArgs)
+                        .recover(throwable -> "Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)
                         .get())
                 .get();
     }
