@@ -140,7 +140,7 @@ public class GitHubDiffs implements Tool {
                 new ToolArguments("since", "The optional date to start checking from", startTime),
                 new ToolArguments("until", "The optional date to stop checking at", endTime),
                 new ToolArguments("days", "The optional number of days worth of diffs to return", "0"),
-                new ToolArguments("excludeRagVectors", "The optional flag to exclude RAG vectors", "false")
+                new ToolArguments("excludeRagVectors", "The optional flag to exclude RAG vectors, defaulting to false", "false")
         );
     }
 
