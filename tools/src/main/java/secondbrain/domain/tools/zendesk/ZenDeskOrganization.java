@@ -188,10 +188,12 @@ public class ZenDeskOrganization implements Tool {
 
         final int hours = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "hours", "0")))
                 .recover(throwable -> 0)
+                .map(i -> Math.max(0, i))
                 .get();
 
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "0")))
                 .recover(throwable -> 0)
+                .map(i -> Math.max(0, i))
                 .get();
 
         final int numComments = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "numComments", "1")))
@@ -239,7 +241,7 @@ public class ZenDeskOrganization implements Tool {
         query.add("created>" + OffsetDateTime.now(ZoneId.systemDefault())
                 .truncatedTo(ChronoUnit.SECONDS)
                 // Assume one day if nothing was specified
-                .minusDays(fixedDays == 0 && fixedHours == 0 ? 1 : fixedDays)
+                .minusDays(fixedDays + fixedHours == 0 ? 1 : fixedDays)
                 .minusHours(fixedHours)
                 .format(ISO_OFFSET_DATE_TIME));
 
