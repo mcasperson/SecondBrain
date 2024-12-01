@@ -130,8 +130,9 @@ public class GitHubDiffs implements Tool {
                 new ToolArguments("owner", "The github owner to check", "mcasperson"),
                 new ToolArguments("repo", "The repository to check", "SecondBrain"),
                 new ToolArguments("branch", "The branch to check", "main"),
-                new ToolArguments("since", "The date to start checking from", startTime),
-                new ToolArguments("until", "The date to stop checking at", endTime)
+                new ToolArguments("since", "The optional date to start checking from", startTime),
+                new ToolArguments("until", "The optional date to stop checking at", endTime),
+                new ToolArguments("days", "The optional number of days worth of diffs to return", "0")
         );
     }
 
@@ -141,11 +142,17 @@ public class GitHubDiffs implements Tool {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final String startDate = argsAccessor.getArgument(arguments, "since", ZonedDateTime.now(ZoneId.systemDefault()).minusDays(DEFAULT_DURATION).format(FORMATTER));
+        final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
+                .recover(throwable -> DEFAULT_DURATION)
+                .map(i -> Math.max(0, i))
+                .get();
+
+        final String startDate = argsAccessor.getArgument(arguments, "since", ZonedDateTime.now(ZoneId.systemDefault()).minusDays(days).format(FORMATTER));
         final String endDate = argsAccessor.getArgument(arguments, "until", ZonedDateTime.now(ZoneId.systemDefault()).format(FORMATTER));
         final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
+
 
         final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
                 .recover(throwable -> 0.5f)
