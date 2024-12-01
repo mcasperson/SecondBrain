@@ -17,7 +17,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jasypt.util.text.BasicTextEncryptor;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
@@ -26,6 +25,7 @@ import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.context.SimilarityCalculator;
 import secondbrain.domain.debug.DebugToolArgs;
+import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -58,10 +58,6 @@ public class GoogleDocs implements Tool {
     Optional<String> googleServiceAccountJson;
 
     @Inject
-    @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
-    String encryptionPassword;
-
-    @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
 
@@ -72,6 +68,9 @@ public class GoogleDocs implements Tool {
     @Inject
     @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
     String minSimilarity;
+
+    @Inject
+    private Encryptor textEncryptor;
 
     @Inject
     private OllamaClient ollamaClient;
@@ -124,9 +123,6 @@ public class GoogleDocs implements Tool {
     @Override
     public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final String documentId = argsAccessor.getArgument(arguments, "documentId", "");
-
-        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(encryptionPassword);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))

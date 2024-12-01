@@ -7,13 +7,13 @@ import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
+import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -63,12 +63,11 @@ public class GitHubDiffs implements Tool {
     String limit;
 
     @Inject
-    @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
-    String encryptionPassword;
-
-    @Inject
     @ConfigProperty(name = "sb.github.accesstoken")
     Optional<String> githubAccessToken;
+
+    @Inject
+    private Encryptor textEncryptor;
 
     @Inject
     private DebugToolArgs debugToolArgs;
@@ -134,8 +133,6 @@ public class GitHubDiffs implements Tool {
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
 
-        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(encryptionPassword);
 
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.

@@ -10,7 +10,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.binary.Base64;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jasypt.util.text.BasicTextEncryptor;
+import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.infrastructure.oauth.linkedin.LinkedInOauthTokenResponse;
 import secondbrain.infrastructure.oauth.linkedin.LinkedinOauthClient;
@@ -40,6 +40,9 @@ public class LinkedInOauthCallback {
     @Inject
     private JsonDeserializer jsonDeserializer;
 
+    @Inject
+    private Encryptor textEncryptor;
+
     @GET
     public Response get(@QueryParam("code") final String code, @QueryParam("state") final String state) {
         if (linkedinClientId.isEmpty() || linkedinClientSecret.isEmpty() || linkedinRedirectUri.isEmpty()) {
@@ -67,9 +70,6 @@ public class LinkedInOauthCallback {
     }
 
     private Response redirectWithToken(final String accessToken, final String state) throws JsonProcessingException {
-        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(System.getenv("ENCRYPTION_PASSWORD"));
-
         final String accessTokenEncrypted = textEncryptor.encrypt(accessToken);
 
         final Map<String, String> stateCookie = new HashMap<>();

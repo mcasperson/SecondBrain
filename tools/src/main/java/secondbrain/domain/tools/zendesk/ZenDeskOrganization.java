@@ -12,11 +12,11 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
+import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -79,10 +79,6 @@ public class ZenDeskOrganization implements Tool {
     Optional<String> zenExcludedOrgs;
 
     @Inject
-    @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
-    String encryptionPassword;
-
-    @Inject
     @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
     String minSimilarity;
 
@@ -93,6 +89,9 @@ public class ZenDeskOrganization implements Tool {
     @Inject
     @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
     String limit;
+
+    @Inject
+    private Encryptor textEncryptor;
 
     @Inject
     @Identifier("removeSpacing")
@@ -340,9 +339,6 @@ public class ZenDeskOrganization implements Tool {
 
 
     private Try<String> getContext(final String name, final Map<String, String> context) {
-        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(encryptionPassword);
-
         return Try.of(() -> textEncryptor.decrypt(context.get(name)))
                 .recover(e -> context.get(name))
                 .mapTry(Objects::requireNonNull);

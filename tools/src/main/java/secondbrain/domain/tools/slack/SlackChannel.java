@@ -11,18 +11,17 @@ import io.vavr.Tuple;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jasypt.util.text.BasicTextEncryptor;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.context.SimilarityCalculator;
+import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
@@ -59,16 +58,15 @@ public class SlackChannel implements Tool {
     String limit;
 
     @Inject
-    @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
-    String encryptionPassword;
-
-    @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
     Optional<String> slackAccessToken;
 
     @Inject
     @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
     String minSimilarity;
+
+    @Inject
+    private Encryptor textEncryptor;
 
     @Inject
     @Identifier("removeMarkdnUrls")
@@ -130,9 +128,6 @@ public class SlackChannel implements Tool {
                         .atZone(ZoneId.systemDefault())
                         .toEpochSecond())
                 .toString();
-
-        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(encryptionPassword);
 
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.

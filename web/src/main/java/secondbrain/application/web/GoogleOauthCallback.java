@@ -10,7 +10,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.binary.Base64;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jasypt.util.text.BasicTextEncryptor;
+import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.infrastructure.oauth.google.GoogleOauthClient;
 
@@ -39,8 +39,7 @@ public class GoogleOauthCallback {
     Optional<String> googleRedirectUrl;
 
     @Inject
-    @ConfigProperty(name = "sb.encryption.password", defaultValue = "12345678")
-    String encryptionPassword;
+    private Encryptor textEncryptor;
 
     @Inject
     private GoogleOauthClient oauthClient;
@@ -74,9 +73,6 @@ public class GoogleOauthCallback {
     }
 
     private Response redirectWithToken(final String accessToken, final int expiresIn, final String state) throws JsonProcessingException {
-        final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-        textEncryptor.setPassword(encryptionPassword);
-
         final String accessTokenEncrypted = textEncryptor.encrypt(accessToken);
 
         final Map<String, String> stateCookie = new HashMap<>();
