@@ -20,8 +20,8 @@ public class PromptBuilderMistral implements PromptBuilder {
     public String buildContextPrompt(final String title, final String prompt) {
         return "---------------------\n"
             + title + ":\n"
-                + prompt
-                + "\n---------------------\n";
+                + prompt + "\n"
+                + "---------------------";
     }
 
     @Override
