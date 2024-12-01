@@ -225,7 +225,7 @@ public class GitHubDiffs implements Tool {
             final String owner,
             final String repo,
             final String authorization) {
-        
+
         return commitsResponse
                 .stream()
                 .map(commit -> new RagDocumentContext<Void>(
@@ -258,7 +258,7 @@ public class GitHubDiffs implements Tool {
                                 model,
                                 promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
                                         DIFF_INSTRUCTIONS,
-                                        promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Git Diff", diff),
+                                        diff,
                                         "Provide a one paragraph summary of the changes in the Git Diff."),
                                 false)))
                 .get()
