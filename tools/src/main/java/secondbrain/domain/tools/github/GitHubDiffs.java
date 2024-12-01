@@ -59,6 +59,7 @@ public class GitHubDiffs implements Tool {
             You must use plain and concise text in the output.
             You will be penalized for including a header or title in the output.
             You will be penalized for including any markdown or HTML in the output.
+            You must include all classes, functions, and variables that have been added, removed, or modified in the diff.
             """;
 
     @Inject
