@@ -53,7 +53,13 @@ public class GitHubDiffs implements Tool {
             You will be penalized for responding that you don't have access to real-time data or repositories.
             If there are no Git Diffs, you must indicate that in the answer.
             """;
-    private static final String DIFF_INSTRUCTIONS = "You are an expert in reading Git diffs.";
+    private static final String DIFF_INSTRUCTIONS = """
+            You are an expert in reading Git diffs.
+            The summary is intended for a machine learning model.
+            You must use plain and concise text in the output.
+            You will be penalized for including a header or title in the output.
+            You will be penalized for including any markdown or HTML in the output.
+            """;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
