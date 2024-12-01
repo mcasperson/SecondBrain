@@ -102,10 +102,13 @@ echo $result.StdOut
 #echo "Slack StdErr"
 #echo $result.StdErr
 
-$ticketResult = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Summarize 7 days worth of ZenDesk tickets from the '$( $args[1] )' organization in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`" markdn"
+if ($args.Length -ge 2)
+{
+    $ticketResult = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Summarize 7 days worth of ZenDesk tickets from the '$( $args[1] )' organization in the style of a news article with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`" markdn"
 
-echo "ZenDesk StdOut"
-echo $ticketResult.StdOut
+    echo "ZenDesk StdOut"
+    echo $ticketResult.StdOut
+}
 
 if ($args.Length -ge 3)
 {
