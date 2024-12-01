@@ -196,6 +196,8 @@ public class ZenDeskOrganization implements Tool {
 
         final int numComments = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "numComments", "1")))
                 .recover(throwable -> 1)
+                // Must be at least 1
+                .map(i -> Math.max(1, i))
                 .get();
 
         // days and hours get mixed up all the time.
