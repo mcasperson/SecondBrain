@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
  * See <a href="https://ollama.com/library/mistral">mistral</a> for
  * the prompt format expected by the Mistral model.
  * <a href="https://docs.mistral.ai/guides/rag/#combine-context-and-question-in-a-prompt-and-generate-response">documentation</a>
+ * <a href="https://community.aws/content/2dFNOnLVQRhyrOrMsloofnW0ckZ/how-to-prompt-mistral-ai-models-and-why?lang=en">instruction prompt example</a>
  */
 @ApplicationScoped
 public class PromptBuilderMistral implements PromptBuilder {
