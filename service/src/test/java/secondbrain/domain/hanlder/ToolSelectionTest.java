@@ -19,6 +19,7 @@ import secondbrain.domain.context.CosineSimilarityCalculator;
 import secondbrain.domain.context.JdlSentenceVectorizer;
 import secondbrain.domain.context.SimpleSentenceSplitter;
 import secondbrain.domain.debug.DebugToolArgsKeyValue;
+import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.ListLimiterAtomicCutOff;
 import secondbrain.domain.logger.Loggers;
@@ -65,6 +66,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(Loggers.class)
+@AddBeanClasses(JasyptEncryptor.class)
 @AddBeanClasses(OkResponseValidation.class)
 @AddBeanClasses(ToolBuilderLlama3.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
