@@ -139,7 +139,8 @@ public class GitHubDiffs implements Tool {
                 new ToolArguments("branch", "The branch to check", "main"),
                 new ToolArguments("since", "The optional date to start checking from", startTime),
                 new ToolArguments("until", "The optional date to stop checking at", endTime),
-                new ToolArguments("days", "The optional number of days worth of diffs to return", "0")
+                new ToolArguments("days", "The optional number of days worth of diffs to return", "0"),
+                new ToolArguments("excludeRagVectors", "The optional flag to exclude RAG vectors", "false")
         );
     }
 
@@ -152,6 +153,10 @@ public class GitHubDiffs implements Tool {
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
                 .recover(throwable -> DEFAULT_DURATION)
                 .map(i -> Math.max(0, i))
+                .get();
+
+        final boolean excludeRagVectors = Try.of(() -> Boolean.parseBoolean(argsAccessor.getArgument(arguments, "days", "false")))
+                .recover(throwable -> false)
                 .get();
 
         final String startDate = argsAccessor.getArgument(arguments, "since", ZonedDateTime.now(ZoneId.systemDefault()).minusDays(days).format(FORMATTER));
@@ -188,7 +193,7 @@ public class GitHubDiffs implements Tool {
                         dateParser.parseDate(startDate).format(FORMATTER),
                         dateParser.parseDate(endDate).format(FORMATTER),
                         authHeader))
-                .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader))
+                .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader, excludeRagVectors))
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
@@ -238,7 +243,8 @@ public class GitHubDiffs implements Tool {
             final List<GitHubCommitResponse> commitsResponse,
             final String owner,
             final String repo,
-            final String authorization) {
+            final String authorization,
+            final boolean excludeRagVectors) {
 
         return commitsResponse
                 .stream()
@@ -246,14 +252,14 @@ public class GitHubDiffs implements Tool {
                         promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Git Diff", getCommitDiff(owner, repo, commit.sha(), authorization)),
                         List.of(),
                         commit.html_url()))
-                .map(this::getCommitVectors)
+                .map(context -> getCommitVectors(context, excludeRagVectors))
                 .toList();
     }
 
-    private RagDocumentContext<Void> getCommitVectors(final RagDocumentContext<Void> diff) {
+    private RagDocumentContext<Void> getCommitVectors(final RagDocumentContext<Void> diff, boolean excludeRagVectors) {
         return new RagDocumentContext<>(
                 diff.document(),
-                sentenceSplitter.splitDocument(getDiffSummary(diff.document()), 10)
+                excludeRagVectors ? List.of() : sentenceSplitter.splitDocument(getDiffSummary(diff.document()), 10)
                         .stream()
                         .map(sentenceVectorizer::vectorize)
                         .toList(),
