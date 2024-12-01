@@ -155,7 +155,7 @@ public class GitHubDiffs implements Tool {
                 .map(i -> Math.max(0, i))
                 .get();
 
-        final boolean excludeRagVectors = Try.of(() -> Boolean.parseBoolean(argsAccessor.getArgument(arguments, "days", "false")))
+        final boolean excludeRagVectors = Try.of(() -> Boolean.parseBoolean(argsAccessor.getArgument(arguments, "excludeRagVectors", "false")))
                 .recover(throwable -> false)
                 .get();
 
