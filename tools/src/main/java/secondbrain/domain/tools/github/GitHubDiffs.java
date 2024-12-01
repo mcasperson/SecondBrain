@@ -225,13 +225,7 @@ public class GitHubDiffs implements Tool {
             final String owner,
             final String repo,
             final String authorization) {
-
-        /*
-            Note that we don't vectorize the individual diffs. It is not clear what kind of
-            vector space makes sense for diffs. The use of RagDocumentContext is mostly
-            a placeholder that allows us to inject vectors at a later date.
-         */
-
+        
         return commitsResponse
                 .stream()
                 .map(commit -> new RagDocumentContext<Void>(
