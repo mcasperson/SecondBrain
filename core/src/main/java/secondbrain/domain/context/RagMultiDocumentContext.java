@@ -93,16 +93,16 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         return sentenceSplitter.splitDocument(combinedDocument(), minWords)
                 .stream()
                 .filter(sentence -> !StringUtils.isBlank(sentence))
-                .map(sentence -> individualContexts.stream()
+                // find the best match in each individual context, or no match at all
+                .flatMap(sentence -> individualContexts.stream()
                         .map(rag -> rag.getClosestSentence(
                                 sentence,
                                 sentenceVectorizer.vectorize(sentence).vector(),
                                 similarityCalculator,
                                 minSimilarity))
                         .filter(Objects::nonNull)
-                        .sorted(Comparator.comparingDouble(RagMatchedStringContext::match))
-                        .toList()
-                        .getLast())
+                        .sorted(Comparator.comparingDouble(RagMatchedStringContext::match).reversed())
+                        .limit(1))
                 // Once we have the closest match, the match value is no longer relevant
                 .map(RagMatchedStringContext::toRagSentenceAndOriginal)
                 // Getting a set ensures that we don't have duplicates
