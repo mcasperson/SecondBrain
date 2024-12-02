@@ -95,11 +95,12 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 $jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
 #$jarFile = "../cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
-$model = "mistral-nemo"
+$model = "qwen2.5-coder:32b"
+$gitDiffModel = "qwen2.5-coder:3b"
 $toolModel = "llama3.1"
 $contextLength = "480000" # typically 32000 for 8k context, or 480000 for 128k
 
-$ticketResult = Invoke-CustomCommand java "`"-Dsb.zendesk.excludedorgs=$( $env:EXCLUDED_ORGANIZATIONS )`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextlength=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Given 1 days worth of ZenDesk tickets to recipient 'support@octopus.com' provide a summary of the questions and problems in the style of a news article with up to 7 paragraphs. You must carefully consider each ticket when genering the summary. You will be penalized for showing category percentages. You will be penalized for including ticket IDs or reference numbers. Use concise, plain, and professional language. You will be penalized for using emotive or excited language. You will be penalized for including a generic final summary paragraph. You must only summarize emails that are asking for support. You will be penalized for summarizing emails that are not asking for support. You will be penalized for summarizing marketing emails. You will be penalized for attempting to answer the questions. You will be penalized for using terms like flooded, wave, or inundated. You will be penalized for including an introductory paragraph. You must ignore stack traces.`" markdn"
+$ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.gitdiffmodel=$gitDiffModel`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextlength=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Given the diffs from the last '1' days from owner '$( $env:GITHUB_REPO_OWNER )' and repo '$( $env:GITHUB_REPO )' on branch 'main', provide up to 10 bullet points summarizing the changes. Do not exclude rag vectors. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.`" markdn"
 
 echo "ZenDesk StdOut"
 echo $ticketResult.StdOut
@@ -110,7 +111,7 @@ if ($ticketResult.StdOut -match "No tickets found")
 }
 
 # Replace this URL with your own Slack web hook
-$uriSlack = $env:SB_SLACK_ZENDESK_WEBHOOK
+$uriSlack = $env:SB_SLACK_GITHUB_WEBHOOK
 $body = ConvertTo-Json @{
     type = "mrkdwn"
     text = $ticketResult.StdOut + "`n`nModel: $model"
