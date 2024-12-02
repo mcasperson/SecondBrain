@@ -106,7 +106,11 @@ public class ToolSelectionTest {
     @BeforeEach
     void updateConfig() {
         final var configSource = new PropertiesConfigSource(
-                Map.of("sb.ollama.url", "http://localhost:" + ollamaContainer.getMappedPort(11434)),
+                Map.of(
+                        "sb.ollama.url", "http://localhost:" + ollamaContainer.getMappedPort(11434),
+                        // Unfortunately llama3.2 is not reliable enough for tool selection.
+                        // To make these tests reliable, we need to use llama3.1, which is a larger model.
+                        "sb.ollama.toolmodel", "llama3.1"),
                 "TestConfig",
                 Integer.MAX_VALUE
         );
