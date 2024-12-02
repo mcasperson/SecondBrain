@@ -66,6 +66,10 @@ public class GitHubDiffs implements Tool {
     String model;
 
     @Inject
+    @ConfigProperty(name = "sb.ollama.gitdiffmodel")
+    Optional<String> diffModel;
+
+    @Inject
     @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
     String limit;
 
@@ -274,7 +278,7 @@ public class GitHubDiffs implements Tool {
                 .of(client -> ollamaClient.getTools(
                         client,
                         new OllamaGenerateBody(
-                                model,
+                                diffModel.orElse(model),
                                 promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
                                         DIFF_INSTRUCTIONS,
                                         diff,
