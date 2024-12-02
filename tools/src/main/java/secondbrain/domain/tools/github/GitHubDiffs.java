@@ -232,7 +232,7 @@ public class GitHubDiffs implements Tool {
                 .map(ragContext -> ragContext.updateDocument(
                         promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
                                 INSTRUCTIONS,
-                                ragContext.combinedDocument(),
+                                promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Git Diffs", ragContext.combinedDocument()),
                                 prompt)))
                 .map(this::callOllama)
                 .map(response -> response.annotateDocumentContext(
