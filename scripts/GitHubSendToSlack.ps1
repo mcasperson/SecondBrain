@@ -95,12 +95,12 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 $jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
 #$jarFile = "../cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
-$model = "qwen2.5-coder:32b"
-$gitDiffModel = "qwen2.5-coder:3b"
+$model = "mistral-nemo"
+$gitDiffModel = "qwen2.5-coder:7b"
 $toolModel = "llama3.1"
 $contextLength = "480000" # typically 32000 for 8k context, or 480000 for 128k
 
-$ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.gitdiffmodel=$gitDiffModel`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextlength=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Given the diffs from the last '1' days from owner '$( $env:GITHUB_REPO_OWNER )' and repo '$( $env:GITHUB_REPO )' on branch 'main', provide up to 10 bullet points summarizing the changes. Do not exclude rag vectors. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.`" markdn"
+$ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.gitdiffmodel=$gitDiffModel`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextlength=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Given the diffs from the last '1' days from owner '$( $env:GITHUB_REPO_OWNER )' and repo '$( $env:GITHUB_REPO )' on branch 'main', provide a summary of the changes. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.`" markdn"
 
 echo "ZenDesk StdOut"
 echo $ticketResult.StdOut
