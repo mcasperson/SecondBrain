@@ -1,5 +1,6 @@
 package secondbrain.domain.tools.github;
 
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
@@ -16,6 +17,7 @@ import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -125,6 +127,10 @@ public class GitHubDiffs implements Tool {
     @Inject
     private SentenceVectorizer sentenceVectorizer;
 
+    @Inject
+    @Identifier("sanitizeDate")
+    private SanitizeDocument dateSanitizer;
+
     @Override
     public String getName() {
         return GitHubDiffs.class.getSimpleName();
@@ -165,12 +171,11 @@ public class GitHubDiffs implements Tool {
                 .map(i -> Math.max(0, i))
                 .get();
 
-        final String startDate = argsAccessor.getArgument(arguments, "since", ZonedDateTime.now(ZoneId.systemDefault()).minusDays(days).format(FORMATTER));
-        final String endDate = argsAccessor.getArgument(arguments, "until", ZonedDateTime.now(ZoneId.systemDefault()).format(FORMATTER));
+        final String startDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), "since", ZonedDateTime.now(ZoneId.systemDefault()).minusDays(days).format(FORMATTER));
+        final String endDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), "until", ZonedDateTime.now(ZoneId.systemDefault()).format(FORMATTER));
         final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
-
 
         final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
                 .recover(throwable -> 0.5f)
