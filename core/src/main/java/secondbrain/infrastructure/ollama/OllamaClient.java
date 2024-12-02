@@ -38,7 +38,7 @@ public class OllamaClient {
                         .request()
                         .header("Content-Type", "application/json")
                         .header("Accept", "application/json")
-                        .post(Entity.entity(body, MediaType.APPLICATION_JSON)))
+                        .post(Entity.entity(body.getSanitizedBody(), MediaType.APPLICATION_JSON)))
                 .of(response -> of(() -> responseValidation.validate(response))
                         .map(r -> r.readEntity(OllamaResponse.class))
                         .recover(InvalidResponse.class, e -> {
