@@ -105,7 +105,7 @@ $ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.gitdiffmodel=$gitDiffMo
 echo "ZenDesk StdOut"
 echo $ticketResult.StdOut
 
-if ($ticketResult.StdOut -match "No tickets found")
+if ($ticketResult.StdOut -match "No diffs found")
 {
     exit 0
 }
