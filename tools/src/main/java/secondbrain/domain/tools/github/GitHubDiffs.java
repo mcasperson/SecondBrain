@@ -65,6 +65,12 @@ public class GitHubDiffs implements Tool {
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
 
+    /**
+     * Each individual diff can be summarized with its own model. Typically, this model will be
+     * smaller than the one used to provide the overall summary of the git diffs. For example,
+     * diffModel might be something like "qwen2.5-coder:3b", while model will be something like
+     * "qwen2.5-coder:14b".
+     */
     @Inject
     @ConfigProperty(name = "sb.ollama.gitdiffmodel")
     Optional<String> diffModel;
