@@ -53,14 +53,14 @@ public class GitHubDiffs implements Tool {
             You will be penalized for suggesting manual steps to generate the answer.
             You will be penalized for responding that you don't have access to real-time data or repositories.
             If there are no Git Diffs, you must indicate that in the answer.
-            You must include all classes, functions, and variables found in the Git Diff.
+            The summary must include all classes, functions, and variables found in the Git Diff.
             """;
     private static final String DIFF_INSTRUCTIONS = """
             You are an expert in reading Git diffs.
-            You must use plain and concise text in the output.
+            You are given a Git Diff.
             You will be penalized for including a header or title in the output.
             You will be penalized for including any markdown or HTML in the output.
-            You must include all classes, functions, and variables found in the Git Diff.
+            The summary must include all classes, functions, and variables found in the Git Diff.
             """;
 
     @Inject
