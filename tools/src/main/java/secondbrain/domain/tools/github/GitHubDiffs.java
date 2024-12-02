@@ -9,8 +9,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.RagDocumentContext;
-import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.context.*;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
@@ -24,6 +23,7 @@ import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.GitHubCommitResponse;
 import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.time.ZoneId;
@@ -53,6 +53,14 @@ public class GitHubDiffs implements Tool {
             You will be penalized for responding that you don't have access to real-time data or repositories.
             If there are no Git Diffs, you must indicate that in the answer.
             """;
+    private static final String DIFF_INSTRUCTIONS = """
+            You are an expert in reading Git diffs.
+            The summary is intended for a machine learning model.
+            You must use plain and concise text in the output.
+            You will be penalized for including a header or title in the output.
+            You will be penalized for including any markdown or HTML in the output.
+            You must include all classes, functions, and variables that have been added, removed, or modified in the diff.
+            """;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
@@ -65,6 +73,10 @@ public class GitHubDiffs implements Tool {
     @Inject
     @ConfigProperty(name = "sb.github.accesstoken")
     Optional<String> githubAccessToken;
+
+    @Inject
+    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
+    String minSimilarity;
 
     @Inject
     private Encryptor textEncryptor;
@@ -93,6 +105,15 @@ public class GitHubDiffs implements Tool {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private SentenceSplitter sentenceSplitter;
+
+    @Inject
+    private SimilarityCalculator similarityCalculator;
+
+    @Inject
+    private SentenceVectorizer sentenceVectorizer;
+
     @Override
     public String getName() {
         return GitHubDiffs.class.getSimpleName();
@@ -116,8 +137,10 @@ public class GitHubDiffs implements Tool {
                 new ToolArguments("owner", "The github owner to check", "mcasperson"),
                 new ToolArguments("repo", "The repository to check", "SecondBrain"),
                 new ToolArguments("branch", "The branch to check", "main"),
-                new ToolArguments("since", "The date to start checking from", startTime),
-                new ToolArguments("until", "The date to stop checking at", endTime)
+                new ToolArguments("since", "The optional date to start checking from", startTime),
+                new ToolArguments("until", "The optional date to stop checking at", endTime),
+                new ToolArguments("days", "The optional number of days worth of diffs to return", "0"),
+                new ToolArguments("excludeRagVectors", "The optional flag to exclude RAG vectors, defaulting to false", "false")
         );
     }
 
@@ -127,11 +150,25 @@ public class GitHubDiffs implements Tool {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final String startDate = argsAccessor.getArgument(arguments, "since", ZonedDateTime.now(ZoneId.systemDefault()).minusDays(DEFAULT_DURATION).format(FORMATTER));
+        final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
+                .recover(throwable -> DEFAULT_DURATION)
+                .map(i -> Math.max(0, i))
+                .get();
+
+        final boolean excludeRagVectors = Try.of(() -> Boolean.parseBoolean(argsAccessor.getArgument(arguments, "excludeRagVectors", "false")))
+                .recover(throwable -> false)
+                .get();
+
+        final String startDate = argsAccessor.getArgument(arguments, "since", ZonedDateTime.now(ZoneId.systemDefault()).minusDays(days).format(FORMATTER));
         final String endDate = argsAccessor.getArgument(arguments, "until", ZonedDateTime.now(ZoneId.systemDefault()).format(FORMATTER));
         final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
+
+
+        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
+                .recover(throwable -> 0.5f)
+                .get();
 
 
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
@@ -156,7 +193,7 @@ public class GitHubDiffs implements Tool {
                         dateParser.parseDate(startDate).format(FORMATTER),
                         dateParser.parseDate(endDate).format(FORMATTER),
                         authHeader))
-                .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader))
+                .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader, excludeRagVectors))
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
@@ -171,7 +208,12 @@ public class GitHubDiffs implements Tool {
                                 ragContext.combinedDocument(),
                                 prompt)))
                 .map(this::callOllama)
-                .map(response -> response.combinedDocument()
+                .map(response -> response.annotateDocumentContext(
+                        parsedMinSimilarity,
+                        10,
+                        sentenceSplitter,
+                        similarityCalculator,
+                        sentenceVectorizer)
                         + System.lineSeparator() + System.lineSeparator()
                         + "Diffs:" + System.lineSeparator()
                         + urlsToLinks(response.getIds())
@@ -201,18 +243,46 @@ public class GitHubDiffs implements Tool {
             final List<GitHubCommitResponse> commitsResponse,
             final String owner,
             final String repo,
-            final String authorization) {
+            final String authorization,
+            final boolean excludeRagVectors) {
 
-        /*
-            Note that we don't vectorize the indvidual diffs. It is not clear what kind of
-            vector space makes sense for diffs. The use of RagDocumentContext is mostly
-            a placeholder that allows us to inject vectors at a later date.
-         */
+        return commitsResponse
+                .stream()
+                .map(commit -> new RagDocumentContext<Void>(
+                        promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Git Diff", getCommitDiff(owner, repo, commit.sha(), authorization)),
+                        List.of(),
+                        commit.html_url()))
+                .map(context -> getCommitVectors(context, excludeRagVectors))
+                .toList();
+    }
 
-        return commitsResponse.stream().map(commit -> new RagDocumentContext<Void>(
-                promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Git Diff", getCommitDiff(owner, repo, commit.sha(), authorization)),
-                List.of(), // What vectors makes sense for diffs?
-                commit.html_url())).toList();
+    private RagDocumentContext<Void> getCommitVectors(final RagDocumentContext<Void> diff, boolean excludeRagVectors) {
+        return new RagDocumentContext<>(
+                diff.document(),
+                excludeRagVectors ? List.of() : sentenceSplitter.splitDocument(getDiffSummary(diff.document()), 10)
+                        .stream()
+                        .map(sentenceVectorizer::vectorize)
+                        .toList(),
+                diff.id());
+    }
+
+    /**
+     * Use the LLM to generate a plain text summary of the diff. This summary will be used to link the
+     * final summary of all diffs to the changes in individual diffs.
+     */
+    private String getDiffSummary(final String diff) {
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> ollamaClient.getTools(
+                        client,
+                        new OllamaGenerateBody(
+                                model,
+                                promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
+                                        DIFF_INSTRUCTIONS,
+                                        diff,
+                                        "Provide a one paragraph summary of the changes in the Git Diff."),
+                                false)))
+                .get()
+                .response();
     }
 
 
