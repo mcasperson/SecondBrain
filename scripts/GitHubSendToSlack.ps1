@@ -114,7 +114,7 @@ if ($ticketResult.StdOut -match "No tickets found")
 $uriSlack = $env:SB_SLACK_GITHUB_WEBHOOK
 $body = ConvertTo-Json @{
     type = "mrkdwn"
-    text = $ticketResult.StdOut + "`n`nModel: $model"
+    text = $ticketResult.StdOut + "`n`nModel: $model`n`nGit Diff Model: $gitDiffModel"
 }
 
 try
