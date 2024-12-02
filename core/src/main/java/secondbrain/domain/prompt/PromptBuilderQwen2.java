@@ -16,21 +16,22 @@ public class PromptBuilderQwen2 implements PromptBuilder {
 
     @Override
     public String buildContextPrompt(final String title, final String prompt) {
-        return "<|im_start|>system\n"
+        return "---------------------\n"
                 + title + ":\n"
-                + prompt
-                + "\n<|im_end|>";
+                + prompt + "\n"
+                + "---------------------";
     }
 
     @Override
     public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
         return "<|im_start|>system\n"
-                + instructions
+                + instructions.trim()
+                + "\n"
+                + context.trim()
                 + "\n<|im_end|>\n"
-                + context
                 + "\n<|im_start|>user\n"
                 + prompt
-                + "\n<|im_end|>\n"
-                + "<|im_start|>assistant";
+                + "\n<|im_end|>"
+                + "\n<|im_start|>assistant";
     }
 }
