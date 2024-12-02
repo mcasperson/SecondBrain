@@ -44,7 +44,7 @@ public class GitHubDiffs implements Tool {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
     private static final String INSTRUCTIONS = """
             You are an expert in reading Git diffs.
-            You are given a question and a list of Git Diffs related to the question.
+            You are given a question and a list of summaries of Git Diffs.
             You must assume the Git Diffs capture the changes to the Git repository mentioned in the question.
             You must assume the information required to answer the question is present in the Git Diffs.
             You must answer the question based on the Git Diffs provided.
@@ -150,8 +150,7 @@ public class GitHubDiffs implements Tool {
                 new ToolArguments("branch", "The branch to check", "main"),
                 new ToolArguments("since", "The optional date to start checking from", startTime),
                 new ToolArguments("until", "The optional date to stop checking at", endTime),
-                new ToolArguments("days", "The optional number of days worth of diffs to return", "0"),
-                new ToolArguments("excludeRagVectors", "The optional flag to exclude RAG vectors, defaulting to false", "false")
+                new ToolArguments("days", "The optional number of days worth of diffs to return", "0")
         );
     }
 
@@ -164,10 +163,6 @@ public class GitHubDiffs implements Tool {
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
                 .recover(throwable -> DEFAULT_DURATION)
                 .map(i -> Math.max(0, i))
-                .get();
-
-        final boolean excludeRagVectors = Try.of(() -> Boolean.parseBoolean(argsAccessor.getArgument(arguments, "excludeRagVectors", "false")))
-                .recover(throwable -> false)
                 .get();
 
         final String startDate = argsAccessor.getArgument(arguments, "since", ZonedDateTime.now(ZoneId.systemDefault()).minusDays(days).format(FORMATTER));
@@ -204,7 +199,7 @@ public class GitHubDiffs implements Tool {
                         dateParser.parseDate(startDate).format(FORMATTER),
                         dateParser.parseDate(endDate).format(FORMATTER),
                         authHeader))
-                .map(commitsResponse -> convertCommitsToDiffs(commitsResponse, owner, repo, authHeader, excludeRagVectors))
+                .map(commitsResponse -> convertCommitsToDiffSummaries(commitsResponse, owner, repo, authHeader))
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
@@ -242,7 +237,7 @@ public class GitHubDiffs implements Tool {
 
 
     private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context) {
-        return new RagMultiDocumentContext<Void>(
+        return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(RagDocumentContext::document)
                         .collect(Collectors.joining("\n")),
@@ -250,31 +245,35 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    private List<RagDocumentContext<Void>> convertCommitsToDiffs(
+    private List<RagDocumentContext<Void>> convertCommitsToDiffSummaries(
             final List<GitHubCommitResponse> commitsResponse,
             final String owner,
             final String repo,
-            final String authorization,
-            final boolean excludeRagVectors) {
+            final String authorization) {
 
         return commitsResponse
                 .stream()
-                .map(commit -> new RagDocumentContext<Void>(
-                        promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Git Diff", getCommitDiff(owner, repo, commit.sha(), authorization)),
-                        List.of(),
-                        commit.html_url()))
-                .map(context -> getCommitVectors(context, excludeRagVectors))
+                .map(commit -> getCommitSummary(commit, owner, repo, authorization))
                 .toList();
     }
 
-    private RagDocumentContext<Void> getCommitVectors(final RagDocumentContext<Void> diff, boolean excludeRagVectors) {
+    /**
+     * I could not get an LLM to provide a useful summary of a collection of Git Diffs. They would focus on the last diff
+     * or hallucinate a bunch of random release notes. Instead, each diff is summarised individually and then combined
+     * into a single document to be summarised again.
+     */
+    private RagDocumentContext<Void> getCommitSummary(final GitHubCommitResponse commit,
+                                                      final String owner,
+                                                      final String repo,
+                                                      final String authorization) {
+        final String summary = getDiffSummary(getCommitDiff(owner, repo, commit.sha(), authorization));
         return new RagDocumentContext<>(
-                diff.document(),
-                excludeRagVectors ? List.of() : sentenceSplitter.splitDocument(getDiffSummary(diff.document()), 10)
+                summary,
+                sentenceSplitter.splitDocument(summary, 10)
                         .stream()
                         .map(sentenceVectorizer::vectorize)
                         .toList(),
-                diff.id());
+                commit.html_url());
     }
 
     /**
