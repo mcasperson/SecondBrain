@@ -156,7 +156,8 @@ public class GitHubDiffs implements Tool {
                 new ToolArguments("branch", "The branch to check", "main"),
                 new ToolArguments("since", "The optional date to start checking from", startTime),
                 new ToolArguments("until", "The optional date to stop checking at", endTime),
-                new ToolArguments("days", "The optional number of days worth of diffs to return", "0")
+                new ToolArguments("days", "The optional number of days worth of diffs to return", "0"),
+                new ToolArguments("maxChanges", "The optional number of diffs to return", "0")
         );
     }
 
@@ -168,6 +169,11 @@ public class GitHubDiffs implements Tool {
 
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
                 .recover(throwable -> DEFAULT_DURATION)
+                .map(i -> Math.max(0, i))
+                .get();
+
+        final int maxChanges = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "maxChanges", "0")))
+                .recover(throwable -> 0)
                 .map(i -> Math.max(0, i))
                 .get();
 
@@ -204,6 +210,10 @@ public class GitHubDiffs implements Tool {
                         dateParser.parseDate(startDate).format(FORMATTER),
                         dateParser.parseDate(endDate).format(FORMATTER),
                         authHeader))
+                // limit the number of changes
+                .map(commitsResponse -> commitsResponse.stream()
+                        .limit(maxChanges > 0 ? maxChanges : commitsResponse.size())
+                        .toList())
                 .map(commitsResponse -> convertCommitsToDiffSummaries(commitsResponse, owner, repo, authHeader))
                 .map(list -> listLimiter.limitListContent(
                         list,
