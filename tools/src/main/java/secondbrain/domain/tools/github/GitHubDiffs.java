@@ -48,6 +48,7 @@ public class GitHubDiffs implements Tool {
             You must assume the Git Diffs capture the changes to the Git repository mentioned in the question.
             You must assume the information required to answer the question is present in the Git Diffs.
             You must answer the question based on the Git Diffs provided.
+            You must consider every Git Diff when providing the answer.
             When the user asks a question indicating that they want to know the changes in the repository, you must generate the answer based on the Git Diffs.
             You will be penalized for suggesting manual steps to generate the answer.
             You will be penalized for responding that you don't have access to real-time data or repositories.
