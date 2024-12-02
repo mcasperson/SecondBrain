@@ -37,6 +37,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * The GitHubDiffs tool provides a list of Git diffs and answers questions about them. It works by first summarizing
+ * each diff individually and then combining the summaries into a single document. This overcomes a limitation of
+ * smaller LLMs, which struggled to interpret a collection of diffs. Arguably larger LLMs could handle this task, but
+ * I couldn't find a single LLM supported by Ollama that could process a large collection of diffs in a single prompt.
+ */
 @Dependent
 public class GitHubDiffs implements Tool {
     private static final String DEFAULT_OWNER = "mcasperson";
