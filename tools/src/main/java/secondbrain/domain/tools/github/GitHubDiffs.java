@@ -56,11 +56,9 @@ public class GitHubDiffs implements Tool {
             """;
     private static final String DIFF_INSTRUCTIONS = """
             You are an expert in reading Git diffs.
-            The summary is intended for a machine learning model.
             You must use plain and concise text in the output.
             You will be penalized for including a header or title in the output.
             You will be penalized for including any markdown or HTML in the output.
-            You must include all classes, functions, and variables that have been added, removed, or modified in the diff.
             """;
 
     @Inject
