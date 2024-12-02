@@ -16,6 +16,7 @@ import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
+import secondbrain.domain.list.ListUtilsEx;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
@@ -217,9 +218,7 @@ public class GitHubDiffs implements Tool {
                         dateParser.parseDate(endDate).format(FORMATTER),
                         authHeader))
                 // limit the number of changes
-                .map(commitsResponse -> commitsResponse.stream()
-                        .limit(maxDiffs > 0 ? maxDiffs : commitsResponse.size())
-                        .toList())
+                .map(commitsResponse -> ListUtilsEx.safeSubList(commitsResponse, 0, maxDiffs > 0 ? maxDiffs : commitsResponse.size()))
                 .map(commitsResponse -> convertCommitsToDiffSummaries(commitsResponse, owner, repo, authHeader))
                 .map(list -> listLimiter.limitListContent(
                         list,
