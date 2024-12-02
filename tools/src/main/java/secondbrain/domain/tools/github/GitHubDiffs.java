@@ -309,7 +309,7 @@ public class GitHubDiffs implements Tool {
                                 diffModel.orElse(model),
                                 promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
                                         DIFF_INSTRUCTIONS,
-                                        diff,
+                                        promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Git Diff", diff),
                                         "Provide a one paragraph summary of the changes in the Git Diff."),
                                 false)))
                 .get()
