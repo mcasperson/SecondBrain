@@ -67,7 +67,7 @@ Function Invoke-CustomCommand
         if ($lastUpdate -lt 0)
         {
             $lastUpdate = 1000 * 10
-            Write-Host "Still running..."
+            Write-Host "Still running... $( $processTimeout / 1000 ) seconds left"
         }
     }
 
