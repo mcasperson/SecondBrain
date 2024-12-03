@@ -235,14 +235,16 @@ public class ZenDeskOrganization implements Tool {
         final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
                 (user.get() + "/token:" + token.get()).getBytes(UTF_8))).get(), UTF_8);
 
-        final List<String> query = new ArrayList<>();
-        query.add("type:ticket");
-        query.add("created>" + OffsetDateTime.now(ZoneId.systemDefault())
+        final String startDate = OffsetDateTime.now(ZoneId.systemDefault())
                 .truncatedTo(ChronoUnit.SECONDS)
                 // Assume one day if nothing was specified
                 .minusDays(fixedDays + fixedHours == 0 ? 1 : fixedDays)
                 .minusHours(fixedHours)
-                .format(ISO_OFFSET_DATE_TIME));
+                .format(ISO_OFFSET_DATE_TIME);
+
+        final List<String> query = new ArrayList<>();
+        query.add("type:ticket");
+        query.add("created>" + startDate);
 
         if (!StringUtils.isBlank(fixedOwner)) {
             query.add("organization:" + fixedOwner);
@@ -291,7 +293,7 @@ public class ZenDeskOrganization implements Tool {
                                 + "Tickets:" + System.lineSeparator()
                                 + idsToLinks(url.get(), response.getMetas(), authHeader)
                                 + debugArgs)
-                        .recover(EmptyString.class, "No tickets found" + debugArgs)
+                        .recover(EmptyString.class, "No tickets found after " + startDate + " for organization '" + fixedOwner + "'" + debugArgs)
                         .recover(throwable -> "Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)
                         .get())
                 .get();
