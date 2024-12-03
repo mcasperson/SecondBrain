@@ -30,6 +30,7 @@ import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -184,8 +185,8 @@ public class GitHubDiffs implements Tool {
                 .map(i -> Math.max(0, i))
                 .get();
 
-        final String startDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), "since", ZonedDateTime.now(ZoneId.systemDefault()).minusDays(days).format(FORMATTER));
-        final String endDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), "until", ZonedDateTime.now(ZoneId.systemDefault()).format(FORMATTER));
+        final String startDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), "since", ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).format(FORMATTER));
+        final String endDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), "until", ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER));
         final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
