@@ -105,10 +105,10 @@ $ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.gitdiffmodel=$gitDiffMo
 echo "ZenDesk StdOut"
 echo $ticketResult.StdOut
 
-if ($ticketResult.StdOut -match "No diffs found")
-{
-    exit 0
-}
+#if ($ticketResult.StdOut -match "No diffs found")
+#{
+#    exit 0
+#}
 
 # Replace this URL with your own Slack web hook
 $uriSlack = $env:SB_SLACK_GITHUB_WEBHOOK
