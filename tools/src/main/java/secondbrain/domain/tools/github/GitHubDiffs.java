@@ -244,7 +244,7 @@ public class GitHubDiffs implements Tool {
                         + "Diffs:" + System.lineSeparator()
                         + urlsToLinks(response.getMetas())
                         + debugArgs)
-                .recover(EmptyString.class, "No diffs found" + debugArgs)
+                .recover(EmptyString.class, "No diffs found for " + owner + "/" + repo + " between " + startDate + " and " + endDate + debugArgs)
                 .recover(throwable -> "Failed to get diffs: " + throwable.getMessage() + debugArgs)
                 .get();
     }

@@ -107,7 +107,7 @@ $contextLength = "480000" # typically 32000 for 8k context, or 480000 for 128k
 
 $ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.gitdiffmodel=$gitDiffModel`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextlength=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Given the diffs from the last '1' days from owner '$githubOwner' and repo '$githubRepo' on branch 'main', provide a summary of the changes. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes. Include the repo owner and name in the heading.`" markdn"
 
-echo "ZenDesk StdOut"
+echo "ZenDesk StdOut for $githubOwner and $githubRepo"
 echo $ticketResult.StdOut
 
 #if ($ticketResult.StdOut -match "No diffs found")
