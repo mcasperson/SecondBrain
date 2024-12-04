@@ -27,6 +27,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 import secondbrain.infrastructure.zendesk.*;
 
@@ -41,7 +42,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class ZenDeskOrganization implements Tool {
-    private static final int MAX_TICKETS = 25;
+    private static final int MAX_TICKETS = 100;
 
     private static final String INSTRUCTIONS = """
             You are an expert in reading help desk tickets.
@@ -195,8 +196,8 @@ public class ZenDeskOrganization implements Tool {
                 .map(i -> Math.max(0, i))
                 .get();
 
-        final int numComments = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "numComments", "1")))
-                .recover(throwable -> 1)
+        final int numComments = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "numComments", "" + MAX_TICKETS)))
+                .recover(throwable -> MAX_TICKETS)
                 // Must be at least 1
                 .map(i -> Math.max(1, i))
                 .get();
@@ -260,7 +261,15 @@ public class ZenDeskOrganization implements Tool {
                         // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
                         .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
-                        .map(response -> ticketToFirstComment(response, client, authHeader, numComments))
+                        .map(response -> ticketToComments(response, client, authHeader, numComments))
+                        /*
+                            Take the raw ticket comments and summarize them with individual calls to the LLM.
+                            The individual ticket summaries are then combined into a single context.
+                            This was necessary because the private LLMs didn't do a very good job of summarising
+                            raw tickets. The reality is that even LLMs with a context length of 128k tokens mostly fixated
+                            one a small number of tickets.
+                         */
+                        .map(this::summariseTickets)
                         // Limit the list to just those that fit in the context
                         .map(list -> listLimiter.limitListContent(
                                 list,
@@ -364,11 +373,42 @@ public class ZenDeskOrganization implements Tool {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Summarise the tickets by passing them through the LLM
+     */
+    private List<RagDocumentContext<ZenDeskResultsResponse>> summariseTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets) {
+        return tickets.stream()
+                .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document())))
+                .collect(Collectors.toList());
+    }
 
-    private List<RagDocumentContext<ZenDeskResultsResponse>> ticketToFirstComment(final List<ZenDeskResultsResponse> tickets,
-                                                                                  final Client client,
-                                                                                  final String authorization,
-                                                                                  final int numComments) {
+    /**
+     * Summarise an individual ticket
+     */
+    private String getTicketSummary(final String ticketContents) {
+        final String context = promptBuilderSelector
+                .getPromptBuilder(model)
+                .buildContextPrompt("ZenDesk Ticket", ticketContents);
+
+        final String prompt = promptBuilderSelector
+                .getPromptBuilder(model)
+                .buildFinalPrompt("You are a helpful agent", context, "Summarise the ticket in one paragraph");
+
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> ollamaClient.getTools(
+                                client,
+                                new OllamaGenerateBody(
+                                        model,
+                                        prompt,
+                                        false))
+                        .response())
+                .get();
+    }
+
+    private List<RagDocumentContext<ZenDeskResultsResponse>> ticketToComments(final List<ZenDeskResultsResponse> tickets,
+                                                                              final Client client,
+                                                                              final String authorization,
+                                                                              final int numComments) {
         return tickets.stream()
                 // Get the context associated with the ticket
                 .map(ticket -> new IndividualContext<>(

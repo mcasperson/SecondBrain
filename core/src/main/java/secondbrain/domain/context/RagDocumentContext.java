@@ -38,7 +38,9 @@ public record RagDocumentContext<T>(String document, List<RagStringContext> sent
 
     /**
      * The document held by this object often needs to undergo some transformation, from raw text, to being sanitized,
-     * to being marked up, as part of a LLM template. The sentences never change though.
+     * to being marked up, as part of a LLM template. In some cases it may even be appropriate to summarize the document
+     * via an LLM while retaining the original sentences and their vectors. The sentences never change though to ensure
+     * the original context is available.
      *
      * @param document The new document
      * @return A new copy of this object with the new document
