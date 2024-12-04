@@ -51,6 +51,15 @@ public class GoogleDocs implements Tool {
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String APPLICATION_NAME = "SecondBrain";
     private static final String INSTRUCTIONS = """
+            You are an expert in reading technical Google Documents.
+            You are given a prompt and the contents of a Google Document related to the prompt.
+            You must assume the information required to answer the prompt is present in the Google Document.
+            You must assume the contents of the document with the ID in the prompt is present in the Google Document.
+            You must answer the prompt based on the Google Document provided.
+            When the user provides a prompt indicating that they want to query a document, you must generate the answer based on the supplied Google Document.
+            You will be penalized for suggesting manual steps to generate the answer.
+            You will be penalized for responding that you don't have access to real-time data or Google Documents.
+            If there is no Google Document, you must indicate that in the answer.
             """;
 
     @Inject
@@ -100,17 +109,7 @@ public class GoogleDocs implements Tool {
 
     @Override
     public String getDescription() {
-        return """
-                You are an expert in reading technical Google Documents.
-                You are given a prompt and the contents of a Google Document related to the prompt.
-                You must assume the information required to answer the prompt is present in the Google Document.
-                You must assume the contents of the document with the ID in the prompt is present in the Google Document.
-                You must answer the prompt based on the Google Document provided.
-                When the user provides a prompt indicating that they want to query a document, you must generate the answer based on the supplied Google Document.
-                You will be penalized for suggesting manual steps to generate the answer.
-                You will be penalized for responding that you don't have access to real-time data or Google Documents.
-                If there is no Google Document, you must indicate that in the answer.
-                """;
+        return "Queries a Google Docs document";
     }
 
     @Override

@@ -34,6 +34,15 @@ import java.util.stream.Collectors;
 @Dependent
 public class UploadedDoc implements Tool {
 
+    private static final String INSTRUCTIONS = """
+            You are a helpful assistant.
+            You are given a question and the contents of a document related to the question.
+            You must assume the information required to answer the question is present in the document.
+            You must answer the question based on the document provided.
+            You will be tipped $1000 for answering the question directly from the document.
+            When the user asks a question indicating that they want to know about document, you must generate the answer based on the document.
+            """.stripLeading();
+
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
@@ -111,7 +120,7 @@ public class UploadedDoc implements Tool {
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
-                                "You are a helpful assistant",
+                                INSTRUCTIONS,
                                 ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
                 .map(this::callOllama)
