@@ -37,10 +37,12 @@ public class UploadedDoc implements Tool {
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given a question and the contents of a document related to the question.
+            The supplied document is the uploaded document.
             You must assume the information required to answer the question is present in the document.
             You must answer the question based on the document provided.
             You will be tipped $1000 for answering the question directly from the document.
-            When the user asks a question indicating that they want to know about document, you must generate the answer based on the document.
+            When the user asks a question indicating that they want to know about the uploaded document, you must generate the answer based on the supplied document.
+            You will be penalized for answering that the document was not uploaded.
             """.stripLeading();
 
     @Inject
@@ -116,7 +118,7 @@ public class UploadedDoc implements Tool {
                 .map(this::getDocumentContext)
                 .map(doc -> doc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
-                        .buildContextPrompt("Document", doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))))
+                        .buildContextPrompt("Uploaded Document", doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(

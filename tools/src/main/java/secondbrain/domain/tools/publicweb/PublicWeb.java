@@ -41,6 +41,7 @@ public class PublicWeb implements Tool {
             You must answer the question based on the document provided.
             You will be tipped $1000 for answering the question directly from the document.
             When the user asks a question indicating that they want to know about document, you must generate the answer based on the document.
+            You will be penalized for answering that the document can not be accessed.
             """.stripLeading();
 
     @Inject
@@ -118,7 +119,7 @@ public class PublicWeb implements Tool {
                 .map(this::getDocumentContext)
                 .map(doc -> doc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
-                        .buildContextPrompt("Document", doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))))
+                        .buildContextPrompt("Downloaded Document", doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
