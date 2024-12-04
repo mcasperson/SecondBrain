@@ -50,6 +50,11 @@
     <div class="row">
         <div class="offset-lg-3 col-lg-6 col-sm-12">
             <form onsubmit="handleSubmit(event)">
+                <div class="mb-3" id="serviceAccountParent">
+                    <label class="form-label" for="document">Document</label>
+                    <br/>
+                    <input id="document" type="file"/>
+                </div>
                 <div class="mb-3">
                     <label class="form-label" for="prompt">Prompt</label>
                     <textarea aria-describedby="promptHelp" class="form-control" id="prompt" rows="10"></textarea>
@@ -71,9 +76,7 @@
 
 <script>
     document.getElementById('prompt').value = stripLineBreaks(
-        stripLeadingWhitespace(
-            `Given the document from "https://raw.githubusercontent.com/mcasperson/SecondBrain/refs/heads/main/README.md",
-            list the configuration options.`))
+        stripLeadingWhitespace(`Given the uploaded document, list all details about the company "Acme".`))
 
     function stripLeadingWhitespace(text) {
         return text.split("\n").map(l => l.replace(/^\s+/g, '')).join("\n");
@@ -92,23 +95,38 @@
 
         const prompt = document.getElementById('prompt').value;
 
-        fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({})
-        })
-            .then(response => response.text())
-            .then(data => {
-                response.innerHTML = DOMPurify.sanitize(marked.parse(data))
-            })
-            .catch((error) => {
-                response.innerText = error
-            })
-            .finally(() => {
-                enableForm()
-            });
+        const file = googleToken.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const content = e.target.result;
+                const context = {document: content}
+                fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(context)
+                })
+                    .then(response => response.text())
+                    .then(data => {
+                        response.innerHTML = DOMPurify.sanitize(marked.parse(data))
+                    })
+                    .catch((error) => {
+                        response.innerText = error
+                    })
+                    .finally(() => {
+                        enableForm()
+                    });
+            };
+            reader.readAsText(file);
+
+
+        } else {
+            alert("Please select a file.");
+        }
+
+
     }
 
     function disableForm() {

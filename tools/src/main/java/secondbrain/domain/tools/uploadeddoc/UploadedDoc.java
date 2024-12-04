@@ -1,4 +1,4 @@
-package secondbrain.domain.tools.publicweb;
+package secondbrain.domain.tools.uploadeddoc;
 
 import com.google.common.collect.ImmutableList;
 import io.vavr.control.Try;
@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * A tool that downloads a public file from HTTP and uses it as the context for a query.
  */
 @Dependent
-public class PublicWeb implements Tool {
+public class UploadedDoc implements Tool {
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
@@ -72,20 +72,17 @@ public class PublicWeb implements Tool {
 
     @Override
     public String getName() {
-        return PublicWeb.class.getSimpleName();
+        return UploadedDoc.class.getSimpleName();
     }
 
     @Override
     public String getDescription() {
-        return "Downloads a document from a supplied URL and queries it";
+        return "Queries an uploaded document";
     }
 
     @Override
     public List<ToolArguments> getArguments() {
-        return ImmutableList.of(new ToolArguments(
-                "url",
-                "The URL of the document to download",
-                ""));
+        return ImmutableList.of();
     }
 
     @Override
@@ -94,18 +91,19 @@ public class PublicWeb implements Tool {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final String url = argsAccessor.getArgument(arguments, "url", "");
+        final String uploadedDocument = Try.of(() -> context.get("document"))
+                .recover(throwable -> "")
+                .get();
 
-        if (StringUtils.isBlank(url)) {
-            return "You must provide a URL to download";
+        if (StringUtils.isBlank(uploadedDocument)) {
+            return "No document found in context";
         }
 
         final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
                 .recover(throwable -> 0.5f)
                 .get();
 
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> publicWebClient.getDocument(client, url))
+        return Try.of(() -> uploadedDocument)
                 .map(this::getDocumentContext)
                 .map(doc -> doc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
@@ -119,8 +117,6 @@ public class PublicWeb implements Tool {
                 .map(this::callOllama)
                 .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 10, sentenceSplitter, similarityCalculator, sentenceVectorizer))
                 .map(response -> response
-                        + System.lineSeparator() + System.lineSeparator()
-                        + "* [Document](" + url + ")"
                         + debugToolArgs.debugArgs(arguments, true))
                 .recover(throwable -> "Failed to get document: " + throwable.getMessage())
                 .get();
