@@ -53,8 +53,8 @@ Function Invoke-CustomCommand
 
     $p.BeginErrorReadLine()
 
-    # Wait 30 minutes before forcibly killing the process
-    $processTimeout = 1000 * 60 * 30
+    # Wait 60 minutes before forcibly killing the process
+    $processTimeout = 1000 * 60 * 60
     $lastUpdate = 0
     while (($global:myprocessrunning -eq $true) -and ($processTimeout -gt 0))
     {
