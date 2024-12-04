@@ -41,7 +41,8 @@ Secondbrain is distributed as a Docker image and run in parallel with Ollama usi
 1. `git clone https://github.com/mcasperson/SecondBrain.git` to clone the repository
 2. `cd SecondBrain` to enter the project directory
 3. `docker compose up` to start the Docker Compose stack
-4. `docker exec secondbrain-ollama-1 ollama pull llama3.2` to pull the `llama3.2` LLM
+4. `docker exec secondbrain-ollama-1 ollama pull llama3.2` to pull the `llama3.2` LLM. This is used by the queries.
+4. `docker exec secondbrain-ollama-1 ollama pull llama3.1` to pull the `llama3.1` LLM. This is used by tool selection.
 5. Create
    a [GitHub access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
 6. Open https://localhost:8181, paste in your access token, and click `Submit` to answer the default query
@@ -62,7 +63,8 @@ java \
   "Given 1 days worth of ZenDesk tickets to recipient \"support@example.org\" provide a summary of the questions and problems in the style of a news article with up to 7 paragraphs. You must carefully consider each ticket when generating the summary. You will be penalized for showing category percentages. You will be penalized for including ticket IDs or reference numbers. Use concise, plain, and professional language. You will be penalized for using emotive or excited language. You will be penalized for including a generic final summary paragraph. You must only summarize emails that are asking for support. You will be penalized for summarizing emails that are not asking for support. You will be penalized for summarizing marketing emails. You will be penalized for attempting to answer the questions. You will be penalized for using terms like flooded, wave, or inundated. You will be penalized for including an introductory paragraph."
 ```
 
-[ZendeskSendToSlack.ps1](scripts/ZendeskSendToSlack.ps1) is an example PowerShell script that executes the CLI. This script is run with using Windows Task Scheduler with the command:
+[ZendeskSendToSlack.ps1](scripts/ZendeskSendToSlack.ps1) is an example PowerShell script that executes the CLI. This
+script is run with using Windows Task Scheduler with the command:
 
 ```PowerShell
 pwsh.exe -file "C:\path\to\ZendeskSendToSlack.ps1"
@@ -133,6 +135,7 @@ gcloud auth application-default login --scopes https://www.googleapis.com/auth/d
 
 * Install Ollama locally
 * Pull the `llama3.2` model with the command `ollama pull llama3.2`
+* Pull the `llama3.1` model with the command `ollama pull llama3.1`
 * Build and install all the modules with command `mvn clean install`
 * Start Payara Micro with the command `cd web; mvn package; mvn payara-micro:start`
 * Create
