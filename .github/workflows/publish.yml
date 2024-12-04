@@ -28,7 +28,7 @@ jobs:
         run: mvn --batch-mode clean install
 
       - name: Publish to GitHub Packages
-        run: mvn --batch-mode deploy
+        run: mvn --batch-mode -DskipTests deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
