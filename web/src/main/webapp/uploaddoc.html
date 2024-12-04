@@ -51,9 +51,9 @@
         <div class="offset-lg-3 col-lg-6 col-sm-12">
             <form onsubmit="handleSubmit(event)">
                 <div class="mb-3" id="serviceAccountParent">
-                    <label class="form-label" for="document">Document</label>
+                    <label class="form-label" for="uploadDoc">Document</label>
                     <br/>
-                    <input id="document" type="file"/>
+                    <input id="uploadDoc" type="file"/>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="prompt">Prompt</label>
@@ -95,7 +95,7 @@
 
         const prompt = document.getElementById('prompt').value;
 
-        const file = googleToken.files[0];
+        const file = uploadDoc.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = function (e) {
