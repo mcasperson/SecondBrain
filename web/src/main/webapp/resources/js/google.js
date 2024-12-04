@@ -71,7 +71,7 @@ function postRequest(prompt, context) {
     })
         .then(response => response.text())
         .then(data => {
-            response.innerHTML = marked.parse(data)
+            response.innerHTML = DOMPurify.sanitize(marked.parse(data))
         })
         .catch((error) => {
             response.innerText = error
