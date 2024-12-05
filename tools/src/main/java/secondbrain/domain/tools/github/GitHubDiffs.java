@@ -205,7 +205,7 @@ public class GitHubDiffs implements Tool {
                 .recoverWith(e -> Try.of(() -> githubAccessToken.get()));
 
         final String customModel = Try.of(() -> context.get("custom_model"))
-                .mapTry(Objects::requireNonNull)
+                .mapTry(validateString::throwIfEmpty)
                 .recover(e -> model)
                 .get();
 
