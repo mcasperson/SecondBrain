@@ -38,6 +38,8 @@ services:
     # Uncomment these lines to enable GPU support
     # You'll also need to install the NVIDIA Container Toolkit on your host
     # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+    # Test that the GPU is available from Docker by running
+    # docker run --rm -it --gpus=all nvcr.io/nvidia/k8s/cuda-sample:nbody nbody -gpu -benchmark
 #    deploy:
 #      resources:
 #        reservations:
