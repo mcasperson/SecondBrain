@@ -178,6 +178,7 @@ public class GitHubDiffs implements Tool {
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
                 .recover(throwable -> DEFAULT_DURATION)
                 .map(i -> Math.max(0, i))
+                .map(i -> i == 0 ? DEFAULT_DURATION : i)
                 .get();
 
         final int maxDiffs = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "maxDiffs", "0")))
