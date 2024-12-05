@@ -62,6 +62,12 @@ function handleSubmit(event) {
 }
 
 function postRequest(prompt, context) {
+    const customModel = document.getElementById('customModel').value;
+    const argumentDebugging = document.getElementById('argumentDebugging').checked;
+
+    context['custom_model'] = customModel;
+    context['argument_debugging'] = argumentDebugging;
+
     fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
         method: 'POST',
         headers: {
@@ -85,12 +91,14 @@ function disableForm() {
     document.querySelectorAll('button').forEach(b => b.disabled = true);
     document.querySelectorAll('textarea').forEach(b => b.disabled = true);
     document.querySelectorAll('input').forEach(b => b.disabled = true);
+    document.querySelectorAll('select').forEach(b => b.disabled = true);
 }
 
 function enableForm() {
     document.querySelectorAll('button').forEach(b => b.disabled = false);
     document.querySelectorAll('textarea').forEach(b => b.disabled = false);
     document.querySelectorAll('input').forEach(b => b.disabled = false);
+    document.querySelectorAll('select').forEach(b => b.disabled = false);
 }
 
 function handleLogin() {

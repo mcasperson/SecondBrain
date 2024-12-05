@@ -30,6 +30,7 @@ import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 
@@ -102,6 +103,9 @@ public class GoogleDocs implements Tool {
     @Inject
     private PromptBuilderSelector promptBuilderSelector;
 
+    @Inject
+    private ValidateString validateString;
+
     @Override
     public String getName() {
         return GoogleDocs.class.getSimpleName();
@@ -135,6 +139,16 @@ public class GoogleDocs implements Tool {
                 .recover(throwable -> 0.5f)
                 .get();
 
+        final String customModel = Try.of(() -> context.get("custom_model"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> model)
+                .get();
+
+        final boolean argumentDebugging = Try.of(() -> context.get("argument_debugging"))
+                .mapTry(Boolean::parseBoolean)
+                .recover(e -> false)
+                .get();
+
         final Try<HttpRequestInitializer> token = Try
                 // Start assuming an encrypted access token was sent from the browser
                 .of(() -> textEncryptor.decrypt(context.get("google_access_token")))
@@ -165,20 +179,25 @@ public class GoogleDocs implements Tool {
                 .map(this::getDocumentText)
                 .map(this::getDocumentContext)
                 .map(doc -> doc.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(model)
+                        .getPromptBuilder(customModel)
                         .buildContextPrompt("Google Document " + documentId, doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(model)
+                        .getPromptBuilder(customModel)
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
-                .map(this::callOllama)
-                .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 10, sentenceSplitter, similarityCalculator, sentenceVectorizer))
+                .map(llmPrompt -> callOllama(llmPrompt, customModel))
+                .map(result -> result.annotateDocumentContext(
+                        parsedMinSimilarity,
+                        10,
+                        sentenceSplitter,
+                        similarityCalculator,
+                        sentenceVectorizer))
                 .map(response -> response
                         + System.lineSeparator() + System.lineSeparator()
                         + "* [Document](https://docs.google.com/document/d/" + documentId + ")"
-                        + debugToolArgs.debugArgs(arguments, true, false))
+                        + debugToolArgs.debugArgs(arguments, true, argumentDebugging))
                 .recover(throwable -> "Failed to get document: " + throwable.getMessage())
                 .get();
     }
@@ -270,11 +289,11 @@ public class GoogleDocs implements Tool {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
     }
 
-    private RagDocumentContext callOllama(final RagDocumentContext llmPrompt) {
+    private RagDocumentContext callOllama(final RagDocumentContext llmPrompt, final String customModel) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
-                        new OllamaGenerateBody(model, llmPrompt.document(), false)))
+                        new OllamaGenerateBody(customModel, llmPrompt.document(), false)))
                 .map(response -> new RagDocumentContext(response.response(), llmPrompt.sentences()))
                 .get();
     }
