@@ -41,16 +41,15 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
      *
      * @return The annotated result
      */
-    public String annotateDocumentContext(final float minSimilarity,
-                                          final int minWords,
-                                          final SentenceSplitter sentenceSplitter,
-                                          final SimilarityCalculator similarityCalculator,
-                                          final SentenceVectorizer sentenceVectorizer) {
+    public AnnotationResult<RagMultiDocumentContext<T>> annotateDocumentContext(final float minSimilarity,
+                                                                                final int minWords,
+                                                                                final SentenceSplitter sentenceSplitter,
+                                                                                final SimilarityCalculator similarityCalculator,
+                                                                                final SentenceVectorizer sentenceVectorizer) {
 
         final Set<RagSentenceAndOriginal> annotations = getAnnotations(minSimilarity, minWords, sentenceSplitter, similarityCalculator, sentenceVectorizer);
         final List<RagSentence> lookups = getAnnotationLookup(annotations);
-
-        return getAnnotations(minSimilarity, minWords, sentenceSplitter, similarityCalculator, sentenceVectorizer)
+        final String result = annotations
                 .stream()
                 // Use each of the annotations to update the document inline with the annotation index and then append the annotation
                 .reduce(combinedDocument(),
@@ -63,7 +62,9 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                 + System.lineSeparator()
                 + lookupsToString(lookups);
 
+        final int annotationIds = annotations.stream().map(RagSentenceAndOriginal::id).collect(Collectors.toSet()).size();
 
+        return new AnnotationResult<>(result, (float) annotationIds / individualContexts.size(), this);
     }
 
     public String lookupsToString(final List<RagSentence> lookups) {

@@ -50,15 +50,16 @@ class RagMultiDocumentContextTest {
 
 
         // Annotate the document
-        String annotatedDocument = multiContext.annotateDocumentContext(
+        AnnotationResult<RagMultiDocumentContext<String>> annotatedDocument = multiContext.annotateDocumentContext(
                 0.8f,  // minSimilarity
                 3,     // minWords
                 sentenceSplitter,
                 similarityCalculator,
                 sentenceVectorizer
         );
-        assertTrue(annotatedDocument.contains("[2]: This is a test document"));
-        assertTrue(annotatedDocument.contains("[1]: It contains multiple sentences"));
+        assertTrue(annotatedDocument.result().contains("[2]: This is a test document"));
+        assertTrue(annotatedDocument.result().contains("[1]: It contains multiple sentences"));
+        assertEquals(1, annotatedDocument.annotationCoverage());
     }
 
     // Mock classes for dependencies

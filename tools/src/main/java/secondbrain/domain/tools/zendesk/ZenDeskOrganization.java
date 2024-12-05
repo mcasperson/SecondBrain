@@ -311,10 +311,13 @@ public class ZenDeskOrganization implements Tool {
                                 10,
                                 sentenceSplitter,
                                 similarityCalculator,
-                                sentenceVectorizer)
+                                sentenceVectorizer))
+                        .map(annotatedResponse -> annotatedResponse.result()
                                 + System.lineSeparator() + System.lineSeparator()
                                 + "Tickets:" + System.lineSeparator()
-                                + idsToLinks(url.get(), response.getMetas(), authHeader)
+                                + idsToLinks(url.get(), annotatedResponse.context().getMetas(), authHeader)
+                                + System.lineSeparator() + System.lineSeparator()
+                                + "Annotation Coverage: " + annotatedResponse.annotationCoverage()
                                 + debugArgs)
                         .recover(EmptyString.class, "No tickets found after " + startDate + " for organization '" + fixedOwner + "'" + debugArgs)
                         .recover(throwable -> "Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)
