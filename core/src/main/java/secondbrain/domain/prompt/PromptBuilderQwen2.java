@@ -11,7 +11,7 @@ public class PromptBuilderQwen2 implements PromptBuilder {
 
     @Override
     public String modelRegex() {
-        return "^qwen2.*$";
+        return "^(qwq|qwen2).*$";
     }
 
     @Override

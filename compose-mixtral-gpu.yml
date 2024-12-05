@@ -21,8 +21,8 @@ services:
       # Remember, each model needs to be pulled with the command below.
       # docker exec secondbrain-ollama-1 ollama pull <model name>
       # for example
-      # docker exec secondbrain-ollama-1 ollama pull mixtral:8x22b
-      SB_OLLAMA_MODEL: mixtral:8x22b
+      # docker exec secondbrain-ollama-1 ollama pull mixtral:8x7b
+      SB_OLLAMA_MODEL: mixtral:8x7b
       # The model used to select a tool should always been llama3.1 or llama3.2
       # as these models have been trained to select tools. The model used here
       # must also be pulled:
