@@ -19,8 +19,8 @@ public class DebugToolArgsKeyValue implements DebugToolArgs {
     String debug;
 
     @Override
-    public String debugArgs(final List<ToolArgs> args, boolean includeLineBreak) {
-        if (BooleanUtils.toBoolean(debug)) {
+    public String debugArgs(final List<ToolArgs> args, boolean includeLineBreak, final boolean debugOverride) {
+        if (BooleanUtils.toBoolean(debug) || debugOverride) {
             final String debug = args.stream()
                     .map(arg -> arg.argName() + ": " + arg.argValue())
                     .collect(Collectors.joining("\n"));

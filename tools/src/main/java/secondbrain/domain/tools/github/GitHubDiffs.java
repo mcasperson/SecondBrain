@@ -209,13 +209,18 @@ public class GitHubDiffs implements Tool {
                 .recover(e -> model)
                 .get();
 
+        final boolean argumentDebugging = Try.of(() -> context.get("argument_debugging"))
+                .mapTry(Boolean::parseBoolean)
+                .recover(e -> false)
+                .get();
+
         if (token.isFailure() || StringUtils.isBlank(token.get())) {
             return "Failed to get GitHub access token";
         }
 
         final String authHeader = "Bearer " + token.get();
 
-        final String debugArgs = debugToolArgs.debugArgs(arguments, true);
+        final String debugArgs = debugToolArgs.debugArgs(arguments, true, argumentDebugging);
 
         return Try.of(() -> getCommits(
                         owner,

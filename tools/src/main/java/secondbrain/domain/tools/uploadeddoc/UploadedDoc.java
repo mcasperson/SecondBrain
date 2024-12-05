@@ -128,7 +128,7 @@ public class UploadedDoc implements Tool {
                 .map(this::callOllama)
                 .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 10, sentenceSplitter, similarityCalculator, sentenceVectorizer))
                 .map(response -> response
-                        + debugToolArgs.debugArgs(arguments, true))
+                        + debugToolArgs.debugArgs(arguments, true, false))
                 .recover(throwable -> "Failed to get document: " + throwable.getMessage())
                 .get();
     }

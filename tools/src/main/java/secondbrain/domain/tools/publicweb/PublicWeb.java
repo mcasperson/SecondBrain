@@ -131,7 +131,7 @@ public class PublicWeb implements Tool {
                 .map(response -> response
                         + System.lineSeparator() + System.lineSeparator()
                         + "* [Document](" + url + ")"
-                        + debugToolArgs.debugArgs(arguments, true))
+                        + debugToolArgs.debugArgs(arguments, true, false))
                 .recover(throwable -> "Failed to get document: " + throwable.getMessage())
                 .get();
     }

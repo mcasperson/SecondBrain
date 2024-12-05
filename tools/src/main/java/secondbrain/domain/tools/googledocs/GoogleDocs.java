@@ -178,7 +178,7 @@ public class GoogleDocs implements Tool {
                 .map(response -> response
                         + System.lineSeparator() + System.lineSeparator()
                         + "* [Document](https://docs.google.com/document/d/" + documentId + ")"
-                        + debugToolArgs.debugArgs(arguments, true))
+                        + debugToolArgs.debugArgs(arguments, true, false))
                 .recover(throwable -> "Failed to get document: " + throwable.getMessage())
                 .get();
     }

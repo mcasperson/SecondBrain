@@ -251,7 +251,7 @@ public class ZenDeskOrganization implements Tool {
             query.add("organization:" + fixedOwner);
         }
 
-        final String debugArgs = debugToolArgs.debugArgs(arguments, true);
+        final String debugArgs = debugToolArgs.debugArgs(arguments, true, false);
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))

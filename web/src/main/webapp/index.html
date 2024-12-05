@@ -78,6 +78,14 @@
                     </div>
                 </div>
                 <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" id="argumentDebugging" type="checkbox" value="">
+                        <label class="form-check-label" for="argumentDebugging">
+                            Enable Argument Debugging
+                        </label>
+                    </div>
+                </div>
+                <div class="mb-3">
                     <button class="btn btn-primary" type="submit">Submit</button>
                 </div>
                 <div class="mb-3">
@@ -120,6 +128,7 @@
         const githubToken = document.getElementById('githubToken').value;
         const prompt = document.getElementById('prompt').value;
         const customModel = document.getElementById('customModel').value;
+        const argumentDebugging = document.getElementById('argumentDebugging').value;
 
         fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
             method: 'POST',
@@ -128,7 +137,8 @@
             },
             body: JSON.stringify({
                 "github_access_token": githubToken,
-                "custom_model": customModel
+                "custom_model": customModel,
+                "argument_debugging": argumentDebugging
             }),
         })
             .then(response => response.text())
