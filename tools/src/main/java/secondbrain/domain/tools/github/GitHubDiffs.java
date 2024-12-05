@@ -204,6 +204,11 @@ public class GitHubDiffs implements Tool {
                 .mapTry(Objects::requireNonNull)
                 .recoverWith(e -> Try.of(() -> githubAccessToken.get()));
 
+        final String customModel = Try.of(() -> context.get("custom_model"))
+                .mapTry(Objects::requireNonNull)
+                .recover(e -> model)
+                .get();
+
         if (token.isFailure() || StringUtils.isBlank(token.get())) {
             return "Failed to get GitHub access token";
         }
@@ -221,7 +226,7 @@ public class GitHubDiffs implements Tool {
                         authHeader))
                 // limit the number of changes
                 .map(commitsResponse -> ListUtilsEx.safeSubList(commitsResponse, 0, maxDiffs > 0 ? maxDiffs : commitsResponse.size()))
-                .map(commitsResponse -> convertCommitsToDiffSummaries(commitsResponse, owner, repo, authHeader))
+                .map(commitsResponse -> convertCommitsToDiffSummaries(commitsResponse, owner, repo, authHeader, customModel))
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
@@ -231,11 +236,11 @@ public class GitHubDiffs implements Tool {
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                 .map(ragContext -> ragContext.updateDocument(
-                        promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
+                        promptBuilderSelector.getPromptBuilder(customModel).buildFinalPrompt(
                                 INSTRUCTIONS,
-                                promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Git Diffs", ragContext.combinedDocument()),
+                                promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("Git Diffs", ragContext.combinedDocument()),
                                 prompt)))
-                .map(this::callOllama)
+                .map(llmPrompt -> callOllama(llmPrompt, customModel))
                 .map(response -> response.annotateDocumentContext(
                         parsedMinSimilarity,
                         10,
@@ -271,11 +276,12 @@ public class GitHubDiffs implements Tool {
             final List<GitHubCommitResponse> commitsResponse,
             final String owner,
             final String repo,
-            final String authorization) {
+            final String authorization,
+            final String customModel) {
 
         return commitsResponse
                 .stream()
-                .map(commit -> getCommitSummary(commit, owner, repo, authorization))
+                .map(commit -> getCommitSummary(commit, owner, repo, authorization, customModel))
                 .toList();
     }
 
@@ -287,8 +293,9 @@ public class GitHubDiffs implements Tool {
     private RagDocumentContext<String> getCommitSummary(final GitHubCommitResponse commit,
                                                         final String owner,
                                                         final String repo,
-                                                        final String authorization) {
-        final String summary = getDiffSummary(getCommitDiff(owner, repo, commit.sha(), authorization));
+                                                        final String authorization,
+                                                        final String customModel) {
+        final String summary = getDiffSummary(getCommitDiff(owner, repo, commit.sha(), authorization), customModel);
         return new RagDocumentContext<>(
                 summary,
                 sentenceSplitter.splitDocument(summary, 10)
@@ -303,15 +310,15 @@ public class GitHubDiffs implements Tool {
      * Use the LLM to generate a plain text summary of the diff. This summary will be used to link the
      * final summary of all diffs to the changes in individual diffs.
      */
-    private String getDiffSummary(final String diff) {
+    private String getDiffSummary(final String diff, final String customModel) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
                         new OllamaGenerateBody(
-                                diffModel.orElse(model),
-                                promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
+                                diffModel.orElse(customModel),
+                                promptBuilderSelector.getPromptBuilder(customModel).buildFinalPrompt(
                                         DIFF_INSTRUCTIONS,
-                                        promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Git Diff", diff),
+                                        promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("Git Diff", diff),
                                         "Provide a one paragraph summary of the changes in the Git Diff."),
                                 false)))
                 .get()
@@ -332,11 +339,11 @@ public class GitHubDiffs implements Tool {
                 .get();
     }
 
-    private RagMultiDocumentContext<String> callOllama(final RagMultiDocumentContext<String> llmPrompt) {
+    private RagMultiDocumentContext<String> callOllama(final RagMultiDocumentContext<String> llmPrompt, final String customModel) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
-                        new OllamaGenerateBodyWithContext<>(model, llmPrompt, false)))
+                        new OllamaGenerateBodyWithContext<>(customModel, llmPrompt, false)))
                 .get();
     }
 
