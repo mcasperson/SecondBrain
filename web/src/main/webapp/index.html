@@ -145,12 +145,14 @@
 
     function disableForm() {
         document.getElementById('githubToken').disabled = true;
+        document.getElementById('customModel').disabled = true;
         document.getElementById('prompt').disabled = true;
         document.querySelector('button').disabled = true;
     }
 
     function enableForm() {
         document.getElementById('githubToken').disabled = false;
+        document.getElementById('customModel').disabled = false;
         document.getElementById('prompt').disabled = false;
         document.querySelector('button').disabled = false;
     }
