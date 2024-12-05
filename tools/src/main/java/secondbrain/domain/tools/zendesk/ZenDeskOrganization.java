@@ -212,7 +212,9 @@ public class ZenDeskOrganization implements Tool {
 
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.
-        final Try<String> token = getContext("zendesk_access_token", context)
+        final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_access_token")))
+                .recover(e -> context.get("zendesk_access_token"))
+                .mapTry(validateString::throwIfEmpty)
                 .recoverWith(e -> Try.of(() -> zenDeskAccessToken.get()));
 
         if (token.isFailure() || StringUtils.isBlank(token.get())) {
@@ -226,12 +228,24 @@ public class ZenDeskOrganization implements Tool {
             return "Failed to get Zendesk URL";
         }
 
-        final Try<String> user = getContext("zendesk_user", context)
+        final Try<String> user = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_user")))
+                .recover(e -> context.get("zendesk_user"))
+                .mapTry(validateString::throwIfEmpty)
                 .recoverWith(e -> Try.of(() -> zenDeskUser.get()));
 
         if (user.isFailure() || StringUtils.isBlank(user.get())) {
             return "Failed to get Zendesk User";
         }
+
+        final String customModel = Try.of(() -> context.get("custom_model"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> model)
+                .get();
+
+        final boolean argumentDebugging = Try.of(() -> context.get("argument_debugging"))
+                .mapTry(Boolean::parseBoolean)
+                .recover(e -> false)
+                .get();
 
         final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
                 (user.get() + "/token:" + token.get()).getBytes(UTF_8))).get(), UTF_8);
@@ -251,7 +265,7 @@ public class ZenDeskOrganization implements Tool {
             query.add("organization:" + fixedOwner);
         }
 
-        final String debugArgs = debugToolArgs.debugArgs(arguments, true, false);
+        final String debugArgs = debugToolArgs.debugArgs(arguments, true, argumentDebugging);
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
@@ -269,26 +283,26 @@ public class ZenDeskOrganization implements Tool {
                             raw tickets. The reality is that even LLMs with a context length of 128k tokens mostly fixated
                             one a small number of tickets.
                          */
-                        .map(this::summariseTickets)
+                        .map(tickets -> summariseTickets(tickets, customModel))
                         // Limit the list to just those that fit in the context
                         .map(list -> listLimiter.limitListContent(
                                 list,
                                 RagDocumentContext::document,
                                 NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                         // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                        .map(this::mergeContext)
+                        .map(tickets -> mergeContext(tickets, customModel))
                         // Make sure we had some content for the prompt
                         .mapTry(mergedContext ->
                                 validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                         // Build the final prompt including instructions, context and the user prompt
                         .map(ragContext -> ragContext.updateDocument(
                                 promptBuilderSelector
-                                        .getPromptBuilder(model)
+                                        .getPromptBuilder(customModel)
                                         .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
                         // Call Ollama with the final prompt
                         .map(llmPrompt -> ollamaClient.getTools(
                                 client,
-                                new OllamaGenerateBodyWithContext<>(model, llmPrompt, false)))
+                                new OllamaGenerateBodyWithContext<>(customModel, llmPrompt, false)))
                         // Clean up the response
                         .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())))
                         // Take the LLM response and annotate it with links to the RAG context
@@ -339,11 +353,11 @@ public class ZenDeskOrganization implements Tool {
         return url + "/agent/tickets/" + id;
     }
 
-    private RagMultiDocumentContext<ZenDeskResultsResponse> mergeContext(final List<RagDocumentContext<ZenDeskResultsResponse>> context) {
+    private RagMultiDocumentContext<ZenDeskResultsResponse> mergeContext(final List<RagDocumentContext<ZenDeskResultsResponse>> context, final String customModel) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(RagDocumentContext::document)
-                        .map(content -> promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("ZenDesk Ticket", content))
+                        .map(content -> promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("ZenDesk Ticket", content))
                         .collect(Collectors.joining("\n")),
                 context);
     }
@@ -376,29 +390,29 @@ public class ZenDeskOrganization implements Tool {
     /**
      * Summarise the tickets by passing them through the LLM
      */
-    private List<RagDocumentContext<ZenDeskResultsResponse>> summariseTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets) {
+    private List<RagDocumentContext<ZenDeskResultsResponse>> summariseTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets, final String customModel) {
         return tickets.stream()
-                .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document())))
+                .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), customModel)))
                 .collect(Collectors.toList());
     }
 
     /**
      * Summarise an individual ticket
      */
-    private String getTicketSummary(final String ticketContents) {
+    private String getTicketSummary(final String ticketContents, final String customModel) {
         final String context = promptBuilderSelector
-                .getPromptBuilder(model)
+                .getPromptBuilder(customModel)
                 .buildContextPrompt("ZenDesk Ticket", ticketContents);
 
         final String prompt = promptBuilderSelector
-                .getPromptBuilder(model)
+                .getPromptBuilder(customModel)
                 .buildFinalPrompt("You are a helpful agent", context, "Summarise the ticket in one paragraph");
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                                 client,
                                 new OllamaGenerateBody(
-                                        model,
+                                        customModel,
                                         prompt,
                                         false))
                         .response())
