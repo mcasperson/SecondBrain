@@ -128,7 +128,7 @@
         const githubToken = document.getElementById('githubToken').value;
         const prompt = document.getElementById('prompt').value;
         const customModel = document.getElementById('customModel').value;
-        const argumentDebugging = document.getElementById('argumentDebugging').value;
+        const argumentDebugging = document.getElementById('argumentDebugging').checked;
 
         fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
             method: 'POST',
