@@ -13,13 +13,13 @@ public class PromptBuilderMistral implements PromptBuilder {
 
     @Override
     public String modelRegex() {
-        return "^mistral.*$";
+        return "^mi(s|x)tral.*$";
     }
 
     @Override
     public String buildContextPrompt(final String title, final String prompt) {
         return "---------------------\n"
-            + title + ":\n"
+                + title + ":\n"
                 + prompt + "\n"
                 + "---------------------";
     }
