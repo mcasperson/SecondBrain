@@ -1,6 +1,6 @@
 Param (
-    [string]$companyName,
-    [string]$fileName,
+    [string]$companyNames,
+    [string]$obsidianPath,
     [string]$googleDoc
 )
 
@@ -114,9 +114,11 @@ $model = "mistral-nemo"
 $toolModel = "llama3.1"
 $contextLength = "480000" # typically 32000 for 8k context, or 480000 for 128k
 
-$ticketResult = Invoke-CustomCommand java "`"-Dsb.zendesk.excludedorgs=$( $env:EXCLUDED_ORGANIZATIONS )`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextlength=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"You are given the Google document with the id $googleDoc. Assume the document is written in the first person by Matthew Casperson, also known as Matt. List all the information about $companyName.`""
+$companyNames -split "," | ForEach-Object {
+    $companyName = $_
+    $ticketResult = Invoke-CustomCommand java "`"-Dsb.zendesk.excludedorgs=$( $env:EXCLUDED_ORGANIZATIONS )`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextlength=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"You are given the Google document with the id $googleDoc. Assume the document is written in the first person by Matthew Casperson, also known as Matt. List all the information about $companyName.`""
 
-Set-Content -Path $fileName -Value $ticketResult.StdOut
-
+    Set-Content -Path "$obsidianPath\$companyName.md" -Value $ticketResult.StdOut
+}
 
 
