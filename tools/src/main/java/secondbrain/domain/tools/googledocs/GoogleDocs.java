@@ -185,7 +185,10 @@ public class GoogleDocs implements Tool {
                         .getPromptBuilder(customModel)
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
-                                ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
+                                // I've opted to get the end of the document if it is larger than the context window.
+                                // The end of the document is typically given more weight by LLMs, and so any long
+                                // document being processed should place the most relevant content twoards the end.
+                                ragContext.getDocumentRight(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
                 .map(llmPrompt -> callOllama(llmPrompt, customModel))
                 .map(result -> result.annotateDocumentContext(

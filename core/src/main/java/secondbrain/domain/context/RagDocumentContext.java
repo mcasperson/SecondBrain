@@ -57,6 +57,17 @@ public record RagDocumentContext<T>(String document, List<RagStringContext> sent
         return document.substring(0, Math.min(document.length(), length));
     }
 
+    public String getDocumentRight(final int length) {
+        if (length <= 0) {
+            return "";
+        }
+
+        final int start = Math.max(0, document.length() - length);
+        final int end = start + Math.min(document.length(), length);
+
+        return document.substring(start, end);
+    }
+
     /**
      * Given a vector, find the closest sentence in the list of sentences.
      *
