@@ -1,5 +1,6 @@
 Param (
     [string]$companyNames,
+    [string]$companyKeywords,
     [string]$obsidianPath,
     [string]$googleDoc
 )
@@ -116,7 +117,7 @@ $contextLength = "480000" # typically 32000 for 8k context, or 480000 for 128k
 
 $companyNames -split "," | ForEach-Object {
     $companyName = $_
-    $ticketResult = Invoke-CustomCommand java "`"-Dsb.zendesk.excludedorgs=$( $env:EXCLUDED_ORGANIZATIONS )`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextlength=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"You are given the Google document with the id $googleDoc. Assume the document is written in the first person by Matthew Casperson, also known as Matt. Trim the document with keywords '$companyName'. List all the information about $companyName. You will be penalize for including details about unrelated companies.`""
+    $ticketResult = Invoke-CustomCommand java "`"-Dsb.zendesk.excludedorgs=$( $env:EXCLUDED_ORGANIZATIONS )`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextlength=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"You are given the Google document with the id $googleDoc. Assume the document is written in the first person by Matthew Casperson, also known as Matt. Trim the document with keywords '$companyKeywords'. List all the information about $companyName. You will be penalize for including details about unrelated companies.`""
 
     Set-Content -Path "$obsidianPath\$companyName.md" -Value $ticketResult.StdOut
 }
