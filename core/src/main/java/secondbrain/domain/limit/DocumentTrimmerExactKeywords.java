@@ -94,10 +94,10 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
         final String lowerCaseDocument = document.toLowerCase();
         final List<Integer> keywordPositions = new ArrayList<>();
         for (String keyword : keywords) {
-            int position = document.indexOf(keyword.toLowerCase());
+            int position = lowerCaseDocument.indexOf(keyword.toLowerCase());
             while (position != -1) {
                 keywordPositions.add(position);
-                position = document.indexOf(keyword.toLowerCase(), position + 1);
+                position = lowerCaseDocument.indexOf(keyword.toLowerCase(), position + 1);
             }
         }
         return keywordPositions;
