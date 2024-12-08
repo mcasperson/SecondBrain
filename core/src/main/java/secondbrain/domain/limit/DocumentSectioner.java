@@ -48,7 +48,7 @@ public class DocumentSectioner implements DocumentTrimmer {
      * @param sections The sections to merge
      * @return The merged sections
      */
-    private List<Section> mergeSections(final List<Section> sections) {
+    public List<Section> mergeSections(final List<Section> sections) {
         final List<Section> mergedSections = new ArrayList<>();
         final List<Section> sectionsCopy = new ArrayList<>(sections);
 
@@ -59,8 +59,13 @@ public class DocumentSectioner implements DocumentTrimmer {
 
             final List<Section> overlaps = sectionsCopy
                     .stream()
-                    .filter(nextSection -> nextSection.start() <= currentSection.end()
-                            && nextSection.end() >= currentSection.end())
+                    .filter(nextSection ->
+                                    // The current section overlaps the start of the next section
+                                    (currentSection.start() <= nextSection.start() && currentSection.end() >= nextSection.start())
+                                            // The current section overlaps the end of the next section
+                                            || (currentSection.end() >= nextSection.end() && currentSection.start() <= nextSection.end())
+                                            // The current section is contained within the next section
+                                            || (currentSection.start() >= nextSection.start() && currentSection.end() <= nextSection.end()))
                     .toList();
 
             final Optional<Section> largestEnd = overlaps.stream()
@@ -80,7 +85,11 @@ public class DocumentSectioner implements DocumentTrimmer {
             }
         }
 
-        return mergedSections;
+        // Return a sorted list of merged sections
+        return mergedSections
+                .stream()
+                .sorted(Comparator.comparingInt(Section::start))
+                .toList();
     }
 
     private List<Integer> getAllKeywordPositions(final String document, final List<String> keywords) {
@@ -97,4 +106,3 @@ public class DocumentSectioner implements DocumentTrimmer {
     }
 }
 
-record Section(int start, int end) {}
