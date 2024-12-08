@@ -8,24 +8,24 @@ class DocumentSectionerTest {
 
     @Test
     void testTrimDocument() {
-        DocumentSectioner sectioner = new DocumentSectioner(20);
+        DocumentSectioner sectioner = new DocumentSectioner();
         String document = "This is a test document. It contains several keywords. This is another sentence with keywords.";
         List<String> keywords = List.of("test", "keywords");
 
         String expected = "This is a test docum s several keywords. ence with keywords.";
-        String result = sectioner.trimDocument(document, keywords);
+        String result = sectioner.trimDocument(document, keywords, 20);
 
         assertEquals(expected, result);
     }
 
     @Test
     void testTrimOverlapDocument() {
-        DocumentSectioner sectioner = new DocumentSectioner(20);
+        DocumentSectioner sectioner = new DocumentSectioner();
         String document = "This is a test keywords document. It contains several test keywords. This is another sentence with keywords.";
         List<String> keywords = List.of("test", "keywords");
 
         String expected = "This is a test keywords d s several test keywords. ence with keywords.";
-        String result = sectioner.trimDocument(document, keywords);
+        String result = sectioner.trimDocument(document, keywords, 20);
 
         assertEquals(expected, result);
     }
@@ -37,7 +37,7 @@ class DocumentSectionerTest {
         List<String> keywords = List.of();
 
         String expected = "";
-        String result = sectioner.trimDocument(document, keywords);
+        String result = sectioner.trimDocument(document, keywords, 20);
 
         assertEquals(expected, result);
     }
@@ -49,7 +49,7 @@ class DocumentSectionerTest {
         List<String> keywords = List.of("test", "keywords");
 
         String expected = "";
-        String result = sectioner.trimDocument(document, keywords);
+        String result = sectioner.trimDocument(document, keywords, 20);
 
         assertEquals(expected, result);
     }
@@ -61,7 +61,7 @@ class DocumentSectionerTest {
         List<String> keywords = List.of("test", "keywords");
 
         String expected = "";
-        String result = sectioner.trimDocument(document, keywords);
+        String result = sectioner.trimDocument(document, keywords, 20);
 
         assertEquals(expected, result);
     }

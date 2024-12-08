@@ -10,20 +10,9 @@ import java.util.Optional;
  * with each section being a block of characters before and after each keyword.
  */
 public class DocumentSectioner implements DocumentTrimmer {
-    private static final int DEFAULT_SECTION_LENGTH = 500;
-
-    private int sectionLength;
-
-    public DocumentSectioner() {
-        this.sectionLength = DEFAULT_SECTION_LENGTH;
-    }
-
-    public DocumentSectioner(int sectionLength) {
-        this.sectionLength = sectionLength;
-    }
 
     @Override
-    public String trimDocument(String document, List<String> keywords) {
+    public String trimDocument(final String document, final List<String> keywords, final int sectionLength) {
         if (document == null || document.isEmpty()) {
             return "";
         }
