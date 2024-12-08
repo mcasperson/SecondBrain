@@ -10,5 +10,5 @@ public class Constants {
     /**
      * The default section size when trimming a document based on keywords.
      */
-    public static final int DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH = 1000;
+    public static final int DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH = 2000;
 }
