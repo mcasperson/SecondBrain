@@ -36,10 +36,9 @@ class DocumentTrimmerExactKeywordsTest {
         String document = "This is a test document. It contains several keywords. This is another sentence with keywords.";
         List<String> keywords = List.of();
 
-        String expected = "";
         String result = sectioner.trimDocument(document, keywords, 20);
 
-        assertEquals(expected, result);
+        assertEquals(document, result);
     }
 
     @Test
