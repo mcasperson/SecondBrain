@@ -254,7 +254,7 @@ public class GitHubDiffs implements Tool {
                         sentenceVectorizer))
                 .map(annotatedDocument -> annotatedDocument.getAnnotatedResult(
                         "Git Diffs",
-                        annotatedDocument.context().getMetas(),
+                        annotatedDocument.context().getLinks(),
                         debugArgs))
                 .recover(EmptyString.class, "No diffs found for " + owner + "/" + repo + " between " + startDate + " and " + endDate + debugArgs)
                 .recover(throwable -> "Failed to get diffs: " + throwable.getMessage() + debugArgs)
@@ -268,7 +268,7 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    private RagMultiDocumentContext<String> mergeContext(final List<RagDocumentContext<String>> context) {
+    private RagMultiDocumentContext<GitHubCommitResponse> mergeContext(final List<RagDocumentContext<GitHubCommitResponse>> context) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(RagDocumentContext::document)
@@ -277,7 +277,7 @@ public class GitHubDiffs implements Tool {
     }
 
 
-    private List<RagDocumentContext<String>> convertCommitsToDiffSummaries(
+    private List<RagDocumentContext<GitHubCommitResponse>> convertCommitsToDiffSummaries(
             final List<GitHubCommitResponse> commitsResponse,
             final String owner,
             final String repo,
@@ -295,19 +295,20 @@ public class GitHubDiffs implements Tool {
      * or hallucinate a bunch of random release notes. Instead, each diff is summarised individually and then combined
      * into a single document to be summarised again.
      */
-    private RagDocumentContext<String> getCommitSummary(final GitHubCommitResponse commit,
-                                                        final String owner,
-                                                        final String repo,
-                                                        final String authorization,
-                                                        final String customModel) {
+    private RagDocumentContext<GitHubCommitResponse> getCommitSummary(final GitHubCommitResponse commit,
+                                                                      final String owner,
+                                                                      final String repo,
+                                                                      final String authorization,
+                                                                      final String customModel) {
         final String summary = getDiffSummary(getCommitDiff(owner, repo, commit.sha(), authorization), customModel);
-        return new RagDocumentContext<>(
+        return new RagDocumentContext<GitHubCommitResponse>(
                 summary,
                 sentenceSplitter.splitDocument(summary, 10)
                         .stream()
                         .map(sentenceVectorizer::vectorize)
                         .toList(),
                 commit.sha(),
+                commit,
                 commit.html_url());
     }
 
@@ -344,7 +345,7 @@ public class GitHubDiffs implements Tool {
                 .get();
     }
 
-    private RagMultiDocumentContext<String> callOllama(final RagMultiDocumentContext<String> llmPrompt, final String customModel) {
+    private RagMultiDocumentContext<GitHubCommitResponse> callOllama(final RagMultiDocumentContext<GitHubCommitResponse> llmPrompt, final String customModel) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,

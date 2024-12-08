@@ -25,15 +25,16 @@ import static java.util.Comparator.comparing;
  * @param sentences The individual context strings that make up the documents
  * @param id        The ID of the document
  * @param meta      The metadata associated with the document
+ * @param link      The link to the document
  */
-public record RagDocumentContext<T>(String document, List<RagStringContext> sentences, String id, T meta) {
+public record RagDocumentContext<T>(String document, List<RagStringContext> sentences, String id, T meta, String link) {
 
     public RagDocumentContext(final String document, final List<RagStringContext> sentences, String id) {
-        this(document, sentences, id, null);
+        this(document, sentences, id, null, null);
     }
 
     public RagDocumentContext(final String document, final List<RagStringContext> sentences) {
-        this(document, sentences, "", null);
+        this(document, sentences, "", null, null);
     }
 
     /**
@@ -46,7 +47,11 @@ public record RagDocumentContext<T>(String document, List<RagStringContext> sent
      * @return A new copy of this object with the new document
      */
     public RagDocumentContext<T> updateDocument(final String document) {
-        return new RagDocumentContext<>(document, sentences, id, meta);
+        return new RagDocumentContext<>(document, sentences, id, meta, link);
+    }
+
+    public RagDocumentContext<T> updateLink(final String link) {
+        return new RagDocumentContext<>(document, sentences, id, meta, link);
     }
 
     public String getDocumentLeft(final int length) {

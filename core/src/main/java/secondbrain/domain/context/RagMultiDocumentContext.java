@@ -22,6 +22,10 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         return individualContexts.stream().map(RagDocumentContext::meta).toList();
     }
 
+    public List<String> getLinks() {
+        return individualContexts.stream().map(RagDocumentContext::link).toList();
+    }
+
     /**
      * The document held by this object often needs to undergo some transformation, from raw text, to being sanitized,
      * to being marked up, as part of a LLM template. The individual contexts neve change though.

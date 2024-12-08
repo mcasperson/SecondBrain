@@ -315,7 +315,7 @@ public class ZenDeskOrganization implements Tool {
                                 sentenceVectorizer))
                         .map(annotatedDocument -> annotatedDocument.getAnnotatedResult(
                                 "Tickets",
-                                idsToLinks(url.get(), annotatedDocument.context().getMetas(), authHeader),
+                                annotatedDocument.context().getLinks(),
                                 debugArgs))
                         .recover(EmptyString.class, "No tickets found after " + startDate + " for organization '" + fixedOwner + "'" + debugArgs)
                         .recover(throwable -> "Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)
@@ -327,26 +327,23 @@ public class ZenDeskOrganization implements Tool {
      * Display a Markdown list of the ticket IDs with links to the tickets. This helps users understand
      * where the information is coming from.
      *
-     * @param url   The ZenDesk url
-     * @param metas The list of ticket metadata
-     * @return A Markdown list of source tickets
+     * @param url  The ZenDesk url
+     * @param meta The ticket metadata
+     * @return A Markdown link to the source ticket
      */
-    private List<String> idsToLinks(final String url, final List<ZenDeskResultsResponse> metas, final String authHeader) {
+    private String ticketToLink(final String url, final ZenDeskResultsResponse meta, final String authHeader) {
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> metas.stream()
-                        .map(meta ->
-                                "* " + meta.subject().replaceAll("\\r\\n|\\r|\\n", " ") + " - "
-                                        // Best effort to get the organization name, but don't treat this as a failure
-                                        + Try.of(() -> zenDeskClient.getOrganizationCached(client, authHeader, url, meta.organization_id()))
-                                        .map(ZenDeskOrganizationItemResponse::name)
-                                        .getOrElse("Unknown Organization")
-                                        + " - "
-                                        // Best effort to get the username, but don't treat this as a failure
-                                        + Try.of(() -> zenDeskClient.getUserCached(client, authHeader, url, meta.assignee_id()))
-                                        .map(ZenDeskUserItemResponse::name)
-                                        .getOrElse("Unknown User")
-                                        + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
-                        .toList())
+                .of(client -> "* " + meta.subject().replaceAll("\\r\\n|\\r|\\n", " ") + " - "
+                        // Best effort to get the organization name, but don't treat this as a failure
+                        + Try.of(() -> zenDeskClient.getOrganizationCached(client, authHeader, url, meta.organization_id()))
+                        .map(ZenDeskOrganizationItemResponse::name)
+                        .getOrElse("Unknown Organization")
+                        + " - "
+                        // Best effort to get the username, but don't treat this as a failure
+                        + Try.of(() -> zenDeskClient.getUserCached(client, authHeader, url, meta.assignee_id()))
+                        .map(ZenDeskUserItemResponse::name)
+                        .getOrElse("Unknown User")
+                        + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
                 .get();
     }
 
@@ -434,12 +431,12 @@ public class ZenDeskOrganization implements Tool {
                 .map(comments -> comments.updateContext(
                         comments.meta().subject() + "\n" + String.join("\n", comments.context())))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
-                .map(comments -> getDocumentContext(comments.context(), comments.id(), comments.meta()))
+                .map(comments -> getDocumentContext(comments.context(), comments.id(), comments.meta(), authorization))
                 // Get a list of context strings
                 .collect(Collectors.toList());
     }
 
-    private RagDocumentContext<ZenDeskResultsResponse> getDocumentContext(final String document, final String id, final ZenDeskResultsResponse meta) {
+    private RagDocumentContext<ZenDeskResultsResponse> getDocumentContext(final String document, final String id, final ZenDeskResultsResponse meta, final String authHeader) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext<ZenDeskResultsResponse>(
                         document,
@@ -447,10 +444,13 @@ public class ZenDeskOrganization implements Tool {
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList()),
                         id,
-                        meta))
+                        meta,
+                        null))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(document, List.of(), id, meta))
+                .recover(e -> new RagDocumentContext<>(document, List.of(), id, meta, null))
+                // Add the links to each of the tickets
+                .map(ragDocumentContext -> ragDocumentContext.updateLink(ticketToLink(zenDeskUrl.get(), meta, authHeader)))
                 .get();
     }
 
