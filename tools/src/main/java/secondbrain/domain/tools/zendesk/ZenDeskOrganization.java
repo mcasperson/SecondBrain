@@ -20,6 +20,7 @@ import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -100,11 +101,11 @@ public class ZenDeskOrganization implements Tool {
 
     @Inject
     @Identifier("sanitizeEmail")
-    private SanitizeDocument sanitizeEmail;
+    private SanitizeArgument sanitizeEmail;
 
     @Inject
     @Identifier("sanitizeOrganization")
-    private SanitizeDocument sanitizeOrganization;
+    private SanitizeArgument sanitizeOrganization;
 
     @Inject
     private ValidateString validateString;
@@ -178,8 +179,8 @@ public class ZenDeskOrganization implements Tool {
         final String recipient = argsAccessor.getArgument(arguments, "recipient", "");
 
         // These arguments get swapped by the LLM all the time, so we need to fix them
-        final String fixedRecipient = sanitizeEmail.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner)) && StringUtils.isBlank(recipient) ? owner : recipient);
-        final String fixedOwner = sanitizeOrganization.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner)) && StringUtils.isBlank(recipient) ? "" : owner);
+        final String fixedRecipient = sanitizeEmail.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner, prompt)) && StringUtils.isBlank(recipient) ? owner : recipient, prompt);
+        final String fixedOwner = sanitizeOrganization.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner, prompt)) && StringUtils.isBlank(recipient) ? "" : owner, prompt);
 
         final List<String> exclude = Arrays.stream(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","))
                 .map(String::trim)

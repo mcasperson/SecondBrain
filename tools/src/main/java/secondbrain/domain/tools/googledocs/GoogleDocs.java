@@ -9,6 +9,7 @@ import com.google.api.services.docs.v1.model.*;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
@@ -26,7 +27,9 @@ import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.context.SimilarityCalculator;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -80,6 +83,13 @@ public class GoogleDocs implements Tool {
     String minSimilarity;
 
     @Inject
+    @Identifier("sanitizeList")
+    private SanitizeArgument sanitizeList;
+
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
+    @Inject
     private Encryptor textEncryptor;
 
     @Inject
@@ -119,13 +129,17 @@ public class GoogleDocs implements Tool {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("documentId", "The ID of the Google Docs document to use.", "")
+                new ToolArguments("documentId", "The ID of the Google Docs document to use.", ""),
+                new ToolArguments("keywords", "An optional list of keywords used to trim the document", "")
         );
     }
 
     @Override
     public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final String documentId = argsAccessor.getArgument(arguments, "documentId", "");
+        final List<String> keywords = List.of(sanitizeList.sanitize(
+                argsAccessor.getArgument(arguments, "keywords", ""),
+                prompt).split(","));
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
@@ -177,10 +191,12 @@ public class GoogleDocs implements Tool {
                         .build())
                 .mapTry(service -> service.documents().get(documentId).execute())
                 .map(this::getDocumentText)
+                .map(document -> documentTrimmer.trimDocument(
+                        document, keywords, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
                 .map(this::getDocumentContext)
                 .map(doc -> doc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(customModel)
-                        .buildContextPrompt("Google Document " + documentId, doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))))
+                        .buildContextPrompt("Google Document " + documentId, doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH)))))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(customModel)
                         .buildFinalPrompt(

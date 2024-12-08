@@ -3,7 +3,7 @@ package secondbrain.domain.tools.zendesk;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.StringUtils;
-import secondbrain.domain.sanitize.SanitizeDocument;
+import secondbrain.domain.sanitize.SanitizeArgument;
 
 import java.util.Arrays;
 
@@ -12,10 +12,10 @@ import java.util.Arrays;
  */
 @ApplicationScoped
 @Identifier("sanitizeOrganization")
-public class SanitizeOrganization implements SanitizeDocument {
+public class SanitizeOrganization implements SanitizeArgument {
     @Override
-    public String sanitize(final String document) {
-        if (StringUtils.isBlank(document)) {
+    public String sanitize(final String argument, final String document) {
+        if (StringUtils.isBlank(argument)) {
             return "";
         }
 
@@ -36,10 +36,10 @@ public class SanitizeOrganization implements SanitizeDocument {
                 "your organization name",
                 "null"};
 
-        if (Arrays.stream(invalid).anyMatch(document::equalsIgnoreCase)) {
+        if (Arrays.stream(invalid).anyMatch(argument::equalsIgnoreCase)) {
             return "";
         }
 
-        return document;
+        return argument;
     }
 }

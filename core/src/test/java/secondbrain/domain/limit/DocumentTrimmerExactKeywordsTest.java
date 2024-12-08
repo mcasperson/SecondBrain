@@ -4,11 +4,11 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 
-class DocumentSectionerTest {
+class DocumentTrimmerExactKeywordsTest {
 
     @Test
     void testTrimDocument() {
-        DocumentSectioner sectioner = new DocumentSectioner();
+        DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
         String document = "This is a test document. It contains several keywords. This is another sentence with keywords.";
         List<String> keywords = List.of("test", "keywords");
 
@@ -20,7 +20,7 @@ class DocumentSectionerTest {
 
     @Test
     void testTrimOverlapDocument() {
-        DocumentSectioner sectioner = new DocumentSectioner();
+        DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
         String document = "This is a test keywords document. It contains several test keywords. This is another sentence with keywords.";
         List<String> keywords = List.of("test", "keywords");
 
@@ -32,7 +32,7 @@ class DocumentSectionerTest {
 
     @Test
     void testTrimDocumentWithNoKeywords() {
-        DocumentSectioner sectioner = new DocumentSectioner();
+        DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
         String document = "This is a test document. It contains several keywords. This is another sentence with keywords.";
         List<String> keywords = List.of();
 
@@ -44,7 +44,7 @@ class DocumentSectionerTest {
 
     @Test
     void testTrimDocumentWithNullDocument() {
-        DocumentSectioner sectioner = new DocumentSectioner();
+        DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
         String document = null;
         List<String> keywords = List.of("test", "keywords");
 
@@ -56,7 +56,7 @@ class DocumentSectionerTest {
 
     @Test
     void testTrimDocumentWithEmptyDocument() {
-        DocumentSectioner sectioner = new DocumentSectioner();
+        DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
         String document = "";
         List<String> keywords = List.of("test", "keywords");
 
@@ -68,7 +68,7 @@ class DocumentSectionerTest {
 
     @Test
     void testMergeSections() {
-        DocumentSectioner sectioner = new DocumentSectioner();
+        DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
 
         List<Section> sections = List.of(
                 new Section(0, 10),
@@ -89,7 +89,7 @@ class DocumentSectionerTest {
 
     @Test
     void testMergeSectionsSorting() {
-        DocumentSectioner sectioner = new DocumentSectioner();
+        DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
 
         List<Section> sections = List.of(
                 new Section(25, 35),
@@ -110,7 +110,7 @@ class DocumentSectionerTest {
 
     @Test
     void testMergeSectionsWithNoOverlap() {
-        DocumentSectioner sectioner = new DocumentSectioner();
+        DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
 
         List<Section> sections = List.of(
                 new Section(0, 10),
@@ -131,7 +131,7 @@ class DocumentSectionerTest {
 
     @Test
     void testMergeSectionsWithContainedSections() {
-        DocumentSectioner sectioner = new DocumentSectioner();
+        DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
 
         List<Section> sections = List.of(
                 new Section(0, 20),

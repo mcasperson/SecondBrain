@@ -2,7 +2,7 @@ package secondbrain.domain.args;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.StringUtils;
-import secondbrain.domain.sanitize.SanitizeDocument;
+import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.tooldefs.ToolArgs;
 
 import java.util.List;
@@ -25,10 +25,10 @@ public class ArgsAccessorSimple implements ArgsAccessor {
     }
 
     @Override
-    public String getArgument(List<ToolArgs> arguments, List<SanitizeDocument> sanitizers, String argName, String defaultValue) {
+    public String getArgument(List<ToolArgs> arguments, List<SanitizeArgument> sanitizers, String prompt, String argName, String defaultValue) {
         final String arg = getArgument(arguments, argName, defaultValue);
         final String sanitized = sanitizers.stream()
-                .reduce(arg, (s, sanitizer) -> sanitizer.sanitize(s), (s1, s2) -> s2);
+                .reduce(arg, (s, sanitizer) -> sanitizer.sanitize(s, prompt), (s1, s2) -> s2);
 
         if (StringUtils.isBlank(sanitized)) {
             return defaultValue;

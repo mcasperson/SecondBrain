@@ -8,13 +8,19 @@ import java.util.Optional;
 /**
  * A service that returns the sections of a document that contain the keywords,
  * with each section being a block of characters before and after each keyword.
+ * Keywords are case-insensitive and require an exact match.
  */
-public class DocumentSectioner implements DocumentTrimmer {
+public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
 
     @Override
     public String trimDocument(final String document, final List<String> keywords, final int sectionLength) {
         if (document == null || document.isEmpty()) {
             return "";
+        }
+
+        // Empty keywords or a non-positive section length will return the entire document
+        if (keywords.isEmpty() || sectionLength <= 0) {
+            return document;
         }
 
         final List<Section> keywordPositions = getAllKeywordPositions(document, keywords)

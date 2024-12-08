@@ -1,6 +1,6 @@
 package secondbrain.domain.args;
 
-import secondbrain.domain.sanitize.SanitizeDocument;
+import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.tooldefs.ToolArgs;
 
 import java.util.List;
@@ -27,13 +27,15 @@ public interface ArgsAccessor {
      *
      * @param arguments    The list of arguments
      * @param sanitizers   The list of sanitizers to apply to the argument
+     * @param prompt        The users prompt
      * @param argName      The name of the argument to return
      * @param defaultValue The default value to return if the argument is not found
      * @return The argument, or the default value if the argument was not found
      */
     String getArgument(
             List<ToolArgs> arguments,
-            List<SanitizeDocument> sanitizers,
+            List<SanitizeArgument> sanitizers,
+            String prompt,
             String argName,
             String defaultValue);
 }

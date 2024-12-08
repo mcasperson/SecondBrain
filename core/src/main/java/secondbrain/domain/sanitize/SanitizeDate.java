@@ -11,14 +11,14 @@ import java.util.Arrays;
  */
 @ApplicationScoped
 @Identifier("sanitizeDate")
-public class SanitizeDate implements SanitizeDocument {
+public class SanitizeDate implements SanitizeArgument {
     @Override
-    public String sanitize(final String document) {
-        if (StringUtils.isBlank(document)) {
+    public String sanitize(final String argument, final String document) {
+        if (StringUtils.isBlank(argument)) {
             return "";
         }
 
-        final String trimmedDate = document.trim();
+        final String trimmedDate = argument.trim();
 
         // A bunch of hallucinations that we need to ignore
         final String[] invalid = {
@@ -29,6 +29,6 @@ public class SanitizeDate implements SanitizeDocument {
             return "";
         }
 
-        return document;
+        return argument;
     }
 }
