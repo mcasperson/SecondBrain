@@ -1,0 +1,100 @@
+package secondbrain.domain.limit;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * A service that returns the sections of a document that contain the keywords,
+ * with each section being a block of characters before and after each keyword.
+ */
+public class DocumentSectioner implements DocumentTrimmer {
+    private static final int DEFAULT_SECTION_LENGTH = 500;
+
+    private int sectionLength;
+
+    public DocumentSectioner() {
+        this.sectionLength = DEFAULT_SECTION_LENGTH;
+    }
+
+    public DocumentSectioner(int sectionLength) {
+        this.sectionLength = sectionLength;
+    }
+
+    @Override
+    public String trimDocument(String document, List<String> keywords) {
+        if (document == null || document.isEmpty()) {
+            return "";
+        }
+
+        final List<Section> keywordPositions = getAllKeywordPositions(document, keywords)
+                .stream()
+                .map(position -> new Section(Math.max(0, position - sectionLength / 2), Math.min(document.length(), position + sectionLength / 2)))
+                .toList();
+
+        final List<Section> mergedSections = mergeSections(keywordPositions);
+
+        return String.join(" " ,
+                mergedSections
+                .stream()
+                .map(section -> document.substring(section.start(), section.end()).trim())
+                .toList());
+    }
+
+    /**
+     * Merges overlapping sections.
+     *
+     * @param sections The sections to merge
+     * @return The merged sections
+     */
+    private List<Section> mergeSections(final List<Section> sections) {
+        final List<Section> mergedSections = new ArrayList<>();
+        final List<Section> sectionsCopy = new ArrayList<>(sections);
+
+        while (!sectionsCopy.isEmpty()) {
+
+            final Section currentSection = sectionsCopy.getFirst();
+            sectionsCopy.removeFirst();
+
+            final List<Section> overlaps = sectionsCopy
+                    .stream()
+                    .filter(nextSection -> nextSection.start() <= currentSection.end()
+                            && nextSection.end() >= currentSection.end())
+                    .toList();
+
+            final Optional<Section> largestEnd = overlaps.stream()
+                    .max(Comparator.comparingInt(Section::end));
+
+            final Optional<Section> smallestStart = overlaps.stream()
+                    .min(Comparator.comparingInt(Section::start));
+
+            if (!overlaps.isEmpty()) {
+                mergedSections.add(
+                        new Section(
+                                Math.min(currentSection.start(), smallestStart.get().start()),
+                                Math.max(currentSection.end(), largestEnd.get().end())));
+                sectionsCopy.removeAll(overlaps);
+            } else {
+                mergedSections.add(currentSection);
+            }
+        }
+
+        return mergedSections;
+    }
+
+    private List<Integer> getAllKeywordPositions(final String document, final List<String> keywords) {
+        final String lowerCaseDocument = document.toLowerCase();
+        final List<Integer> keywordPositions = new ArrayList<>();
+        for (String keyword : keywords) {
+            int position = document.indexOf(keyword.toLowerCase());
+            while (position != -1) {
+                keywordPositions.add(position);
+                position = document.indexOf(keyword.toLowerCase(), position + 1);
+            }
+        }
+        return keywordPositions;
+    }
+}
+
+record Section(int start, int end) {}
