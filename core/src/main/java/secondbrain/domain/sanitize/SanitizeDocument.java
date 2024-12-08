@@ -3,7 +3,6 @@ package secondbrain.domain.sanitize;
 /**
  * Defines a service for sanitizing a document.
  */
-@FunctionalInterface
 public interface SanitizeDocument {
     /**
      * Sanitize the document.

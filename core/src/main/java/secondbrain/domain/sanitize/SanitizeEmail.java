@@ -12,15 +12,15 @@ import java.util.Arrays;
  */
 @ApplicationScoped
 @Identifier("sanitizeEmail")
-public class SanitizeEmail implements SanitizeDocument {
+public class SanitizeEmail implements SanitizeArgument {
     @Override
-    public String sanitize(final String document) {
-        if (StringUtils.isBlank(document)) {
+    public String sanitize(final String argument, final String document) {
+        if (StringUtils.isBlank(argument)) {
             return "";
         }
 
         // find the first thing that looks like an email address
-        final String email = Arrays.stream(document.split(" "))
+        final String email = Arrays.stream(argument.split(" "))
                 .filter(StringUtils::isNotBlank)
                 .map(String::trim)
                 .filter(e -> EmailValidator.getInstance().isValid(e))

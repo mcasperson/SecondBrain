@@ -18,7 +18,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.ListUtilsEx;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.sanitize.SanitizeDocument;
+import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -137,7 +137,7 @@ public class GitHubDiffs implements Tool {
 
     @Inject
     @Identifier("sanitizeDate")
-    private SanitizeDocument dateSanitizer;
+    private SanitizeArgument dateSanitizer;
 
     @Override
     public String getName() {
@@ -186,8 +186,8 @@ public class GitHubDiffs implements Tool {
                 .map(i -> Math.max(0, i))
                 .get();
 
-        final String startDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), "since", ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).format(FORMATTER));
-        final String endDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), "until", ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER));
+        final String startDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), prompt, "since", ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).format(FORMATTER));
+        final String endDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), prompt, "until", ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER));
         final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);

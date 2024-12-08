@@ -7,4 +7,8 @@ public class Constants {
      * token.
      */
     public static final int MAX_CONTEXT_LENGTH = 100000 * 4;
+    /**
+     * The default section size when trimming a document based on keywords.
+     */
+    public static final int DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH = 2000;
 }

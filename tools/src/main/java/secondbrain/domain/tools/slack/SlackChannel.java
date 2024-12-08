@@ -23,6 +23,7 @@ import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.context.SimilarityCalculator;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -176,7 +177,7 @@ public class SlackChannel implements Tool {
         }
 
 
-        return Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get()))
+        return Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get(), prompt))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
@@ -207,10 +208,10 @@ public class SlackChannel implements Tool {
                 .findFirst();
     }
 
-    private RagDocumentContext<Void> getDocumentContext(final String document) {
+    private RagDocumentContext<Void> getDocumentContext(final String document, final String prompt) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 // Strip out any URLs from the sentences
-                .map(sentences -> sentences.stream().map(removeMarkdnUrls::sanitize).toList())
+                .map(sentences -> sentences.stream().map(sentence -> removeMarkdnUrls.sanitize(sentence)).toList())
                 .map(sentences -> new RagDocumentContext<Void>(
                         promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Message", document),
                         sentences.stream()
