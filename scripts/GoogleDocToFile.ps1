@@ -125,7 +125,7 @@ $companyNames -split "," | ForEach-Object {
     }
     else
     {
-        $keywords = $split[1]
+        $keywords = $split[1..($array.Length - 1)] -join ","
     }
 
     $ticketResult = Invoke-CustomCommand java "`"-Dsb.zendesk.excludedorgs=$( $env:EXCLUDED_ORGANIZATIONS )`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextlength=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"You are given the Google document with the id $googleDoc. Assume the document is written in the first person by Matthew Casperson, also known as Matt. Trim the document with keywords '$keywords'. List all the information about $companyName. You will be penalize for including details about unrelated companies.`""
