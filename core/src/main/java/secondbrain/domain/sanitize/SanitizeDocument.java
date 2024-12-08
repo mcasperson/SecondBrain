@@ -1,5 +1,8 @@
 package secondbrain.domain.sanitize;
 
+/**
+ * Defines a service for sanitizing a document.
+ */
 public interface SanitizeDocument {
     /**
      * Sanitize the document.

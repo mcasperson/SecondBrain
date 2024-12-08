@@ -1,7 +1,7 @@
 package secondbrain.domain.sanitize;
 
 /**
- * Defines a service for sanitizing a document.
+ * Defines a service for sanitizing an argument passed in a prompt.
  */
 @FunctionalInterface
 public interface SanitizeArgument {
