@@ -313,13 +313,10 @@ public class ZenDeskOrganization implements Tool {
                                 sentenceSplitter,
                                 similarityCalculator,
                                 sentenceVectorizer))
-                        .map(annotatedResponse -> annotatedResponse.result()
-                                + System.lineSeparator() + System.lineSeparator()
-                                + "Tickets:" + System.lineSeparator()
-                                + idsToLinks(url.get(), annotatedResponse.context().getMetas(), authHeader)
-                                + System.lineSeparator() + System.lineSeparator()
-                                + "Annotation Coverage: " + annotatedResponse.annotationCoverage()
-                                + debugArgs)
+                        .map(annotatedDocument -> annotatedDocument.getAnnotatedResult(
+                                "Tickets",
+                                idsToLinks(url.get(), annotatedDocument.context().getMetas(), authHeader),
+                                debugArgs))
                         .recover(EmptyString.class, "No tickets found after " + startDate + " for organization '" + fixedOwner + "'" + debugArgs)
                         .recover(throwable -> "Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)
                         .get())
@@ -334,7 +331,7 @@ public class ZenDeskOrganization implements Tool {
      * @param metas The list of ticket metadata
      * @return A Markdown list of source tickets
      */
-    private String idsToLinks(final String url, final List<ZenDeskResultsResponse> metas, final String authHeader) {
+    private List<String> idsToLinks(final String url, final List<ZenDeskResultsResponse> metas, final String authHeader) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> metas.stream()
                         .map(meta ->
@@ -349,7 +346,7 @@ public class ZenDeskOrganization implements Tool {
                                         .map(ZenDeskUserItemResponse::name)
                                         .getOrElse("Unknown User")
                                         + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
-                        .collect(Collectors.joining("\n")))
+                        .toList())
                 .get();
     }
 

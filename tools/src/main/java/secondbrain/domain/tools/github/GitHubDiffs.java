@@ -252,13 +252,10 @@ public class GitHubDiffs implements Tool {
                         sentenceSplitter,
                         similarityCalculator,
                         sentenceVectorizer))
-                .map(annotatedDocument -> annotatedDocument.result()
-                        + System.lineSeparator() + System.lineSeparator()
-                        + "Diffs:" + System.lineSeparator()
-                        + urlsToLinks(annotatedDocument.context().getMetas())
-                        + System.lineSeparator() + System.lineSeparator()
-                        + "Annotation Coverage: " + annotatedDocument.annotationCoverage()
-                        + debugArgs)
+                .map(annotatedDocument -> annotatedDocument.getAnnotatedResult(
+                        "Git Diffs",
+                        annotatedDocument.context().getMetas(),
+                        debugArgs))
                 .recover(EmptyString.class, "No diffs found for " + owner + "/" + repo + " between " + startDate + " and " + endDate + debugArgs)
                 .recover(throwable -> "Failed to get diffs: " + throwable.getMessage() + debugArgs)
                 .get();
