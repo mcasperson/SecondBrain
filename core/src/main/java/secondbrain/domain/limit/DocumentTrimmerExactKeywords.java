@@ -1,5 +1,7 @@
 package secondbrain.domain.limit;
 
+import jakarta.enterprise.context.ApplicationScoped;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -10,6 +12,7 @@ import java.util.Optional;
  * with each section being a block of characters before and after each keyword.
  * Keywords are case-insensitive and require an exact match.
  */
+@ApplicationScoped
 public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
 
     @Override
