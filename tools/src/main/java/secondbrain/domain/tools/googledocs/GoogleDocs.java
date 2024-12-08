@@ -222,14 +222,14 @@ public class GoogleDocs implements Tool {
     }
 
 
-    private RagDocumentContext getDocumentContext(final String document) {
+    private RagDocumentContext<Void> getDocumentContext(final String document) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
-                .map(sentences -> new RagDocumentContext(document, sentences.stream()
+                .map(sentences -> new RagDocumentContext<Void>(document, sentences.stream()
                         .map(sentenceVectorizer::vectorize)
                         .collect(Collectors.toList())))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext(document, List.of()))
+                .recover(e -> new RagDocumentContext<>(document, List.of()))
                 .get();
     }
 
@@ -308,12 +308,12 @@ public class GoogleDocs implements Tool {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
     }
 
-    private RagDocumentContext callOllama(final RagDocumentContext llmPrompt, final String customModel) {
+    private RagDocumentContext<Void> callOllama(final RagDocumentContext<Void> llmPrompt, final String customModel) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
                         new OllamaGenerateBody(customModel, llmPrompt.document(), false)))
-                .map(response -> new RagDocumentContext(response.response(), llmPrompt.sentences()))
+                .map(response -> new RagDocumentContext<Void>(response.response(), llmPrompt.sentences()))
                 .get();
     }
 }
