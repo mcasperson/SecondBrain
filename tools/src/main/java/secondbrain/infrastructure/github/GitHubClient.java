@@ -32,7 +32,6 @@ public class GitHubClient {
     }
 
     @Retry
-
     public String getDiff(final Client client, final String owner, final String repo, final String sha, final String authorization) {
         return Try.withResources(() -> client.target("https://api.github.com/repos/" + owner + "/" + repo + "/commits/" + sha)
                         .request()
