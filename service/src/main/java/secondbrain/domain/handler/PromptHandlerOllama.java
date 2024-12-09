@@ -91,6 +91,14 @@ public class PromptHandlerOllama implements PromptHandler {
                 .recover(throwable -> 10)
                 .get();
 
+        /*
+            The tools respond with a RagMultiDocumentContext, which contains the text response from the LLM
+            and the context that was used to build the prompt, including things like IDs of the context items,
+            URLs, and individual sentences.
+
+            We use this information to generate a standardized output that includes the text response from the LLM,
+            links to the context items, and annotations that link the LLM output to the original context.
+         */
         return Try.of(() -> toolCall.call(context, prompt))
                 .map(document -> document.annotateDocumentContext(
                         parsedMinSimilarity,
