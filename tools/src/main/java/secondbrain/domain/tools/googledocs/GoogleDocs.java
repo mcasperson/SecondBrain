@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Dependent
-public class GoogleDocs implements Tool {
+public class GoogleDocs implements Tool<Void> {
 
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String APPLICATION_NAME = "SecondBrain";
@@ -141,7 +141,7 @@ public class GoogleDocs implements Tool {
                 .map(value -> NumberUtils.toLong(value, defaultExpires))
                 .recover(error -> defaultExpires)
                 .get();
-        
+
         final Try<HttpRequestInitializer> token = Try
                 // Start assuming an encrypted access token was sent from the browser
                 .of(() -> textEncryptor.decrypt(context.get("google_access_token")))
@@ -178,7 +178,7 @@ public class GoogleDocs implements Tool {
     }
 
     @Override
-    public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model);
 
         final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);

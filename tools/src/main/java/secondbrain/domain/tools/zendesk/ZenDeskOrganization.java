@@ -44,7 +44,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
-public class ZenDeskOrganization implements Tool {
+public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     private static final int MAX_TICKETS = 100;
 
     private static final String INSTRUCTIONS = """
@@ -156,6 +156,7 @@ public class ZenDeskOrganization implements Tool {
                 new ToolArguments("hours", "The optional number of hours worth of tickets to return", "0"));
     }
 
+    @Override
     public List<RagDocumentContext<ZenDeskResultsResponse>> getContext(
             final Map<String, String> context,
             final String prompt,
@@ -210,7 +211,7 @@ public class ZenDeskOrganization implements Tool {
     }
 
     @Override
-    public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<ZenDeskResultsResponse> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
 
         final Arguments parsedArgs = Arguments.fromToolArgs(
                 arguments,
@@ -232,7 +233,7 @@ public class ZenDeskOrganization implements Tool {
 
         final String debugArgs = debugToolArgs.debugArgs(arguments, true, parsedArgs.argumentDebugging());
 
-        final Try<RagMultiDocumentContext<?>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<ZenDeskResultsResponse>> result = Try.of(() -> contextList)
                 // Limit the list to just those that fit in the context
                 .map(list -> listLimiter.limitListContent(
                         list,

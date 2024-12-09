@@ -35,7 +35,7 @@ public class ToolSelector {
 
     @Inject
     @Any
-    private Instance<Tool> tools;
+    private Instance<Tool<?>> tools;
 
     @Inject
     private OllamaClient ollamaClient;

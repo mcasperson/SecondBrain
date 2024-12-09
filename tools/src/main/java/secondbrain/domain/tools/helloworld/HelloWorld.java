@@ -15,7 +15,7 @@ import java.util.Map;
  * A tool that returns a greeting message.
  */
 @Dependent
-public class HelloWorld implements Tool {
+public class HelloWorld implements Tool<Void> {
     @Override
     public String getName() {
         return HelloWorld.class.getSimpleName();
@@ -42,7 +42,7 @@ public class HelloWorld implements Tool {
     }
 
     @Override
-    public RagMultiDocumentContext<?> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {

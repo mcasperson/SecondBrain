@@ -40,7 +40,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Dependent
-public class SlackChannel implements Tool {
+public class SlackChannel implements Tool<Void> {
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
@@ -101,6 +101,7 @@ public class SlackChannel implements Tool {
         );
     }
 
+    @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,
@@ -153,11 +154,11 @@ public class SlackChannel implements Tool {
     }
 
     @Override
-    public RagMultiDocumentContext<?> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        
+
         final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)

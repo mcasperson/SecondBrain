@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * A tool that downloads a public file from HTTP and uses it as the context for a query.
  */
 @Dependent
-public class PublicWeb implements Tool {
+public class PublicWeb implements Tool<Void> {
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -88,6 +88,7 @@ public class PublicWeb implements Tool {
                 ""));
     }
 
+    @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,
@@ -106,7 +107,7 @@ public class PublicWeb implements Tool {
     }
 
     @Override
-    public RagMultiDocumentContext<?> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {

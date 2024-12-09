@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  * A tool that downloads a public file from HTTP and uses it as the context for a query.
  */
 @Dependent
-public class UploadedDoc implements Tool {
+public class UploadedDoc implements Tool<Void> {
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -91,7 +91,7 @@ public class UploadedDoc implements Tool {
     }
 
     @Override
-    public RagMultiDocumentContext<?> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {

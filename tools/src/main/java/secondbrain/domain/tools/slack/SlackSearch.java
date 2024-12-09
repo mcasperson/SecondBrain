@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Dependent
-public class SlackSearch implements Tool {
+public class SlackSearch implements Tool<MatchedItem> {
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
             You are given Slack search results and asked to answer questions based on the messages provided.
@@ -86,6 +86,7 @@ public class SlackSearch implements Tool {
         );
     }
 
+    @Override
     public List<RagDocumentContext<MatchedItem>> getContext(
             final Map<String, String> context,
             final String prompt,
@@ -113,7 +114,7 @@ public class SlackSearch implements Tool {
     }
 
     @Override
-    public RagMultiDocumentContext<?> call(
+    public RagMultiDocumentContext<MatchedItem> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {

@@ -14,7 +14,7 @@ import java.util.Map;
  * A tool that returns a greeting message.
  */
 @Dependent
-public class SmokeTest implements Tool {
+public class SmokeTest implements Tool<Void> {
     @Override
     public String getName() {
         return SmokeTest.class.getSimpleName();
@@ -30,6 +30,7 @@ public class SmokeTest implements Tool {
         return List.of();
     }
 
+    @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,
@@ -38,7 +39,7 @@ public class SmokeTest implements Tool {
     }
 
     @Override
-    public RagMultiDocumentContext<?> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {

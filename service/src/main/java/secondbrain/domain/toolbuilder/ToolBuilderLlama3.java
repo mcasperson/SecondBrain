@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 @Dependent
 public class ToolBuilderLlama3 implements ToolBuilder {
     @Override
-    public String buildToolJson(final List<Tool> tools) {
+    public String buildToolJson(final List<Tool<?>> tools) {
         return tools.stream().map(tool -> """
                 {
                     "name": "%s",
@@ -40,7 +40,7 @@ public class ToolBuilderLlama3 implements ToolBuilder {
     }
 
     @Override
-    public String buildToolPrompt(final List<Tool> tools, final String prompt) {
+    public String buildToolPrompt(final List<Tool<?>> tools, final String prompt) {
         return """
                 <|begin_of_text|>
                 <|start_header_id|>system<|end_header_id|>

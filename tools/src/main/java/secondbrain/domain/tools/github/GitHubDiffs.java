@@ -50,7 +50,7 @@ import static com.google.common.base.Predicates.instanceOf;
  * I couldn't find a single LLM supported by Ollama that could process a large collection of diffs in a single prompt.
  */
 @Dependent
-public class GitHubDiffs implements Tool {
+public class GitHubDiffs implements Tool<GitHubCommitResponse> {
     private static final String DEFAULT_OWNER = "mcasperson";
     private static final String DEFAULT_REPO = "SecondBrain";
     private static final String DEFAULT_BRANCH = "main";
@@ -150,6 +150,7 @@ public class GitHubDiffs implements Tool {
         );
     }
 
+    @Override
     public List<RagDocumentContext<GitHubCommitResponse>> getContext(
             final Map<String, String> context,
             final String prompt,
@@ -190,7 +191,7 @@ public class GitHubDiffs implements Tool {
     }
 
     @Override
-    public RagMultiDocumentContext<?> call(
+    public RagMultiDocumentContext<GitHubCommitResponse> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {

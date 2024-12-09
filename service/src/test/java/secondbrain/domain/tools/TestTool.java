@@ -1,5 +1,6 @@
 package secondbrain.domain.tools;
 
+import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -8,7 +9,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import java.util.List;
 import java.util.Map;
 
-public class TestTool implements Tool {
+public class TestTool implements Tool<Void> {
 
     @Override
     public String getName() {
@@ -28,7 +29,18 @@ public class TestTool implements Tool {
     }
 
     @Override
-    public RagMultiDocumentContext<?> call(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
+    public List<RagDocumentContext<Void>> getContext(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        return List.of();
+    }
+
+    @Override
+    public RagMultiDocumentContext<Void> call(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
         return new RagMultiDocumentContext<>("");
     }
 }
