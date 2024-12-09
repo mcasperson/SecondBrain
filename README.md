@@ -12,7 +12,7 @@ and get a meaningful response against real-time data.
 
 ![Screenshot](screenshot.png)
 
-## Example Usages
+## How does it work?
 
 An example usage of SecondBrain is a prompt like this:
 
@@ -69,6 +69,21 @@ script is run with using Windows Task Scheduler with the command:
 ```PowerShell
 pwsh.exe -file "C:\path\to\ZendeskSendToSlack.ps1"
 ```
+
+## Practical applications
+
+SecondBrain excels at generating reports from unstructured data. Because local LLMs are quite slow (unless you happen to
+have a collection of high end GPUs), these reports can be generated as part of a batch job using the CLI tool. This
+allows you to run SecondBrain overnight and review the report in the morning.
+
+The `scripts` directory contains many examples of these kind of reports generated as part of a PowerShell script and run
+as a scheduled task.
+
+Some examples include:
+
+* Summarize the last week's worth of messages in a Slack channel
+* Generate a summary of the last week's worth of ZenDesk tickets
+* Create a report highlighting the changes in a GitHub repository
 
 ## Project Structure
 

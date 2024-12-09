@@ -158,115 +158,51 @@ public class ZenDeskOrganization implements Tool {
 
     @Override
     public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
-        final String owner = validateInputs.getCommaSeparatedList(
+
+        final Arguments parsedArgs = Arguments.fromToolArgs(
+                arguments,
+                argsAccessor,
+                context,
+                validateInputs,
+                validateString,
+                sanitizeOrganization,
+                sanitizeEmail,
+                textEncryptor,
                 prompt,
-                argsAccessor.getArgument(arguments, "organization", ""));
-
-        final List<String> excludedOwner = Arrays.stream(validateInputs.getCommaSeparatedList(
-                        prompt,
-                        argsAccessor.getArgument(arguments, "excludeOrganization", "")).split(","))
-                .map(String::trim)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.toList());
-
-        excludedOwner.addAll(Arrays.stream(zenExcludedOrgs.orElse("").split(",")).toList());
-
-        final String recipient = argsAccessor.getArgument(arguments, "recipient", "");
-
-        // These arguments get swapped by the LLM all the time, so we need to fix them
-        final String fixedRecipient = sanitizeEmail.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner, prompt)) && StringUtils.isBlank(recipient) ? owner : recipient, prompt);
-        final String fixedOwner = sanitizeOrganization.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner, prompt)) && StringUtils.isBlank(recipient) ? "" : owner, prompt);
-
-        final List<String> exclude = Arrays.stream(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","))
-                .map(String::trim)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.toList());
-
-        final int hours = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "hours", "0")))
-                .recover(throwable -> 0)
-                .map(i -> Math.max(0, i))
-                .get();
-
-        final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "0")))
-                .recover(throwable -> 0)
-                .map(i -> Math.max(0, i))
-                .get();
-
-        final int numComments = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "numComments", "" + MAX_TICKETS)))
-                .recover(throwable -> MAX_TICKETS)
-                // Must be at least 1
-                .map(i -> Math.max(1, i))
-                .get();
-
-        // days and hours get mixed up all the time.
-        final int fixedDays = switchArguments(prompt, days, hours, "day", "hour");
-        final int fixedHours = switchArguments(prompt, hours, days, "hour", "day");
-
-        // Try to decrypt the value, otherwise assume it is a plain text value, and finally
-        // fall back to the value defined in the local configuration.
-        final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_access_token")))
-                .recover(e -> context.get("zendesk_access_token"))
-                .mapTry(validateString::throwIfEmpty)
-                .recoverWith(e -> Try.of(() -> zenDeskAccessToken.get()));
-
-        if (token.isFailure() || StringUtils.isBlank(token.get())) {
-            throw new FailedTool("Failed to get Zendesk access token");
-        }
-
-        final Try<String> url = getContext("zendesk_url", context)
-                .recoverWith(e -> Try.of(() -> zenDeskUrl.get()));
-
-        if (url.isFailure() || StringUtils.isBlank(url.get())) {
-            throw new FailedTool("Failed to get Zendesk URL");
-        }
-
-        final Try<String> user = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_user")))
-                .recover(e -> context.get("zendesk_user"))
-                .mapTry(validateString::throwIfEmpty)
-                .recoverWith(e -> Try.of(() -> zenDeskUser.get()));
-
-        if (user.isFailure() || StringUtils.isBlank(user.get())) {
-            throw new FailedTool("Failed to get Zendesk User");
-        }
-
-        final String customModel = Try.of(() -> context.get("custom_model"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> model)
-                .get();
-
-        final boolean argumentDebugging = Try.of(() -> context.get("argument_debugging"))
-                .mapTry(Boolean::parseBoolean)
-                .recover(e -> false)
-                .get();
+                zenDeskAccessToken,
+                zenDeskUrl,
+                zenDeskUser,
+                zenExcludedOrgs,
+                model);
 
         final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
-                (user.get() + "/token:" + token.get()).getBytes(UTF_8))).get(), UTF_8);
+                (parsedArgs.user() + "/token:" + parsedArgs.token()).getBytes(UTF_8))).get(), UTF_8);
 
         final String startDate = OffsetDateTime.now(ZoneId.systemDefault())
                 .truncatedTo(ChronoUnit.SECONDS)
                 // Assume one day if nothing was specified
-                .minusDays(fixedDays + fixedHours == 0 ? 1 : fixedDays)
-                .minusHours(fixedHours)
+                .minusDays(parsedArgs.days() + parsedArgs.hours() == 0 ? 1 : parsedArgs.days())
+                .minusHours(parsedArgs.hours())
                 .format(ISO_OFFSET_DATE_TIME);
 
         final List<String> query = new ArrayList<>();
         query.add("type:ticket");
         query.add("created>" + startDate);
 
-        if (!StringUtils.isBlank(fixedOwner)) {
-            query.add("organization:" + fixedOwner);
+        if (!StringUtils.isBlank(parsedArgs.owner())) {
+            query.add("organization:" + parsedArgs.owner());
         }
 
-        final String debugArgs = debugToolArgs.debugArgs(arguments, true, argumentDebugging);
+        final String debugArgs = debugToolArgs.debugArgs(arguments, true, parsedArgs.argumentDebugging());
 
         final Try<RagMultiDocumentContext<?>> result = Try.withResources(ClientBuilder::newClient)
-                .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
+                .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, parsedArgs.url(), String.join(" ", query)))
                         // Filter out any tickets based on the submitter and assignee
-                        .map(response -> filterResponse(response, true, exclude, excludedOwner, fixedRecipient))
+                        .map(response -> filterResponse(response, true, parsedArgs.excludedSubmitters(), parsedArgs.excludedOwner(), parsedArgs.recipient()))
                         // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
                         .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
-                        .map(response -> ticketToComments(response, client, authHeader, numComments))
+                        .map(response -> ticketToComments(response, client, authHeader, parsedArgs.numComments()))
                         /*
                             Take the raw ticket comments and summarize them with individual calls to the LLM.
                             The individual ticket summaries are then combined into a single context.
@@ -274,21 +210,21 @@ public class ZenDeskOrganization implements Tool {
                             raw tickets. The reality is that even LLMs with a context length of 128k tokens mostly fixated
                             one a small number of tickets.
                          */
-                        .map(tickets -> summariseTickets(tickets, customModel))
+                        .map(tickets -> summariseTickets(tickets, parsedArgs.customModel()))
                         // Limit the list to just those that fit in the context
                         .map(list -> listLimiter.limitListContent(
                                 list,
                                 RagDocumentContext::document,
                                 NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                         // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                        .map(tickets -> mergeContext(tickets, customModel))
+                        .map(tickets -> mergeContext(tickets, parsedArgs.customModel()))
                         // Make sure we had some content for the prompt
                         .mapTry(mergedContext ->
                                 validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                         // Build the final prompt including instructions, context and the user prompt
                         .map(ragContext -> ragContext.updateDocument(
                                 promptBuilderSelector
-                                        .getPromptBuilder(customModel)
+                                        .getPromptBuilder(parsedArgs.customModel())
                                         .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
                         // Call Ollama with the final prompt
                         .map(ragDoc -> ollamaClient.callOllama(ragDoc, model))
@@ -301,7 +237,7 @@ public class ZenDeskOrganization implements Tool {
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new FailedTool("No tickets found after " + startDate + " for organization '" + fixedOwner + "'" + debugArgs)),
+                                throwable -> new FailedTool("No tickets found after " + startDate + " for organization '" + parsedArgs.owner() + "'" + debugArgs)),
                         API.Case(API.$(),
                                 throwable -> new FailedTool("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
                 .get();
@@ -344,12 +280,6 @@ public class ZenDeskOrganization implements Tool {
                 context);
     }
 
-
-    private Try<String> getContext(final String name, final Map<String, String> context) {
-        return Try.of(() -> textEncryptor.decrypt(context.get(name)))
-                .recover(e -> context.get(name))
-                .mapTry(Objects::requireNonNull);
-    }
 
     private List<ZenDeskResultsResponse> filterResponse(
             final List<ZenDeskResultsResponse> tickets,
@@ -450,19 +380,120 @@ public class ZenDeskOrganization implements Tool {
                 .collect(Collectors.toList());
     }
 
-    private int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {
-        // If the prompt did not mention the keyword for the first argument, assume that it was never mentioned, and return 0
-        if (!prompt.contains(aPromptKeyword)) {
-            return 0;
+
+    /**
+     * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
+     * the various inputs to the tool.
+     */
+    record Arguments(String owner, List<String> excludedOwner, String recipient, List<String> excludedSubmitters,
+                     int hours,
+                     int days, int numComments, String token, String url, String user, String customModel,
+                     boolean argumentDebugging) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor, Map<String, String> context, ValidateInputs validateInputs, ValidateString validateString, SanitizeArgument sanitizeOrganization, SanitizeArgument sanitizeEmail, Encryptor textEncryptor, String prompt, Optional<String> zenDeskAccessToken, Optional<String> zenDeskUrl, Optional<String> zenDeskUser, Optional<String> zenExcludedOrgs, String model) {
+            final String owner = validateInputs.getCommaSeparatedList(
+                    prompt,
+                    argsAccessor.getArgument(arguments, "organization", ""));
+
+            final List<String> excludedOwner = Arrays.stream(validateInputs.getCommaSeparatedList(
+                            prompt,
+                            argsAccessor.getArgument(arguments, "excludeOrganization", "")).split(","))
+                    .map(String::trim)
+                    .filter(StringUtils::isNotBlank)
+                    .collect(Collectors.toList());
+
+            excludedOwner.addAll(Arrays.stream(zenExcludedOrgs.orElse("").split(",")).toList());
+
+            final String recipient = argsAccessor.getArgument(arguments, "recipient", "");
+
+            // These arguments get swapped by the LLM all the time, so we need to fix them
+            final String fixedRecipient = sanitizeEmail.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner, prompt)) && StringUtils.isBlank(recipient) ? owner : recipient, prompt);
+            final String fixedOwner = sanitizeOrganization.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner, prompt)) && StringUtils.isBlank(recipient) ? "" : owner, prompt);
+
+            final List<String> exclude = Arrays.stream(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","))
+                    .map(String::trim)
+                    .filter(StringUtils::isNotBlank)
+                    .collect(Collectors.toList());
+
+            final int hours = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "hours", "0")))
+                    .recover(throwable -> 0)
+                    .map(i -> Math.max(0, i))
+                    .get();
+
+            final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "0")))
+                    .recover(throwable -> 0)
+                    .map(i -> Math.max(0, i))
+                    .get();
+
+            final int numComments = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "numComments", "" + MAX_TICKETS)))
+                    .recover(throwable -> MAX_TICKETS)
+                    // Must be at least 1
+                    .map(i -> Math.max(1, i))
+                    .get();
+
+            // days and hours get mixed up all the time.
+            final int fixedDays = switchArguments(prompt, days, hours, "day", "hour");
+            final int fixedHours = switchArguments(prompt, hours, days, "hour", "day");
+
+            // Try to decrypt the value, otherwise assume it is a plain text value, and finally
+            // fall back to the value defined in the local configuration.
+            final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_access_token")))
+                    .recover(e -> context.get("zendesk_access_token"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recoverWith(e -> Try.of(() -> zenDeskAccessToken.get()));
+
+            if (token.isFailure() || StringUtils.isBlank(token.get())) {
+                throw new FailedTool("Failed to get Zendesk access token");
+            }
+
+            final Try<String> url = getContext("zendesk_url", context, textEncryptor)
+                    .recoverWith(e -> Try.of(() -> zenDeskUrl.get()));
+
+            if (url.isFailure() || StringUtils.isBlank(url.get())) {
+                throw new FailedTool("Failed to get Zendesk URL");
+            }
+
+            final Try<String> user = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_user")))
+                    .recover(e -> context.get("zendesk_user"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recoverWith(e -> Try.of(() -> zenDeskUser.get()));
+
+            if (user.isFailure() || StringUtils.isBlank(user.get())) {
+                throw new FailedTool("Failed to get Zendesk User");
+            }
+
+            final String customModel = Try.of(() -> context.get("custom_model"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> model)
+                    .get();
+
+            final boolean argumentDebugging = Try.of(() -> context.get("argument_debugging"))
+                    .mapTry(Boolean::parseBoolean)
+                    .recover(e -> false)
+                    .get();
+
+            return new Arguments(fixedOwner, excludedOwner, fixedRecipient, exclude, fixedHours, fixedDays, numComments, token.get(), url.get(), user.get(), customModel, argumentDebugging);
         }
 
-        // If the prompt did mention the first argument, but did not mention the keyword for the second argument,
-        // and the first argument is 0, assume the LLM switched things up, and return the second argument
-        if (!prompt.contains(bPromptKeyword) && a == 0) {
-            return b;
+        private static int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {
+            // If the prompt did not mention the keyword for the first argument, assume that it was never mentioned, and return 0
+            if (!prompt.contains(aPromptKeyword)) {
+                return 0;
+            }
+
+            // If the prompt did mention the first argument, but did not mention the keyword for the second argument,
+            // and the first argument is 0, assume the LLM switched things up, and return the second argument
+            if (!prompt.contains(bPromptKeyword) && a == 0) {
+                return b;
+            }
+
+            // If both the first and second keywords were mentioned, we just have to trust the LLM
+            return a;
         }
 
-        // If both the first and second keywords were mentioned, we just have to trust the LLM
-        return a;
+        private static Try<String> getContext(final String name, final Map<String, String> context, Encryptor textEncryptor) {
+            return Try.of(() -> textEncryptor.decrypt(context.get(name)))
+                    .recover(e -> context.get(name))
+                    .mapTry(Objects::requireNonNull);
+        }
     }
 }

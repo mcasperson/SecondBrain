@@ -129,10 +129,7 @@ public class GoogleDocs implements Tool {
 
     @Override
     public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
-        final String documentId = argsAccessor.getArgument(arguments, "documentId", "");
-        final List<String> keywords = List.of(sanitizeList.sanitize(
-                argsAccessor.getArgument(arguments, "keywords", ""),
-                prompt).split(","));
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, argsAccessor, sanitizeList, prompt);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
@@ -178,14 +175,14 @@ public class GoogleDocs implements Tool {
                 .map(transport -> new Docs.Builder(transport, JSON_FACTORY, token.get())
                         .setApplicationName(APPLICATION_NAME)
                         .build())
-                .mapTry(service -> service.documents().get(documentId).execute())
+                .mapTry(service -> service.documents().get(parsedArgs.documentId()).execute())
                 .map(this::getDocumentText)
                 .map(document -> documentTrimmer.trimDocument(
-                        document, keywords, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
-                .map(document -> getDocumentContext(document, documentId))
+                        document, parsedArgs.keywords(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
+                .map(document -> getDocumentContext(document, parsedArgs.documentId()))
                 .map(doc -> doc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(customModel)
-                        .buildContextPrompt("Google Document " + documentId, doc.document())))
+                        .buildContextPrompt("Google Document " + parsedArgs.documentId(), doc.document())))
                 .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(customModel)
@@ -294,5 +291,20 @@ public class GoogleDocs implements Tool {
 
     private String textRunToString(final TextRun textRun) {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
+    }
+
+    /**
+     * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
+     * the various inputs to the tool.
+     */
+    record Arguments(String documentId, List<String> keywords) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor, final SanitizeArgument sanitizeList, final String prompt) {
+            final String documentId = argsAccessor.getArgument(arguments, "documentId", "");
+            final List<String> keywords = List.of(sanitizeList.sanitize(
+                    argsAccessor.getArgument(arguments, "keywords", ""),
+                    prompt).split(","));
+
+            return new Arguments(documentId, keywords);
+        }
     }
 }

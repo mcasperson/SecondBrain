@@ -83,15 +83,13 @@ public class UploadedDoc implements Tool {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final String uploadedDocument = Try.of(() -> context.get("document"))
-                .recover(throwable -> "")
-                .get();
+        final Arguments parsedArgs = Arguments.fromToolArgs(context);
 
-        if (StringUtils.isBlank(uploadedDocument)) {
+        if (StringUtils.isBlank(parsedArgs.document())) {
             throw new FailedTool("No document found in context");
         }
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> uploadedDocument)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(parsedArgs::document)
                 .map(this::getDocumentContext)
                 .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
                 .map(doc -> doc.updateDocument(promptBuilderSelector
@@ -120,5 +118,15 @@ public class UploadedDoc implements Tool {
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext<>(document, List.of()))
                 .get();
+    }
+
+    record Arguments(String document) {
+        public static Arguments fromToolArgs(final Map<String, String> context) {
+            final String uploadedDocument = Try.of(() -> context.get("document"))
+                    .recover(throwable -> "")
+                    .get();
+
+            return new Arguments(uploadedDocument);
+        }
     }
 }

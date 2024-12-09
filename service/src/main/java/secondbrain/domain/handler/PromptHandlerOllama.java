@@ -15,7 +15,6 @@ import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,18 +24,6 @@ import java.util.logging.Logger;
 @ApplicationScoped
 public class PromptHandlerOllama implements PromptHandler {
     private static final int TOOL_RETRY = 10;
-
-    @Inject
-    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    String model;
-
-    /**
-     * The model to select a tool can be specifically defined. This allows tool calling
-     * to use one model, and the tool itself to use another. Only llama3 variants are supported.
-     */
-    @Inject
-    @ConfigProperty(name = "sb.ollama.toolmodel", defaultValue = "llama3.2")
-    Optional<String> toolModel;
 
     @Inject
     @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
@@ -67,6 +54,11 @@ public class PromptHandlerOllama implements PromptHandler {
         return handlePromptWithRetry(context, prompt, 1);
     }
 
+    /**
+     * Unfortunately the LLMs available to be run locally on most consumer hardware, typically around 8B params
+     * quantized to 4 bits, can struggle to generate valid JSON in response to a request to select a tool.
+     * So we retry a bunch of times to try and get a valid response.
+     */
     public String handlePromptWithRetry(final Map<String, String> context, final String prompt, int count) {
         return Try.of(() -> toolSelector.getTool(prompt))
                 .map(toolCall -> callTool(toolCall, context, prompt))

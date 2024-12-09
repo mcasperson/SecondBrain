@@ -94,14 +94,14 @@ public class PublicWeb implements Tool {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final String url = argsAccessor.getArgument(arguments, "url", "");
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, argsAccessor);
 
-        if (StringUtils.isBlank(url)) {
+        if (StringUtils.isBlank(parsedArgs.url())) {
             throw new FailedTool("You must provide a URL to download");
         }
 
         final Try<RagMultiDocumentContext<Void>> result = Try.withResources(ClientBuilder::newClient)
-                .of(client -> publicWebClient.getDocument(client, url))
+                .of(client -> publicWebClient.getDocument(client, parsedArgs.url()))
                 .map(this::getDocumentContext)
                 .map(doc -> doc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
@@ -131,5 +131,16 @@ public class PublicWeb implements Tool {
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext<>(document, List.of()))
                 .get();
+    }
+
+    /**
+     * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
+     * the various inputs to the tool.
+     */
+    record Arguments(String url) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor) {
+            final String url = argsAccessor.getArgument(arguments, "url", "");
+            return new Arguments(url);
+        }
     }
 }
