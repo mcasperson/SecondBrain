@@ -88,11 +88,30 @@ public class PublicWeb implements Tool {
                 ""));
     }
 
+    public List<RagDocumentContext<Void>> getContext(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, argsAccessor);
+
+        if (StringUtils.isBlank(parsedArgs.url())) {
+            throw new FailedTool("You must provide a URL to download");
+        }
+
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> publicWebClient.getDocument(client, parsedArgs.url()))
+                .map(this::getDocumentContext)
+                .map(List::of)
+                .get();
+    }
+
     @Override
     public RagMultiDocumentContext<?> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
+
+        final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
 
         final Arguments parsedArgs = Arguments.fromToolArgs(arguments, argsAccessor);
 
@@ -100,13 +119,8 @@ public class PublicWeb implements Tool {
             throw new FailedTool("You must provide a URL to download");
         }
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.withResources(ClientBuilder::newClient)
-                .of(client -> publicWebClient.getDocument(client, parsedArgs.url()))
-                .map(this::getDocumentContext)
-                .map(doc -> doc.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(model)
-                        .buildContextPrompt("Downloaded Document", doc.document())))
-                .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragDoc -> mergeContext(ragDoc, model))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
@@ -119,6 +133,18 @@ public class PublicWeb implements Tool {
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
+    }
+
+    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
+        return new RagMultiDocumentContext<>(
+                context.stream()
+                        .map(ragDoc -> promptBuilderSelector
+                                .getPromptBuilder(customModel)
+                                .buildContextPrompt(
+                                        "Downloaded Document",
+                                        ragDoc.document()))
+                        .collect(Collectors.joining("\n")),
+                context);
     }
 
     private RagDocumentContext<Void> getDocumentContext(final String document) {

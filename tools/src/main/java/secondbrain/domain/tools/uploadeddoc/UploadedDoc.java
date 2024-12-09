@@ -77,24 +77,29 @@ public class UploadedDoc implements Tool {
         return ImmutableList.of();
     }
 
-    @Override
-    public RagMultiDocumentContext<?> call(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-
         final Arguments parsedArgs = Arguments.fromToolArgs(context);
 
         if (StringUtils.isBlank(parsedArgs.document())) {
             throw new FailedTool("No document found in context");
         }
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(parsedArgs::document)
-                .map(this::getDocumentContext)
-                .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
-                .map(doc -> doc.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(model)
-                        .buildContextPrompt("Uploaded Document", doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))))
+        return List.of(getDocumentContext(parsedArgs.document()));
+    }
+
+    @Override
+    public RagMultiDocumentContext<?> call(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+
+        final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
+
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragDoc -> mergeContext(ragDoc, model))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
@@ -107,6 +112,18 @@ public class UploadedDoc implements Tool {
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
+    }
+
+    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
+        return new RagMultiDocumentContext<>(
+                context.stream()
+                        .map(ragDoc -> promptBuilderSelector
+                                .getPromptBuilder(customModel)
+                                .buildContextPrompt(
+                                        "Uploaded Document",
+                                        ragDoc.document()))
+                        .collect(Collectors.joining("\n")),
+                context);
     }
 
     private RagDocumentContext<Void> getDocumentContext(final String document) {

@@ -127,8 +127,11 @@ public class GoogleDocs implements Tool {
         );
     }
 
-    @Override
-    public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
+    public List<RagDocumentContext<Void>> getContext(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+
         final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
@@ -138,8 +141,7 @@ public class GoogleDocs implements Tool {
                 .map(value -> NumberUtils.toLong(value, defaultExpires))
                 .recover(error -> defaultExpires)
                 .get();
-
-
+        
         final Try<HttpRequestInitializer> token = Try
                 // Start assuming an encrypted access token was sent from the browser
                 .of(() -> textEncryptor.decrypt(context.get("google_access_token")))
@@ -162,7 +164,7 @@ public class GoogleDocs implements Tool {
             throw new FailedTool("Failed to get Google access token: " + token.getCause().getMessage());
         }
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(GoogleNetHttpTransport::newTrustedTransport)
+        return Try.of(GoogleNetHttpTransport::newTrustedTransport)
                 .map(transport -> new Docs.Builder(transport, JSON_FACTORY, token.get())
                         .setApplicationName(APPLICATION_NAME)
                         .build())
@@ -171,10 +173,18 @@ public class GoogleDocs implements Tool {
                 .map(document -> documentTrimmer.trimDocument(
                         document, parsedArgs.keywords(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
                 .map(document -> getDocumentContext(document, parsedArgs.documentId()))
-                .map(doc -> doc.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(parsedArgs.customModel())
-                        .buildContextPrompt("Google Document " + parsedArgs.documentId(), doc.document())))
-                .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
+                .map(List::of)
+                .get();
+    }
+
+    @Override
+    public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model);
+
+        final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
+
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragDoc -> mergeContext(ragDoc, parsedArgs.customModel()))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(parsedArgs.customModel())
                         .buildFinalPrompt(
@@ -190,6 +200,18 @@ public class GoogleDocs implements Tool {
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
+    }
+
+    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
+        return new RagMultiDocumentContext<>(
+                context.stream()
+                        .map(ragDoc -> promptBuilderSelector
+                                .getPromptBuilder(customModel)
+                                .buildContextPrompt(
+                                        "Google Document " + ragDoc.id(),
+                                        ragDoc.document()))
+                        .collect(Collectors.joining("\n")),
+                context);
     }
 
 

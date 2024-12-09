@@ -86,8 +86,7 @@ public class SlackSearch implements Tool {
         );
     }
 
-    @Override
-    public RagMultiDocumentContext<?> call(
+    public List<RagDocumentContext<MatchedItem>> getContext(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -103,7 +102,7 @@ public class SlackSearch implements Tool {
             throw new FailedTool("Could not search messages");
         }
 
-        final List<RagDocumentContext<MatchedItem>> searchResultContext = searchResult.get()
+        return searchResult.get()
                 .getMessages()
                 .getMatches()
                 .stream()
@@ -111,7 +110,17 @@ public class SlackSearch implements Tool {
                 .map(ragDoc -> ragDoc.updateDocument(promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Slack Messages", ragDoc.document())))
                 .toList();
 
-        final Try<RagMultiDocumentContext<MatchedItem>> result = Try.of(() -> mergeContext(searchResultContext))
+    }
+
+    @Override
+    public RagMultiDocumentContext<?> call(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+
+        final List<RagDocumentContext<MatchedItem>> contextList = getContext(context, prompt, arguments);
+
+        final Try<RagMultiDocumentContext<MatchedItem>> result = Try.of(() -> mergeContext(contextList))
                 .map(ragContext -> ragContext.updateDocument(
                         promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
                                 INSTRUCTIONS,

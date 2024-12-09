@@ -101,11 +101,11 @@ public class SlackChannel implements Tool {
         );
     }
 
-    @Override
-    public RagMultiDocumentContext<?> call(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
+
         final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, textEncryptor, slackAccessToken);
 
         final String oldest = Long.valueOf(LocalDateTime.now(ZoneId.systemDefault())
@@ -149,10 +149,23 @@ public class SlackChannel implements Tool {
             throw new FailedTool("The user and channel IDs could not be replaced");
         }
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get(), channelDetails.get()))
+        return List.of(getDocumentContext(messagesWithUsersReplaced.get(), channelDetails.get()));
+    }
+
+    @Override
+    public RagMultiDocumentContext<?> call(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        
+        final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
+
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(
-                        ragDoc.document(),
-                        List.of(ragDoc)))
+                        ragDoc.stream()
+                                .map(RagDocumentContext::document)
+                                .collect(Collectors.joining(System.lineSeparator())),
+                        ragDoc))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(

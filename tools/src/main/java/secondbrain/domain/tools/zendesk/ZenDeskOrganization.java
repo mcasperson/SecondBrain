@@ -156,8 +156,10 @@ public class ZenDeskOrganization implements Tool {
                 new ToolArguments("hours", "The optional number of hours worth of tickets to return", "0"));
     }
 
-    @Override
-    public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
+    public List<RagDocumentContext<ZenDeskResultsResponse>> getContext(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
 
         final Arguments parsedArgs = Arguments.fromToolArgs(
                 arguments,
@@ -178,24 +180,15 @@ public class ZenDeskOrganization implements Tool {
         final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
                 (parsedArgs.user() + "/token:" + parsedArgs.token()).getBytes(UTF_8))).get(), UTF_8);
 
-        final String startDate = OffsetDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(ChronoUnit.SECONDS)
-                // Assume one day if nothing was specified
-                .minusDays(parsedArgs.days() + parsedArgs.hours() == 0 ? 1 : parsedArgs.days())
-                .minusHours(parsedArgs.hours())
-                .format(ISO_OFFSET_DATE_TIME);
-
         final List<String> query = new ArrayList<>();
         query.add("type:ticket");
-        query.add("created>" + startDate);
+        query.add("created>" + parsedArgs.startDate());
 
         if (!StringUtils.isBlank(parsedArgs.owner())) {
             query.add("organization:" + parsedArgs.owner());
         }
 
-        final String debugArgs = debugToolArgs.debugArgs(arguments, true, parsedArgs.argumentDebugging());
-
-        final Try<RagMultiDocumentContext<?>> result = Try.withResources(ClientBuilder::newClient)
+        return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, parsedArgs.url(), String.join(" ", query)))
                         // Filter out any tickets based on the submitter and assignee
                         .map(response -> filterResponse(response, true, parsedArgs.excludedSubmitters(), parsedArgs.excludedOwner(), parsedArgs.recipient()))
@@ -211,33 +204,60 @@ public class ZenDeskOrganization implements Tool {
                             one a small number of tickets.
                          */
                         .map(tickets -> summariseTickets(tickets, parsedArgs.customModel()))
-                        // Limit the list to just those that fit in the context
-                        .map(list -> listLimiter.limitListContent(
-                                list,
-                                RagDocumentContext::document,
-                                NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
-                        // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                        .map(tickets -> mergeContext(tickets, parsedArgs.customModel()))
-                        // Make sure we had some content for the prompt
-                        .mapTry(mergedContext ->
-                                validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
-                        // Build the final prompt including instructions, context and the user prompt
-                        .map(ragContext -> ragContext.updateDocument(
-                                promptBuilderSelector
-                                        .getPromptBuilder(parsedArgs.customModel())
-                                        .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
-                        // Call Ollama with the final prompt
-                        .map(ragDoc -> ollamaClient.callOllama(ragDoc, model))
-                        // Clean up the response
-                        .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())))
-                        // Return the Try result
-                        .get());
+                        .get())
+                .get();
+
+    }
+
+    @Override
+    public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
+
+        final Arguments parsedArgs = Arguments.fromToolArgs(
+                arguments,
+                argsAccessor,
+                context,
+                validateInputs,
+                validateString,
+                sanitizeOrganization,
+                sanitizeEmail,
+                textEncryptor,
+                prompt,
+                zenDeskAccessToken,
+                zenDeskUrl,
+                zenDeskUser,
+                zenExcludedOrgs,
+                model);
+
+        final List<RagDocumentContext<ZenDeskResultsResponse>> contextList = getContext(context, prompt, arguments);
+
+        final String debugArgs = debugToolArgs.debugArgs(arguments, true, parsedArgs.argumentDebugging());
+
+        final Try<RagMultiDocumentContext<?>> result = Try.of(() -> contextList)
+                // Limit the list to just those that fit in the context
+                .map(list -> listLimiter.limitListContent(
+                        list,
+                        RagDocumentContext::document,
+                        NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
+                // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
+                .map(tickets -> mergeContext(tickets, parsedArgs.customModel()))
+                // Make sure we had some content for the prompt
+                .mapTry(mergedContext ->
+                        validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
+                // Build the final prompt including instructions, context and the user prompt
+                .map(ragContext -> ragContext.updateDocument(
+                        promptBuilderSelector
+                                .getPromptBuilder(parsedArgs.customModel())
+                                .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
+                // Call Ollama with the final prompt
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, model))
+                // Clean up the response
+                .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new FailedTool("No tickets found after " + startDate + " for organization '" + parsedArgs.owner() + "'" + debugArgs)),
+                                throwable -> new FailedTool("No tickets found after " + parsedArgs.startDate() + " for organization '" + parsedArgs.owner() + "'" + debugArgs)),
                         API.Case(API.$(),
                                 throwable -> new FailedTool("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
                 .get();
@@ -388,6 +408,7 @@ public class ZenDeskOrganization implements Tool {
     record Arguments(String owner, List<String> excludedOwner, String recipient, List<String> excludedSubmitters,
                      int hours,
                      int days, int numComments, String token, String url, String user, String customModel,
+                     String startDate,
                      boolean argumentDebugging) {
         public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor, Map<String, String> context, ValidateInputs validateInputs, ValidateString validateString, SanitizeArgument sanitizeOrganization, SanitizeArgument sanitizeEmail, Encryptor textEncryptor, String prompt, Optional<String> zenDeskAccessToken, Optional<String> zenDeskUrl, Optional<String> zenDeskUser, Optional<String> zenExcludedOrgs, String model) {
             final String owner = validateInputs.getCommaSeparatedList(
@@ -471,7 +492,14 @@ public class ZenDeskOrganization implements Tool {
                     .recover(e -> false)
                     .get();
 
-            return new Arguments(fixedOwner, excludedOwner, fixedRecipient, exclude, fixedHours, fixedDays, numComments, token.get(), url.get(), user.get(), customModel, argumentDebugging);
+            final String startDate = OffsetDateTime.now(ZoneId.systemDefault())
+                    .truncatedTo(ChronoUnit.SECONDS)
+                    // Assume one day if nothing was specified
+                    .minusDays(fixedDays + fixedHours == 0 ? 1 : fixedDays)
+                    .minusHours(fixedHours)
+                    .format(ISO_OFFSET_DATE_TIME);
+
+            return new Arguments(fixedOwner, excludedOwner, fixedRecipient, exclude, fixedHours, fixedDays, numComments, token.get(), url.get(), user.get(), customModel, startDate, argumentDebugging);
         }
 
         private static int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {

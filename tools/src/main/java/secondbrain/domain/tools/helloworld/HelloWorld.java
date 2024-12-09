@@ -2,6 +2,7 @@ package secondbrain.domain.tools.helloworld;
 
 import com.google.common.collect.ImmutableList;
 import jakarta.enterprise.context.Dependent;
+import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -31,6 +32,13 @@ public class HelloWorld implements Tool {
                 "greeting",
                 "The greeting to display",
                 "World"));
+    }
+
+    public List<RagDocumentContext<Void>> getContext(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        return List.of();
     }
 
     @Override
