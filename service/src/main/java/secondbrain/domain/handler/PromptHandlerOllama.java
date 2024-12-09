@@ -7,7 +7,9 @@ import jakarta.ws.rs.ProcessingException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
-import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.context.AnnotationResult;
+import secondbrain.domain.context.SentenceSplitter;
+import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.context.SimilarityCalculator;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.toolbuilder.ToolSelector;
@@ -42,7 +44,17 @@ public class PromptHandlerOllama implements PromptHandler {
     String minSimilarity;
 
     @Inject
+    @ConfigProperty(name = "sb.annotation.minwords", defaultValue = "10")
+    String minWords;
+
+    @Inject
     private SimilarityCalculator similarityCalculator;
+
+    @Inject
+    private SentenceSplitter sentenceSplitter;
+
+    @Inject
+    private SentenceVectorizer sentenceVectorizer;
 
     @Inject
     private Logger logger;
@@ -83,8 +95,19 @@ public class PromptHandlerOllama implements PromptHandler {
                 .recover(throwable -> 0.5f)
                 .get();
 
+
+        final int parsedMinWords = Try.of(() -> Integer.parseInt(minWords))
+                .recover(throwable -> 10)
+                .get();
+
         return Try.of(() -> toolCall.call(context, prompt))
-                .map(RagMultiDocumentContext::combinedDocument)
+                .map(document -> document.annotateDocumentContext(
+                        parsedMinSimilarity,
+                        parsedMinWords,
+                        sentenceSplitter,
+                        similarityCalculator,
+                        sentenceVectorizer))
+                .map(AnnotationResult::result)
                 .recover(FailedTool.class, Throwable::getMessage)
                 .get();
     }
