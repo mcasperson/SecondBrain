@@ -1,6 +1,8 @@
 package secondbrain.domain.tooldefs;
 
 
+import secondbrain.domain.context.RagMultiDocumentContext;
+
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +36,7 @@ public interface Tool {
      *
      * @param arguments The arguments to pass to the tool. These are extracted by the LLM.
      */
-    String call(Map<String, String> context,
-                String prompt,
-                List<ToolArgs> arguments);
+    RagMultiDocumentContext<?> call(Map<String, String> context,
+                                    String prompt,
+                                    List<ToolArgs> arguments);
 }

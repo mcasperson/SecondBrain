@@ -1,6 +1,7 @@
 package secondbrain.domain.tools.github;
 
 import io.smallrye.common.annotation.Identifier;
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
@@ -15,6 +16,7 @@ import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
+import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.ListUtilsEx;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -38,6 +40,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Predicates.instanceOf;
 
 /**
  * The GitHubDiffs tool provides a list of Git diffs and answers questions about them. It works by first summarizing
@@ -170,7 +174,7 @@ public class GitHubDiffs implements Tool {
     }
 
     @Override
-    public String call(
+    public RagMultiDocumentContext<?> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -215,14 +219,14 @@ public class GitHubDiffs implements Tool {
                 .get();
 
         if (token.isFailure() || StringUtils.isBlank(token.get())) {
-            return "Failed to get GitHub access token";
+            throw new FailedTool("Failed to get GitHub access token");
         }
 
         final String authHeader = "Bearer " + token.get();
 
         final String debugArgs = debugToolArgs.debugArgs(arguments, true, argumentDebugging);
 
-        return Try.of(() -> getCommits(
+        final Try<RagMultiDocumentContext<GitHubCommitResponse>> result = Try.of(() -> getCommits(
                         owner,
                         repo,
                         branch,
@@ -245,19 +249,15 @@ public class GitHubDiffs implements Tool {
                                 INSTRUCTIONS,
                                 promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("Git Diffs", ragContext.combinedDocument()),
                                 prompt)))
-                .map(llmPrompt -> callOllama(llmPrompt, customModel))
-                .map(response -> response.annotateDocumentContext(
-                        parsedMinSimilarity,
-                        10,
-                        sentenceSplitter,
-                        similarityCalculator,
-                        sentenceVectorizer))
-                .map(annotatedDocument -> annotatedDocument.getAnnotatedResult(
-                        "Git Diffs",
-                        annotatedDocument.context().getLinks(),
-                        debugArgs))
-                .recover(EmptyString.class, "No diffs found for " + owner + "/" + repo + " between " + startDate + " and " + endDate + debugArgs)
-                .recover(throwable -> "Failed to get diffs: " + throwable.getMessage() + debugArgs)
+                .map(llmPrompt -> callOllama(llmPrompt, customModel));
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)),
+                                throwable -> new FailedTool("No diffs found for " + owner + "/" + repo + " between " + startDate + " and " + endDate + debugArgs)),
+                        API.Case(API.$(),
+                                throwable -> new FailedTool("Failed to get diffs: " + throwable.getMessage() + debugArgs)))
                 .get();
     }
 

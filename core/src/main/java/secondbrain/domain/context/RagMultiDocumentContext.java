@@ -14,6 +14,10 @@ import java.util.stream.Collectors;
  * @param individualContexts The individual documents that all contribute to the combined context
  */
 public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocumentContext<T>> individualContexts) {
+    public RagMultiDocumentContext(final String combinedDocument) {
+        this(combinedDocument, List.of());
+    }
+
     public List<String> getIds() {
         return individualContexts.stream().map(RagDocumentContext::id).toList();
     }
@@ -35,6 +39,25 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
      */
     public RagMultiDocumentContext<T> updateDocument(final String document) {
         return new RagMultiDocumentContext<T>(document, individualContexts);
+    }
+
+    public String getDocumentLeft(final int length) {
+        if (length <= 0) {
+            return "";
+        }
+
+        return combinedDocument.substring(0, Math.min(combinedDocument.length(), length));
+    }
+
+    public String getDocumentRight(final int length) {
+        if (length <= 0) {
+            return "";
+        }
+
+        final int start = Math.max(0, combinedDocument.length() - length);
+        final int end = start + Math.min(combinedDocument.length(), length);
+
+        return combinedDocument.substring(start, end);
     }
 
     /**

@@ -7,6 +7,8 @@ import jakarta.ws.rs.ProcessingException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
 
@@ -69,6 +71,9 @@ public class PromptHandlerOllama implements PromptHandler {
 
         logger.log(Level.INFO, "Calling tool " + toolCall.tool().getName());
 
-        return toolCall.call(context, prompt);
+        return Try.of(() -> toolCall.call(context, prompt))
+                .map(RagMultiDocumentContext::combinedDocument)
+                .recover(FailedTool.class, Throwable::getMessage)
+                .get();
     }
 }

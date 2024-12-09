@@ -1,5 +1,6 @@
 package secondbrain.domain.tools;
 
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -27,7 +28,7 @@ public class TestTool implements Tool {
     }
 
     @Override
-    public String call(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
-        return "";
+    public RagMultiDocumentContext<?> call(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
+        return new RagMultiDocumentContext<>("");
     }
 }

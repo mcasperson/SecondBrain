@@ -10,6 +10,7 @@ import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.smallrye.common.annotation.Identifier;
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
@@ -21,12 +22,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.RagDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
-import secondbrain.domain.context.SimilarityCalculator;
+import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeArgument;
@@ -35,7 +34,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
+import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -135,7 +134,7 @@ public class GoogleDocs implements Tool {
     }
 
     @Override
-    public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final String documentId = argsAccessor.getArgument(arguments, "documentId", "");
         final List<String> keywords = List.of(sanitizeList.sanitize(
                 argsAccessor.getArgument(arguments, "keywords", ""),
@@ -182,10 +181,10 @@ public class GoogleDocs implements Tool {
                 .recoverWith(e -> Try.of(this::getDefaultCredentials));
 
         if (token.isFailure()) {
-            return "Failed to get Google access token: " + token.getCause().getMessage();
+            throw new FailedTool("Failed to get Google access token: " + token.getCause().getMessage());
         }
 
-        return Try.of(GoogleNetHttpTransport::newTrustedTransport)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(GoogleNetHttpTransport::newTrustedTransport)
                 .map(transport -> new Docs.Builder(transport, JSON_FACTORY, token.get())
                         .setApplicationName(APPLICATION_NAME)
                         .build())
@@ -193,10 +192,11 @@ public class GoogleDocs implements Tool {
                 .map(this::getDocumentText)
                 .map(document -> documentTrimmer.trimDocument(
                         document, keywords, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
-                .map(this::getDocumentContext)
+                .map(document -> getDocumentContext(document, documentId))
                 .map(doc -> doc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(customModel)
                         .buildContextPrompt("Google Document " + documentId, doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH)))))
+                .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(customModel)
                         .buildFinalPrompt(
@@ -206,27 +206,25 @@ public class GoogleDocs implements Tool {
                                 // document being processed should place the most relevant content twoards the end.
                                 ragContext.getDocumentRight(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
-                .map(llmPrompt -> callOllama(llmPrompt, customModel))
-                .map(result -> result.annotateDocumentContext(
-                        parsedMinSimilarity,
-                        10,
-                        sentenceSplitter,
-                        similarityCalculator,
-                        sentenceVectorizer))
-                .map(response -> response
-                        + System.lineSeparator() + System.lineSeparator()
-                        + "* [Document](https://docs.google.com/document/d/" + documentId + ")"
-                        + debugToolArgs.debugArgs(arguments, true, argumentDebugging))
-                .recover(throwable -> "Failed to get document: " + throwable.getMessage())
+                .map(llmPrompt -> callOllama(llmPrompt, customModel));
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
     }
 
 
-    private RagDocumentContext<Void> getDocumentContext(final String document) {
+    private RagDocumentContext<Void> getDocumentContext(final String document, final String documentId) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
-                .map(sentences -> new RagDocumentContext<Void>(document, sentences.stream()
-                        .map(sentenceVectorizer::vectorize)
-                        .collect(Collectors.toList())))
+                .map(sentences -> new RagDocumentContext<Void>(
+                        document,
+                        sentences.stream()
+                                .map(sentenceVectorizer::vectorize)
+                                .collect(Collectors.toList()),
+                        null,
+                        null,
+                        "[Document](https://docs.google.com/document/d/" + documentId + ")"))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext<>(document, List.of()))
@@ -308,12 +306,11 @@ public class GoogleDocs implements Tool {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
     }
 
-    private RagDocumentContext<Void> callOllama(final RagDocumentContext<Void> llmPrompt, final String customModel) {
+    private RagMultiDocumentContext<Void> callOllama(final RagMultiDocumentContext<Void> ragDoc, final String customModel) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
-                        new OllamaGenerateBody(customModel, llmPrompt.document(), false)))
-                .map(response -> new RagDocumentContext<Void>(response.response(), llmPrompt.sentences()))
+                        new OllamaGenerateBodyWithContext<>(customModel, ragDoc, false)))
                 .get();
     }
 }

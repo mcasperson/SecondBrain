@@ -2,23 +2,29 @@ package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
 import com.slack.api.model.MatchedItem;
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.context.SentenceSplitter;
+import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaResponse;
+import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -58,6 +64,12 @@ public class SlackSearch implements Tool {
     @Inject
     private PromptBuilderSelector promptBuilderSelector;
 
+    @Inject
+    private SentenceSplitter sentenceSplitter;
+
+    @Inject
+    private SentenceVectorizer sentenceVectorizer;
+
     @Override
     public String getName() {
         return SlackSearch.class.getSimpleName();
@@ -76,7 +88,7 @@ public class SlackSearch implements Tool {
     }
 
     @Override
-    public String call(
+    public RagMultiDocumentContext<?> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -100,7 +112,7 @@ public class SlackSearch implements Tool {
                 .recoverWith(e -> Try.of(() -> slackAccessToken.get()));
 
         if (accessToken.isFailure()) {
-            return "Slack access token not found";
+            throw new FailedTool("Slack access token not found");
         }
 
         // you can get this instance via ctx.client() in a Bolt app
@@ -109,42 +121,69 @@ public class SlackSearch implements Tool {
         var searchResult = Try.of(() -> client.searchAll(r -> r.token(accessToken.get()).query(String.join(" ", combinedKeywords))));
 
         if (searchResult.isFailure()) {
-            return "Could not search messages";
+            throw new FailedTool("Could not search messages");
         }
 
-        var searchResults = searchResult.get()
+        final List<RagDocumentContext<MatchedItem>> searchResultContext = searchResult.get()
                 .getMessages()
                 .getMatches()
                 .stream()
-                .map(MatchedItem::getText)
-                .map(message -> promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Slack Messages", message))
-                .collect(Collectors.joining("\n"));
+                .map(this::getDocumentContext)
+                .map(ragDoc -> ragDoc.updateDocument(promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Slack Messages", ragDoc.document())))
+                .toList();
 
-        return Try.of(() -> promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
-                        INSTRUCTIONS,
-                        searchResults,
-                        prompt))
-                .map(this::callOllama)
-                .map(response -> response.response()
-                        + System.lineSeparator() + System.lineSeparator()
-                        + searchResult.get()
-                        .getMessages()
-                        .getMatches()
-                        .stream()
-                        .map(result -> "* [" + StringUtils.substring(result.getText()
-                                        .replaceAll(":.*?:", "")
-                                        .replaceAll("[^A-Za-z0-9-._ ]", " "),
-                                0, 75) + "](" + result.getPermalink() + ")")
-                        .collect(Collectors.joining("\n")))
-                .recover(throwable -> "Failed to call Ollama: " + throwable.getMessage())
+        final Try<RagMultiDocumentContext<MatchedItem>> result = Try.of(() -> mergeContext(searchResultContext))
+                .map(ragContext -> ragContext.updateDocument(
+                        promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
+                                INSTRUCTIONS,
+                                ragContext.combinedDocument(),
+                                prompt)))
+                .map(this::callOllama);
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result
+                .mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
 
     }
 
-    private OllamaResponse callOllama(final String llmPrompt) {
+    private RagMultiDocumentContext<MatchedItem> callOllama(final RagMultiDocumentContext<MatchedItem> ragDoc) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
-                        new OllamaGenerateBody(model, llmPrompt, false))).get();
+                        new OllamaGenerateBodyWithContext<>(model, ragDoc, false)))
+                .get();
+    }
+
+    private RagDocumentContext<MatchedItem> getDocumentContext(final MatchedItem meta) {
+        return Try.of(() -> sentenceSplitter.splitDocument(meta.getText(), 10))
+                .map(sentences -> new RagDocumentContext<MatchedItem>(
+                        meta.getText(),
+                        sentences.stream()
+                                .map(sentenceVectorizer::vectorize)
+                                .collect(Collectors.toList()),
+                        meta.getId(),
+                        meta,
+                        matchToUrl(meta)))
+                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                // If we can't vectorize the sentences, just return the document
+                .recover(e -> new RagDocumentContext<>(meta.getText(), List.of(), meta.getId(), meta, null))
+                .get();
+    }
+
+    private String matchToUrl(final MatchedItem matchedItem) {
+        return "* [" + StringUtils.substring(matchedItem.getText()
+                        .replaceAll(":.*?:", "")
+                        .replaceAll("[^A-Za-z0-9-._ ]", " "),
+                0, 75) + "](" + matchedItem.getPermalink() + ")";
+    }
+
+    private RagMultiDocumentContext<MatchedItem> mergeContext(final List<RagDocumentContext<MatchedItem>> context) {
+        return new RagMultiDocumentContext<>(
+                context.stream()
+                        .map(RagDocumentContext::document)
+                        .collect(Collectors.joining("\n")),
+                context);
     }
 }

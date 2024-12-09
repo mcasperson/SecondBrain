@@ -7,6 +7,7 @@ import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.model.ConversationType;
 import com.slack.api.model.Message;
 import io.smallrye.common.annotation.Identifier;
+import io.vavr.API;
 import io.vavr.Tuple;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
@@ -17,19 +18,16 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.RagDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
-import secondbrain.domain.context.SimilarityCalculator;
+import secondbrain.domain.context.*;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
+import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -110,7 +108,7 @@ public class SlackChannel implements Tool {
     }
 
     @Override
-    public String call(
+    public RagMultiDocumentContext<?> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -138,20 +136,20 @@ public class SlackChannel implements Tool {
                 .recoverWith(e -> Try.of(() -> slackAccessToken.get()));
 
         if (accessToken.isFailure()) {
-            return "Slack access token not found";
+            throw new FailedTool("Slack access token not found");
         }
 
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
 
-        final Try<ChannelDetails> id = findChannelId(client, accessToken.get(), channel, null)
+        final Try<ChannelDetails> channelDetails = findChannelId(client, accessToken.get(), channel, null)
                 .onFailure(error -> System.out.println("Error: " + error));
 
-        if (id.isFailure()) {
-            return "Channel " + channel + " not found";
+        if (channelDetails.isFailure()) {
+            throw new FailedTool("Channel " + channel + " not found");
         }
 
-        final Try<String> messages = id
+        final Try<String> messages = channelDetails
                 .mapTry(chanId -> client.conversationsHistory(r -> r
                         .token(accessToken.get())
                         .channel(chanId.channelId())
@@ -160,43 +158,38 @@ public class SlackChannel implements Tool {
                 .onFailure(error -> System.out.println("Error: " + error));
 
         if (messages.isFailure()) {
-            return "Messages could not be read";
+            throw new FailedTool("Messages could not be read");
         }
 
         if (messages.get().length() < MINIMUM_MESSAGE_LENGTH) {
-            return "Not enough messages found in channel " + channel
+            throw new FailedTool("Not enough messages found in channel " + channel
                     + System.lineSeparator() + System.lineSeparator()
-                    + "* [Slack Channel](https://app.slack.com/client/" + id.get().teamId() + "/" + id.get().channelId() + ")";
+                    + "* [Slack Channel](https://app.slack.com/client/" + channelDetails.get().teamId() + "/" + channelDetails.get().channelId() + ")");
         }
 
         final Try<String> messagesWithUsersReplaced = messages
                 .flatMap(m -> replaceIds(client, accessToken.get(), m));
 
         if (messagesWithUsersReplaced.isFailure()) {
-            return "The user and channel IDs could not be replaced";
+            throw new FailedTool("The user and channel IDs could not be replaced");
         }
 
 
-        return Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get(), prompt))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get(), channelDetails.get()))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
-                .map(this::callOllama)
-                .map(result -> result.annotateDocumentContext(
-                        parsedMinSimilarity,
-                        10,
-                        sentenceSplitter,
-                        similarityCalculator,
-                        sentenceVectorizer))
-                .map(response -> response
-                        + System.lineSeparator() + System.lineSeparator()
-                        + "* [Slack Channel](https://app.slack.com/client/" + id.get().teamId() + "/" + id.get().channelId() + ")")
-                .recover(throwable -> "Failed to call Ollama: " + throwable.getMessage())
-                .get();
+                .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
+                .map(this::callOllama);
 
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result
+                .mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
+                .get();
     }
 
 
@@ -208,7 +201,7 @@ public class SlackChannel implements Tool {
                 .findFirst();
     }
 
-    private RagDocumentContext<Void> getDocumentContext(final String document, final String prompt) {
+    private RagDocumentContext<Void> getDocumentContext(final String document, final ChannelDetails channelDetails) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 // Strip out any URLs from the sentences
                 .map(sentences -> sentences.stream().map(sentence -> removeMarkdnUrls.sanitize(sentence)).toList())
@@ -216,7 +209,10 @@ public class SlackChannel implements Tool {
                         promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Message", document),
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
-                                .collect(Collectors.toList())))
+                                .collect(Collectors.toList()),
+                        null,
+                        null,
+                        matchToUrl(channelDetails)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext<Void>(document, List.of()))
@@ -232,12 +228,11 @@ public class SlackChannel implements Tool {
     }
 
 
-    private RagDocumentContext<Void> callOllama(final RagDocumentContext<Void> llmPrompt) {
+    private RagMultiDocumentContext<Void> callOllama(final RagMultiDocumentContext<Void> ragDoc) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.getTools(
                         client,
-                        new OllamaGenerateBody(model, llmPrompt.document(), false)))
-                .map(response -> new RagDocumentContext<Void>(response.response(), llmPrompt.sentences()))
+                        new OllamaGenerateBodyWithContext<>(model, ragDoc, false)))
                 .get();
     }
 
@@ -320,5 +315,9 @@ public class SlackChannel implements Tool {
                     to get context and be tolerant of errors.
                  */
                 .recover(error -> "Unknown channel");
+    }
+
+    private String matchToUrl(final ChannelDetails channel) {
+        return "[Slack Channel](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")";
     }
 }
