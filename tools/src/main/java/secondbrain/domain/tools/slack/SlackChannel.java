@@ -61,10 +61,6 @@ public class SlackChannel implements Tool {
     Optional<String> slackAccessToken;
 
     @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
-
-    @Inject
     private Encryptor textEncryptor;
 
     @Inject
@@ -116,10 +112,6 @@ public class SlackChannel implements Tool {
                 .replaceFirst("^#", "");
         final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "7")))
                 .recover(throwable -> 7)
-                .get();
-
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
                 .get();
 
         final String oldest = Long.valueOf(LocalDateTime.now(ZoneId.systemDefault())

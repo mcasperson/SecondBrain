@@ -100,10 +100,6 @@ public class GitHubDiffs implements Tool {
     Optional<String> githubAccessToken;
 
     @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
-
-    @Inject
     private Encryptor textEncryptor;
 
     @Inject
@@ -195,11 +191,6 @@ public class GitHubDiffs implements Tool {
         final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
-
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
-                .get();
-
 
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.

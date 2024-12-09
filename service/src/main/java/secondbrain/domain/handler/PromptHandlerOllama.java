@@ -37,6 +37,10 @@ public class PromptHandlerOllama implements PromptHandler {
     Optional<String> toolModel;
 
     @Inject
+    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
+    String minSimilarity;
+
+    @Inject
     private Logger logger;
 
     @Inject
@@ -70,6 +74,10 @@ public class PromptHandlerOllama implements PromptHandler {
         }
 
         logger.log(Level.INFO, "Calling tool " + toolCall.tool().getName());
+
+        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
+                .recover(throwable -> 0.5f)
+                .get();
 
         return Try.of(() -> toolCall.call(context, prompt))
                 .map(RagMultiDocumentContext::combinedDocument)

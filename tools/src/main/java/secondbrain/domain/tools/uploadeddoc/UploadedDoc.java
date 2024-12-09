@@ -53,10 +53,6 @@ public class UploadedDoc implements Tool {
     String limit;
 
     @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
-
-    @Inject
     private SentenceSplitter sentenceSplitter;
 
     @Inject
@@ -96,10 +92,6 @@ public class UploadedDoc implements Tool {
         if (StringUtils.isBlank(uploadedDocument)) {
             throw new FailedTool("No document found in context");
         }
-
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
-                .get();
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> uploadedDocument)
                 .map(this::getDocumentContext)

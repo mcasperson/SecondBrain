@@ -78,10 +78,6 @@ public class GoogleDocs implements Tool {
     String limit;
 
     @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
-
-    @Inject
     @Identifier("sanitizeList")
     private SanitizeArgument sanitizeList;
 
@@ -146,10 +142,6 @@ public class GoogleDocs implements Tool {
                 .mapTry(Objects::requireNonNull)
                 .map(value -> NumberUtils.toLong(value, defaultExpires))
                 .recover(error -> defaultExpires)
-                .get();
-
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
                 .get();
 
         final String customModel = Try.of(() -> context.get("custom_model"))

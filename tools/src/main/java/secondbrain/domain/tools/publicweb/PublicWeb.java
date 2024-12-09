@@ -52,10 +52,6 @@ public class PublicWeb implements Tool {
     String limit;
 
     @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
-
-    @Inject
     private PublicWebClient publicWebClient;
 
     @Inject

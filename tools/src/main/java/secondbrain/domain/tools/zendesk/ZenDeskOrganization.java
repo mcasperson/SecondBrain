@@ -84,10 +84,6 @@ public class ZenDeskOrganization implements Tool {
     Optional<String> zenExcludedOrgs;
 
     @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
-
-    @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     String model;
 
@@ -209,10 +205,6 @@ public class ZenDeskOrganization implements Tool {
         // days and hours get mixed up all the time.
         final int fixedDays = switchArguments(prompt, days, hours, "day", "hour");
         final int fixedHours = switchArguments(prompt, hours, days, "hour", "day");
-
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
-                .get();
 
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.
