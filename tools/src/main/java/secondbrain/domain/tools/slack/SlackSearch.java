@@ -163,7 +163,7 @@ public class SlackSearch implements Tool {
     }
 
     private String matchToUrl(final MatchedItem matchedItem) {
-        return "* [" + StringUtils.substring(matchedItem.getText()
+        return "[" + StringUtils.substring(matchedItem.getText()
                         .replaceAll(":.*?:", "")
                         .replaceAll("[^A-Za-z0-9-._ ]", " "),
                 0, 75) + "](" + matchedItem.getPermalink() + ")";

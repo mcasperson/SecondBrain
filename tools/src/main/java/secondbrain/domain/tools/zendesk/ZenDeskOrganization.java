@@ -327,7 +327,7 @@ public class ZenDeskOrganization implements Tool {
                         + Try.of(() -> zenDeskClient.getUserCached(client, authHeader, url, meta.assignee_id()))
                         .map(ZenDeskUserItemResponse::name)
                         .getOrElse("Unknown User")
-                        + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
+                        + "[" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
                 .get();
     }
 

@@ -250,14 +250,7 @@ public class GitHubDiffs implements Tool {
                                 throwable -> new FailedTool("Failed to get diffs: " + throwable.getMessage() + debugArgs)))
                 .get();
     }
-
-    private String urlsToLinks(final List<String> urls) {
-        return urls.stream()
-                .map(url -> "* [" + GitHubUrlParser.urlToCommitHash(url) + "](" + url + ")")
-                .collect(Collectors.joining("\n"));
-    }
-
-
+    
     private RagMultiDocumentContext<GitHubCommitResponse> mergeContext(final List<RagDocumentContext<GitHubCommitResponse>> context) {
         return new RagMultiDocumentContext<>(
                 context.stream()
@@ -299,7 +292,7 @@ public class GitHubDiffs implements Tool {
                         .toList(),
                 commit.sha(),
                 commit,
-                commit.html_url());
+                "[" + GitHubUrlParser.urlToCommitHash(commit.html_url()) + "](" + commit.html_url() + ")");
     }
 
     /**

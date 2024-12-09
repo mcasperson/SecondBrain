@@ -7,7 +7,6 @@ import jakarta.ws.rs.ProcessingException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
-import secondbrain.domain.context.AnnotationResult;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.context.SimilarityCalculator;
@@ -106,8 +105,12 @@ public class PromptHandlerOllama implements PromptHandler {
                         parsedMinWords,
                         sentenceSplitter,
                         similarityCalculator,
-                        sentenceVectorizer))
-                .map(AnnotationResult::result)
+                        sentenceVectorizer).result() +
+                        System.lineSeparator() + System.lineSeparator() +
+                        document.getLinks()
+                                .stream()
+                                .map(link -> "* " + link)
+                                .reduce("", (a, b) -> a + System.lineSeparator() + b))
                 .recover(FailedTool.class, Throwable::getMessage)
                 .get();
     }
