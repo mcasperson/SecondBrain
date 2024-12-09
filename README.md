@@ -30,6 +30,8 @@ This prompt is handled like this:
 5. The messages are placed in the context of the original prompt and passed back to Ollama.
 6. Ollama answers the prompt with the messages context and returns the result to the user.
 
+![Workflow](workflow.png)
+
 ## Technologies used
 
 SecondBrain makes heavy use of Jakarta EE and MicroProfile, executed in a Docker image using Payara Micro.
