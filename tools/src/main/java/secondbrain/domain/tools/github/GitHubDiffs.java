@@ -11,7 +11,10 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.*;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.context.SentenceSplitter;
+import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
@@ -128,9 +131,6 @@ public class GitHubDiffs implements Tool {
 
     @Inject
     private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SimilarityCalculator similarityCalculator;
 
     @Inject
     private SentenceVectorizer sentenceVectorizer;

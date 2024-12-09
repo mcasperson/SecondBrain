@@ -8,6 +8,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.context.SimilarityCalculator;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
@@ -39,6 +40,9 @@ public class PromptHandlerOllama implements PromptHandler {
     @Inject
     @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
     String minSimilarity;
+
+    @Inject
+    private SimilarityCalculator similarityCalculator;
 
     @Inject
     private Logger logger;

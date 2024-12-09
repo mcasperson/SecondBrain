@@ -134,9 +134,6 @@ public class ZenDeskOrganization implements Tool {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
-    private SimilarityCalculator similarityCalculator;
-
-    @Inject
     private PromptBuilderSelector promptBuilderSelector;
 
     @Override
