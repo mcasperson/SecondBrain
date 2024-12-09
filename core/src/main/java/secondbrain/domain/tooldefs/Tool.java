@@ -35,6 +35,7 @@ public interface Tool {
      * Calls the tool.
      *
      * @param arguments The arguments to pass to the tool. These are extracted by the LLM.
+     * @return The result from the LLM and the contents that was used to generate the result.
      */
     RagMultiDocumentContext<?> call(Map<String, String> context,
                                     String prompt,
