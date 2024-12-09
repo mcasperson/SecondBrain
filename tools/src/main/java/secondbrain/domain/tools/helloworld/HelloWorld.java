@@ -2,6 +2,7 @@ package secondbrain.domain.tools.helloworld;
 
 import com.google.common.collect.ImmutableList;
 import jakarta.enterprise.context.Dependent;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -33,14 +34,14 @@ public class HelloWorld implements Tool {
     }
 
     @Override
-    public String call(
+    public RagMultiDocumentContext<?> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
         if (arguments.size() != 1) {
-            return "Hello, World!";
+            return new RagMultiDocumentContext<>("Hello, World!");
         }
 
-        return arguments.getFirst().argValue();
+        return new RagMultiDocumentContext<>(arguments.getFirst().argValue());
     }
 }

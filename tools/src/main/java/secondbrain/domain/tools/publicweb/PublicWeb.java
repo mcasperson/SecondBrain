@@ -1,6 +1,7 @@
 package secondbrain.domain.tools.publicweb;
 
 import com.google.common.collect.ImmutableList;
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
@@ -12,16 +13,15 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
-import secondbrain.domain.context.SimilarityCalculator;
-import secondbrain.domain.debug.DebugToolArgs;
+import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.publicweb.PublicWebClient;
 
 import java.util.List;
@@ -53,10 +53,6 @@ public class PublicWeb implements Tool {
     String limit;
 
     @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
-
-    @Inject
     private PublicWebClient publicWebClient;
 
     @Inject
@@ -66,9 +62,6 @@ public class PublicWeb implements Tool {
     private SentenceSplitter sentenceSplitter;
 
     @Inject
-    private SimilarityCalculator similarityCalculator;
-
-    @Inject
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
@@ -76,9 +69,6 @@ public class PublicWeb implements Tool {
 
     @Inject
     private OllamaClient ollamaClient;
-
-    @Inject
-    private DebugToolArgs debugToolArgs;
 
     @Override
     public String getName() {
@@ -99,7 +89,7 @@ public class PublicWeb implements Tool {
     }
 
     @Override
-    public String call(
+    public RagMultiDocumentContext<?> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -107,52 +97,39 @@ public class PublicWeb implements Tool {
         final String url = argsAccessor.getArgument(arguments, "url", "");
 
         if (StringUtils.isBlank(url)) {
-            return "You must provide a URL to download";
+            throw new FailedTool("You must provide a URL to download");
         }
 
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
-                .get();
-
-        return Try.withResources(ClientBuilder::newClient)
+        final Try<RagMultiDocumentContext<Void>> result = Try.withResources(ClientBuilder::newClient)
                 .of(client -> publicWebClient.getDocument(client, url))
                 .map(this::getDocumentContext)
                 .map(doc -> doc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
-                        .buildContextPrompt("Downloaded Document", doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))))
+                        .buildContextPrompt("Downloaded Document", doc.document())))
+                .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
-                .map(this::callOllama)
-                .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 10, sentenceSplitter, similarityCalculator, sentenceVectorizer))
-                .map(response -> response
-                        + System.lineSeparator() + System.lineSeparator()
-                        + "* [Document](" + url + ")"
-                        + debugToolArgs.debugArgs(arguments, true, false))
-                .recover(throwable -> "Failed to get document: " + throwable.getMessage())
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
     }
 
     private RagDocumentContext<Void> getDocumentContext(final String document) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
-                .map(sentences -> new RagDocumentContext<Void>(document, sentences.stream()
-                        .map(sentenceVectorizer::vectorize)
-                        .collect(Collectors.toList())))
+                .map(sentences -> new RagDocumentContext<Void>(document,
+                        sentences.stream()
+                                .map(sentenceVectorizer::vectorize)
+                                .collect(Collectors.toList())))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext<>(document, List.of()))
-                .get();
-    }
-
-    private RagDocumentContext<Void> callOllama(final RagDocumentContext<Void> llmPrompt) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
-                        client,
-                        new OllamaGenerateBody(model, llmPrompt.document(), false)))
-                .map(response -> new RagDocumentContext<Void>(response.response(), llmPrompt.sentences()))
                 .get();
     }
 }

@@ -1,6 +1,7 @@
 package secondbrain.domain.tools.smoketest;
 
 import jakarta.enterprise.context.Dependent;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -29,10 +30,10 @@ public class SmokeTest implements Tool {
     }
 
     @Override
-    public String call(
+    public RagMultiDocumentContext<?> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        return "Test succeeded!";
+        return new RagMultiDocumentContext<>("Test succeeded!");
     }
 }

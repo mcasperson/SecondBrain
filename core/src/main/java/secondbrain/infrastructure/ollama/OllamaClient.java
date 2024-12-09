@@ -4,6 +4,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -58,5 +59,13 @@ public class OllamaClient {
     public <T> RagMultiDocumentContext<T> getTools(final Client client, final OllamaGenerateBodyWithContext<T> body) {
         final OllamaResponse response = getTools(client, new OllamaGenerateBody(body.model(), body.prompt().combinedDocument(), body.stream()));
         return new RagMultiDocumentContext<>(response.response(), body.prompt().individualContexts());
+    }
+
+    public <T> RagMultiDocumentContext<T> callOllama(final RagMultiDocumentContext<T> ragDoc, final String model) {
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> getTools(
+                        client,
+                        new OllamaGenerateBodyWithContext<>(model, ragDoc, false)))
+                .get();
     }
 }

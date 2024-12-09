@@ -1,6 +1,7 @@
 package secondbrain.domain.tools.github;
 
 import io.smallrye.common.annotation.Identifier;
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
@@ -10,11 +11,15 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.*;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.context.SentenceSplitter;
+import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
+import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.ListUtilsEx;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -27,7 +32,6 @@ import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.GitHubCommitResponse;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -38,6 +42,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Predicates.instanceOf;
 
 /**
  * The GitHubDiffs tool provides a list of Git diffs and answers questions about them. It works by first summarizing
@@ -96,10 +102,6 @@ public class GitHubDiffs implements Tool {
     Optional<String> githubAccessToken;
 
     @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
-
-    @Inject
     private Encryptor textEncryptor;
 
     @Inject
@@ -128,9 +130,6 @@ public class GitHubDiffs implements Tool {
 
     @Inject
     private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SimilarityCalculator similarityCalculator;
 
     @Inject
     private SentenceVectorizer sentenceVectorizer;
@@ -170,7 +169,7 @@ public class GitHubDiffs implements Tool {
     }
 
     @Override
-    public String call(
+    public RagMultiDocumentContext<?> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -192,11 +191,6 @@ public class GitHubDiffs implements Tool {
         final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
         final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
 
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
-                .get();
-
-
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.
         final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
@@ -215,14 +209,14 @@ public class GitHubDiffs implements Tool {
                 .get();
 
         if (token.isFailure() || StringUtils.isBlank(token.get())) {
-            return "Failed to get GitHub access token";
+            throw new FailedTool("Failed to get GitHub access token");
         }
 
         final String authHeader = "Bearer " + token.get();
 
         final String debugArgs = debugToolArgs.debugArgs(arguments, true, argumentDebugging);
 
-        return Try.of(() -> getCommits(
+        final Try<RagMultiDocumentContext<GitHubCommitResponse>> result = Try.of(() -> getCommits(
                         owner,
                         repo,
                         branch,
@@ -245,29 +239,18 @@ public class GitHubDiffs implements Tool {
                                 INSTRUCTIONS,
                                 promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("Git Diffs", ragContext.combinedDocument()),
                                 prompt)))
-                .map(llmPrompt -> callOllama(llmPrompt, customModel))
-                .map(response -> response.annotateDocumentContext(
-                        parsedMinSimilarity,
-                        10,
-                        sentenceSplitter,
-                        similarityCalculator,
-                        sentenceVectorizer))
-                .map(annotatedDocument -> annotatedDocument.getAnnotatedResult(
-                        "Git Diffs",
-                        annotatedDocument.context().getLinks(),
-                        debugArgs))
-                .recover(EmptyString.class, "No diffs found for " + owner + "/" + repo + " between " + startDate + " and " + endDate + debugArgs)
-                .recover(throwable -> "Failed to get diffs: " + throwable.getMessage() + debugArgs)
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, customModel));
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)),
+                                throwable -> new FailedTool("No diffs found for " + owner + "/" + repo + " between " + startDate + " and " + endDate + debugArgs)),
+                        API.Case(API.$(),
+                                throwable -> new FailedTool("Failed to get diffs: " + throwable.getMessage() + debugArgs)))
                 .get();
     }
-
-    private String urlsToLinks(final List<String> urls) {
-        return urls.stream()
-                .map(url -> "* [" + GitHubUrlParser.urlToCommitHash(url) + "](" + url + ")")
-                .collect(Collectors.joining("\n"));
-    }
-
-
+    
     private RagMultiDocumentContext<GitHubCommitResponse> mergeContext(final List<RagDocumentContext<GitHubCommitResponse>> context) {
         return new RagMultiDocumentContext<>(
                 context.stream()
@@ -309,7 +292,7 @@ public class GitHubDiffs implements Tool {
                         .toList(),
                 commit.sha(),
                 commit,
-                commit.html_url());
+                "[" + GitHubUrlParser.urlToCommitHash(commit.html_url()) + "](" + commit.html_url() + ")");
     }
 
     /**
@@ -344,15 +327,6 @@ public class GitHubDiffs implements Tool {
                 .of(client -> gitHubClient.getCommits(client, owner, repo, branch, until, since, authorization))
                 .get();
     }
-
-    private RagMultiDocumentContext<GitHubCommitResponse> callOllama(final RagMultiDocumentContext<GitHubCommitResponse> llmPrompt, final String customModel) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
-                        client,
-                        new OllamaGenerateBodyWithContext<>(customModel, llmPrompt, false)))
-                .get();
-    }
-
 
     private String getCommitDiff(
             final String owner,

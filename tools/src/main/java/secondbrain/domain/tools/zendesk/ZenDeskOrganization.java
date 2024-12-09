@@ -1,6 +1,7 @@
 package secondbrain.domain.tools.zendesk;
 
 import io.smallrye.common.annotation.Identifier;
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -18,6 +19,7 @@ import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
+import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeArgument;
@@ -29,7 +31,6 @@ import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 import secondbrain.infrastructure.zendesk.*;
 
 import java.time.OffsetDateTime;
@@ -38,6 +39,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Predicates.instanceOf;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
@@ -79,10 +81,6 @@ public class ZenDeskOrganization implements Tool {
     @Inject
     @ConfigProperty(name = "sb.zendesk.excludedorgs")
     Optional<String> zenExcludedOrgs;
-
-    @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
@@ -135,9 +133,6 @@ public class ZenDeskOrganization implements Tool {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
-    private SimilarityCalculator similarityCalculator;
-
-    @Inject
     private PromptBuilderSelector promptBuilderSelector;
 
     @Override
@@ -162,7 +157,7 @@ public class ZenDeskOrganization implements Tool {
     }
 
     @Override
-    public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final String owner = validateInputs.getCommaSeparatedList(
                 prompt,
                 argsAccessor.getArgument(arguments, "organization", ""));
@@ -207,10 +202,6 @@ public class ZenDeskOrganization implements Tool {
         final int fixedDays = switchArguments(prompt, days, hours, "day", "hour");
         final int fixedHours = switchArguments(prompt, hours, days, "hour", "day");
 
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
-                .get();
-
         // Try to decrypt the value, otherwise assume it is a plain text value, and finally
         // fall back to the value defined in the local configuration.
         final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_access_token")))
@@ -219,14 +210,14 @@ public class ZenDeskOrganization implements Tool {
                 .recoverWith(e -> Try.of(() -> zenDeskAccessToken.get()));
 
         if (token.isFailure() || StringUtils.isBlank(token.get())) {
-            return "Failed to get Zendesk access token";
+            throw new FailedTool("Failed to get Zendesk access token");
         }
 
         final Try<String> url = getContext("zendesk_url", context)
                 .recoverWith(e -> Try.of(() -> zenDeskUrl.get()));
 
         if (url.isFailure() || StringUtils.isBlank(url.get())) {
-            return "Failed to get Zendesk URL";
+            throw new FailedTool("Failed to get Zendesk URL");
         }
 
         final Try<String> user = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_user")))
@@ -235,7 +226,7 @@ public class ZenDeskOrganization implements Tool {
                 .recoverWith(e -> Try.of(() -> zenDeskUser.get()));
 
         if (user.isFailure() || StringUtils.isBlank(user.get())) {
-            return "Failed to get Zendesk User";
+            throw new FailedTool("Failed to get Zendesk User");
         }
 
         final String customModel = Try.of(() -> context.get("custom_model"))
@@ -268,9 +259,8 @@ public class ZenDeskOrganization implements Tool {
 
         final String debugArgs = debugToolArgs.debugArgs(arguments, true, argumentDebugging);
 
-        return Try.withResources(ClientBuilder::newClient)
+        final Try<RagMultiDocumentContext<?>> result = Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, url.get(), String.join(" ", query)))
-
                         // Filter out any tickets based on the submitter and assignee
                         .map(response -> filterResponse(response, true, exclude, excludedOwner, fixedRecipient))
                         // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
@@ -301,25 +291,19 @@ public class ZenDeskOrganization implements Tool {
                                         .getPromptBuilder(customModel)
                                         .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
                         // Call Ollama with the final prompt
-                        .map(llmPrompt -> ollamaClient.getTools(
-                                client,
-                                new OllamaGenerateBodyWithContext<>(customModel, llmPrompt, false)))
+                        .map(ragDoc -> ollamaClient.callOllama(ragDoc, model))
                         // Clean up the response
                         .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())))
-                        // Take the LLM response and annotate it with links to the RAG context
-                        .map(response -> response.annotateDocumentContext(
-                                parsedMinSimilarity,
-                                10,
-                                sentenceSplitter,
-                                similarityCalculator,
-                                sentenceVectorizer))
-                        .map(annotatedDocument -> annotatedDocument.getAnnotatedResult(
-                                "Tickets",
-                                annotatedDocument.context().getLinks(),
-                                debugArgs))
-                        .recover(EmptyString.class, "No tickets found after " + startDate + " for organization '" + fixedOwner + "'" + debugArgs)
-                        .recover(throwable -> "Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)
-                        .get())
+                        // Return the Try result
+                        .get());
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)),
+                                throwable -> new FailedTool("No tickets found after " + startDate + " for organization '" + fixedOwner + "'" + debugArgs)),
+                        API.Case(API.$(),
+                                throwable -> new FailedTool("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
                 .get();
     }
 
@@ -343,7 +327,7 @@ public class ZenDeskOrganization implements Tool {
                         + Try.of(() -> zenDeskClient.getUserCached(client, authHeader, url, meta.assignee_id()))
                         .map(ZenDeskUserItemResponse::name)
                         .getOrElse("Unknown User")
-                        + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
+                        + "[" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
                 .get();
     }
 
