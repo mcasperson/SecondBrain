@@ -107,6 +107,7 @@ public class PromptHandlerOllama implements PromptHandler {
                         similarityCalculator,
                         sentenceVectorizer).result() +
                         System.lineSeparator() + System.lineSeparator() +
+                        "Links:" + System.lineSeparator() +
                         document.getLinks()
                                 .stream()
                                 .map(link -> "* " + link)
