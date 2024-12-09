@@ -317,7 +317,7 @@ public class ZenDeskOrganization implements Tool {
      */
     private String ticketToLink(final String url, final ZenDeskResultsResponse meta, final String authHeader) {
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> "* " + meta.subject().replaceAll("\\r\\n|\\r|\\n", " ") + " - "
+                .of(client -> meta.subject().replaceAll("\\r\\n|\\r|\\n", " ") + " - "
                         // Best effort to get the organization name, but don't treat this as a failure
                         + Try.of(() -> zenDeskClient.getOrganizationCached(client, authHeader, url, meta.organization_id()))
                         .map(ZenDeskOrganizationItemResponse::name)
