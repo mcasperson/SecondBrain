@@ -8,6 +8,7 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
@@ -134,7 +135,7 @@ public class SlackSearch implements Tool {
                 .map(ragContext -> ragContext.updateDocument(
                         promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
                                 INSTRUCTIONS,
-                                ragContext.combinedDocument(),
+                                ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
 
