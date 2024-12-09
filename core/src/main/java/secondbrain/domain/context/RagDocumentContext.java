@@ -1,12 +1,9 @@
 package secondbrain.domain.context;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.Nullable;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.PriorityQueue;
 
 import static java.util.Comparator.comparing;
@@ -113,68 +110,5 @@ public record RagDocumentContext<T>(String document, List<RagStringContext> sent
         }
 
         return new RagMatchedStringContext(context, bestSimilarity.getLeft().context(), bestSimilarity.getRight(), id);
-    }
-
-    /**
-     * Annotate the document with the closest matching sentence from the source sentences.
-     * This overcomes one of the problems with LLMs where you are not quite sure where it
-     * got its answer from. By annotating the document with the source sentence, you can
-     * quickly determine where the LLMs answer came from.
-     *
-     * @return The annotated result
-     */
-    public String annotateDocumentContext(final float minSimilarity,
-                                          final int minWords,
-                                          final SentenceSplitter sentenceSplitter,
-                                          final SimilarityCalculator similarityCalculator,
-                                          final SentenceVectorizer sentenceVectorizer) {
-        String retValue = document();
-        int index = 1;
-        final Map<String, Integer> annotationMap = new HashMap<>();
-        for (var sentence : sentenceSplitter.splitDocument(document(), minWords)) {
-
-            if (StringUtils.isBlank(sentence)) {
-                continue;
-            }
-
-            /*
-                Find the closest matching sentence from the source context over the
-                minimum similarity threshold. Ignore any failures.
-             */
-            var closestMatch = getClosestSentence(
-                    sentence,
-                    sentenceVectorizer.vectorize(sentence).vector(),
-                    similarityCalculator,
-                    minSimilarity);
-
-            if (closestMatch != null) {
-                final boolean fromCache = annotationMap.containsKey(closestMatch.context());
-
-                final int lookupIndex = fromCache
-                        ? annotationMap.get(closestMatch.context())
-                        : index;
-
-                if (!fromCache) {
-                    annotationMap.put(closestMatch.context(), index);
-                    ++index;
-                }
-
-                // Annotate the original document
-                retValue = retValue.replace(sentence, sentence + " [" + lookupIndex + "]");
-
-                // The start of the list of annotations has an extra line break
-                if (lookupIndex == 1) {
-                    retValue += System.lineSeparator();
-                }
-
-                if (!fromCache) {
-                    // Make a note of the source sentence
-                    retValue += System.lineSeparator()
-                            + "* [" + lookupIndex + "]: " + closestMatch.context();
-                }
-            }
-        }
-
-        return retValue;
     }
 }
