@@ -166,13 +166,15 @@ public class SlackChannel implements Tool {
 
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getDocumentContext(messagesWithUsersReplaced.get(), channelDetails.get()))
+                .map(ragDoc -> new RagMultiDocumentContext<>(
+                        ragDoc.document(),
+                        List.of(ragDoc)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
-                .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
                 .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting

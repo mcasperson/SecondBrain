@@ -105,13 +105,13 @@ public class PublicWeb implements Tool {
                 .map(this::getDocumentContext)
                 .map(doc -> doc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
-                        .buildContextPrompt("Downloaded Document", doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))))
+                        .buildContextPrompt("Downloaded Document", doc.document())))
                 .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
-                                ragContext.combinedDocument(),
+                                ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
 

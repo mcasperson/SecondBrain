@@ -185,7 +185,7 @@ public class GoogleDocs implements Tool {
                 .map(document -> getDocumentContext(document, documentId))
                 .map(doc -> doc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(customModel)
-                        .buildContextPrompt("Google Document " + documentId, doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH)))))
+                        .buildContextPrompt("Google Document " + documentId, doc.document())))
                 .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(customModel)
