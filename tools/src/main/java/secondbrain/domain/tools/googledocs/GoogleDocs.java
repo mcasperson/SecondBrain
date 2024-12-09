@@ -129,7 +129,7 @@ public class GoogleDocs implements Tool {
 
     @Override
     public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, argsAccessor, sanitizeList, prompt);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
@@ -139,15 +139,6 @@ public class GoogleDocs implements Tool {
                 .recover(error -> defaultExpires)
                 .get();
 
-        final String customModel = Try.of(() -> context.get("custom_model"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> model)
-                .get();
-
-        final boolean argumentDebugging = Try.of(() -> context.get("argument_debugging"))
-                .mapTry(Boolean::parseBoolean)
-                .recover(e -> false)
-                .get();
 
         final Try<HttpRequestInitializer> token = Try
                 // Start assuming an encrypted access token was sent from the browser
@@ -181,11 +172,11 @@ public class GoogleDocs implements Tool {
                         document, parsedArgs.keywords(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
                 .map(document -> getDocumentContext(document, parsedArgs.documentId()))
                 .map(doc -> doc.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(customModel)
+                        .getPromptBuilder(parsedArgs.customModel())
                         .buildContextPrompt("Google Document " + parsedArgs.documentId(), doc.document())))
                 .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(customModel)
+                        .getPromptBuilder(parsedArgs.customModel())
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 // I've opted to get the end of the document if it is larger than the context window.
@@ -193,7 +184,7 @@ public class GoogleDocs implements Tool {
                                 // document being processed should place the most relevant content twoards the end.
                                 ragContext.getDocumentRight(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, customModel));
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -297,14 +288,19 @@ public class GoogleDocs implements Tool {
      * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
      * the various inputs to the tool.
      */
-    record Arguments(String documentId, List<String> keywords) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor, final SanitizeArgument sanitizeList, final String prompt) {
+    record Arguments(String documentId, List<String> keywords, String customModel) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, ValidateString validateString, final SanitizeArgument sanitizeList, final String prompt, final String model) {
             final String documentId = argsAccessor.getArgument(arguments, "documentId", "");
             final List<String> keywords = List.of(sanitizeList.sanitize(
                     argsAccessor.getArgument(arguments, "keywords", ""),
                     prompt).split(","));
 
-            return new Arguments(documentId, keywords);
+            final String customModel = Try.of(() -> context.get("custom_model"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> model)
+                    .get();
+
+            return new Arguments(documentId, keywords, customModel);
         }
     }
 }
