@@ -12,7 +12,6 @@ import io.vavr.Tuple;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -30,7 +29,6 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -175,7 +173,7 @@ public class SlackChannel implements Tool {
                                 ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
                 .map(ragDoc -> new RagMultiDocumentContext<>(ragDoc.document(), List.of(ragDoc)))
-                .map(this::callOllama);
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -218,16 +216,6 @@ public class SlackChannel implements Tool {
                 .map(Message::getText)
                 .reduce("", (a, b) -> a + "\n" + b);
     }
-
-
-    private RagMultiDocumentContext<Void> callOllama(final RagMultiDocumentContext<Void> ragDoc) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
-                        client,
-                        new OllamaGenerateBodyWithContext<>(model, ragDoc, false)))
-                .get();
-    }
-
 
     private Try<ChannelDetails> findChannelId(
             final MethodsClient client,

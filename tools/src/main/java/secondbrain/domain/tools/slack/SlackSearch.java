@@ -6,7 +6,6 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -24,7 +23,6 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -138,7 +136,7 @@ public class SlackSearch implements Tool {
                                 INSTRUCTIONS,
                                 ragContext.combinedDocument(),
                                 prompt)))
-                .map(this::callOllama);
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -146,14 +144,6 @@ public class SlackSearch implements Tool {
                 .mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
 
-    }
-
-    private RagMultiDocumentContext<MatchedItem> callOllama(final RagMultiDocumentContext<MatchedItem> ragDoc) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
-                        client,
-                        new OllamaGenerateBodyWithContext<>(model, ragDoc, false)))
-                .get();
     }
 
     private RagDocumentContext<MatchedItem> getDocumentContext(final MatchedItem meta) {

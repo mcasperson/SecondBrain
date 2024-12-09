@@ -14,7 +14,6 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -37,7 +36,6 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -198,7 +196,7 @@ public class GoogleDocs implements Tool {
                                 // document being processed should place the most relevant content twoards the end.
                                 ragContext.getDocumentRight(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
-                .map(llmPrompt -> callOllama(llmPrompt, customModel));
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, customModel));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -296,13 +294,5 @@ public class GoogleDocs implements Tool {
 
     private String textRunToString(final TextRun textRun) {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
-    }
-
-    private RagMultiDocumentContext<Void> callOllama(final RagMultiDocumentContext<Void> ragDoc, final String customModel) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
-                        client,
-                        new OllamaGenerateBodyWithContext<>(customModel, ragDoc, false)))
-                .get();
     }
 }

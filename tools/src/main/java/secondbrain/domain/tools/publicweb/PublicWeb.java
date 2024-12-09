@@ -16,14 +16,12 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
-import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 import secondbrain.infrastructure.publicweb.PublicWebClient;
 
 import java.util.List;
@@ -72,9 +70,6 @@ public class PublicWeb implements Tool {
     @Inject
     private OllamaClient ollamaClient;
 
-    @Inject
-    private DebugToolArgs debugToolArgs;
-
     @Override
     public String getName() {
         return PublicWeb.class.getSimpleName();
@@ -118,7 +113,7 @@ public class PublicWeb implements Tool {
                                 INSTRUCTIONS,
                                 ragContext.combinedDocument(),
                                 prompt)))
-                .map(this::callOllama);
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -135,14 +130,6 @@ public class PublicWeb implements Tool {
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext<>(document, List.of()))
-                .get();
-    }
-
-    private RagMultiDocumentContext<Void> callOllama(final RagMultiDocumentContext<Void> ragDoc) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
-                        client,
-                        new OllamaGenerateBodyWithContext<>(model, ragDoc, false)))
                 .get();
     }
 }

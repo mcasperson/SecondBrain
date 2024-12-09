@@ -5,7 +5,6 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -21,7 +20,6 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.util.List;
 import java.util.Map;
@@ -105,7 +103,7 @@ public class UploadedDoc implements Tool {
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
-                .map(this::callOllama);
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -121,14 +119,6 @@ public class UploadedDoc implements Tool {
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext<>(document, List.of()))
-                .get();
-    }
-
-    private RagMultiDocumentContext<Void> callOllama(final RagMultiDocumentContext<Void> ragDoc) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
-                        client,
-                        new OllamaGenerateBodyWithContext<>(model, ragDoc, false)))
                 .get();
     }
 }

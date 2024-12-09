@@ -31,7 +31,6 @@ import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 import secondbrain.infrastructure.zendesk.*;
 
 import java.time.OffsetDateTime;
@@ -292,9 +291,7 @@ public class ZenDeskOrganization implements Tool {
                                         .getPromptBuilder(customModel)
                                         .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
                         // Call Ollama with the final prompt
-                        .map(llmPrompt -> ollamaClient.getTools(
-                                client,
-                                new OllamaGenerateBodyWithContext<>(customModel, llmPrompt, false)))
+                        .map(ragDoc -> ollamaClient.callOllama(ragDoc, model))
                         // Clean up the response
                         .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())))
                         // Return the Try result

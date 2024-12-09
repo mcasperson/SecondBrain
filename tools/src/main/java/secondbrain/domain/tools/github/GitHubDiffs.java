@@ -32,7 +32,6 @@ import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.GitHubCommitResponse;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -240,7 +239,7 @@ public class GitHubDiffs implements Tool {
                                 INSTRUCTIONS,
                                 promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("Git Diffs", ragContext.combinedDocument()),
                                 prompt)))
-                .map(llmPrompt -> callOllama(llmPrompt, customModel));
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, customModel));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -335,15 +334,6 @@ public class GitHubDiffs implements Tool {
                 .of(client -> gitHubClient.getCommits(client, owner, repo, branch, until, since, authorization))
                 .get();
     }
-
-    private RagMultiDocumentContext<GitHubCommitResponse> callOllama(final RagMultiDocumentContext<GitHubCommitResponse> llmPrompt, final String customModel) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
-                        client,
-                        new OllamaGenerateBodyWithContext<>(customModel, llmPrompt, false)))
-                .get();
-    }
-
 
     private String getCommitDiff(
             final String owner,
