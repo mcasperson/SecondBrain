@@ -16,10 +16,8 @@ public class DebugToolArgsKeyValue implements DebugToolArgs {
     @Override
     public String debugArgs(final List<ToolArgs> args) {
 
-        final String debug = args.stream()
+        return args.stream()
                 .map(arg -> "* " + arg.argName() + ": " + arg.argValue())
                 .collect(Collectors.joining(System.lineSeparator()));
-
-        return debug;
     }
 }
