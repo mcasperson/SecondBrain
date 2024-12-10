@@ -147,7 +147,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 
     @Override
     public List<ToolArguments> getArguments() {
-        return List.of(new ToolArguments("organization", "An optional name of the organization", ""),
+        return List.of(new ToolArguments("zenDeskOrganization", "An optional name of the organization", ""),
                 new ToolArguments("excludeOrganization", "An optional comma separated list of organizations to exclude", ""),
                 new ToolArguments("excludeSubmitters", "An optional comma separated list of submitters to exclude", ""),
                 new ToolArguments("recipient", "An optional recipient email address that tickets must be sent to", ""),
@@ -412,7 +412,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor, Map<String, String> context, ValidateInputs validateInputs, ValidateString validateString, SanitizeArgument sanitizeOrganization, SanitizeArgument sanitizeEmail, Encryptor textEncryptor, String prompt, Optional<String> zenDeskAccessToken, Optional<String> zenDeskUrl, Optional<String> zenDeskUser, Optional<String> zenExcludedOrgs, String model) {
             final String owner = validateInputs.getCommaSeparatedList(
                     prompt,
-                    argsAccessor.getArgument(arguments, "organization", ""));
+                    argsAccessor.getArgument(arguments, "zenDeskOrganization", ""));
 
             final List<String> excludedOwner = Arrays.stream(validateInputs.getCommaSeparatedList(
                             prompt,
