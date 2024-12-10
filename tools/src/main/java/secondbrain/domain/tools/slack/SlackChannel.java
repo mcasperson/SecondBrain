@@ -159,9 +159,7 @@ public class SlackChannel implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
-
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(
                         ragDoc.stream()
                                 .map(document -> promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Message", document.document()))
@@ -199,7 +197,7 @@ public class SlackChannel implements Tool<Void> {
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList()),
-                        null,
+                        channelDetails.channelId(),
                         null,
                         matchToUrl(channelDetails)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
