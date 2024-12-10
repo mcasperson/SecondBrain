@@ -207,14 +207,14 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 model,
                 prompt);
 
-        final String debugArgs = debugToolArgs.debugArgs(arguments, true, parsedArgs.argumentDebugging());
+        final String debugArgs = debugToolArgs.debugArgs(arguments);
 
         final Try<RagMultiDocumentContext<GitHubCommitResponse>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
                         NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
-                .map(this::mergeContext)
+                .map(ragDocs -> mergeContext(ragDocs, debugArgs))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
@@ -229,9 +229,9 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new FailedTool("No diffs found for " + parsedArgs.owner() + "/" + parsedArgs.repo() + " between " + parsedArgs.startDate() + " and " + parsedArgs.endDate() + debugArgs)),
+                                throwable -> new FailedTool("No diffs found for " + parsedArgs.owner() + "/" + parsedArgs.repo() + " between " + parsedArgs.startDate() + " and " + parsedArgs.endDate() + "\n" + debugArgs)),
                         API.Case(API.$(),
-                                throwable -> new FailedTool("Failed to get diffs: " + throwable.getMessage() + debugArgs)))
+                                throwable -> new FailedTool("Failed to get diffs: " + throwable.getMessage() + "\n" + debugArgs)))
                 .get();
     }
 
@@ -239,12 +239,13 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
         return "Git Diff";
     }
 
-    private RagMultiDocumentContext<GitHubCommitResponse> mergeContext(final List<RagDocumentContext<GitHubCommitResponse>> context) {
+    private RagMultiDocumentContext<GitHubCommitResponse> mergeContext(final List<RagDocumentContext<GitHubCommitResponse>> context, final String debug) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(RagDocumentContext::document)
                         .collect(Collectors.joining("\n")),
-                context);
+                context,
+                debug);
     }
 
     private List<RagDocumentContext<GitHubCommitResponse>> convertCommitsToDiffSummaries(
@@ -329,7 +330,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
      * the various inputs to the tool.
      */
     record Arguments(int days, int maxDiffs, String startDate, String endDate, String owner, String repo,
-                     String branch, String token, String customModel, boolean argumentDebugging) {
+                     String branch, String token, String customModel) {
         public static Arguments fromToolArgs(List<ToolArgs> arguments, Map<String, String> context, ArgsAccessor argsAccessor, SanitizeArgument dateSanitizer, Encryptor textEncryptor, ValidateString validateString, Optional<String> githubAccessToken, String model, String prompt) {
             final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
                     .recover(throwable -> DEFAULT_DURATION)
@@ -361,13 +362,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                     .recover(e -> model)
                     .get();
 
-            final boolean argumentDebugging = Try.of(() -> context.get("argument_debugging"))
-                    .mapTry(Boolean::parseBoolean)
-                    .recover(e -> false)
-                    .get();
-
-
-            return new Arguments(days, maxDiffs, startDate, endDate, owner, repo, branch, token, customModel, argumentDebugging);
+            return new Arguments(days, maxDiffs, startDate, endDate, owner, repo, branch, token, customModel);
         }
     }
 }

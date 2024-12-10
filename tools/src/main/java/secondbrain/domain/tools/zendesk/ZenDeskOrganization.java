@@ -229,7 +229,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 zenExcludedOrgs,
                 model);
 
-        final String debugArgs = debugToolArgs.debugArgs(arguments, true, parsedArgs.argumentDebugging());
+        final String debugArgs = debugToolArgs.debugArgs(arguments);
 
         final Try<RagMultiDocumentContext<ZenDeskResultsResponse>> result = Try.of(() -> getContext(context, prompt, arguments))
                 // Limit the list to just those that fit in the context
@@ -238,7 +238,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                         RagDocumentContext::document,
                         NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                .map(tickets -> mergeContext(tickets, parsedArgs.customModel()))
+                .map(tickets -> mergeContext(tickets, debugArgs, parsedArgs.customModel()))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
@@ -290,13 +290,14 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         return url + "/agent/tickets/" + id;
     }
 
-    private RagMultiDocumentContext<ZenDeskResultsResponse> mergeContext(final List<RagDocumentContext<ZenDeskResultsResponse>> context, final String customModel) {
+    private RagMultiDocumentContext<ZenDeskResultsResponse> mergeContext(final List<RagDocumentContext<ZenDeskResultsResponse>> context, final String debug, final String customModel) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(RagDocumentContext::document)
                         .map(content -> promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("ZenDesk Ticket", content))
                         .collect(Collectors.joining("\n")),
-                context);
+                context,
+                debug);
     }
 
 
@@ -408,8 +409,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                      List<String> excludedSubmitters,
                      int hours,
                      int days, int numComments, String token, String url, String user, String customModel,
-                     String startDate,
-                     boolean argumentDebugging) {
+                     String startDate) {
         public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor, Map<String, String> context, ValidateInputs validateInputs, ValidateString validateString, SanitizeArgument sanitizeOrganization, SanitizeArgument sanitizeEmail, Encryptor textEncryptor, String prompt, Optional<String> zenDeskAccessToken, Optional<String> zenDeskUrl, Optional<String> zenDeskUser, Optional<String> zenExcludedOrgs, String model) {
             final String organization = validateInputs.getCommaSeparatedList(
                     prompt,
@@ -487,11 +487,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                     .recover(e -> model)
                     .get();
 
-            final boolean argumentDebugging = Try.of(() -> context.get("argument_debugging"))
-                    .mapTry(Boolean::parseBoolean)
-                    .recover(e -> false)
-                    .get();
-
             final String startDate = OffsetDateTime.now(ZoneId.systemDefault())
                     .truncatedTo(ChronoUnit.SECONDS)
                     // Assume one day if nothing was specified
@@ -499,7 +494,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                     .minusHours(fixedHours)
                     .format(ISO_OFFSET_DATE_TIME);
 
-            return new Arguments(fixedOrganization, excludedOrganization, fixedRecipient, exclude, fixedHours, fixedDays, numComments, token.get(), url.get(), user.get(), customModel, startDate, argumentDebugging);
+            return new Arguments(fixedOrganization, excludedOrganization, fixedRecipient, exclude, fixedHours, fixedDays, numComments, token.get(), url.get(), user.get(), customModel, startDate);
         }
 
         private static int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {

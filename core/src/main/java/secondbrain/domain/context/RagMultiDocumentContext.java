@@ -12,11 +12,18 @@ import java.util.stream.Collectors;
  *
  * @param combinedDocument   The combined context to be sent to the LLM
  * @param individualContexts The individual documents that all contribute to the combined context
+ * @param debug              General debug information
  */
-public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocumentContext<T>> individualContexts) {
+public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocumentContext<T>> individualContexts,
+                                         String debug) {
     public RagMultiDocumentContext(final String combinedDocument) {
-        this(combinedDocument, List.of());
+        this(combinedDocument, List.of(), null);
     }
+
+    public RagMultiDocumentContext(final String combinedDocument, List<RagDocumentContext<T>> individualContexts) {
+        this(combinedDocument, individualContexts, null);
+    }
+
 
     public List<String> getIds() {
         return individualContexts.stream().map(RagDocumentContext::id).toList();
@@ -38,7 +45,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
      * @return A new copy of this object with the new document
      */
     public RagMultiDocumentContext<T> updateDocument(final String document) {
-        return new RagMultiDocumentContext<T>(document, individualContexts);
+        return new RagMultiDocumentContext<T>(document, individualContexts, debug);
     }
 
     public String getDocumentLeft(final int length) {

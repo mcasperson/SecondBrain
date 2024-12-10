@@ -4,9 +4,11 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.ProcessingException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.context.SimilarityCalculator;
@@ -33,6 +35,10 @@ public class PromptHandlerOllama implements PromptHandler {
     @Inject
     @ConfigProperty(name = "sb.annotation.minwords", defaultValue = "10")
     String minWords;
+
+    @Inject
+    @ConfigProperty(name = "sb.tools.debug", defaultValue = "false")
+    String debug;
 
     @Inject
     private SimilarityCalculator similarityCalculator;
@@ -92,6 +98,11 @@ public class PromptHandlerOllama implements PromptHandler {
                 .recover(throwable -> 10)
                 .get();
 
+        final boolean argumentDebugging = Try.of(() -> context.get("argument_debugging"))
+                .mapTry(Boolean::parseBoolean)
+                .recover(e -> false)
+                .get();
+
         /*
             The tools respond with a RagMultiDocumentContext, which contains the text response from the LLM
             and the context that was used to build the prompt, including things like IDs of the context items,
@@ -107,14 +118,32 @@ public class PromptHandlerOllama implements PromptHandler {
                         sentenceSplitter,
                         similarityCalculator,
                         sentenceVectorizer).result() +
-                        System.lineSeparator() + System.lineSeparator() +
-                        "Links:" + System.lineSeparator() +
-                        document.getLinks()
-                                .stream()
-                                .filter(Objects::nonNull)
-                                .map(link -> "* " + link)
-                                .reduce("", (a, b) -> a + System.lineSeparator() + b))
+                        getLinks(document) +
+                        getDebugLinks(document, Boolean.getBoolean(debug) || argumentDebugging))
                 .recover(FailedTool.class, Throwable::getMessage)
                 .get();
+    }
+
+    private String getLinks(final RagMultiDocumentContext<?> document) {
+        if (document.getLinks().isEmpty()) {
+            return "";
+        }
+
+        return System.lineSeparator() + System.lineSeparator() +
+                "Links:" + System.lineSeparator() +
+                document.getLinks()
+                        .stream()
+                        .filter(Objects::nonNull)
+                        .map(link -> "* " + link)
+                        .reduce("", (a, b) -> a + System.lineSeparator() + b);
+    }
+
+    private String getDebugLinks(final RagMultiDocumentContext<?> document, final boolean argumentDebugging) {
+        if (!argumentDebugging || StringUtils.isBlank(document.debug())) {
+            return "";
+        }
+
+        return System.lineSeparator() + System.lineSeparator() +
+                "Debug:" + System.lineSeparator() + document.debug();
     }
 }

@@ -57,7 +57,7 @@ public class OllamaClient {
 
     public <T> RagMultiDocumentContext<T> callOllama(final Client client, final OllamaGenerateBodyWithContext<T> body) {
         final OllamaResponse response = callOllama(client, new OllamaGenerateBody(body.model(), body.prompt().combinedDocument(), body.stream()));
-        return new RagMultiDocumentContext<>(response.response(), body.prompt().individualContexts());
+        return body.prompt().updateDocument(response.response());
     }
 
     public <T> RagMultiDocumentContext<T> callOllama(final RagMultiDocumentContext<T> ragDoc, final String model) {
