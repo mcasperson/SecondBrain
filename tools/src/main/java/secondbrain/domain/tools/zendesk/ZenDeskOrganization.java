@@ -185,14 +185,14 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         query.add("type:ticket");
         query.add("created>" + parsedArgs.startDate());
 
-        if (!StringUtils.isBlank(parsedArgs.owner())) {
-            query.add("organization:" + parsedArgs.owner());
+        if (!StringUtils.isBlank(parsedArgs.organization())) {
+            query.add("organization:" + parsedArgs.organization());
         }
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, parsedArgs.url(), String.join(" ", query)))
                         // Filter out any tickets based on the submitter and assignee
-                        .map(response -> filterResponse(response, true, parsedArgs.excludedSubmitters(), parsedArgs.excludedOwner(), parsedArgs.recipient()))
+                        .map(response -> filterResponse(response, true, parsedArgs.excludedSubmitters(), parsedArgs.excludedOrganization(), parsedArgs.recipient()))
                         // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
                         .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
@@ -256,7 +256,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new FailedTool("No tickets found after " + parsedArgs.startDate() + " for organization '" + parsedArgs.owner() + "'" + debugArgs)),
+                                throwable -> new FailedTool("No tickets found after " + parsedArgs.startDate() + " for organization '" + parsedArgs.organization() + "'" + debugArgs)),
                         API.Case(API.$(),
                                 throwable -> new FailedTool("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
                 .get();
@@ -404,30 +404,31 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
      * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
      * the various inputs to the tool.
      */
-    record Arguments(String owner, List<String> excludedOwner, String recipient, List<String> excludedSubmitters,
+    record Arguments(String organization, List<String> excludedOrganization, String recipient,
+                     List<String> excludedSubmitters,
                      int hours,
                      int days, int numComments, String token, String url, String user, String customModel,
                      String startDate,
                      boolean argumentDebugging) {
         public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor, Map<String, String> context, ValidateInputs validateInputs, ValidateString validateString, SanitizeArgument sanitizeOrganization, SanitizeArgument sanitizeEmail, Encryptor textEncryptor, String prompt, Optional<String> zenDeskAccessToken, Optional<String> zenDeskUrl, Optional<String> zenDeskUser, Optional<String> zenExcludedOrgs, String model) {
-            final String owner = validateInputs.getCommaSeparatedList(
+            final String organization = validateInputs.getCommaSeparatedList(
                     prompt,
                     argsAccessor.getArgument(arguments, "zenDeskOrganization", ""));
 
-            final List<String> excludedOwner = Arrays.stream(validateInputs.getCommaSeparatedList(
+            final List<String> excludedOrganization = Arrays.stream(validateInputs.getCommaSeparatedList(
                             prompt,
                             argsAccessor.getArgument(arguments, "excludeOrganization", "")).split(","))
                     .map(String::trim)
                     .filter(StringUtils::isNotBlank)
                     .collect(Collectors.toList());
 
-            excludedOwner.addAll(Arrays.stream(zenExcludedOrgs.orElse("").split(",")).toList());
+            excludedOrganization.addAll(Arrays.stream(zenExcludedOrgs.orElse("").split(",")).toList());
 
             final String recipient = argsAccessor.getArgument(arguments, "recipient", "");
 
             // These arguments get swapped by the LLM all the time, so we need to fix them
-            final String fixedRecipient = sanitizeEmail.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner, prompt)) && StringUtils.isBlank(recipient) ? owner : recipient, prompt);
-            final String fixedOwner = sanitizeOrganization.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(owner, prompt)) && StringUtils.isBlank(recipient) ? "" : owner, prompt);
+            final String fixedRecipient = sanitizeEmail.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(organization, prompt)) && StringUtils.isBlank(recipient) ? organization : recipient, prompt);
+            final String fixedOrganization = sanitizeOrganization.sanitize(EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(organization, prompt)) && StringUtils.isBlank(recipient) ? "" : organization, prompt);
 
             final List<String> exclude = Arrays.stream(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","))
                     .map(String::trim)
@@ -498,7 +499,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                     .minusHours(fixedHours)
                     .format(ISO_OFFSET_DATE_TIME);
 
-            return new Arguments(fixedOwner, excludedOwner, fixedRecipient, exclude, fixedHours, fixedDays, numComments, token.get(), url.get(), user.get(), customModel, startDate, argumentDebugging);
+            return new Arguments(fixedOrganization, excludedOrganization, fixedRecipient, exclude, fixedHours, fixedDays, numComments, token.get(), url.get(), user.get(), customModel, startDate, argumentDebugging);
         }
 
         private static int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {
