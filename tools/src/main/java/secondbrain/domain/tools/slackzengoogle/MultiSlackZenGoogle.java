@@ -163,7 +163,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("slackChannel", id), new ToolArgs("days", "" + days)))
-                .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt, args))
+                // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
+                .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt + "\nOrganization is " + args.getFirst().argValue(), args))
                         .getOrElse(List::of)
                         .stream())
                 .toList();
