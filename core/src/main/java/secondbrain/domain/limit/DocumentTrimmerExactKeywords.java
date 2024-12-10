@@ -124,8 +124,10 @@ record KeywordPositions(String keyword, List<Integer> positions) {
     List<Section> toSections(final int width, final int documentLength) {
         return positions.stream()
                 .map(position -> new Section(
-                        Math.max(0, position - width / 2),
-                        Math.min(position + width / 2, documentLength),
+                        // Look back 25% of the width
+                        Math.max(0, position - (int) (width * 0.25)),
+                        // look forward 75% of the width. This assumes most of the content associated with a keyword is after the keyword
+                        Math.min(position + (int) (width * 0.75), documentLength),
                         Set.of(keyword)))
                 .toList();
     }

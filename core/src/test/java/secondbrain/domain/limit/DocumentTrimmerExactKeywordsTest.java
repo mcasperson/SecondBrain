@@ -15,7 +15,7 @@ class DocumentTrimmerExactKeywordsTest {
         String document = "This is a test document. It contains several keywords. This is another sentence with keywords.";
         List<String> keywords = List.of("test", "keywords");
 
-        String expected = "This is a test docum s several keywords. ence with keywords.";
+        String expected = "is a test document. eral keywords. This with keywords.";
         String result = sectioner.trimDocument(document, keywords, 20);
 
         assertEquals(expected, result);
@@ -27,7 +27,7 @@ class DocumentTrimmerExactKeywordsTest {
         String document = "This is a test keywords document. It contains several test keywords. This is another sentence with keywords.";
         List<String> keywords = List.of("test", "keywords");
 
-        String expected = "This is a test keywords d s several test keywords. ence with keywords.";
+        String expected = "is a test keywords docume eral test keywords. This with keywords.";
         String result = sectioner.trimDocument(document, keywords, 20);
 
         assertEquals(expected, result);
