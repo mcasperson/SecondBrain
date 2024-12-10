@@ -15,6 +15,7 @@ import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -110,6 +111,7 @@ public class PromptHandlerOllama implements PromptHandler {
                         "Links:" + System.lineSeparator() +
                         document.getLinks()
                                 .stream()
+                                .filter(Objects::nonNull)
                                 .map(link -> "* " + link)
                                 .reduce("", (a, b) -> a + System.lineSeparator() + b))
                 .recover(FailedTool.class, Throwable::getMessage)

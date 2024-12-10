@@ -99,7 +99,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         final List<String> output = new ArrayList<>();
         for (int i = 0; i < lookups.size(); i++) {
             RagSentence lookup = lookups.get(i);
-            output.add("* [" + (i + 1) + "]: " + lookup.sentence() + " (" + lookup.id() + ")");
+            output.add("* [" + (i + 1) + "]: " + lookup.sentence() + (StringUtils.isBlank(lookup.id()) ? "" : " (" + lookup.id() + ")"));
         }
         return String.join(System.lineSeparator(), output);
     }
