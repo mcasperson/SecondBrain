@@ -120,7 +120,12 @@ public class SlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> zenContext = StringUtils.isBlank(parsedArgs.zenDeskOrganization())
                 ? List.of() : zenDeskOrganization.getContext(context, prompt, zenArguments)
                 .stream()
-                .map(zen -> new RagDocumentContext<Void>(zen.document(), zen.sentences()))
+                .map(zen -> new RagDocumentContext<Void>(
+                        zen.document(),
+                        zen.sentences(),
+                        zen.id(),
+                        null,   // Drop the meta to support the RagDocumentContext<Void> type
+                        zen.link()))
                 .collect(ImmutableList.toImmutableList());
 
 
