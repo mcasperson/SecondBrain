@@ -51,6 +51,10 @@ public record RagDocumentContext<T>(String document, List<RagStringContext> sent
         return new RagDocumentContext<>(document, sentences, id, meta, link);
     }
 
+    public RagDocumentContext<Void> getRagDocumentContextVoid() {
+        return new RagDocumentContext<>(document, sentences, id, null, link);
+    }
+
     /**
      * Given a vector, find the closest sentence in the list of sentences.
      *
