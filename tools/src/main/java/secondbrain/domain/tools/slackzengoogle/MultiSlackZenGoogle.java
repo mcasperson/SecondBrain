@@ -6,6 +6,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
@@ -160,6 +161,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private List<RagDocumentContext<Void>> getEntityContext(final Entity entity, final Map<String, String> context, final String prompt, final int days) {
         final List<RagDocumentContext<Void>> slackContext = entity.slack()
                 .stream()
+                .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("slackChannel", id), new ToolArgs("days", "" + days)))
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt, args))
                         .getOrElse(List::of)
@@ -168,6 +170,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> googleContext = entity.googledocs()
                 .stream()
+                .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("googleDocumentId", id)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(context, prompt, args))
                         .getOrElse(List::of)
@@ -176,6 +179,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> zenContext = entity.zendesk()
                 .stream()
+                .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("zenDeskOrganization", id), new ToolArgs("days", "" + days)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context, prompt, args))
                         .getOrElse(List::of)
