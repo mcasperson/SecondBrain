@@ -288,7 +288,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
      */
     private String getDiffSummary(final String diff, final String customModel) {
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
+                .of(client -> ollamaClient.callOllama(
                         client,
                         new OllamaGenerateBody(
                                 diffModel.orElse(customModel),

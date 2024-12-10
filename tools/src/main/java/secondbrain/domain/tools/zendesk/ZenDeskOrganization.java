@@ -340,7 +340,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .buildFinalPrompt("You are a helpful agent", context, "Summarise the ticket in one paragraph");
 
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
+                .of(client -> ollamaClient.callOllama(
                                 client,
                                 new OllamaGenerateBody(
                                         customModel,

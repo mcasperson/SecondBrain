@@ -85,7 +85,7 @@ public class ToolSelector {
     private OllamaResponse callOllama(final String llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client ->
-                        ollamaClient.getTools(
+                        ollamaClient.callOllama(
                                 client,
                                 new OllamaGenerateBody(toolModel.get(), llmPrompt, false)))
                 .get();
