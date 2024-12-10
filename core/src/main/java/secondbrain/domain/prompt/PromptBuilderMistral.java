@@ -1,6 +1,7 @@
 package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * See <a href="https://ollama.com/library/mistral">mistral</a> for
@@ -18,6 +19,12 @@ public class PromptBuilderMistral implements PromptBuilder {
 
     @Override
     public String buildContextPrompt(final String title, final String prompt) {
+        if (StringUtils.isBlank(title)) {
+            return "---------------------\n"
+                    + prompt + "\n"
+                    + "---------------------";
+        }
+
         return "---------------------\n"
                 + title + ":\n"
                 + prompt + "\n"

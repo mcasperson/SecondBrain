@@ -209,9 +209,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
 
         final String debugArgs = debugToolArgs.debugArgs(arguments, true, parsedArgs.argumentDebugging());
 
-        final List<RagDocumentContext<GitHubCommitResponse>> ragContext = getContext(context, prompt, arguments);
-
-        final Try<RagMultiDocumentContext<GitHubCommitResponse>> result = Try.of(() -> ragContext)
+        final Try<RagMultiDocumentContext<GitHubCommitResponse>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,

@@ -229,11 +229,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 zenExcludedOrgs,
                 model);
 
-        final List<RagDocumentContext<ZenDeskResultsResponse>> contextList = getContext(context, prompt, arguments);
-
         final String debugArgs = debugToolArgs.debugArgs(arguments, true, parsedArgs.argumentDebugging());
 
-        final Try<RagMultiDocumentContext<ZenDeskResultsResponse>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<ZenDeskResultsResponse>> result = Try.of(() -> getContext(context, prompt, arguments))
                 // Limit the list to just those that fit in the context
                 .map(list -> listLimiter.limitListContent(
                         list,

@@ -122,7 +122,7 @@ public class GoogleDocs implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("documentId", "The ID of the Google Docs document to use.", ""),
+                new ToolArguments("googleDocumentId", "The ID of the Google Docs document to use.", ""),
                 new ToolArguments("keywords", "An optional list of keywords used to trim the document", "")
         );
     }
@@ -181,9 +181,7 @@ public class GoogleDocs implements Tool<Void> {
     public RagMultiDocumentContext<Void> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
         final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model);
 
-        final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
-
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> mergeContext(ragDoc, parsedArgs.customModel()))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(parsedArgs.customModel())
@@ -312,7 +310,7 @@ public class GoogleDocs implements Tool<Void> {
      */
     record Arguments(String documentId, List<String> keywords, String customModel) {
         public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, ValidateString validateString, final SanitizeArgument sanitizeList, final String prompt, final String model) {
-            final String documentId = argsAccessor.getArgument(arguments, "documentId", "");
+            final String documentId = argsAccessor.getArgument(arguments, "googleDocumentId", "");
             final List<String> keywords = List.of(sanitizeList.sanitize(
                     argsAccessor.getArgument(arguments, "keywords", ""),
                     prompt).split(","));

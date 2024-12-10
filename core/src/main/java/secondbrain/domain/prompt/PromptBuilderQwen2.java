@@ -1,6 +1,7 @@
 package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * See <a href="https://ollama.com/library/qwen2/blobs/62fbfd9ed093">qwen2</a>
@@ -16,6 +17,12 @@ public class PromptBuilderQwen2 implements PromptBuilder {
 
     @Override
     public String buildContextPrompt(final String title, final String prompt) {
+        if (StringUtils.isBlank(title)) {
+            return "---------------------\n"
+                    + prompt + "\n"
+                    + "---------------------";
+        }
+
         return "---------------------\n"
                 + title + ":\n"
                 + prompt + "\n"

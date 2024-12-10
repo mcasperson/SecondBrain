@@ -3,7 +3,7 @@ package secondbrain.domain.tools.uploadeddoc;
 import com.google.common.collect.ImmutableList;
 import io.vavr.API;
 import io.vavr.control.Try;
-import jakarta.enterprise.context.Dependent;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 /**
  * A tool that downloads a public file from HTTP and uses it as the context for a query.
  */
-@Dependent
+@ApplicationScoped
 public class UploadedDoc implements Tool<Void> {
 
     private static final String INSTRUCTIONS = """
@@ -96,9 +96,7 @@ public class UploadedDoc implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
-
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> mergeContext(ragDoc, model))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)

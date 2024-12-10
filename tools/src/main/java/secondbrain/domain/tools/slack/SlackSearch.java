@@ -108,7 +108,6 @@ public class SlackSearch implements Tool<MatchedItem> {
                 .getMatches()
                 .stream()
                 .map(this::getDocumentContext)
-                .map(ragDoc -> ragDoc.updateDocument(promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Slack Messages", ragDoc.document())))
                 .toList();
 
     }
@@ -163,7 +162,7 @@ public class SlackSearch implements Tool<MatchedItem> {
     private RagMultiDocumentContext<MatchedItem> mergeContext(final List<RagDocumentContext<MatchedItem>> context) {
         return new RagMultiDocumentContext<>(
                 context.stream()
-                        .map(RagDocumentContext::document)
+                        .map(ragDoc -> promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Slack Messages", ragDoc.document()))
                         .collect(Collectors.joining("\n")),
                 context);
     }

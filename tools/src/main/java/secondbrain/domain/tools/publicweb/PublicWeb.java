@@ -3,7 +3,7 @@ package secondbrain.domain.tools.publicweb;
 import com.google.common.collect.ImmutableList;
 import io.vavr.API;
 import io.vavr.control.Try;
-import jakarta.enterprise.context.Dependent;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 /**
  * A tool that downloads a public file from HTTP and uses it as the context for a query.
  */
-@Dependent
+@ApplicationScoped
 public class PublicWeb implements Tool<Void> {
 
     private static final String INSTRUCTIONS = """

@@ -1,6 +1,7 @@
 package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.commons.lang3.StringUtils;
 
 @ApplicationScoped
 public class PromptBuilderLlama3 implements PromptBuilder {
@@ -16,6 +17,13 @@ public class PromptBuilderLlama3 implements PromptBuilder {
         See https://github.com/meta-llama/llama-recipes/issues/450 for a discussion
         on the preferred format (or lack thereof) for RAG context.
         */
+
+        if (StringUtils.isBlank(title)) {
+            return "<|start_header_id|>system<|end_header_id|>\n"
+                    + prompt
+                    + "\n<|eot_id|>";
+        }
+
         return "<|start_header_id|>system<|end_header_id|>\n"
                 + title + ":\n"
                 + prompt

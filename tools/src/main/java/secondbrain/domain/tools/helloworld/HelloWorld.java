@@ -1,7 +1,7 @@
 package secondbrain.domain.tools.helloworld;
 
 import com.google.common.collect.ImmutableList;
-import jakarta.enterprise.context.Dependent;
+import jakarta.enterprise.context.ApplicationScoped;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.tooldefs.Tool;
@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * A tool that returns a greeting message.
  */
-@Dependent
+@ApplicationScoped
 public class HelloWorld implements Tool<Void> {
     @Override
     public String getName() {

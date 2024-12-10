@@ -96,7 +96,7 @@ public class SlackChannel implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("channel", "The Slack channel to read", "general"),
+                new ToolArguments("slackChannel", "The Slack channel to read", "general"),
                 new ToolArguments("days", "The number of days worth of messages to return", "7")
         );
     }
@@ -164,7 +164,7 @@ public class SlackChannel implements Tool<Void> {
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(
                         ragDoc.stream()
-                                .map(RagDocumentContext::document)
+                                .map(document -> promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Message", document.document()))
                                 .collect(Collectors.joining(System.lineSeparator())),
                         ragDoc))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
@@ -177,8 +177,7 @@ public class SlackChannel implements Tool<Void> {
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
-        return result
-                .mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
+        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
     }
 
@@ -196,7 +195,7 @@ public class SlackChannel implements Tool<Void> {
                 // Strip out any URLs from the sentences
                 .map(sentences -> sentences.stream().map(sentence -> removeMarkdnUrls.sanitize(sentence)).toList())
                 .map(sentences -> new RagDocumentContext<Void>(
-                        promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Message", document),
+                        document,
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList()),
@@ -307,7 +306,7 @@ public class SlackChannel implements Tool<Void> {
      */
     record Arguments(String channel, int days, String accessToken) {
         public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final Encryptor textEncryptor, final Optional<String> slackAccessToken) {
-            final String channel = argsAccessor.getArgument(arguments, "channel", "").trim()
+            final String channel = argsAccessor.getArgument(arguments, "slackChannel", "").trim()
                     .replaceFirst("^#", "");
 
             final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "7")))
