@@ -220,13 +220,17 @@ public class GoogleDocs implements Tool<Void> {
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList()),
+                        documentId,
                         null,
-                        null,
-                        "[Document](https://docs.google.com/document/d/" + documentId + ")"))
+                        idToLink(documentId)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(document, List.of()))
+                .recover(e -> new RagDocumentContext<>(document, List.of(), documentId, null, idToLink(documentId)))
                 .get();
+    }
+
+    private String idToLink(final String documentId) {
+        return "[Document](https://docs.google.com/document/d/" + documentId + ")";
     }
 
     private HttpRequestInitializer getCredentials(final String accessToken, final Date expires) {
