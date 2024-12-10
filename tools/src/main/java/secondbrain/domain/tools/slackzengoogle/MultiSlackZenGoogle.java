@@ -164,7 +164,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("slackChannel", id), new ToolArgs("days", "" + days)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
-                .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt + "\nOrganization is " + args.getFirst().argValue(), args))
+                .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt + "\nChannel is " + args.getFirst().argValue(), args))
                         .getOrElse(List::of)
                         .stream())
                 .toList();
@@ -173,7 +173,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("googleDocumentId", id)))
-                .flatMap(args -> Try.of(() -> googleDocs.getContext(context, prompt, args))
+                .flatMap(args -> Try.of(() -> googleDocs.getContext(context, prompt + "\nDocument ID is " + args.getFirst().argValue(), args))
                         .getOrElse(List::of)
                         .stream())
                 .toList();
@@ -182,7 +182,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("zenDeskOrganization", id), new ToolArgs("days", "" + days)))
-                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context, prompt, args))
+                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context, prompt + "\nOrganization is " + args.getFirst().argValue(), args))
                         .getOrElse(List::of)
                         .stream())
                 .map(RagDocumentContext::getRagDocumentContextVoid)
