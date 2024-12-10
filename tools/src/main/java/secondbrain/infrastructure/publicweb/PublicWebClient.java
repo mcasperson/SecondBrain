@@ -14,8 +14,12 @@ public class PublicWebClient {
 
     @Retry
     public String getDocument(final Client client, final String url) {
+        // See here for the properties
+        // https://cxf.apache.org/docs/client-http-transport-including-ssl-support.html#ClientHTTPTransport(includingSSLsupport)-Theclientelement
+
         return Try.withResources(() -> client.target(url)
                         .request()
+                        .property("client.AutoRedirect", "true")
                         .get())
                 .of(response -> Try.of(() -> responseValidation.validate(response))
                         .map(r -> r.readEntity(String.class))

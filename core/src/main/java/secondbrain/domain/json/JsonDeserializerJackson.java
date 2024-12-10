@@ -1,9 +1,11 @@
 package secondbrain.domain.json;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
+import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import secondbrain.domain.exceptions.DeserializationFailed;
+import secondbrain.domain.exceptions.SerializationFailed;
 
 import java.util.Map;
 
@@ -15,18 +17,21 @@ public class JsonDeserializerJackson implements JsonDeserializer {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
-    public String serialize(final Object object) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(object);
+    public String serialize(final Object object) {
+        return Try.of(() -> objectMapper.writeValueAsString(object))
+                .getOrElseThrow(ex -> new SerializationFailed(ex));
     }
 
     @Override
-    public <T> T deserialize(final String json, final Class<T> clazz) throws JsonProcessingException {
-        return objectMapper.readValue(json, clazz);
+    public <T> T deserialize(final String json, final Class<T> clazz) {
+        return Try.of(() -> objectMapper.readValue(json, clazz))
+                .getOrElseThrow(ex -> new SerializationFailed(ex));
     }
 
     @Override
-    public <U, V> Map<U, V> deserializeMap(final String json, final Class<U> key, final Class<V> value) throws JsonProcessingException {
+    public <U, V> Map<U, V> deserializeMap(final String json, final Class<U> key, final Class<V> value) {
         final MapType type = objectMapper.getTypeFactory().constructMapType(Map.class, key, value);
-        return objectMapper.readValue(json, type);
+        return Try.of(() -> objectMapper.<Map<U, V>>readValue(json, type))
+                .getOrElseThrow(ex -> new DeserializationFailed(ex));
     }
 }

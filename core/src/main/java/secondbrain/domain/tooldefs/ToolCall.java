@@ -13,7 +13,7 @@ import java.util.Objects;
  * @param tool           The tool to call
  * @param toolDefinition The arguments to pass to the tool
  */
-public record ToolCall(Tool tool, ToolDefinition toolDefinition) {
+public record ToolCall(Tool<?> tool, ToolDefinition toolDefinition) {
     public RagMultiDocumentContext<?> call(final Map<String, String> context, final String prompt) {
         return tool.call(context, prompt, Objects.requireNonNullElse(toolDefinition.toolArgs(), List.of()));
     }
