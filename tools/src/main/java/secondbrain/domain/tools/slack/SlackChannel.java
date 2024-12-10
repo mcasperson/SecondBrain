@@ -184,7 +184,7 @@ public class SlackChannel implements Tool<Void> {
         return response.getChannels()
                 .stream()
                 .filter(c -> c.getName().equals(channel))
-                .map(c -> new ChannelDetails(c.getId(), c.getContextTeamId()))
+                .map(c -> new ChannelDetails(channel, c.getId(), c.getContextTeamId()))
                 .findFirst();
     }
 
@@ -197,7 +197,7 @@ public class SlackChannel implements Tool<Void> {
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList()),
-                        channelDetails.channelId(),
+                        channelDetails.channelName(),
                         null,
                         matchToUrl(channelDetails)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
@@ -295,7 +295,7 @@ public class SlackChannel implements Tool<Void> {
     }
 
     private String matchToUrl(final ChannelDetails channel) {
-        return "[Slack Channel](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")";
+        return "[Slack " + channel.channelName() + "](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")";
     }
 
     /**

@@ -1,4 +1,4 @@
 package secondbrain.domain.tools.slack;
 
-public record ChannelDetails(String channelId, String teamId) {
+public record ChannelDetails(String channelName, String channelId, String teamId) {
 }
