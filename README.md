@@ -32,6 +32,11 @@ This prompt is handled like this:
 
 ![Workflow](workflow.png)
 
+Meta-tools call multiple tools and collate the context to be passed to the LLM to generate a response. This allows
+SecondBrain to answer complex questions that require data from multiple sources.
+
+![Meta-Workflow](meta-workflow.png)
+
 ## Technologies used
 
 SecondBrain makes heavy use of Jakarta EE and MicroProfile, executed in a Docker image using Payara Micro.
