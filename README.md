@@ -44,6 +44,8 @@ the LLM. This helps to solve the common problem when using LLMs where you can no
 that it did. By annotating the response with links to the source information, you can quickly verify the answer by
 confirming the source information.
 
+![](annotated-example.png)
+
 Matching the LLMs answer to the source is done by converting sentences to vectors with a model
 like [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2). When sentences in the source and
 the response are close, the source is annotated.
