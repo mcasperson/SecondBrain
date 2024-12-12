@@ -46,6 +46,18 @@ class SimpleSentenceSplitterTest {
     }
 
     @Test
+    void testUrl() {
+        SimpleSentenceSplitter splitter = new SimpleSentenceSplitter();
+
+        String document = "This is a longer sentence with an example filename of url https://blah.com?query. Second sentence";
+        List<String> sentences = splitter.splitDocument(document, 1);
+
+        assertEquals(2, sentences.size());
+        assertTrue(sentences.contains("This is a longer sentence with an example filename of url https://blah.com?query"));
+        assertTrue(sentences.contains("Second sentence"));
+    }
+
+    @Test
     void testSplitDocumentWithListFormatting() {
         SimpleSentenceSplitter splitter = new SimpleSentenceSplitter();
 

@@ -16,7 +16,7 @@ public class SimpleSentenceSplitter implements SentenceSplitter {
             return List.of();
         }
 
-        return Stream.of(document.split("\\r\\n|\\r|\\n|\\.\\s+|\\.$|;|!|\\?"))
+        return Stream.of(document.split("\\r\\n|\\r|\\n|\\.\\s+|\\.$|;\\s+|;|!\\s+|!$|\\?\\s+|\\?$"))
                 .filter(sentence -> !sentence.isBlank())
                 .filter(sentence -> sentence.split("\\s+").length >= minWords)
                 .map(String::trim)
