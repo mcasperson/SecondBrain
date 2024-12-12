@@ -12,6 +12,12 @@ and get a meaningful response against real-time data.
 
 ![Screenshot](screenshot.png)
 
+## Awards
+
+SecondBrain got second place in the Payara Hackathon - Generative AI on Jakarta EE!
+
+![](award.png)
+
 ## How does it work?
 
 An example usage of SecondBrain is a prompt like this:
