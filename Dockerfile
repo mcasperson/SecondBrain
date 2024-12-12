@@ -49,4 +49,4 @@ ENV SB_ZENDESK_ACCESSTOKEN=changeme
 ENV SB_GOOGLE_CLIENTID=changeme
 ENV SB_GOOGLE_CLIENTSECRET=changeme
 ENV SB_GOOGLE_REDIRECTURL=changeme
-CMD ["--deploymentDir", "/opt/payara/deployments", "--port", "8080", "--sslPort", "8181", "--contextroot", "ROOT"]
+CMD ["--deploymentDir", "/opt/payara/deployments", "--nocluster", "--port", "8080", "--sslPort", "8181", "--contextroot", "ROOT"]
