@@ -14,7 +14,7 @@ and get a meaningful response against real-time data.
 
 ## Awards
 
-SecondBrain got second place in the Payara Hackathon - Generative AI on Jakarta EE!
+SecondBrain was awarded second place in the Payara Hackathon - Generative AI on Jakarta EE!
 
 ![](award.png)
 

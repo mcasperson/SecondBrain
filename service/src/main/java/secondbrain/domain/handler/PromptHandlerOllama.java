@@ -8,10 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
-import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
-import secondbrain.domain.context.SimilarityCalculator;
+import secondbrain.domain.context.*;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
@@ -112,14 +109,20 @@ public class PromptHandlerOllama implements PromptHandler {
             links to the context items, and annotations that link the LLM output to the original context.
          */
         return Try.of(() -> toolCall.call(context, prompt))
-                .map(document -> document.annotateDocumentContext(
-                        parsedMinSimilarity,
-                        parsedMinWords,
-                        sentenceSplitter,
-                        similarityCalculator,
-                        sentenceVectorizer).result() +
-                        getLinks(document) +
-                        getDebugLinks(document, Boolean.getBoolean(debug) || argumentDebugging))
+                .map(document -> new PromptResponse(
+                        document.annotateDocumentContext(
+                                parsedMinSimilarity,
+                                parsedMinWords,
+                                sentenceSplitter,
+                                similarityCalculator,
+                                sentenceVectorizer),
+                        getLinks(document),
+                        getDebugLinks(document, Boolean.getBoolean(debug) || argumentDebugging)))
+                .map(response ->
+                        response.annotationResult().result()
+                                + response.links()
+                                + response.debug()
+                                + getAnnotationCoverage(response.annotationResult(), Boolean.getBoolean(debug) || argumentDebugging))
                 .recover(FailedTool.class, Throwable::getMessage)
                 .get();
     }
@@ -145,5 +148,25 @@ public class PromptHandlerOllama implements PromptHandler {
 
         return System.lineSeparator() + System.lineSeparator() +
                 "Debug:" + System.lineSeparator() + document.debug();
+    }
+
+    private String getAnnotationCoverage(AnnotationResult<? extends RagMultiDocumentContext<?>> annotationResult, final boolean argumentDebugging) {
+        if (!argumentDebugging) {
+            return "";
+        }
+
+        return System.lineSeparator() + System.lineSeparator() +
+                "Annotation Coverage:" + annotationResult.annotationCoverage();
+    }
+
+    /**
+     * Captures all the output to display from a tool call
+     *
+     * @param annotationResult The result of annotating the response
+     * @param links            Link to the source content
+     * @param debug            Any debug information
+     */
+    private record PromptResponse(AnnotationResult<? extends RagMultiDocumentContext<?>> annotationResult, String links,
+                                  String debug) {
     }
 }
