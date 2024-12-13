@@ -38,15 +38,15 @@ public class SlackSearch implements Tool<MatchedItem> {
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    String model;
+    private String model;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    String limit;
+    private String limit;
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
-    Optional<String> slackAccessToken;
+    private Optional<String> slackAccessToken;
 
     @Inject
     private Encryptor textEncryptor;

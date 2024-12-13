@@ -13,13 +13,11 @@ public class LinkedIn {
 
     @Inject
     @ConfigProperty(name = "sb.linkedin.clientid")
-    private
-    Optional<String> linkedInClientId;
+    private Optional<String> linkedInClientId;
 
     @Inject
     @ConfigProperty(name = "sb.linkedin.redirectUri")
-    private
-    Optional<String> linkedInRedirectUri;
+    private Optional<String> linkedInRedirectUri;
 
     public String getLinkedInClientId() {
         return linkedInClientId.orElse("");

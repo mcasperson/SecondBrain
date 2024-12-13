@@ -13,8 +13,7 @@ public class Slack {
 
     @Inject
     @ConfigProperty(name = "sb.slack.clientid")
-    private
-    Optional<String> slackClientId;
+    private Optional<String> slackClientId;
 
     public String getSlackClientId() {
         return slackClientId.orElse("");

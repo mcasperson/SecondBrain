@@ -68,27 +68,27 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
-    Optional<String> zenDeskAccessToken;
+    private Optional<String> zenDeskAccessToken;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.user")
-    Optional<String> zenDeskUser;
+    private Optional<String> zenDeskUser;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.url")
-    Optional<String> zenDeskUrl;
+    private Optional<String> zenDeskUrl;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.excludedorgs")
-    Optional<String> zenExcludedOrgs;
+    private Optional<String> zenExcludedOrgs;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    String model;
+    private String model;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    String limit;
+    private String limit;
 
     @Inject
     private Encryptor textEncryptor;

@@ -21,7 +21,7 @@ import static io.vavr.control.Try.of;
 public class OllamaClient {
     @Inject
     @ConfigProperty(name = "sb.ollama.url", defaultValue = "http://localhost:11434")
-    String uri;
+    private String uri;
 
     @Inject
     private ResponseValidation responseValidation;

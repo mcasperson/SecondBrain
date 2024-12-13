@@ -31,7 +31,7 @@ public class ToolSelector {
      */
     @Inject
     @ConfigProperty(name = "sb.ollama.toolmodel", defaultValue = "llama3.2")
-    Optional<String> toolModel;
+    private Optional<String> toolModel;
 
     @Inject
     @Any

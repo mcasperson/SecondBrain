@@ -68,15 +68,15 @@ public class GoogleDocs implements Tool<Void> {
 
     @Inject
     @ConfigProperty(name = "sb.google.serviceaccountjson")
-    Optional<String> googleServiceAccountJson;
+    private Optional<String> googleServiceAccountJson;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    String model;
+    private String model;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    String limit;
+    private String limit;
 
     @Inject
     @Identifier("sanitizeList")

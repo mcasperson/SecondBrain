@@ -78,7 +78,8 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
             """;
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    String model;
+    private String model;
+
     /**
      * Each individual diff can be summarized with its own model. Typically, this model will be
      * smaller than the one used to provide the overall summary of the git diffs. For example,
@@ -87,13 +88,16 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
      */
     @Inject
     @ConfigProperty(name = "sb.ollama.gitdiffmodel")
-    Optional<String> diffModel;
+    private Optional<String> diffModel;
+
     @Inject
     @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    String limit;
+    private String limit;
+
     @Inject
     @ConfigProperty(name = "sb.github.accesstoken")
-    Optional<String> githubAccessToken;
+    private Optional<String> githubAccessToken;
+
     @Inject
     private Encryptor textEncryptor;
     @Inject

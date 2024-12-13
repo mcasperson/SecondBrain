@@ -27,15 +27,15 @@ public class PromptHandlerOllama implements PromptHandler {
 
     @Inject
     @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
+    private String minSimilarity;
 
     @Inject
     @ConfigProperty(name = "sb.annotation.minwords", defaultValue = "10")
-    String minWords;
+    private String minWords;
 
     @Inject
     @ConfigProperty(name = "sb.tools.debug", defaultValue = "false")
-    String debug;
+    private String debug;
 
     @Inject
     private SimilarityCalculator similarityCalculator;

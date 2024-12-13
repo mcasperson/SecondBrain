@@ -28,15 +28,15 @@ import java.util.Optional;
 public class GoogleOauthCallback {
     @Inject
     @ConfigProperty(name = "sb.google.clientid")
-    Optional<String> googleClientId;
+    private Optional<String> googleClientId;
 
     @Inject
     @ConfigProperty(name = "sb.google.clientsecret")
-    Optional<String> googleClientSecret;
+    private Optional<String> googleClientSecret;
 
     @Inject
     @ConfigProperty(name = "sb.google.redirecturl", defaultValue = "https://localhost:8181/api/google_oauth")
-    Optional<String> googleRedirectUrl;
+    private Optional<String> googleRedirectUrl;
 
     @Inject
     private Encryptor textEncryptor;
