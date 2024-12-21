@@ -32,6 +32,19 @@ public class GitHubClient {
     }
 
     @Retry
+    public GitHubCommitResponse getCommit(final Client client, final String owner, final String repo, final String sha, final String authorization) {
+        return Try.withResources(() -> client.target("https://api.github.com/repos/" + owner + "/" + repo + "/commits/" + sha)
+                        .request()
+                        .header("Authorization", authorization)
+                        .header("Accept", MediaType.APPLICATION_JSON)
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response))
+                        .map(r -> r.readEntity(GitHubCommitResponse.class))
+                        .get())
+                .get();
+    }
+
+    @Retry
     public String getDiff(final Client client, final String owner, final String repo, final String sha, final String authorization) {
         return Try.withResources(() -> client.target("https://api.github.com/repos/" + owner + "/" + repo + "/commits/" + sha)
                         .request()

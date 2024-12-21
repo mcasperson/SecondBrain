@@ -99,6 +99,18 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
     private Optional<String> githubAccessToken;
 
     @Inject
+    @ConfigProperty(name = "sb.github.owner")
+    private Optional<String> githubOwner;
+
+    @Inject
+    @ConfigProperty(name = "sb.github.repo")
+    private Optional<String> githubRepo;
+
+    @Inject
+    @ConfigProperty(name = "sb.github.sha")
+    private Optional<String> githubSha;
+
+    @Inject
     private Encryptor textEncryptor;
     @Inject
     private DebugToolArgs debugToolArgs;
@@ -147,6 +159,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 new ToolArguments("owner", "The github owner to check", "mcasperson"),
                 new ToolArguments("repo", "The repository to check", "SecondBrain"),
                 new ToolArguments("branch", "The branch to check", "main"),
+                new ToolArguments("sha", "The git sha to check", ""),
                 new ToolArguments("since", "The optional date to start checking from", startTime),
                 new ToolArguments("until", "The optional date to stop checking at", endTime),
                 new ToolArguments("days", "The optional number of days worth of diffs to return", "0"),
@@ -168,11 +181,27 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 textEncryptor,
                 validateString,
                 githubAccessToken,
+                githubOwner,
+                githubRepo,
+                githubSha,
                 model,
                 prompt);
 
         final String authHeader = "Bearer " + parsedArgs.token();
 
+        // If we have a sha, then we are only interested in a single commit
+        if (!parsedArgs.sha().isEmpty()) {
+            return List.of(getCommitSummary(
+                    Try.withResources(ClientBuilder::newClient)
+                            .of(client -> gitHubClient.getCommit(client, parsedArgs.owner(), parsedArgs.repo(), parsedArgs.sha(), authHeader))
+                            .get(),
+                    parsedArgs.owner(),
+                    parsedArgs.repo(),
+                    authHeader,
+                    parsedArgs.customModel()));
+        }
+
+        // Otherwise, we are interested in a range of commits
         return Try.of(() -> getCommits(
                         parsedArgs.owner(),
                         parsedArgs.repo(),
@@ -208,6 +237,9 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 textEncryptor,
                 validateString,
                 githubAccessToken,
+                githubOwner,
+                githubRepo,
+                githubSha,
                 model,
                 prompt);
 
@@ -334,8 +366,8 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
      * the various inputs to the tool.
      */
     record Arguments(int days, int maxDiffs, String startDate, String endDate, String owner, String repo,
-                     String branch, String token, String customModel) {
-        public static Arguments fromToolArgs(List<ToolArgs> arguments, Map<String, String> context, ArgsAccessor argsAccessor, SanitizeArgument dateSanitizer, Encryptor textEncryptor, ValidateString validateString, Optional<String> githubAccessToken, String model, String prompt) {
+                     String sha, String branch, String token, String customModel) {
+        public static Arguments fromToolArgs(List<ToolArgs> arguments, Map<String, String> context, ArgsAccessor argsAccessor, SanitizeArgument dateSanitizer, Encryptor textEncryptor, ValidateString validateString, Optional<String> githubAccessToken, Optional<String> githubOwner, Optional<String> githubRepo, Optional<String> githubSha, String model, String prompt) {
             final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
                     .recover(throwable -> DEFAULT_DURATION)
                     .map(i -> Math.max(0, i))
@@ -349,8 +381,32 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
 
             final String startDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), prompt, "since", ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).format(FORMATTER));
             final String endDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), prompt, "until", ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER));
-            final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
-            final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
+
+            final String owner = Try.of(githubOwner::get)
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> argsAccessor.getArgument(arguments, "owner", ""))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> context.get("github_owner"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> DEFAULT_OWNER)
+                    .get();
+
+            final String repo = Try.of(githubRepo::get)
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> argsAccessor.getArgument(arguments, "repo", ""))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> context.get("github_repo"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> DEFAULT_REPO)
+                    .get();
+
+            final String sha = Try.of(githubSha::get)
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> argsAccessor.getArgument(arguments, "sha", ""))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> context.get("github_sha"))
+                    .get();
+
             final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
 
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
@@ -366,7 +422,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                     .recover(e -> model)
                     .get();
 
-            return new Arguments(days, maxDiffs, startDate, endDate, owner, repo, branch, token, customModel);
+            return new Arguments(days, maxDiffs, startDate, endDate, owner, repo, sha, branch, token, customModel);
         }
     }
 }

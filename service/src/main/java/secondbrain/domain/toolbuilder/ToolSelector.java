@@ -7,6 +7,7 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.json.JsonDeserializer;
@@ -34,6 +35,10 @@ public class ToolSelector {
     private Optional<String> toolModel;
 
     @Inject
+    @ConfigProperty(name = "sb.tools.force")
+    private Optional<String> force;
+
+    @Inject
     @Any
     private Instance<Tool<?>> tools;
 
@@ -50,6 +55,19 @@ public class ToolSelector {
     private ToolBuilder toolBuilder;
 
     public ToolCall getTool(final String prompt) {
+        /*
+            When forcing the selection of a tool, all arguments must be supplied
+            through the context or via injected values because they can not be
+            extracted from the prompt.
+         */
+        if (force.isPresent() && StringUtils.isNotBlank(force.get())) {
+            return tools.stream()
+                    .filter(tool -> tool.getName().equals(force.get()))
+                    .findFirst()
+                    .map(tool -> new ToolCall(tool, new ToolDefinition(tool.getName(), List.of())))
+                    .orElse(null);
+        }
+
         final String toolPrompt = getToolsPrompt(prompt);
         final ToolDefinition toolDefinition = selectOllamaTool(toolPrompt);
         return getToolCallFromToolDefinition(toolDefinition);

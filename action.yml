@@ -1,0 +1,36 @@
+# action.yml
+name: 'SecondBrain'
+description: 'AI powered git commit message generator with Ollama'
+inputs:
+  prompt:
+    description: 'The LLM prompt'
+    required: true
+    default: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
+  token:
+    description: 'GitHub access token'
+    required: true
+    default: ${{ secrets.GITHUB_TOKEN }}
+  owner:
+    description: 'GitHub repo owner'
+    required: true
+    default: ${{ github.repository_owner }}
+  repo:
+    description: 'GitHub repo'
+    required: true
+    default: ${{ github.repository }}
+  sha:
+    description: 'Git commit SHA'
+    required: true
+    default: ${{ github.sha }}
+outputs:
+  response:
+    description: 'The LLM response'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.token }}
+    - ${{ inputs.owner }}
+    - ${{ inputs.repo }}
+    - ${{ inputs.sha }}
+    - ${{ inputs.prompt }}
