@@ -9,10 +9,10 @@ import org.jasypt.util.text.BasicTextEncryptor;
 @ApplicationScoped
 public class JasyptEncryptor implements Encryptor {
     private final BasicTextEncryptor textEncryptor = new BasicTextEncryptor();
-    
+
     @Inject
     @ConfigProperty(name = "sb.encryption.password", defaultValue = "123456789")
-    String encryptionPassword;
+    private String encryptionPassword;
 
     @PostConstruct
     public void construct() {

@@ -16,7 +16,7 @@ public interface ToolBuilder {
      * @param tools The list of tools
      * @return The JSON representing the tools and their arguments
      */
-    String buildToolJson(List<Tool> tools);
+    String buildToolJson(List<Tool<?>> tools);
 
     /**
      * Builds a prompt for the LLM to select a tool.
@@ -25,5 +25,5 @@ public interface ToolBuilder {
      * @param prompt The end user's prompt
      * @return The prompt sent to the LLM to select a tool based on the end user's prompt
      */
-    String buildToolPrompt(List<Tool> tools, String prompt);
+    String buildToolPrompt(List<Tool<?>> tools, String prompt);
 }

@@ -23,11 +23,11 @@ import java.util.Optional;
 public class SlackOauthCallback {
     @Inject
     @ConfigProperty(name = "sb.slack.clientid")
-    Optional<String> slackClientId;
+    private Optional<String> slackClientId;
 
     @Inject
     @ConfigProperty(name = "sb.slack.clientsecret")
-    Optional<String> slackClientSecret;
+    private Optional<String> slackClientSecret;
 
     @Inject
     private SlackOauthClient oauthClient;

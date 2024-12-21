@@ -31,11 +31,11 @@ public class ToolSelector {
      */
     @Inject
     @ConfigProperty(name = "sb.ollama.toolmodel", defaultValue = "llama3.2")
-    Optional<String> toolModel;
+    private Optional<String> toolModel;
 
     @Inject
     @Any
-    private Instance<Tool> tools;
+    private Instance<Tool<?>> tools;
 
     @Inject
     private OllamaClient ollamaClient;
@@ -85,7 +85,7 @@ public class ToolSelector {
     private OllamaResponse callOllama(final String llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client ->
-                        ollamaClient.getTools(
+                        ollamaClient.callOllama(
                                 client,
                                 new OllamaGenerateBody(toolModel.get(), llmPrompt, false)))
                 .get();

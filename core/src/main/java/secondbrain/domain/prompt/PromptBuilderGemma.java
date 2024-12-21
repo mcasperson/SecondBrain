@@ -1,6 +1,7 @@
 package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * See <a href="https://ai.google.dev/gemma/docs/formatting">Formatting</a> for
@@ -16,6 +17,10 @@ public class PromptBuilderGemma implements PromptBuilder {
 
     @Override
     public String buildContextPrompt(final String title, final String prompt) {
+        if (StringUtils.isBlank(title)) {
+            return prompt + "\n";
+        }
+
         return title + ":\n"
                 + prompt + "\n";
     }

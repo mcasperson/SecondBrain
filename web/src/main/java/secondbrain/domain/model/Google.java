@@ -13,12 +13,11 @@ public class Google {
 
     @Inject
     @ConfigProperty(name = "sb.google.redirecturl", defaultValue = "https://localhost:8181/api/google_oauth")
-    Optional<String> googleRedirectUrl;
+    private Optional<String> googleRedirectUrl;
 
     @Inject
     @ConfigProperty(name = "sb.google.clientid")
-    private
-    Optional<String> googleClientId;
+    private Optional<String> googleClientId;
 
     public String getGoogleClientId() {
         return googleClientId.orElse("");

@@ -10,10 +10,10 @@ import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.smallrye.common.annotation.Identifier;
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -22,11 +22,12 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
-import secondbrain.domain.context.SimilarityCalculator;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeArgument;
@@ -35,7 +36,6 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Dependent
-public class GoogleDocs implements Tool {
+public class GoogleDocs implements Tool<Void> {
 
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String APPLICATION_NAME = "SecondBrain";
@@ -68,19 +68,15 @@ public class GoogleDocs implements Tool {
 
     @Inject
     @ConfigProperty(name = "sb.google.serviceaccountjson")
-    Optional<String> googleServiceAccountJson;
+    private Optional<String> googleServiceAccountJson;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    String model;
+    private String model;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    String limit;
-
-    @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
+    private String limit;
 
     @Inject
     @Identifier("sanitizeList")
@@ -105,9 +101,6 @@ public class GoogleDocs implements Tool {
     private SentenceSplitter sentenceSplitter;
 
     @Inject
-    private SimilarityCalculator similarityCalculator;
-
-    @Inject
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
@@ -129,17 +122,17 @@ public class GoogleDocs implements Tool {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("documentId", "The ID of the Google Docs document to use.", ""),
+                new ToolArguments("googleDocumentId", "The ID of the Google Docs document to use.", ""),
                 new ToolArguments("keywords", "An optional list of keywords used to trim the document", "")
         );
     }
 
-    @Override
-    public String call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
-        final String documentId = argsAccessor.getArgument(arguments, "documentId", "");
-        final List<String> keywords = List.of(sanitizeList.sanitize(
-                argsAccessor.getArgument(arguments, "keywords", ""),
-                prompt).split(","));
+    public List<RagDocumentContext<Void>> getContext(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
@@ -147,20 +140,6 @@ public class GoogleDocs implements Tool {
                 .mapTry(Objects::requireNonNull)
                 .map(value -> NumberUtils.toLong(value, defaultExpires))
                 .recover(error -> defaultExpires)
-                .get();
-
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
-                .get();
-
-        final String customModel = Try.of(() -> context.get("custom_model"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> model)
-                .get();
-
-        final boolean argumentDebugging = Try.of(() -> context.get("argument_debugging"))
-                .mapTry(Boolean::parseBoolean)
-                .recover(e -> false)
                 .get();
 
         final Try<HttpRequestInitializer> token = Try
@@ -182,23 +161,30 @@ public class GoogleDocs implements Tool {
                 .recoverWith(e -> Try.of(this::getDefaultCredentials));
 
         if (token.isFailure()) {
-            return "Failed to get Google access token: " + token.getCause().getMessage();
+            throw new FailedTool("Failed to get Google access token: " + token.getCause().getMessage());
         }
 
         return Try.of(GoogleNetHttpTransport::newTrustedTransport)
                 .map(transport -> new Docs.Builder(transport, JSON_FACTORY, token.get())
                         .setApplicationName(APPLICATION_NAME)
                         .build())
-                .mapTry(service -> service.documents().get(documentId).execute())
+                .mapTry(service -> service.documents().get(parsedArgs.documentId()).execute())
                 .map(this::getDocumentText)
                 .map(document -> documentTrimmer.trimDocument(
-                        document, keywords, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
-                .map(this::getDocumentContext)
-                .map(doc -> doc.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(customModel)
-                        .buildContextPrompt("Google Document " + documentId, doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH)))))
+                        document, parsedArgs.keywords(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
+                .map(document -> getDocumentContext(document, parsedArgs.documentId()))
+                .map(List::of)
+                .get();
+    }
+
+    @Override
+    public RagMultiDocumentContext<Void> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model);
+
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
+                .map(ragDoc -> mergeContext(ragDoc, parsedArgs.customModel()))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(customModel)
+                        .getPromptBuilder(parsedArgs.customModel())
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 // I've opted to get the end of the document if it is larger than the context window.
@@ -206,31 +192,45 @@ public class GoogleDocs implements Tool {
                                 // document being processed should place the most relevant content twoards the end.
                                 ragContext.getDocumentRight(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
-                .map(llmPrompt -> callOllama(llmPrompt, customModel))
-                .map(result -> result.annotateDocumentContext(
-                        parsedMinSimilarity,
-                        10,
-                        sentenceSplitter,
-                        similarityCalculator,
-                        sentenceVectorizer))
-                .map(response -> response
-                        + System.lineSeparator() + System.lineSeparator()
-                        + "* [Document](https://docs.google.com/document/d/" + documentId + ")"
-                        + debugToolArgs.debugArgs(arguments, true, argumentDebugging))
-                .recover(throwable -> "Failed to get document: " + throwable.getMessage())
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel()));
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
     }
 
+    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
+        return new RagMultiDocumentContext<>(
+                context.stream()
+                        .map(ragDoc -> promptBuilderSelector
+                                .getPromptBuilder(customModel)
+                                .buildContextPrompt(
+                                        "Google Document " + ragDoc.id(),
+                                        ragDoc.document()))
+                        .collect(Collectors.joining("\n")),
+                context);
+    }
 
-    private RagDocumentContext getDocumentContext(final String document) {
+
+    private RagDocumentContext<Void> getDocumentContext(final String document, final String documentId) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
-                .map(sentences -> new RagDocumentContext(document, sentences.stream()
-                        .map(sentenceVectorizer::vectorize)
-                        .collect(Collectors.toList())))
+                .map(sentences -> new RagDocumentContext<Void>(
+                        document,
+                        sentences.stream()
+                                .map(sentenceVectorizer::vectorize)
+                                .collect(Collectors.toList()),
+                        documentId,
+                        null,
+                        idToLink(documentId)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext(document, List.of()))
+                .recover(e -> new RagDocumentContext<>(document, List.of(), documentId, null, idToLink(documentId)))
                 .get();
+    }
+
+    private String idToLink(final String documentId) {
+        return "[Document](https://docs.google.com/document/d/" + documentId + ")";
     }
 
     private HttpRequestInitializer getCredentials(final String accessToken, final Date expires) {
@@ -308,12 +308,23 @@ public class GoogleDocs implements Tool {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
     }
 
-    private RagDocumentContext callOllama(final RagDocumentContext llmPrompt, final String customModel) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
-                        client,
-                        new OllamaGenerateBody(customModel, llmPrompt.document(), false)))
-                .map(response -> new RagDocumentContext(response.response(), llmPrompt.sentences()))
-                .get();
+    /**
+     * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
+     * the various inputs to the tool.
+     */
+    record Arguments(String documentId, List<String> keywords, String customModel) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, ValidateString validateString, final SanitizeArgument sanitizeList, final String prompt, final String model) {
+            final String documentId = argsAccessor.getArgument(arguments, "googleDocumentId", "");
+            final List<String> keywords = List.of(sanitizeList.sanitize(
+                    argsAccessor.getArgument(arguments, "keywords", ""),
+                    prompt).split(","));
+
+            final String customModel = Try.of(() -> context.get("custom_model"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> model)
+                    .get();
+
+            return new Arguments(documentId, keywords, customModel);
+        }
     }
 }

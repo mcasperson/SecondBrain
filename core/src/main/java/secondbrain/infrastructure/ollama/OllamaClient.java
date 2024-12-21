@@ -4,6 +4,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -20,7 +21,7 @@ import static io.vavr.control.Try.of;
 public class OllamaClient {
     @Inject
     @ConfigProperty(name = "sb.ollama.url", defaultValue = "http://localhost:11434")
-    String uri;
+    private String uri;
 
     @Inject
     private ResponseValidation responseValidation;
@@ -28,10 +29,9 @@ public class OllamaClient {
     @Inject
     private Logger logger;
 
-    public OllamaResponse getTools(final Client client, final OllamaGenerateBody body) {
-        logger.info("OllamaClient.getTools()");
+    public OllamaResponse callOllama(final Client client, final OllamaGenerateBody body) {
+        logger.info(body.prompt());
         logger.info("Calling: " + uri);
-        logger.info("Called with prompt: " + body.prompt());
         logger.info("Called with model: " + body.model());
 
         return Try.withResources(() -> client.target(uri + "/api/generate")
@@ -55,8 +55,16 @@ public class OllamaClient {
                 .get();
     }
 
-    public <T> RagMultiDocumentContext<T> getTools(final Client client, final OllamaGenerateBodyWithContext<T> body) {
-        final OllamaResponse response = getTools(client, new OllamaGenerateBody(body.model(), body.prompt().combinedDocument(), body.stream()));
-        return new RagMultiDocumentContext<>(response.response(), body.prompt().individualContexts());
+    public <T> RagMultiDocumentContext<T> callOllama(final Client client, final OllamaGenerateBodyWithContext<T> body) {
+        final OllamaResponse response = callOllama(client, new OllamaGenerateBody(body.model(), body.prompt().combinedDocument(), body.stream()));
+        return body.prompt().updateDocument(response.response());
+    }
+
+    public <T> RagMultiDocumentContext<T> callOllama(final RagMultiDocumentContext<T> ragDoc, final String model) {
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> callOllama(
+                        client,
+                        new OllamaGenerateBodyWithContext<>(model, ragDoc, false)))
+                .get();
     }
 }

@@ -1,20 +1,24 @@
 package secondbrain.domain.tools.github;
 
 import io.smallrye.common.annotation.Identifier;
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.*;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.context.SentenceSplitter;
+import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
+import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.ListUtilsEx;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -27,7 +31,6 @@ import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.GitHubCommitResponse;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyWithContext;
 
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -35,9 +38,10 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Predicates.instanceOf;
 
 /**
  * The GitHubDiffs tool provides a list of Git diffs and answers questions about them. It works by first summarizing
@@ -46,7 +50,7 @@ import java.util.stream.Collectors;
  * I couldn't find a single LLM supported by Ollama that could process a large collection of diffs in a single prompt.
  */
 @Dependent
-public class GitHubDiffs implements Tool {
+public class GitHubDiffs implements Tool<GitHubCommitResponse> {
     private static final String DEFAULT_OWNER = "mcasperson";
     private static final String DEFAULT_REPO = "SecondBrain";
     private static final String DEFAULT_BRANCH = "main";
@@ -72,10 +76,9 @@ public class GitHubDiffs implements Tool {
             You will be penalized for including any markdown or HTML in the output.
             The summary must include all classes, functions, and variables found in the Git Diff.
             """;
-
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    String model;
+    private String model;
 
     /**
      * Each individual diff can be summarized with its own model. Typically, this model will be
@@ -85,56 +88,38 @@ public class GitHubDiffs implements Tool {
      */
     @Inject
     @ConfigProperty(name = "sb.ollama.gitdiffmodel")
-    Optional<String> diffModel;
+    private Optional<String> diffModel;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    String limit;
+    private String limit;
 
     @Inject
     @ConfigProperty(name = "sb.github.accesstoken")
-    Optional<String> githubAccessToken;
-
-    @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
+    private Optional<String> githubAccessToken;
 
     @Inject
     private Encryptor textEncryptor;
-
     @Inject
     private DebugToolArgs debugToolArgs;
-
     @Inject
     private ArgsAccessor argsAccessor;
-
     @Inject
     private GitHubClient gitHubClient;
-
     @Inject
     private OllamaClient ollamaClient;
-
     @Inject
     private DateParser dateParser;
-
     @Inject
     private ListLimiter listLimiter;
-
     @Inject
     private PromptBuilderSelector promptBuilderSelector;
-
     @Inject
     private ValidateString validateString;
-
     @Inject
     private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SimilarityCalculator similarityCalculator;
-
     @Inject
     private SentenceVectorizer sentenceVectorizer;
-
     @Inject
     @Identifier("sanitizeDate")
     private SanitizeArgument dateSanitizer;
@@ -170,117 +155,104 @@ public class GitHubDiffs implements Tool {
     }
 
     @Override
-    public String call(
+    public List<RagDocumentContext<GitHubCommitResponse>> getContext(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
-                .recover(throwable -> DEFAULT_DURATION)
-                .map(i -> Math.max(0, i))
-                .map(i -> i == 0 ? DEFAULT_DURATION : i)
-                .get();
+        final Arguments parsedArgs = Arguments.fromToolArgs(
+                arguments,
+                context,
+                argsAccessor,
+                dateSanitizer,
+                textEncryptor,
+                validateString,
+                githubAccessToken,
+                model,
+                prompt);
 
-        final int maxDiffs = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "maxDiffs", "0")))
-                .recover(throwable -> 0)
-                .map(i -> Math.max(0, i))
-                .get();
-
-        final String startDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), prompt, "since", ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).format(FORMATTER));
-        final String endDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), prompt, "until", ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER));
-        final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
-        final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
-        final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
-
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
-                .get();
-
-
-        // Try to decrypt the value, otherwise assume it is a plain text value, and finally
-        // fall back to the value defined in the local configuration.
-        final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
-                .recover(e -> context.get("github_access_token"))
-                .mapTry(Objects::requireNonNull)
-                .recoverWith(e -> Try.of(() -> githubAccessToken.get()));
-
-        final String customModel = Try.of(() -> context.get("custom_model"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> model)
-                .get();
-
-        final boolean argumentDebugging = Try.of(() -> context.get("argument_debugging"))
-                .mapTry(Boolean::parseBoolean)
-                .recover(e -> false)
-                .get();
-
-        if (token.isFailure() || StringUtils.isBlank(token.get())) {
-            return "Failed to get GitHub access token";
-        }
-
-        final String authHeader = "Bearer " + token.get();
-
-        final String debugArgs = debugToolArgs.debugArgs(arguments, true, argumentDebugging);
+        final String authHeader = "Bearer " + parsedArgs.token();
 
         return Try.of(() -> getCommits(
-                        owner,
-                        repo,
-                        branch,
-                        dateParser.parseDate(startDate).format(FORMATTER),
-                        dateParser.parseDate(endDate).format(FORMATTER),
+                        parsedArgs.owner(),
+                        parsedArgs.repo(),
+                        parsedArgs.branch(),
+                        dateParser.parseDate(parsedArgs.startDate()).format(FORMATTER),
+                        dateParser.parseDate(parsedArgs.endDate()).format(FORMATTER),
                         authHeader))
                 // limit the number of changes
-                .map(commitsResponse -> ListUtilsEx.safeSubList(commitsResponse, 0, maxDiffs > 0 ? maxDiffs : commitsResponse.size()))
-                .map(commitsResponse -> convertCommitsToDiffSummaries(commitsResponse, owner, repo, authHeader, customModel))
+                .map(commitsResponse -> ListUtilsEx.safeSubList(
+                        commitsResponse,
+                        0,
+                        parsedArgs.maxDiffs() > 0 ? parsedArgs.maxDiffs() : commitsResponse.size()))
+                .map(commitsResponse -> convertCommitsToDiffSummaries(
+                        commitsResponse,
+                        parsedArgs.owner(),
+                        parsedArgs.repo(),
+                        authHeader,
+                        parsedArgs.customModel()))
+                .get();
+    }
+
+    @Override
+    public RagMultiDocumentContext<GitHubCommitResponse> call(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+
+        final Arguments parsedArgs = Arguments.fromToolArgs(
+                arguments,
+                context,
+                argsAccessor,
+                dateSanitizer,
+                textEncryptor,
+                validateString,
+                githubAccessToken,
+                model,
+                prompt);
+
+        final String debugArgs = debugToolArgs.debugArgs(arguments);
+
+        final Try<RagMultiDocumentContext<GitHubCommitResponse>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
                         NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
-                .map(this::mergeContext)
+                .map(ragDocs -> mergeContext(ragDocs, debugArgs))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
-                .map(ragContext -> ragContext.updateDocument(
-                        promptBuilderSelector.getPromptBuilder(customModel).buildFinalPrompt(
+                .map(ragDoc -> ragDoc.updateDocument(
+                        promptBuilderSelector.getPromptBuilder(parsedArgs.customModel()).buildFinalPrompt(
                                 INSTRUCTIONS,
-                                promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("Git Diffs", ragContext.combinedDocument()),
+                                promptBuilderSelector.getPromptBuilder(parsedArgs.customModel()).buildContextPrompt("Git Diffs", ragDoc.combinedDocument()),
                                 prompt)))
-                .map(llmPrompt -> callOllama(llmPrompt, customModel))
-                .map(response -> response.annotateDocumentContext(
-                        parsedMinSimilarity,
-                        10,
-                        sentenceSplitter,
-                        similarityCalculator,
-                        sentenceVectorizer))
-                .map(annotatedDocument -> annotatedDocument.result()
-                        + System.lineSeparator() + System.lineSeparator()
-                        + "Diffs:" + System.lineSeparator()
-                        + urlsToLinks(annotatedDocument.context().getMetas())
-                        + System.lineSeparator() + System.lineSeparator()
-                        + "Annotation Coverage: " + annotatedDocument.annotationCoverage()
-                        + debugArgs)
-                .recover(EmptyString.class, "No diffs found for " + owner + "/" + repo + " between " + startDate + " and " + endDate + debugArgs)
-                .recover(throwable -> "Failed to get diffs: " + throwable.getMessage() + debugArgs)
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel()));
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)),
+                                throwable -> new FailedTool("No diffs found for " + parsedArgs.owner() + "/" + parsedArgs.repo() + " between " + parsedArgs.startDate() + " and " + parsedArgs.endDate() + "\n" + debugArgs)),
+                        API.Case(API.$(),
+                                throwable -> new FailedTool("Failed to get diffs: " + throwable.getMessage() + "\n" + debugArgs)))
                 .get();
     }
 
-    private String urlsToLinks(final List<String> urls) {
-        return urls.stream()
-                .map(url -> "* [" + GitHubUrlParser.urlToCommitHash(url) + "](" + url + ")")
-                .collect(Collectors.joining("\n"));
+    public String getContextHeader() {
+        return "Git Diff";
     }
 
-
-    private RagMultiDocumentContext<String> mergeContext(final List<RagDocumentContext<String>> context) {
+    private RagMultiDocumentContext<GitHubCommitResponse> mergeContext(final List<RagDocumentContext<GitHubCommitResponse>> context, final String debug) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(RagDocumentContext::document)
                         .collect(Collectors.joining("\n")),
-                context);
+                context,
+                debug);
     }
 
-
-    private List<RagDocumentContext<String>> convertCommitsToDiffSummaries(
+    private List<RagDocumentContext<GitHubCommitResponse>> convertCommitsToDiffSummaries(
             final List<GitHubCommitResponse> commitsResponse,
             final String owner,
             final String repo,
@@ -298,20 +270,21 @@ public class GitHubDiffs implements Tool {
      * or hallucinate a bunch of random release notes. Instead, each diff is summarised individually and then combined
      * into a single document to be summarised again.
      */
-    private RagDocumentContext<String> getCommitSummary(final GitHubCommitResponse commit,
-                                                        final String owner,
-                                                        final String repo,
-                                                        final String authorization,
-                                                        final String customModel) {
+    private RagDocumentContext<GitHubCommitResponse> getCommitSummary(final GitHubCommitResponse commit,
+                                                                      final String owner,
+                                                                      final String repo,
+                                                                      final String authorization,
+                                                                      final String customModel) {
         final String summary = getDiffSummary(getCommitDiff(owner, repo, commit.sha(), authorization), customModel);
-        return new RagDocumentContext<>(
+        return new RagDocumentContext<GitHubCommitResponse>(
                 summary,
                 sentenceSplitter.splitDocument(summary, 10)
                         .stream()
                         .map(sentenceVectorizer::vectorize)
                         .toList(),
                 commit.sha(),
-                commit.html_url());
+                commit,
+                "[" + GitHubUrlParser.urlToCommitHash(commit.html_url()) + "](" + commit.html_url() + ")");
     }
 
     /**
@@ -320,7 +293,7 @@ public class GitHubDiffs implements Tool {
      */
     private String getDiffSummary(final String diff, final String customModel) {
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
+                .of(client -> ollamaClient.callOllama(
                         client,
                         new OllamaGenerateBody(
                                 diffModel.orElse(customModel),
@@ -332,7 +305,6 @@ public class GitHubDiffs implements Tool {
                 .get()
                 .response();
     }
-
 
     private List<GitHubCommitResponse> getCommits(
             final String owner,
@@ -347,15 +319,6 @@ public class GitHubDiffs implements Tool {
                 .get();
     }
 
-    private RagMultiDocumentContext<String> callOllama(final RagMultiDocumentContext<String> llmPrompt, final String customModel) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
-                        client,
-                        new OllamaGenerateBodyWithContext<>(customModel, llmPrompt, false)))
-                .get();
-    }
-
-
     private String getCommitDiff(
             final String owner,
             final String repo,
@@ -365,4 +328,46 @@ public class GitHubDiffs implements Tool {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> gitHubClient.getDiff(client, owner, repo, sha, authorization)).get();
     }
+
+    /**
+     * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
+     * the various inputs to the tool.
+     */
+    record Arguments(int days, int maxDiffs, String startDate, String endDate, String owner, String repo,
+                     String branch, String token, String customModel) {
+        public static Arguments fromToolArgs(List<ToolArgs> arguments, Map<String, String> context, ArgsAccessor argsAccessor, SanitizeArgument dateSanitizer, Encryptor textEncryptor, ValidateString validateString, Optional<String> githubAccessToken, String model, String prompt) {
+            final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
+                    .recover(throwable -> DEFAULT_DURATION)
+                    .map(i -> Math.max(0, i))
+                    .map(i -> i == 0 ? DEFAULT_DURATION : i)
+                    .get();
+
+            final int maxDiffs = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "maxDiffs", "0")))
+                    .recover(throwable -> 0)
+                    .map(i -> Math.max(0, i))
+                    .get();
+
+            final String startDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), prompt, "since", ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).format(FORMATTER));
+            final String endDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), prompt, "until", ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER));
+            final String owner = argsAccessor.getArgument(arguments, "owner", DEFAULT_OWNER);
+            final String repo = argsAccessor.getArgument(arguments, "repo", DEFAULT_REPO);
+            final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
+
+            // Try to decrypt the value, otherwise assume it is a plain text value, and finally
+            // fall back to the value defined in the local configuration.
+            final String token = Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
+                    .recover(e -> context.get("github_access_token"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recoverWith(e -> Try.of(() -> githubAccessToken.get()))
+                    .getOrElseThrow(ex -> new FailedTool("Failed to get GitHub access token", ex));
+
+            final String customModel = Try.of(() -> context.get("custom_model"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> model)
+                    .get();
+
+            return new Arguments(days, maxDiffs, startDate, endDate, owner, repo, branch, token, customModel);
+        }
+    }
 }
+

@@ -1,28 +1,25 @@
 package secondbrain.domain.tools.uploadeddoc;
 
 import com.google.common.collect.ImmutableList;
+import io.vavr.API;
 import io.vavr.control.Try;
-import jakarta.enterprise.context.Dependent;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
-import secondbrain.domain.context.SimilarityCalculator;
-import secondbrain.domain.debug.DebugToolArgs;
+import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.publicweb.PublicWebClient;
 
 import java.util.List;
 import java.util.Map;
@@ -31,8 +28,8 @@ import java.util.stream.Collectors;
 /**
  * A tool that downloads a public file from HTTP and uses it as the context for a query.
  */
-@Dependent
-public class UploadedDoc implements Tool {
+@ApplicationScoped
+public class UploadedDoc implements Tool<Void> {
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -47,27 +44,14 @@ public class UploadedDoc implements Tool {
 
     @Inject
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    String model;
+    private String model;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    String limit;
-
-    @Inject
-    @ConfigProperty(name = "sb.annotation.minsimilarity", defaultValue = "0.5")
-    String minSimilarity;
-
-    @Inject
-    private PublicWebClient publicWebClient;
-
-    @Inject
-    private ArgsAccessor argsAccessor;
+    private String limit;
 
     @Inject
     private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SimilarityCalculator similarityCalculator;
 
     @Inject
     private SentenceVectorizer sentenceVectorizer;
@@ -77,9 +61,6 @@ public class UploadedDoc implements Tool {
 
     @Inject
     private OllamaClient ollamaClient;
-
-    @Inject
-    private DebugToolArgs debugToolArgs;
 
     @Override
     public String getName() {
@@ -96,41 +77,51 @@ public class UploadedDoc implements Tool {
         return ImmutableList.of();
     }
 
+    public List<RagDocumentContext<Void>> getContext(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        final Arguments parsedArgs = Arguments.fromToolArgs(context);
+
+        if (StringUtils.isBlank(parsedArgs.document())) {
+            throw new FailedTool("No document found in context");
+        }
+
+        return List.of(getDocumentContext(parsedArgs.document()));
+    }
+
     @Override
-    public String call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final String uploadedDocument = Try.of(() -> context.get("document"))
-                .recover(throwable -> "")
-                .get();
-
-        if (StringUtils.isBlank(uploadedDocument)) {
-            return "No document found in context";
-        }
-
-        final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
-                .recover(throwable -> 0.5f)
-                .get();
-
-        return Try.of(() -> uploadedDocument)
-                .map(this::getDocumentContext)
-                .map(doc -> doc.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(model)
-                        .buildContextPrompt("Uploaded Document", doc.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
+                .map(ragDoc -> mergeContext(ragDoc, model))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
                                 prompt)))
-                .map(this::callOllama)
-                .map(result -> result.annotateDocumentContext(parsedMinSimilarity, 10, sentenceSplitter, similarityCalculator, sentenceVectorizer))
-                .map(response -> response
-                        + debugToolArgs.debugArgs(arguments, true, false))
-                .recover(throwable -> "Failed to get document: " + throwable.getMessage())
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
+    }
+
+    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
+        return new RagMultiDocumentContext<>(
+                context.stream()
+                        .map(ragDoc -> promptBuilderSelector
+                                .getPromptBuilder(customModel)
+                                .buildContextPrompt(
+                                        "Uploaded Document",
+                                        ragDoc.document()))
+                        .collect(Collectors.joining("\n")),
+                context);
     }
 
     private RagDocumentContext<Void> getDocumentContext(final String document) {
@@ -144,12 +135,13 @@ public class UploadedDoc implements Tool {
                 .get();
     }
 
-    private RagDocumentContext<Void> callOllama(final RagDocumentContext<Void> llmPrompt) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.getTools(
-                        client,
-                        new OllamaGenerateBody(model, llmPrompt.document(), false)))
-                .map(response -> new RagDocumentContext<Void>(response.response(), llmPrompt.sentences()))
-                .get();
+    record Arguments(String document) {
+        public static Arguments fromToolArgs(final Map<String, String> context) {
+            final String uploadedDocument = Try.of(() -> context.get("document"))
+                    .recover(throwable -> "")
+                    .get();
+
+            return new Arguments(uploadedDocument);
+        }
     }
 }

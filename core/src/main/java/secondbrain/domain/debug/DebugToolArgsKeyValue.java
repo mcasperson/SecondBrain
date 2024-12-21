@@ -1,9 +1,6 @@
 package secondbrain.domain.debug;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import org.apache.commons.lang3.BooleanUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.tooldefs.ToolArgs;
 
 import java.util.List;
@@ -14,23 +11,13 @@ import java.util.stream.Collectors;
  */
 @ApplicationScoped
 public class DebugToolArgsKeyValue implements DebugToolArgs {
-    @Inject
-    @ConfigProperty(name = "sb.tools.debug", defaultValue = "false")
-    String debug;
+
 
     @Override
-    public String debugArgs(final List<ToolArgs> args, boolean includeLineBreak, final boolean debugOverride) {
-        if (BooleanUtils.toBoolean(debug) || debugOverride) {
-            final String debug = args.stream()
-                    .map(arg -> arg.argName() + ": " + arg.argValue())
-                    .collect(Collectors.joining("\n"));
+    public String debugArgs(final List<ToolArgs> args) {
 
-            if (includeLineBreak) {
-                return System.lineSeparator() + System.lineSeparator() + debug;
-            }
-
-            return debug;
-        }
-        return "";
+        return args.stream()
+                .map(arg -> "* " + arg.argName() + ": " + arg.argValue())
+                .collect(Collectors.joining(System.lineSeparator()));
     }
 }

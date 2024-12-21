@@ -12,14 +12,29 @@ import java.util.stream.Collectors;
  *
  * @param combinedDocument   The combined context to be sent to the LLM
  * @param individualContexts The individual documents that all contribute to the combined context
+ * @param debug              General debug information
  */
-public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocumentContext<T>> individualContexts) {
+public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocumentContext<T>> individualContexts,
+                                         String debug) {
+    public RagMultiDocumentContext(final String combinedDocument) {
+        this(combinedDocument, List.of(), null);
+    }
+
+    public RagMultiDocumentContext(final String combinedDocument, List<RagDocumentContext<T>> individualContexts) {
+        this(combinedDocument, individualContexts, null);
+    }
+
+
     public List<String> getIds() {
         return individualContexts.stream().map(RagDocumentContext::id).toList();
     }
 
     public List<T> getMetas() {
         return individualContexts.stream().map(RagDocumentContext::meta).toList();
+    }
+
+    public List<String> getLinks() {
+        return individualContexts.stream().map(RagDocumentContext::link).toList();
     }
 
     /**
@@ -30,7 +45,26 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
      * @return A new copy of this object with the new document
      */
     public RagMultiDocumentContext<T> updateDocument(final String document) {
-        return new RagMultiDocumentContext<T>(document, individualContexts);
+        return new RagMultiDocumentContext<T>(document, individualContexts, debug);
+    }
+
+    public String getDocumentLeft(final int length) {
+        if (length <= 0) {
+            return "";
+        }
+
+        return combinedDocument.substring(0, Math.min(combinedDocument.length(), length));
+    }
+
+    public String getDocumentRight(final int length) {
+        if (length <= 0) {
+            return "";
+        }
+
+        final int start = Math.max(0, combinedDocument.length() - length);
+        final int end = start + Math.min(combinedDocument.length(), length);
+
+        return combinedDocument.substring(start, end);
     }
 
     /**
@@ -72,7 +106,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         final List<String> output = new ArrayList<>();
         for (int i = 0; i < lookups.size(); i++) {
             RagSentence lookup = lookups.get(i);
-            output.add("* [" + (i + 1) + "]: " + lookup.sentence() + " (" + lookup.id() + ")");
+            output.add("* [" + (i + 1) + "]: " + lookup.sentence() + (StringUtils.isBlank(lookup.id()) ? "" : " (" + lookup.id() + ")"));
         }
         return String.join(System.lineSeparator(), output);
     }

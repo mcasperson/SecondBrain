@@ -24,15 +24,15 @@ import java.util.Optional;
 public class LinkedInOauthCallback {
     @Inject
     @ConfigProperty(name = "sb.linkedin.clientid")
-    Optional<String> linkedinClientId;
+    private Optional<String> linkedinClientId;
 
     @Inject
     @ConfigProperty(name = "sb.linkedin.clientsecret")
-    Optional<String> linkedinClientSecret;
+    private Optional<String> linkedinClientSecret;
 
     @Inject
     @ConfigProperty(name = "sb.linkedin.redirecturi")
-    Optional<String> linkedinRedirectUri;
+    private Optional<String> linkedinRedirectUri;
 
     @Inject
     private LinkedinOauthClient oauthClient;

@@ -1,3 +1,6 @@
 package secondbrain.domain.limit;
 
-public record Section(int start, int end) {}
+import java.util.Set;
+
+public record Section(int start, int end, Set<String> keyword) {
+}

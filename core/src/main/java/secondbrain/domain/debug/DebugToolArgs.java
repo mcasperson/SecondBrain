@@ -5,5 +5,5 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import java.util.List;
 
 public interface DebugToolArgs {
-    String debugArgs(List<ToolArgs> args, boolean includeLineBreak, final boolean debugOverride);
+    String debugArgs(List<ToolArgs> args);
 }

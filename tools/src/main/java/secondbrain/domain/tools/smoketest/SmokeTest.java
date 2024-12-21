@@ -1,6 +1,8 @@
 package secondbrain.domain.tools.smoketest;
 
-import jakarta.enterprise.context.Dependent;
+import jakarta.enterprise.context.ApplicationScoped;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -11,8 +13,8 @@ import java.util.Map;
 /**
  * A tool that returns a greeting message.
  */
-@Dependent
-public class SmokeTest implements Tool {
+@ApplicationScoped
+public class SmokeTest implements Tool<Void> {
     @Override
     public String getName() {
         return SmokeTest.class.getSimpleName();
@@ -29,10 +31,18 @@ public class SmokeTest implements Tool {
     }
 
     @Override
-    public String call(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        return "Test succeeded!";
+        return List.of();
+    }
+
+    @Override
+    public RagMultiDocumentContext<Void> call(
+            final Map<String, String> context,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        return new RagMultiDocumentContext<>("Test succeeded!");
     }
 }
