@@ -27,7 +27,7 @@ RUN nohup bash -c "ollama serve &" \
     && ollama list
 
 # Make the models available to everyone
-RUN -R a+rw /root/.ollama
+RUN chmod -R a+rw /root/.ollama
 
 COPY --from=build /usr/src/app/cli/target/secondbrain-cli-*.jar /usr/local/bin/secondbrain-cli.jar
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
