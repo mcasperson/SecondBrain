@@ -32,9 +32,10 @@ jobs:
         with:
           # Leave this to "false" to leave common tools
           tool-cache: false
+          dotnet: false
+
           # None of these are required
           android: true
-          dotnet: true
           haskell: true
           large-packages: true
           docker-images: true
