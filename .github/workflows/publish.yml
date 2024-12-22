@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: SecondBrainAction
-        uses: mcasperson/SecondBrain@main
+        uses: docker://ghcr.io/mcasperson/secondbrainaction:latest
         with:
             prompt: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
             token: ${{ secrets.GITHUB_TOKEN }}
@@ -74,6 +74,14 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/secondbrain:latest
+
+      - name: Build and push Docker image for action
+        uses: docker/build-push-action@v4
+        with:
+          file: Dockerfile
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/secondbrainaction:latest
 
       - id: create_release
         name: Create Release
