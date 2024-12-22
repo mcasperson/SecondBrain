@@ -12,6 +12,42 @@ and get a meaningful response against real-time data.
 
 ![Screenshot](screenshot.png)
 
+## GitHub Actions
+
+SecondBrain is available as a GitHub Action. This allows you to generate summaries of your git diffs as part of a GitHub Actions Workflow.
+
+The action is distributed as the Docker image `ghcr.io/mcasperson/secondbrainaction`.
+
+Here is an example of how to use the action:
+
+```yaml
+steps:
+  - name: SecondBrainAction
+    uses: docker://ghcr.io/mcasperson/secondbrainaction:latest
+    with:
+        prompt: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
+        token: ${{ secrets.GITHUB_TOKEN }}
+        owner: ${{ github.repository_owner }}
+        repo: ${{ github.repository }}
+        sha: ${{ github.sha }}
+```
+
+| Input    | Description                                                                                  | Mandatory | Default                                                                                                                                                                        |
+|----------|----------------------------------------------------------------------------------------------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `prompt` | The prompt to use to generate the summary.                                                   | No        | A default prompt is used to generate summaries of the git diffs. See [action.yml](https://github.com/mcasperson/SecondBrain/blob/main/action.yml) for the exact default value. |
+| `token`  | The GitHub token to use to access the repository. Set this to `${{ secrets.GITHUB_TOKEN }}`. | Yes       | None                                                                                                                                                                           |
+| `owner`  | The owner of the repository.                                                                 | No        | `${{ github.repository_owner }}`                                                                                                                                               |
+| `repo`   | The name of the repository.                                                                  | No        | `${{ github.repository }}`                                                                                                                                                     |
+| `sha`    | The commit SHA to generate the summary for.                                                  | No        | `${{ github.sha }}`                                                                                                                                                            |
+
+> [!CAUTION]
+> Do not use this syntax. This style of action attempts to rebuild the Docker image each time and will not work:
+
+```yaml
+- name: SecondBrainAction
+  uses: mcasperson/SecondBrain@1.2.3
+```
+
 ## Awards
 
 SecondBrain was awarded second place in the [Payara Hackathon - Generative AI on Jakarta EE](https://www.linkedin.com/posts/payara_the-power-up-your-jakarta-ee-with-ai-hackathon-activity-7275895257563607040-lOnn?utm_source=share&utm_medium=member_desktop)!
