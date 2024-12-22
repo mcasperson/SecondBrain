@@ -8,6 +8,8 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.response.ResponseValidation;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @ApplicationScoped
@@ -17,7 +19,9 @@ public class GitHubClient {
 
     @Retry
     public List<GitHubCommitResponse> getCommitsInRange(final Client client, final String owner, final String repo, final String sha, final String until, final String since, final String authorization) {
-        return Try.withResources(() -> client.target("https://api.github.com/repos/" + owner + "/" + repo + "/commits")
+        return Try.withResources(() -> client.target("https://api.github.com/repos/"
+                                + URLEncoder.encode(owner, StandardCharsets.UTF_8) + "/"
+                                + URLEncoder.encode(repo, StandardCharsets.UTF_8) + "/commits")
                         .queryParam("sha", sha)
                         .queryParam("until", until)
                         .queryParam("since", since)
@@ -33,7 +37,10 @@ public class GitHubClient {
 
     @Retry
     public GitHubCommitResponse getCommit(final Client client, final String owner, final String repo, final String sha, final String authorization) {
-        return Try.withResources(() -> client.target("https://api.github.com/repos/" + owner + "/" + repo + "/commits/" + sha)
+        return Try.withResources(() -> client.target("https://api.github.com/repos/"
+                                + URLEncoder.encode(owner, StandardCharsets.UTF_8) + "/"
+                                + URLEncoder.encode(repo, StandardCharsets.UTF_8) + "/commits/"
+                                + URLEncoder.encode(sha, StandardCharsets.UTF_8))
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", MediaType.APPLICATION_JSON)
@@ -53,7 +60,10 @@ public class GitHubClient {
 
     @Retry
     public String getDiff(final Client client, final String owner, final String repo, final String sha, final String authorization) {
-        return Try.withResources(() -> client.target("https://api.github.com/repos/" + owner + "/" + repo + "/commits/" + sha)
+        return Try.withResources(() -> client.target("https://api.github.com/repos/"
+                                + URLEncoder.encode(owner, StandardCharsets.UTF_8) + "/"
+                                + URLEncoder.encode(repo, StandardCharsets.UTF_8)
+                                + "/commits/" + URLEncoder.encode(sha, StandardCharsets.UTF_8))
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/vnd.github.v3.diff")
