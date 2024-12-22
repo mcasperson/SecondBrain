@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: SecondBrainAction
-        uses: mcasperson/SecondBrain@master
+        uses: mcasperson/SecondBrain@main
         with:
             prompt: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
             token: ${{ secrets.GITHUB_TOKEN }}
