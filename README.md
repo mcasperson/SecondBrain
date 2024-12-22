@@ -23,7 +23,7 @@ Here is an example of how to use the action:
 ```yaml
 steps:
   - name: SecondBrainAction
-    uses: docker://ghcr.io/mcasperson/secondbrainaction:latest
+    uses: mcasperson/SecondBrain@main
     with:
         prompt: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
         token: ${{ secrets.GITHUB_TOKEN }}
