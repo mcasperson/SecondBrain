@@ -19,8 +19,6 @@ SecondBrain is available as a GitHub Action. This allows you to generate summari
 > [!NOTE]
 > The ability to interact with other data sources via the GitHub Action may be added in the future.
 
-The action is distributed as the Docker image `ghcr.io/mcasperson/secondbrainaction`.
-
 Here is an example of how to use the action:
 
 ```yaml
