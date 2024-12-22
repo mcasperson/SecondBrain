@@ -12,6 +12,12 @@ jobs:
     steps:
       - name: SecondBrainAction
         uses: mcasperson/SecondBrain@master
+        with:
+            prompt: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
+            token: ${{ secrets.GITHUB_TOKEN }}
+            owner: ${{ github.repository_owner }}
+            repo: ${{ github.repository }}
+            sha: ${{ github.sha }}
 
   build:
     runs-on: ubuntu-latest
