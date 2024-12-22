@@ -19,7 +19,7 @@ inputs:
   repo:
     description: 'GitHub repo'
     required: true
-    default: ${{ github.repository }}
+    default: ${{ github.event.repository.name }}
   sha:
     description: 'Git commit SHA'
     required: true

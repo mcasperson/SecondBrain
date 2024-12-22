@@ -16,7 +16,7 @@ public class GitHubClient {
     private ResponseValidation responseValidation;
 
     @Retry
-    public List<GitHubCommitResponse> getCommits(final Client client, final String owner, final String repo, final String sha, final String until, final String since, final String authorization) {
+    public List<GitHubCommitResponse> getCommitsInRange(final Client client, final String owner, final String repo, final String sha, final String until, final String since, final String authorization) {
         return Try.withResources(() -> client.target("https://api.github.com/repos/" + owner + "/" + repo + "/commits")
                         .queryParam("sha", sha)
                         .queryParam("until", until)
@@ -42,6 +42,13 @@ public class GitHubClient {
                         .map(r -> r.readEntity(GitHubCommitResponse.class))
                         .get())
                 .get();
+    }
+
+    @Retry
+    public List<GitHubCommitResponse> getCommits(final Client client, final String owner, final String repo, final List<String> sha, final String authorization) {
+        return sha.stream()
+                .map(s -> getCommit(client, owner, repo, s, authorization))
+                .toList();
     }
 
     @Retry

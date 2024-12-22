@@ -21,28 +21,33 @@ The action is distributed as the Docker image `ghcr.io/mcasperson/secondbrainact
 Here is an example of how to use the action:
 
 ```yaml
-steps:
-  - name: SecondBrainAction
-    id: secondbrain
-    uses: mcasperson/SecondBrain@main
-    with:
-        prompt: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
-        token: ${{ secrets.GITHUB_TOKEN }}
-        owner: ${{ github.repository_owner }}
-        repo: ${{ github.repository }}
-        sha: ${{ github.sha }}
-  # Access the LLM response
-  - name: Get the diff summary
-    run: echo "The time was ${{ steps.secondbrain.outputs.response }}"
+jobs:
+  # Running the summarization action in its own job allows it to be run in parallel with
+  # the traditional build and test jobs. This is useful, because the summarization job
+  # can take some time to complete.
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SecondBrainAction
+        id: secondbrain
+        uses: mcasperson/SecondBrain@main
+        with:
+          prompt: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.repository }}
+          sha: ${{ github.sha }}
+      - name: Get the diff summary
+        run: echo "The response was ${{ steps.secondbrain.outputs.response }}"
 ```
 
-| Input    | Description                                                                                  | Mandatory | Default                                                                                                                                                                        |
-|----------|----------------------------------------------------------------------------------------------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `prompt` | The prompt to use to generate the summary.                                                   | No        | A default prompt is used to generate summaries of the git diffs. See [action.yml](https://github.com/mcasperson/SecondBrain/blob/main/action.yml) for the exact default value. |
-| `token`  | The GitHub token to use to access the repository. Set this to `${{ secrets.GITHUB_TOKEN }}`. | Yes       | None                                                                                                                                                                           |
-| `owner`  | The owner of the repository.                                                                 | No        | `${{ github.repository_owner }}`                                                                                                                                               |
-| `repo`   | The name of the repository.                                                                  | No        | `${{ github.repository }}`                                                                                                                                                     |
-| `sha`    | The commit SHA to generate the summary for.                                                  | No        | `${{ github.sha }}`                                                                                                                                                            |
+| Input    | Description                                                                                                                                              | Mandatory | Default                                                                                                                                                                        |
+|----------|----------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `prompt` | The prompt sent to the LLM to generate the summary. This prompt has access to system prompts that contain the single paragraph summaries of the commits. | No        | A default prompt is used to generate summaries of the git diffs. See [action.yml](https://github.com/mcasperson/SecondBrain/blob/main/action.yml) for the exact default value. |
+| `token`  | The GitHub token to use to access the repository. Set this to `${{ secrets.GITHUB_TOKEN }}`.                                                             | Yes       | None                                                                                                                                                                           |
+| `owner`  | The owner of the repository.                                                                                                                             | No        | `${{ github.repository_owner }}`                                                                                                                                               |
+| `repo`   | The name of the repository.                                                                                                                              | No        | `${{ github.repository }}`                                                                                                                                                     |
+| `sha`    | A comma separated list of commit SHAs to generate the summary for.                                                                                       | No        | `${{ github.sha }}`                                                                                                                                                            |
 
 | Output    | Description                                                                                   |
 |-----------|-----------------------------------------------------------------------------------------------|

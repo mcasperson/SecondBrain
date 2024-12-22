@@ -191,14 +191,17 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
 
         // If we have a sha, then we are only interested in a single commit
         if (!parsedArgs.sha().isEmpty()) {
-            return List.of(getCommitSummary(
+            return convertCommitsToDiffSummaries(
                     Try.withResources(ClientBuilder::newClient)
-                            .of(client -> gitHubClient.getCommit(client, parsedArgs.owner(), parsedArgs.repo(), parsedArgs.sha(), authHeader))
+                            .of(client ->
+                                    Try.of(() -> List.of(parsedArgs.sha().split(",")))
+                                            .map(commits -> gitHubClient.getCommits(client, parsedArgs.owner(), parsedArgs.repo(), commits, authHeader))
+                                            .get())
                             .get(),
                     parsedArgs.owner(),
                     parsedArgs.repo(),
                     authHeader,
-                    parsedArgs.customModel()));
+                    parsedArgs.customModel());
         }
 
         // Otherwise, we are interested in a range of commits
@@ -347,7 +350,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
             final String authorization) {
 
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> gitHubClient.getCommits(client, owner, repo, branch, until, since, authorization))
+                .of(client -> gitHubClient.getCommitsInRange(client, owner, repo, branch, until, since, authorization))
                 .get();
     }
 

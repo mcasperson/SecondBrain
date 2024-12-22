@@ -17,10 +17,10 @@ jobs:
             prompt: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
             token: ${{ secrets.GITHUB_TOKEN }}
             owner: ${{ github.repository_owner }}
-            repo: ${{ github.repository }}
+            repo: ${{ github.event.repository.name }}
             sha: ${{ github.sha }}
       - name: Get the diff summary
-        run: echo "The time was ${{ steps.secondbrain.outputs.response }}"
+        run: echo "The response was ${{ steps.secondbrain.outputs.response }}"
 
   build:
     runs-on: ubuntu-latest
