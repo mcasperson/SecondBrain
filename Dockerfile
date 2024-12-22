@@ -16,8 +16,6 @@ RUN DEBIAN_FRONTEND=noninteractive \
     && apt-get install -y curl openjdk-21-jre-headless \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-COPY --from=build /usr/src/app/cli/target/secondbrain-cli-*.jar /usr/local/bin/secondbrain-cli.jar
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN curl -#LO https://github.com/atkrad/wait4x/releases/latest/download/wait4x-linux-amd64.tar.gz \
     && tar --one-top-level -xvf wait4x-linux-amd64.tar.gz \
     && cp ./wait4x-linux-amd64/wait4x /usr/local/bin/wait4x \
@@ -28,6 +26,8 @@ RUN nohup bash -c "ollama serve &" \
     && ollama pull llama3.2:3b \
     && ollama list
 
+COPY --from=build /usr/src/app/cli/target/secondbrain-cli-*.jar /usr/local/bin/secondbrain-cli.jar
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
