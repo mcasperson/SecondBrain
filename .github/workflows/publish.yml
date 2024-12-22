@@ -7,6 +7,12 @@ on:
       - 'release/*'
 
 jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SecondBrainAction
+        uses: mcasperson/SecondBrain@0.1.487+run524-attempt1
+
   build:
     runs-on: ubuntu-latest
 
