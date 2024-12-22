@@ -20,7 +20,7 @@ jobs:
             repo: ${{ github.repository }}
             sha: ${{ github.sha }}
       - name: Get the diff summary
-        run: echo "The time was ${{ steps.secondbrain.outputs.time }}"
+        run: echo "The time was ${{ steps.secondbrain.outputs.response }}"
 
   build:
     runs-on: ubuntu-latest
