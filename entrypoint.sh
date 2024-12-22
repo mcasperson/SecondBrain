@@ -4,6 +4,9 @@
 nohup bash -c "ollama serve &"
 wait4x http http://127.0.0.1:11434
 
+# List the available models
+ollama list
+
 # Run SecondBrain CLI
 java \
   -Dsb.tools.force=GitHubDiffs \

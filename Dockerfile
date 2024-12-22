@@ -25,7 +25,8 @@ RUN curl -#LO https://github.com/atkrad/wait4x/releases/latest/download/wait4x-l
 RUN nohup bash -c "ollama serve &" \
     && wait4x http http://127.0.0.1:11434 \
     && ollama pull qwen2 \
-    && ollama pull llama3.2:3b
+    && ollama pull llama3.2:3b \
+    && ollama list
 
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
