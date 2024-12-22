@@ -21,13 +21,15 @@ done
 # List the available models
 ollama list
 
-# Run SecondBrain CLI
+# Run SecondBrain CLI. Note the context window needs to be be reasonably small,
+# as the hosted GitHub runners only have around 18GB of memory free.
 java \
   -Dsb.tools.force=GitHubDiffs \
   -Dsb.ollama.url=http://127.0.0.1:11434 \
   -Dsb.ollama.gitdiffmodel=qwen2.5-coder \
   -Dsb.ollama.toolmodel=llama3.2:3b \
   -Dsb.ollama.model=llama3.2:3b \
+  -Dsb.ollama.contextwindow=16384 \
   -Dsb.github.accesstoken="$1" \
   -Dsb.github.owner="$2" \
   -Dsb.github.repo="$3" \
