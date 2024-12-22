@@ -21,4 +21,6 @@ jobs:
             repo: ${{ github.event.repository.name }}
             sha: ${{ github.sha }}
       - name: Get the diff summary
-        run: echo "The response was ${{ steps.secondbrain.outputs.response }}"
+        env:
+            RESPONSE: ${{ steps.secondbrain.outputs.response }}
+        run: echo "$RESPONSE"
