@@ -4,6 +4,20 @@
 nohup bash -c "ollama serve &"
 wait4x http http://127.0.0.1:11434
 
+# An OK response from the server is not quite enough to know that it is ready to accept requests.
+# https://github.com/ollama/ollama/issues/1378
+max_retries=10
+retry_count=0
+until ollama --version && ollama ps; do
+  retry_count=$((retry_count + 1))
+  if [ $retry_count -ge $max_retries ]; then
+    echo "Command failed after $retry_count attempts."
+    exit 1
+  fi
+  echo "Command failed. Retrying... ($retry_count/$max_retries)"
+  sleep 1  # Wait for 1 second before retrying
+done
+
 # List the available models
 ollama list
 
