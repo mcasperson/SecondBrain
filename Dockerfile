@@ -11,6 +11,13 @@ RUN mvn clean install -DskipTests --batch-mode
 RUN cd web && mvn clean package -DskipTests --batch-mode
 
 FROM ollama/ollama:latest
+
+# GitHub overrides the HOME environment variable, which is where the models
+# are stored by default. We override the default location to a directory
+# that we control.
+RUN mkdir -p /ollama/models
+ENV OLLAMA_MODELS /ollama/models
+
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update \
     && apt-get install -y curl openjdk-21-jre-headless \
@@ -25,9 +32,6 @@ RUN nohup bash -c "ollama serve &" \
     && ollama pull qwen2.5-coder \
     && ollama pull llama3.2:3b \
     && ollama list
-
-# Make the models available to everyone
-RUN chmod -R a+rw /root/.ollama
 
 COPY --from=build /usr/src/app/cli/target/secondbrain-cli-*.jar /usr/local/bin/secondbrain-cli.jar
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
