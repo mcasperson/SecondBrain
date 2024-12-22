@@ -23,7 +23,6 @@ inputs:
   sha:
     description: 'Git commit SHA'
     required: true
-    default: ${{ github.sha }}
 outputs:
   response:
     description: 'The LLM response'
