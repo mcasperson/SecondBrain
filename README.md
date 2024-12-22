@@ -40,14 +40,6 @@ steps:
 | `repo`   | The name of the repository.                                                                  | No        | `${{ github.repository }}`                                                                                                                                                     |
 | `sha`    | The commit SHA to generate the summary for.                                                  | No        | `${{ github.sha }}`                                                                                                                                                            |
 
-> [!CAUTION]
-> Do not use this syntax. This style of action attempts to rebuild the Docker image each time and will not work:
-
-```yaml
-- name: SecondBrainAction
-  uses: mcasperson/SecondBrain@1.2.3
-```
-
 ## Awards
 
 SecondBrain was awarded second place in the [Payara Hackathon - Generative AI on Jakarta EE](https://www.linkedin.com/posts/payara_the-power-up-your-jakarta-ee-with-ai-hackathon-activity-7275895257563607040-lOnn?utm_source=share&utm_medium=member_desktop)!

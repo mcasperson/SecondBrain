@@ -29,7 +29,7 @@ outputs:
     description: 'The LLM response'
 runs:
   using: 'docker'
-  image: 'Dockerfile'
+  image: 'docker://ghcr.io/mcasperson/secondbrainaction:latest'
   args:
     - ${{ inputs.token }}
     - ${{ inputs.owner }}
