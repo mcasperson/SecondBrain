@@ -18,6 +18,10 @@ until ollama --version && ollama ps; do
   sleep 1  # Wait for 1 second before retrying
 done
 
+# If the models are not baked into the Docker image, pull them down
+ollama pull "$1"
+ollama pull "$2"
+
 # List the available models
 ollama list
 
@@ -26,14 +30,14 @@ ollama list
 java \
   -Dsb.tools.force=GitHubDiffs \
   -Dsb.ollama.url=http://127.0.0.1:11434 \
-  -Dsb.ollama.gitdiffmodel=qwen2.5-coder \
-  -Dsb.ollama.toolmodel=llama3.2:3b \
+  -Dsb.ollama.gitdiffmodel="$2" \
+  -Dsb.ollama.toolmodel="$1" \
   -Dsb.ollama.model=llama3.2:3b \
   -Dsb.ollama.contextwindow=16384 \
-  -Dsb.github.accesstoken="$1" \
-  -Dsb.github.owner="$2" \
-  -Dsb.github.repo="$3" \
-  -Dsb.github.sha="$4" \
+  -Dsb.github.accesstoken="$3" \
+  -Dsb.github.owner="$4" \
+  -Dsb.github.repo="$5" \
+  -Dsb.github.sha="$6" \
   -jar /usr/local/bin/secondbrain-cli.jar "$5" >> /tmp/secondbrain-cli.log
 
 cat /tmp/secondbrain-cli.log

@@ -23,6 +23,14 @@ inputs:
   sha:
     description: 'Git commit SHA'
     required: true
+  gitDiffModel:
+    description: 'The model used to create git diffs'
+    required: true
+    default: 'qwen2.5-coder'
+  model:
+    description: 'The model used to answer the prompt'
+    required: true
+    default: 'llama3.2:3b'
 outputs:
   response:
     description: 'The LLM response'
@@ -30,6 +38,8 @@ runs:
   using: 'docker'
   image: 'docker://ghcr.io/mcasperson/secondbrainaction:latest'
   args:
+    - ${{ inputs.model }}
+    - ${{ inputs.gitDiffModel }}
     - ${{ inputs.token }}
     - ${{ inputs.owner }}
     - ${{ inputs.repo }}
