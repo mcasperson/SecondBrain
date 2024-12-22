@@ -19,5 +19,9 @@ java \
 cat /tmp/secondbrain-cli.log
 
 if [ -n "$GITHUB_OUTPUT" ]; then
-  cat /tmp/secondbrain-cli.log >> "$GITHUB_OUTPUT"
+  {
+    echo 'response<<EOF'
+    cat /tmp/secondbrain-cli.log
+    echo EOF
+  } >> "$GITHUB_OUTPUT"
 fi

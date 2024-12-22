@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: SecondBrainAction
+        id: secondbrain
         uses: docker://ghcr.io/mcasperson/secondbrainaction:latest
         with:
             prompt: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
@@ -18,6 +19,8 @@ jobs:
             owner: ${{ github.repository_owner }}
             repo: ${{ github.repository }}
             sha: ${{ github.sha }}
+      - name: Get the diff summary
+        run: echo "The time was ${{ steps.secondbrain.outputs.time }}"
 
   build:
     runs-on: ubuntu-latest
