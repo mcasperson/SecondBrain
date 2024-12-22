@@ -1,6 +1,9 @@
 # action.yml
-name: 'SecondBrain'
+name: 'SecondBrainAction'
 description: 'AI powered git commit message generator with Ollama'
+branding:
+  icon: 'box'
+  color: 'green'
 inputs:
   prompt:
     description: 'The LLM prompt'
