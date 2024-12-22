@@ -1,6 +1,8 @@
 package secondbrain.domain.constants;
 
 public class Constants {
+    public static final int DEFAULT_CONTENT_WINDOW = 32768;
+
     /**
      * The value to multiply the content window by to get the maximum context length.
      */
@@ -11,10 +13,7 @@ public class Constants {
      */
     public static final int CHARACTERS_PER_TOKEN = 4;
 
-    /**
-     * Ollama defaults to a context winodw of 2048 tokens.
-     */
-    public static final int MAX_CONTEXT_LENGTH = (int) (2048 * CONTENT_WINDOW_BUFFER * CHARACTERS_PER_TOKEN);
+    public static final int DEFAULT_MAX_CONTEXT_LENGTH = (int) (DEFAULT_CONTENT_WINDOW * CONTENT_WINDOW_BUFFER * CHARACTERS_PER_TOKEN);
 
 
     /**

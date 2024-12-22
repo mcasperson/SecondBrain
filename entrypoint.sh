@@ -28,8 +28,6 @@ java \
   -Dsb.ollama.gitdiffmodel=qwen2.5-coder \
   -Dsb.ollama.toolmodel=llama3.2:3b \
   -Dsb.ollama.model=llama3.2:3b \
-  -Dsb.ollama.contextwindow=32768 \
-  -Dsb.ollama.diffcontextwindow=32768 \
   -Dsb.github.accesstoken="$1" \
   -Dsb.github.owner="$2" \
   -Dsb.github.repo="$3" \

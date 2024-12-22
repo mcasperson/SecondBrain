@@ -442,11 +442,11 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
 
             final Integer diffContextWindowValue = Try.of(diffContextWindow::get)
                     .map(Integer::parseInt)
-                    .recover(e -> null)
+                    .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
                     .get();
 
             final int contextWindowChars = contextWindowValue == null
-                    ? Constants.MAX_CONTEXT_LENGTH
+                    ? Constants.DEFAULT_MAX_CONTEXT_LENGTH
                     : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
 
             return new Arguments(days, maxDiffs, startDate, endDate, owner, repo, sha, branch, token, customModel, contextWindowValue, diffCustomModel, diffContextWindowValue, contextWindowChars);

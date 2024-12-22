@@ -349,11 +349,11 @@ public class SlackChannel implements Tool<Void> {
 
             final Integer contextWindowValue = Try.of(contextWindow::get)
                     .map(Integer::parseInt)
-                    .recover(e -> null)
+                    .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
                     .get();
 
             final int contextWindowChars = contextWindowValue == null
-                    ? Constants.MAX_CONTEXT_LENGTH
+                    ? Constants.DEFAULT_MAX_CONTEXT_LENGTH
                     : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
 
             return new Arguments(channel, days, accessToken, customModel, contextWindowValue, contextWindowChars);
