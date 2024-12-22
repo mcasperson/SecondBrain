@@ -18,4 +18,6 @@ java \
 
 cat /tmp/secondbrain-cli.log
 
-cat /tmp/secondbrain-cli.log >> "$GITHUB_OUTPUT"
+if [ -n "$GITHUB_OUTPUT" ]; then
+  cat /tmp/secondbrain-cli.log >> "$GITHUB_OUTPUT"
+fi
