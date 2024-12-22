@@ -16,6 +16,9 @@ and get a meaningful response against real-time data.
 
 SecondBrain is available as a GitHub Action. This allows you to generate summaries of your git diffs as part of a GitHub Actions Workflow.
 
+> [!NOTE]
+> The ability to interact with other data sources via the GitHub Action may be added in the future.
+
 The action is distributed as the Docker image `ghcr.io/mcasperson/secondbrainaction`.
 
 Here is an example of how to use the action:
