@@ -11,7 +11,7 @@ ollama list
 java \
   -Dsb.tools.force=GitHubDiffs \
   -Dsb.ollama.url=http://127.0.0.1:11434 \
-  -Dsb.ollama.gitdiffmodel=qwen2 \
+  -Dsb.ollama.gitdiffmodel=qwen2.5-coder \
   -Dsb.ollama.toolmodel=llama3.2:3b \
   -Dsb.ollama.model=llama3.2:3b \
   -Dsb.github.accesstoken="$1" \

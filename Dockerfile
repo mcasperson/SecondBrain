@@ -24,7 +24,7 @@ RUN curl -#LO https://github.com/atkrad/wait4x/releases/latest/download/wait4x-l
     && rm wait4x-linux-amd64.tar.gz
 RUN nohup bash -c "ollama serve &" \
     && wait4x http http://127.0.0.1:11434 \
-    && ollama pull qwen2 \
+    && ollama pull qwen2.5-coder \
     && ollama pull llama3.2:3b \
     && ollama list
 
