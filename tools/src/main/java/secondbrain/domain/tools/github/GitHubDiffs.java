@@ -6,8 +6,8 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
@@ -31,6 +31,7 @@ import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.GitHubCommitResponse;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
+import secondbrain.infrastructure.ollama.OllamaGenerateBodyOptions;
 
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -80,6 +81,10 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
     @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
     private String model;
 
+    @Inject
+    @ConfigProperty(name = "sb.ollama.contextwindow")
+    private Optional<String> contextWindow;
+
     /**
      * Each individual diff can be summarized with its own model. Typically, this model will be
      * smaller than the one used to provide the overall summary of the git diffs. For example,
@@ -91,8 +96,8 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
     private Optional<String> diffModel;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    private String limit;
+    @ConfigProperty(name = "sb.ollama.diffcontextwindow")
+    private Optional<String> diffContextWindow;
 
     @Inject
     @ConfigProperty(name = "sb.github.accesstoken")
@@ -185,6 +190,9 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 githubRepo,
                 githubSha,
                 model,
+                contextWindow,
+                diffModel,
+                diffContextWindow,
                 prompt);
 
         final String authHeader = "Bearer " + parsedArgs.token();
@@ -198,10 +206,8 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                                             .map(commits -> gitHubClient.getCommits(client, parsedArgs.owner(), parsedArgs.repo(), commits, authHeader))
                                             .get())
                             .get(),
-                    parsedArgs.owner(),
-                    parsedArgs.repo(),
                     authHeader,
-                    parsedArgs.customModel());
+                    parsedArgs);
         }
 
         // Otherwise, we are interested in a range of commits
@@ -219,10 +225,8 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                         parsedArgs.maxDiffs() > 0 ? parsedArgs.maxDiffs() : commitsResponse.size()))
                 .map(commitsResponse -> convertCommitsToDiffSummaries(
                         commitsResponse,
-                        parsedArgs.owner(),
-                        parsedArgs.repo(),
                         authHeader,
-                        parsedArgs.customModel()))
+                        parsedArgs))
                 .get();
     }
 
@@ -244,6 +248,9 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 githubRepo,
                 githubSha,
                 model,
+                contextWindow,
+                diffModel,
+                diffContextWindow,
                 prompt);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
@@ -252,7 +259,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
-                        NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
+                        parsedArgs.contextWindowChars()))
                 .map(ragDocs -> mergeContext(ragDocs, debugArgs))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
@@ -262,7 +269,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                                 INSTRUCTIONS,
                                 promptBuilderSelector.getPromptBuilder(parsedArgs.customModel()).buildContextPrompt("Git Diffs", ragDoc.combinedDocument()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel()));
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -289,14 +296,12 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
 
     private List<RagDocumentContext<GitHubCommitResponse>> convertCommitsToDiffSummaries(
             final List<GitHubCommitResponse> commitsResponse,
-            final String owner,
-            final String repo,
             final String authorization,
-            final String customModel) {
+            final Arguments parsedArgs) {
 
         return commitsResponse
                 .stream()
-                .map(commit -> getCommitSummary(commit, owner, repo, authorization, customModel))
+                .map(commit -> getCommitSummary(commit, authorization, parsedArgs))
                 .toList();
     }
 
@@ -306,11 +311,9 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
      * into a single document to be summarised again.
      */
     private RagDocumentContext<GitHubCommitResponse> getCommitSummary(final GitHubCommitResponse commit,
-                                                                      final String owner,
-                                                                      final String repo,
                                                                       final String authorization,
-                                                                      final String customModel) {
-        final String summary = getDiffSummary(getCommitDiff(owner, repo, commit.sha(), authorization), customModel);
+                                                                      final Arguments parsedArgs) {
+        final String summary = getDiffSummary(getCommitDiff(parsedArgs.owner(), parsedArgs.repo(), commit.sha(), authorization), parsedArgs);
         return new RagDocumentContext<GitHubCommitResponse>(
                 summary,
                 sentenceSplitter.splitDocument(summary, 10)
@@ -326,17 +329,18 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
      * Use the LLM to generate a plain text summary of the diff. This summary will be used to link the
      * final summary of all diffs to the changes in individual diffs.
      */
-    private String getDiffSummary(final String diff, final String customModel) {
+    private String getDiffSummary(final String diff, final Arguments parsedArgs) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.callOllama(
                         client,
                         new OllamaGenerateBody(
-                                diffModel.orElse(customModel),
-                                promptBuilderSelector.getPromptBuilder(customModel).buildFinalPrompt(
+                                parsedArgs.diffCustomModel(),
+                                promptBuilderSelector.getPromptBuilder(parsedArgs.diffCustomModel()).buildFinalPrompt(
                                         DIFF_INSTRUCTIONS,
-                                        promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("Git Diff", diff),
+                                        promptBuilderSelector.getPromptBuilder(parsedArgs.diffCustomModel()).buildContextPrompt("Git Diff", diff),
                                         "Provide a one paragraph summary of the changes in the Git Diff."),
-                                false)))
+                                false,
+                                new OllamaGenerateBodyOptions(parsedArgs.diffContextWindow()))))
                 .get()
                 .response();
     }
@@ -369,8 +373,9 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
      * the various inputs to the tool.
      */
     record Arguments(int days, int maxDiffs, String startDate, String endDate, String owner, String repo,
-                     String sha, String branch, String token, String customModel) {
-        public static Arguments fromToolArgs(List<ToolArgs> arguments, Map<String, String> context, ArgsAccessor argsAccessor, SanitizeArgument dateSanitizer, Encryptor textEncryptor, ValidateString validateString, Optional<String> githubAccessToken, Optional<String> githubOwner, Optional<String> githubRepo, Optional<String> githubSha, String model, String prompt) {
+                     String sha, String branch, String token, String customModel, @Nullable Integer contextWindow,
+                     String diffCustomModel, @Nullable Integer diffContextWindow, int contextWindowChars) {
+        public static Arguments fromToolArgs(List<ToolArgs> arguments, Map<String, String> context, ArgsAccessor argsAccessor, SanitizeArgument dateSanitizer, Encryptor textEncryptor, ValidateString validateString, Optional<String> githubAccessToken, Optional<String> githubOwner, Optional<String> githubRepo, Optional<String> githubSha, String model, Optional<String> contextWindow, Optional<String> diffModel, Optional<String> diffContextWindow, String prompt) {
             final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
                     .recover(throwable -> DEFAULT_DURATION)
                     .map(i -> Math.max(0, i))
@@ -425,7 +430,26 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                     .recover(e -> model)
                     .get();
 
-            return new Arguments(days, maxDiffs, startDate, endDate, owner, repo, sha, branch, token, customModel);
+            final Integer contextWindowValue = Try.of(contextWindow::get)
+                    .map(Integer::parseInt)
+                    .recover(e -> null)
+                    .get();
+
+            final String diffCustomModel = Try.of(() -> context.get("diff_custom_model"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> diffModel.orElse(model))
+                    .get();
+
+            final Integer diffContextWindowValue = Try.of(diffContextWindow::get)
+                    .map(Integer::parseInt)
+                    .recover(e -> null)
+                    .get();
+
+            final int contextWindowChars = contextWindowValue == null
+                    ? Constants.MAX_CONTEXT_LENGTH
+                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
+
+            return new Arguments(days, maxDiffs, startDate, endDate, owner, repo, sha, branch, token, customModel, contextWindowValue, diffCustomModel, diffContextWindowValue, contextWindowChars);
         }
     }
 }

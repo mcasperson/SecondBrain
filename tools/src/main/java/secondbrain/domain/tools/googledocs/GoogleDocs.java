@@ -75,8 +75,8 @@ public class GoogleDocs implements Tool<Void> {
     private String model;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    private String limit;
+    @ConfigProperty(name = "sb.ollama.contextwindow")
+    private Optional<String> contextWindow;
 
     @Inject
     @Identifier("sanitizeList")
@@ -132,7 +132,7 @@ public class GoogleDocs implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model, contextWindow);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
@@ -179,7 +179,7 @@ public class GoogleDocs implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model, contextWindow);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> mergeContext(ragDoc, parsedArgs.customModel()))
@@ -190,9 +190,9 @@ public class GoogleDocs implements Tool<Void> {
                                 // I've opted to get the end of the document if it is larger than the context window.
                                 // The end of the document is typically given more weight by LLMs, and so any long
                                 // document being processed should place the most relevant content twoards the end.
-                                ragContext.getDocumentRight(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
+                                ragContext.getDocumentRight(parsedArgs.contextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel()));
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -312,8 +312,9 @@ public class GoogleDocs implements Tool<Void> {
      * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
      * the various inputs to the tool.
      */
-    record Arguments(String documentId, List<String> keywords, String customModel) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, ValidateString validateString, final SanitizeArgument sanitizeList, final String prompt, final String model) {
+    record Arguments(String documentId, List<String> keywords, String customModel, @Nullable Integer contextWindow,
+                     int contextWindowChars) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString, final SanitizeArgument sanitizeList, final String prompt, final String model, final Optional<String> contextWindow) {
             final String documentId = argsAccessor.getArgument(arguments, "googleDocumentId", "");
             final List<String> keywords = List.of(sanitizeList.sanitize(
                     argsAccessor.getArgument(arguments, "keywords", ""),
@@ -324,7 +325,16 @@ public class GoogleDocs implements Tool<Void> {
                     .recover(e -> model)
                     .get();
 
-            return new Arguments(documentId, keywords, customModel);
+            final Integer contextWindowValue = Try.of(contextWindow::get)
+                    .map(Integer::parseInt)
+                    .recover(e -> null)
+                    .get();
+
+            final int contextWindowChars = contextWindowValue == null
+                    ? Constants.MAX_CONTEXT_LENGTH
+                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
+
+            return new Arguments(documentId, keywords, customModel, contextWindowValue, contextWindowChars);
         }
     }
 }

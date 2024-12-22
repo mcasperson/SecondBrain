@@ -6,8 +6,8 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
@@ -26,6 +26,7 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -45,8 +46,8 @@ public class SlackZenGoogle implements Tool<Void> {
     private String model;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    private String limit;
+    @ConfigProperty(name = "sb.ollama.contextwindow")
+    private Optional<String> contextWindow;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -97,7 +98,7 @@ public class SlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, model);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, model, contextWindow);
 
         final List<ToolArgs> slackArguments = arguments.stream()
                 .filter(arg -> arg.argName().equals("slackChannel") || arg.argName().equals("days"))
@@ -137,7 +138,7 @@ public class SlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, model);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, model, contextWindow);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> mergeContext(ragDoc, parsedArgs.customModel()))
@@ -148,9 +149,9 @@ public class SlackZenGoogle implements Tool<Void> {
                                 // I've opted to get the end of the document if it is larger than the context window.
                                 // The end of the document is typically given more weight by LLMs, and so any long
                                 // document being processed should place the most relevant content towards the end.
-                                ragContext.getDocumentRight(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
+                                ragContext.getDocumentRight(parsedArgs.contextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel()));
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -167,8 +168,9 @@ public class SlackZenGoogle implements Tool<Void> {
                 context);
     }
 
-    record Arguments(String slackChannel, String googleDocumentId, String zenDeskOrganization, String customModel) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString, final String model) {
+    record Arguments(String slackChannel, String googleDocumentId, String zenDeskOrganization, String customModel,
+                     @Nullable Integer contextWindow, int contextWindowChars) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString, final String model, final Optional<String> contextWindow) {
             final String slackChannel = argsAccessor.getArgument(arguments, "slackChannel", "").trim();
             final String googleDocumentId = argsAccessor.getArgument(arguments, "googleDocumentId", "").trim();
             final String zenDeskOrganization = argsAccessor.getArgument(arguments, "zenDeskOrganization", "").trim();
@@ -178,7 +180,16 @@ public class SlackZenGoogle implements Tool<Void> {
                     .recover(e -> model)
                     .get();
 
-            return new Arguments(slackChannel, googleDocumentId, zenDeskOrganization, customModel);
+            final Integer contextWindowValue = Try.of(contextWindow::get)
+                    .map(Integer::parseInt)
+                    .recover(e -> null)
+                    .get();
+
+            final int contextWindowChars = contextWindowValue == null
+                    ? Constants.MAX_CONTEXT_LENGTH
+                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
+
+            return new Arguments(slackChannel, googleDocumentId, zenDeskOrganization, customModel, contextWindowValue, contextWindowChars);
         }
     }
 }

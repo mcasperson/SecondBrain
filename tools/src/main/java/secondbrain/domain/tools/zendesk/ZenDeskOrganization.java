@@ -10,9 +10,9 @@ import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
@@ -31,6 +31,7 @@ import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
+import secondbrain.infrastructure.ollama.OllamaGenerateBodyOptions;
 import secondbrain.infrastructure.zendesk.*;
 
 import java.time.OffsetDateTime;
@@ -87,8 +88,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     private String model;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    private String limit;
+    @ConfigProperty(name = "sb.ollama.contextwindow")
+    private Optional<String> contextWindow;
 
     @Inject
     private Encryptor textEncryptor;
@@ -176,7 +177,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 zenDeskUrl,
                 zenDeskUser,
                 zenExcludedOrgs,
-                model);
+                model,
+                contextWindow);
 
         final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
                 (parsedArgs.user() + "/token:" + parsedArgs.token()).getBytes(UTF_8))).get(), UTF_8);
@@ -204,7 +206,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                             raw tickets. The reality is that even LLMs with a context length of 128k tokens mostly fixated
                             one a small number of tickets.
                          */
-                        .map(tickets -> summariseTickets(tickets, parsedArgs.customModel()))
+                        .map(tickets -> summariseTickets(tickets, parsedArgs))
                         .get())
                 .get();
 
@@ -227,7 +229,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 zenDeskUrl,
                 zenDeskUser,
                 zenExcludedOrgs,
-                model);
+                model,
+                contextWindow);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
@@ -236,7 +239,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
-                        NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)))
+                        parsedArgs.contextWindowChars()))
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
                 .map(tickets -> mergeContext(tickets, debugArgs, parsedArgs.customModel()))
                 // Make sure we had some content for the prompt
@@ -248,7 +251,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                                 .getPromptBuilder(parsedArgs.customModel())
                                 .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
                 // Call Ollama with the final prompt
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, model))
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()))
                 // Clean up the response
                 .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())));
 
@@ -322,31 +325,32 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     /**
      * Summarise the tickets by passing them through the LLM
      */
-    private List<RagDocumentContext<ZenDeskResultsResponse>> summariseTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets, final String customModel) {
+    private List<RagDocumentContext<ZenDeskResultsResponse>> summariseTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets, final Arguments parsedArgs) {
         return tickets.stream()
-                .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), customModel)))
+                .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), parsedArgs)))
                 .collect(Collectors.toList());
     }
 
     /**
      * Summarise an individual ticket
      */
-    private String getTicketSummary(final String ticketContents, final String customModel) {
+    private String getTicketSummary(final String ticketContents, final Arguments parsedArgs) {
         final String context = promptBuilderSelector
-                .getPromptBuilder(customModel)
+                .getPromptBuilder(parsedArgs.customModel())
                 .buildContextPrompt("ZenDesk Ticket", ticketContents);
 
         final String prompt = promptBuilderSelector
-                .getPromptBuilder(customModel)
+                .getPromptBuilder(parsedArgs.customModel())
                 .buildFinalPrompt("You are a helpful agent", context, "Summarise the ticket in one paragraph");
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.callOllama(
                                 client,
                                 new OllamaGenerateBody(
-                                        customModel,
+                                        parsedArgs.customModel(),
                                         prompt,
-                                        false))
+                                        false,
+                                        new OllamaGenerateBodyOptions(parsedArgs.contextWindow())))
                         .response())
                 .get();
     }
@@ -405,12 +409,21 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
      * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
      * the various inputs to the tool.
      */
-    record Arguments(String organization, List<String> excludedOrganization, String recipient,
+    record Arguments(String organization,
+                     List<String> excludedOrganization,
+                     String recipient,
                      List<String> excludedSubmitters,
                      int hours,
-                     int days, int numComments, String token, String url, String user, String customModel,
-                     String startDate) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor, Map<String, String> context, ValidateInputs validateInputs, ValidateString validateString, SanitizeArgument sanitizeOrganization, SanitizeArgument sanitizeEmail, Encryptor textEncryptor, String prompt, Optional<String> zenDeskAccessToken, Optional<String> zenDeskUrl, Optional<String> zenDeskUser, Optional<String> zenExcludedOrgs, String model) {
+                     int days,
+                     int numComments,
+                     String token,
+                     String url,
+                     String user,
+                     String customModel,
+                     @Nullable Integer contextWindow,
+                     String startDate,
+                     int contextWindowChars) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor, final Map<String, String> context, final ValidateInputs validateInputs, final ValidateString validateString, final SanitizeArgument sanitizeOrganization, final SanitizeArgument sanitizeEmail, final Encryptor textEncryptor, final String prompt, final Optional<String> zenDeskAccessToken, final Optional<String> zenDeskUrl, final Optional<String> zenDeskUser, final Optional<String> zenExcludedOrgs, final String model, final Optional<String> contextWindow) {
             final String organization = validateInputs.getCommaSeparatedList(
                     prompt,
                     argsAccessor.getArgument(arguments, "zenDeskOrganization", ""));
@@ -494,7 +507,16 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                     .minusHours(fixedHours)
                     .format(ISO_OFFSET_DATE_TIME);
 
-            return new Arguments(fixedOrganization, excludedOrganization, fixedRecipient, exclude, fixedHours, fixedDays, numComments, token.get(), url.get(), user.get(), customModel, startDate);
+            final Integer contextWindowValue = Try.of(contextWindow::get)
+                    .map(Integer::parseInt)
+                    .recover(e -> null)
+                    .get();
+
+            final int contextWindowChars = contextWindowValue == null
+                    ? Constants.MAX_CONTEXT_LENGTH
+                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
+
+            return new Arguments(fixedOrganization, excludedOrganization, fixedRecipient, exclude, fixedHours, fixedDays, numComments, token.get(), url.get(), user.get(), customModel, contextWindowValue, startDate, contextWindowChars);
         }
 
         private static int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {

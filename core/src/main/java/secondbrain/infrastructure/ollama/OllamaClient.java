@@ -8,6 +8,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
@@ -56,15 +57,19 @@ public class OllamaClient {
     }
 
     public <T> RagMultiDocumentContext<T> callOllama(final Client client, final OllamaGenerateBodyWithContext<T> body) {
-        final OllamaResponse response = callOllama(client, new OllamaGenerateBody(body.model(), body.prompt().combinedDocument(), body.stream()));
+        final OllamaResponse response = callOllama(client, new OllamaGenerateBody(
+                body.model(),
+                body.prompt().combinedDocument(),
+                body.stream(),
+                new OllamaGenerateBodyOptions(body.contextWindow())));
         return body.prompt().updateDocument(response.response());
     }
 
-    public <T> RagMultiDocumentContext<T> callOllama(final RagMultiDocumentContext<T> ragDoc, final String model) {
+    public <T> RagMultiDocumentContext<T> callOllama(final RagMultiDocumentContext<T> ragDoc, final String model, @Nullable final Integer contextWindow) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> callOllama(
                         client,
-                        new OllamaGenerateBodyWithContext<>(model, ragDoc, false)))
+                        new OllamaGenerateBodyWithContext<>(model, contextWindow, ragDoc, false)))
                 .get();
     }
 }

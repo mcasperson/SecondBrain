@@ -8,8 +8,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
@@ -21,11 +21,13 @@ import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.publicweb.PublicWebClient;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -49,8 +51,8 @@ public class PublicWeb implements Tool<Void> {
     private String model;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    private String limit;
+    @ConfigProperty(name = "sb.ollama.contextwindow")
+    private Optional<String> contextWindow;
 
     @Inject
     private PublicWebClient publicWebClient;
@@ -69,6 +71,9 @@ public class PublicWeb implements Tool<Void> {
 
     @Inject
     private OllamaClient ollamaClient;
+
+    @Inject
+    private ValidateString validateString;
 
     @Override
     public String getName() {
@@ -93,7 +98,7 @@ public class PublicWeb implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, argsAccessor);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, model, contextWindow);
 
         if (StringUtils.isBlank(parsedArgs.url())) {
             throw new FailedTool("You must provide a URL to download");
@@ -114,21 +119,27 @@ public class PublicWeb implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, argsAccessor);
+        final Arguments parsedArgs = Arguments.fromToolArgs(
+                arguments,
+                context,
+                argsAccessor,
+                validateString,
+                model,
+                contextWindow);
 
         if (StringUtils.isBlank(parsedArgs.url())) {
             throw new FailedTool("You must provide a URL to download");
         }
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                .map(ragDoc -> mergeContext(ragDoc, model))
+                .map(ragDoc -> mergeContext(ragDoc, parsedArgs.model()))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(model)
+                        .getPromptBuilder(parsedArgs.model())
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
-                                ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
+                                ragContext.getDocumentLeft(parsedArgs.contextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.model(), parsedArgs.contextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -164,10 +175,25 @@ public class PublicWeb implements Tool<Void> {
      * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
      * the various inputs to the tool.
      */
-    record Arguments(String url) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor) {
+    record Arguments(String url, String model, @Nullable Integer contextWindow, int contextWindowChars) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, Map<String, String> context, ArgsAccessor argsAccessor, ValidateString validateString, String model, Optional<String> contextWindow) {
             final String url = argsAccessor.getArgument(arguments, "url", "");
-            return new Arguments(url);
+
+            final String customModel = Try.of(() -> context.get("custom_model"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> model)
+                    .get();
+
+            final Integer contextWindowValue = Try.of(contextWindow::get)
+                    .map(Integer::parseInt)
+                    .recover(e -> null)
+                    .get();
+
+            final int contextWindowChars = contextWindowValue == null
+                    ? Constants.MAX_CONTEXT_LENGTH
+                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
+
+            return new Arguments(url, customModel, contextWindowValue, contextWindowChars);
         }
     }
 }

@@ -13,8 +13,8 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
@@ -28,6 +28,7 @@ import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.time.LocalDateTime;
@@ -54,8 +55,8 @@ public class SlackChannel implements Tool<Void> {
     private String model;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    private String limit;
+    @ConfigProperty(name = "sb.ollama.contextwindow")
+    private Optional<String> contextWindow;
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
@@ -83,6 +84,9 @@ public class SlackChannel implements Tool<Void> {
     @Inject
     private PromptBuilderSelector promptBuilderSelector;
 
+    @Inject
+    private ValidateString validateString;
+
     @Override
     public String getName() {
         return SlackChannel.class.getSimpleName();
@@ -107,7 +111,15 @@ public class SlackChannel implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, textEncryptor, slackAccessToken);
+        final Arguments parsedArgs = Arguments.fromToolArgs(
+                arguments,
+                context,
+                argsAccessor,
+                textEncryptor,
+                validateString,
+                slackAccessToken,
+                model,
+                contextWindow);
 
         final String oldest = Long.valueOf(LocalDateTime.now(ZoneId.systemDefault())
                         .minusDays(parsedArgs.days())
@@ -159,6 +171,16 @@ public class SlackChannel implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
+        final Arguments parsedArgs = Arguments.fromToolArgs(
+                arguments,
+                context,
+                argsAccessor,
+                textEncryptor,
+                validateString,
+                slackAccessToken,
+                model,
+                contextWindow);
+
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(
                         ragDoc.stream()
@@ -169,9 +191,9 @@ public class SlackChannel implements Tool<Void> {
                         .getPromptBuilder(model)
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
-                                ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
+                                ragContext.getDocumentLeft(parsedArgs.contextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -302,8 +324,9 @@ public class SlackChannel implements Tool<Void> {
      * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
      * the various inputs to the tool.
      */
-    record Arguments(String channel, int days, String accessToken) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final Encryptor textEncryptor, final Optional<String> slackAccessToken) {
+    record Arguments(String channel, int days, String accessToken, String customModel,
+                     @Nullable Integer contextWindow, int contextWindowChars) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final Encryptor textEncryptor, final ValidateString validateString, final Optional<String> slackAccessToken, final String model, final Optional<String> contextWindow) {
             final String channel = argsAccessor.getArgument(arguments, "slackChannel", "").trim()
                     .replaceFirst("^#", "");
 
@@ -319,7 +342,21 @@ public class SlackChannel implements Tool<Void> {
                     .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
                     .getOrElseThrow(() -> new FailedTool("Slack access token not found"));
 
-            return new Arguments(channel, days, accessToken);
+            final String customModel = Try.of(() -> context.get("custom_model"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> model)
+                    .get();
+
+            final Integer contextWindowValue = Try.of(contextWindow::get)
+                    .map(Integer::parseInt)
+                    .recover(e -> null)
+                    .get();
+
+            final int contextWindowChars = contextWindowValue == null
+                    ? Constants.MAX_CONTEXT_LENGTH
+                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
+
+            return new Arguments(channel, days, accessToken, customModel, contextWindowValue, contextWindowChars);
         }
 
     }

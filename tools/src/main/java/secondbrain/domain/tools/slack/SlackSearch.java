@@ -8,8 +8,8 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
@@ -23,6 +23,7 @@ import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.*;
@@ -41,8 +42,8 @@ public class SlackSearch implements Tool<MatchedItem> {
     private String model;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.contentlength", defaultValue = "" + Constants.MAX_CONTEXT_LENGTH)
-    private String limit;
+    @ConfigProperty(name = "sb.ollama.contextwindow")
+    private Optional<String> contextWindow;
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
@@ -69,6 +70,9 @@ public class SlackSearch implements Tool<MatchedItem> {
     @Inject
     private SentenceVectorizer sentenceVectorizer;
 
+    @Inject
+    private ValidateString validateString;
+
     @Override
     public String getName() {
         return SlackSearch.class.getSimpleName();
@@ -92,7 +96,17 @@ public class SlackSearch implements Tool<MatchedItem> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, textEncryptor, keywordExtractor, prompt, slackAccessToken);
+        final Arguments parsedArgs = Arguments.fromToolArgs(
+                arguments,
+                context,
+                argsAccessor,
+                textEncryptor,
+                keywordExtractor,
+                validateString,
+                prompt,
+                slackAccessToken,
+                model,
+                contextWindow);
 
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
@@ -118,15 +132,27 @@ public class SlackSearch implements Tool<MatchedItem> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
+        final Arguments parsedArgs = Arguments.fromToolArgs(
+                arguments,
+                context,
+                argsAccessor,
+                textEncryptor,
+                keywordExtractor,
+                validateString,
+                prompt,
+                slackAccessToken,
+                model,
+                contextWindow);
+
         final List<RagDocumentContext<MatchedItem>> contextList = getContext(context, prompt, arguments);
 
         final Try<RagMultiDocumentContext<MatchedItem>> result = Try.of(() -> mergeContext(contextList))
                 .map(ragContext -> ragContext.updateDocument(
-                        promptBuilderSelector.getPromptBuilder(model).buildFinalPrompt(
+                        promptBuilderSelector.getPromptBuilder(parsedArgs.customModel()).buildFinalPrompt(
                                 INSTRUCTIONS,
-                                ragContext.getDocumentLeft(NumberUtils.toInt(limit, Constants.MAX_CONTEXT_LENGTH)),
+                                ragContext.getDocumentLeft(parsedArgs.contextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, model));
+                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -171,8 +197,9 @@ public class SlackSearch implements Tool<MatchedItem> {
      * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
      * the various inputs to the tool.
      */
-    record Arguments(Set<String> keywords, String accessToken) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final Encryptor textEncryptor, final KeywordExtractor keywordExtractor, final String prompt, final Optional<String> slackAccessToken) {
+    record Arguments(Set<String> keywords, String accessToken, String customModel, @Nullable Integer contextWindow,
+                     int contextWindowChars) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final Encryptor textEncryptor, final KeywordExtractor keywordExtractor, final ValidateString validateString, final String prompt, final Optional<String> slackAccessToken, final String model, final Optional<String> contextWindow) {
             final List<String> keywords = Stream.of(argsAccessor
                             .getArgument(arguments, "keywords", "")
                             .split(","))
@@ -192,7 +219,21 @@ public class SlackSearch implements Tool<MatchedItem> {
                     .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
                     .getOrElseThrow(() -> new FailedTool("Slack access token not found"));
 
-            return new Arguments(combinedKeywords, accessToken);
+            final String customModel = Try.of(() -> context.get("custom_model"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> model)
+                    .get();
+
+            final Integer contextWindowValue = Try.of(contextWindow::get)
+                    .map(Integer::parseInt)
+                    .recover(e -> null)
+                    .get();
+
+            final int contextWindowChars = contextWindowValue == null
+                    ? Constants.MAX_CONTEXT_LENGTH
+                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
+
+            return new Arguments(combinedKeywords, accessToken, customModel, contextWindowValue, contextWindowChars);
         }
 
     }
