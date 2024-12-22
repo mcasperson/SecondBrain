@@ -35,7 +35,7 @@ jobs:
           prompt: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
           token: ${{ secrets.GITHUB_TOKEN }}
           owner: ${{ github.repository_owner }}
-          repo: ${{ github.repository }}
+          repo: ${{ github.event.repository.name }}
           sha: ${{ github.sha }}
       - name: Get the diff summary
         run: echo "The response was ${{ steps.secondbrain.outputs.response }}"
@@ -46,7 +46,7 @@ jobs:
 | `prompt` | The prompt sent to the LLM to generate the summary. This prompt has access to system prompts that contain the single paragraph summaries of the commits. | No        | A default prompt is used to generate summaries of the git diffs. See [action.yml](https://github.com/mcasperson/SecondBrain/blob/main/action.yml) for the exact default value. |
 | `token`  | The GitHub token to use to access the repository. Set this to `${{ secrets.GITHUB_TOKEN }}`.                                                             | Yes       | None                                                                                                                                                                           |
 | `owner`  | The owner of the repository.                                                                                                                             | No        | `${{ github.repository_owner }}`                                                                                                                                               |
-| `repo`   | The name of the repository.                                                                                                                              | No        | `${{ github.repository }}`                                                                                                                                                     |
+| `repo`   | The name of the repository.                                                                                                                              | No        | `${{ github.event.repository.name }}`                                                                                                                                          |
 | `sha`    | A comma separated list of commit SHAs to generate the summary for.                                                                                       | No        | `${{ github.sha }}`                                                                                                                                                            |
 
 | Output    | Description                                                                                   |
