@@ -31,8 +31,8 @@ java \
   -Dsb.tools.force=GitHubDiffs \
   -Dsb.ollama.url=http://127.0.0.1:11434 \
   -Dsb.ollama.gitdiffmodel="$2" \
-  -Dsb.ollama.toolmodel="$1" \
-  -Dsb.ollama.model=llama3.2:3b \
+  -Dsb.ollama.toolmodel=llama3.2:3b \
+  -Dsb.ollama.model="$1" \
   -Dsb.ollama.contextwindow=8192 \
   -Dsb.ollama.diffcontextwindow=8192 \
   -Dsb.github.accesstoken="$3" \
