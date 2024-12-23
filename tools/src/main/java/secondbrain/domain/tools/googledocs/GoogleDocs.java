@@ -20,6 +20,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -71,12 +72,7 @@ public class GoogleDocs implements Tool<Void> {
     private Optional<String> googleServiceAccountJson;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    private String model;
-
-    @Inject
-    @ConfigProperty(name = "sb.ollama.contextwindow")
-    private Optional<String> contextWindow;
+    private ModelConfig modelConfig;
 
     @Inject
     @Identifier("sanitizeList")
@@ -132,7 +128,7 @@ public class GoogleDocs implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model, contextWindow);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
@@ -179,20 +175,23 @@ public class GoogleDocs implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt, model, contextWindow);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
-                .map(ragDoc -> mergeContext(ragDoc, parsedArgs.customModel()))
+                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(parsedArgs.customModel())
+                        .getPromptBuilder(modelConfig.getCalculatedModel(context))
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 // I've opted to get the end of the document if it is larger than the context window.
                                 // The end of the document is typically given more weight by LLMs, and so any long
                                 // document being processed should place the most relevant content twoards the end.
-                                ragContext.getDocumentRight(parsedArgs.contextWindowChars()),
+                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()));
+                .map(ragDoc -> ollamaClient.callOllama(
+                        ragDoc,
+                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -312,29 +311,14 @@ public class GoogleDocs implements Tool<Void> {
      * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
      * the various inputs to the tool.
      */
-    record Arguments(String documentId, List<String> keywords, String customModel, @Nullable Integer contextWindow,
-                     int contextWindowChars) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString, final SanitizeArgument sanitizeList, final String prompt, final String model, final Optional<String> contextWindow) {
+    record Arguments(String documentId, List<String> keywords) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString, final SanitizeArgument sanitizeList, final String prompt) {
             final String documentId = argsAccessor.getArgument(arguments, "googleDocumentId", "");
             final List<String> keywords = List.of(sanitizeList.sanitize(
                     argsAccessor.getArgument(arguments, "keywords", ""),
                     prompt).split(","));
 
-            final String customModel = Try.of(() -> context.get("custom_model"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> model)
-                    .get();
-
-            final Integer contextWindowValue = Try.of(contextWindow::get)
-                    .map(Integer::parseInt)
-                    .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
-                    .get();
-
-            final int contextWindowChars = contextWindowValue == null
-                    ? Constants.DEFAULT_MAX_CONTEXT_LENGTH
-                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
-
-            return new Arguments(documentId, keywords, customModel, contextWindowValue, contextWindowChars);
+            return new Arguments(documentId, keywords);
         }
     }
 }

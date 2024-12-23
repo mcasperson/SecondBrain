@@ -7,10 +7,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
-import secondbrain.domain.constants.Constants;
+import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.FailedTool;
@@ -29,7 +27,6 @@ import secondbrain.infrastructure.publicweb.PublicWebClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -54,13 +51,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             You are given the contents of a multiple Slack channels, Google Documents, and the help desk tickets from ZenDesk.
             You must answer the prompt based on the information provided.
             """;
-    @Inject
-    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    private String model;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.contextwindow")
-    private Optional<String> contextWindow;
+    private ModelConfig modelConfig;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -115,7 +108,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, model, contextWindow);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString);
 
         final EntityDirectory entityDirectory = Try.withResources(ClientBuilder::newClient)
                 .of(client -> publicWebClient.getDocument(client, parsedArgs.url()))
@@ -134,20 +127,23 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, model, contextWindow);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
-                .map(ragDoc -> mergeContext(ragDoc, parsedArgs.customModel()))
+                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(parsedArgs.customModel())
+                        .getPromptBuilder(modelConfig.getCalculatedModel(context))
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 // I've opted to get the end of the document if it is larger than the context window.
                                 // The end of the document is typically given more weight by LLMs, and so any long
                                 // document being processed should place the most relevant content towards the end.
-                                ragContext.getDocumentRight(parsedArgs.contextWindowChars()),
+                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindowValue()));
+                .map(ragDoc -> ollamaClient.callOllama(
+                        ragDoc,
+                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -205,31 +201,16 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 context);
     }
 
-    record Arguments(String url, int days, String customModel, @Nullable Integer contextWindowValue,
-                     int contextWindowChars) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString, final String model, final Optional<String> contextWindow) {
+    record Arguments(String url, int days) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString) {
             final String url = argsAccessor.getArgument(arguments, "url", "").trim();
-
-            final String customModel = Try.of(() -> context.get("custom_model"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> model)
-                    .get();
-
-            final Integer contextWindowValue = Try.of(contextWindow::get)
-                    .map(Integer::parseInt)
-                    .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
-                    .get();
 
             final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "0")))
                     .recover(throwable -> 0)
                     .map(i -> Math.max(0, i))
                     .get();
 
-            final int contextWindowChars = contextWindowValue == null
-                    ? Constants.DEFAULT_MAX_CONTEXT_LENGTH
-                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
-
-            return new Arguments(url, days, customModel, contextWindowValue, contextWindowChars);
+            return new Arguments(url, days);
         }
     }
 

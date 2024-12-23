@@ -6,10 +6,8 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
-import secondbrain.domain.constants.Constants;
+import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.FailedTool;
@@ -26,7 +24,6 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -41,13 +38,9 @@ public class SlackZenGoogle implements Tool<Void> {
             You are given the contents of a Slack channel, a Google Document, and the help desk tickets from ZenDesk.
             You must answer the prompt based on the information provided.
             """;
-    @Inject
-    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    private String model;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.contextwindow")
-    private Optional<String> contextWindow;
+    private ModelConfig modelConfig;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -98,7 +91,7 @@ public class SlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, model, contextWindow);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString);
 
         final List<ToolArgs> slackArguments = arguments.stream()
                 .filter(arg -> arg.argName().equals("slackChannel") || arg.argName().equals("days"))
@@ -138,20 +131,23 @@ public class SlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, model, contextWindow);
+        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
-                .map(ragDoc -> mergeContext(ragDoc, parsedArgs.customModel()))
+                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(parsedArgs.customModel())
+                        .getPromptBuilder(modelConfig.getCalculatedModel(context))
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 // I've opted to get the end of the document if it is larger than the context window.
                                 // The end of the document is typically given more weight by LLMs, and so any long
                                 // document being processed should place the most relevant content towards the end.
-                                ragContext.getDocumentRight(parsedArgs.contextWindowChars()),
+                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()));
+                .map(ragDoc -> ollamaClient.callOllama(
+                        ragDoc,
+                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -168,28 +164,14 @@ public class SlackZenGoogle implements Tool<Void> {
                 context);
     }
 
-    record Arguments(String slackChannel, String googleDocumentId, String zenDeskOrganization, String customModel,
-                     @Nullable Integer contextWindow, int contextWindowChars) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString, final String model, final Optional<String> contextWindow) {
+    record Arguments(String slackChannel, String googleDocumentId, String zenDeskOrganization) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString) {
             final String slackChannel = argsAccessor.getArgument(arguments, "slackChannel", "").trim();
             final String googleDocumentId = argsAccessor.getArgument(arguments, "googleDocumentId", "").trim();
             final String zenDeskOrganization = argsAccessor.getArgument(arguments, "zenDeskOrganization", "").trim();
 
-            final String customModel = Try.of(() -> context.get("custom_model"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> model)
-                    .get();
 
-            final Integer contextWindowValue = Try.of(contextWindow::get)
-                    .map(Integer::parseInt)
-                    .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
-                    .get();
-
-            final int contextWindowChars = contextWindowValue == null
-                    ? Constants.DEFAULT_MAX_CONTEXT_LENGTH
-                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
-
-            return new Arguments(slackChannel, googleDocumentId, zenDeskOrganization, customModel, contextWindowValue, contextWindowChars);
+            return new Arguments(slackChannel, googleDocumentId, zenDeskOrganization);
         }
     }
 }

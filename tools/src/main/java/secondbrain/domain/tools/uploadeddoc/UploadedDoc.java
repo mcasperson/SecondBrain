@@ -7,8 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import secondbrain.domain.constants.Constants;
+import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
@@ -23,7 +22,6 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -44,12 +42,7 @@ public class UploadedDoc implements Tool<Void> {
             """.stripLeading();
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    private String model;
-
-    @Inject
-    @ConfigProperty(name = "sb.ollama.contextwindow")
-    private Optional<String> contextWindow;
+    private ModelConfig modelConfig;
 
     @Inject
     private SentenceSplitter sentenceSplitter;
@@ -85,7 +78,7 @@ public class UploadedDoc implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        final Arguments parsedArgs = Arguments.fromToolArgs(context, validateString, model, contextWindow);
+        final Arguments parsedArgs = Arguments.fromToolArgs(context, validateString);
 
         if (StringUtils.isBlank(parsedArgs.document())) {
             throw new FailedTool("No document found in context");
@@ -100,17 +93,20 @@ public class UploadedDoc implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(context, validateString, model, contextWindow);
+        final Arguments parsedArgs = Arguments.fromToolArgs(context, validateString);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
-                .map(ragDoc -> mergeContext(ragDoc, model))
+                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(parsedArgs.customModel())
+                        .getPromptBuilder(modelConfig.getCalculatedModel(context))
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
-                                ragContext.getDocumentLeft(parsedArgs.contextWindowChars()),
+                                ragContext.getDocumentLeft(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()));
+                .map(ragDoc -> ollamaClient.callOllama(
+                        ragDoc,
+                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -141,27 +137,13 @@ public class UploadedDoc implements Tool<Void> {
                 .get();
     }
 
-    record Arguments(String document, String customModel, Integer contextWindow, int contextWindowChars) {
-        public static Arguments fromToolArgs(final Map<String, String> context, final ValidateString validateString, final String model, final Optional<String> contextWindow) {
+    record Arguments(String document) {
+        public static Arguments fromToolArgs(final Map<String, String> context, final ValidateString validateString) {
             final String uploadedDocument = Try.of(() -> context.get("document"))
                     .recover(throwable -> "")
                     .get();
 
-            final String customModel = Try.of(() -> context.get("custom_model"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> model)
-                    .get();
-
-            final Integer contextWindowValue = Try.of(contextWindow::get)
-                    .map(Integer::parseInt)
-                    .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
-                    .get();
-
-            final int contextWindowChars = contextWindowValue == null
-                    ? Constants.DEFAULT_MAX_CONTEXT_LENGTH
-                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
-
-            return new Arguments(uploadedDocument, customModel, contextWindowValue, contextWindowChars);
+            return new Arguments(uploadedDocument);
         }
     }
 }

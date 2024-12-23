@@ -12,9 +12,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
-import secondbrain.domain.constants.Constants;
+import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
@@ -84,12 +83,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     private Optional<String> zenExcludedOrgs;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    private String model;
-
-    @Inject
-    @ConfigProperty(name = "sb.ollama.contextwindow")
-    private Optional<String> contextWindow;
+    private ModelConfig modelConfig;
 
     @Inject
     private Encryptor textEncryptor;
@@ -176,9 +170,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 zenDeskAccessToken,
                 zenDeskUrl,
                 zenDeskUser,
-                zenExcludedOrgs,
-                model,
-                contextWindow);
+                zenExcludedOrgs);
 
         final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
                 (parsedArgs.user() + "/token:" + parsedArgs.token()).getBytes(UTF_8))).get(), UTF_8);
@@ -206,7 +198,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                             raw tickets. The reality is that even LLMs with a context length of 128k tokens mostly fixated
                             one a small number of tickets.
                          */
-                        .map(tickets -> summariseTickets(tickets, parsedArgs))
+                        .map(tickets -> summariseTickets(tickets, context))
                         .get())
                 .get();
 
@@ -228,9 +220,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 zenDeskAccessToken,
                 zenDeskUrl,
                 zenDeskUser,
-                zenExcludedOrgs,
-                model,
-                contextWindow);
+                zenExcludedOrgs);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
@@ -239,19 +229,22 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
-                        parsedArgs.contextWindowChars()))
+                        modelConfig.getCalculatedContextWindowChars()))
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                .map(tickets -> mergeContext(tickets, debugArgs, parsedArgs.customModel()))
+                .map(tickets -> mergeContext(tickets, debugArgs, modelConfig.getCalculatedModel(context)))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                 // Build the final prompt including instructions, context and the user prompt
                 .map(ragContext -> ragContext.updateDocument(
                         promptBuilderSelector
-                                .getPromptBuilder(parsedArgs.customModel())
+                                .getPromptBuilder(modelConfig.getCalculatedModel(context))
                                 .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
                 // Call Ollama with the final prompt
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()))
+                .map(ragDoc -> ollamaClient.callOllama(
+                        ragDoc,
+                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedContextWindow()))
                 // Clean up the response
                 .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())));
 
@@ -325,32 +318,32 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     /**
      * Summarise the tickets by passing them through the LLM
      */
-    private List<RagDocumentContext<ZenDeskResultsResponse>> summariseTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets, final Arguments parsedArgs) {
+    private List<RagDocumentContext<ZenDeskResultsResponse>> summariseTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets, final Map<String, String> context) {
         return tickets.stream()
-                .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), parsedArgs)))
+                .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), context)))
                 .collect(Collectors.toList());
     }
 
     /**
      * Summarise an individual ticket
      */
-    private String getTicketSummary(final String ticketContents, final Arguments parsedArgs) {
-        final String context = promptBuilderSelector
-                .getPromptBuilder(parsedArgs.customModel())
+    private String getTicketSummary(final String ticketContents, final Map<String, String> context) {
+        final String ticketContext = promptBuilderSelector
+                .getPromptBuilder(modelConfig.getCalculatedModel(context))
                 .buildContextPrompt("ZenDesk Ticket", ticketContents);
 
         final String prompt = promptBuilderSelector
-                .getPromptBuilder(parsedArgs.customModel())
-                .buildFinalPrompt("You are a helpful agent", context, "Summarise the ticket in one paragraph");
+                .getPromptBuilder(modelConfig.getCalculatedModel(context))
+                .buildFinalPrompt("You are a helpful agent", ticketContext, "Summarise the ticket in one paragraph");
 
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.callOllama(
                                 client,
                                 new OllamaGenerateBody(
-                                        parsedArgs.customModel(),
+                                        modelConfig.getCalculatedModel(context),
                                         prompt,
                                         false,
-                                        new OllamaGenerateBodyOptions(parsedArgs.contextWindow())))
+                                        new OllamaGenerateBodyOptions(modelConfig.getCalculatedContextWindow())))
                         .response())
                 .get();
     }
@@ -419,11 +412,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                      String token,
                      String url,
                      String user,
-                     String customModel,
-                     @Nullable Integer contextWindow,
-                     String startDate,
-                     int contextWindowChars) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor, final Map<String, String> context, final ValidateInputs validateInputs, final ValidateString validateString, final SanitizeArgument sanitizeOrganization, final SanitizeArgument sanitizeEmail, final Encryptor textEncryptor, final String prompt, final Optional<String> zenDeskAccessToken, final Optional<String> zenDeskUrl, final Optional<String> zenDeskUser, final Optional<String> zenExcludedOrgs, final String model, final Optional<String> contextWindow) {
+                     String startDate) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final ArgsAccessor argsAccessor, final Map<String, String> context, final ValidateInputs validateInputs, final ValidateString validateString, final SanitizeArgument sanitizeOrganization, final SanitizeArgument sanitizeEmail, final Encryptor textEncryptor, final String prompt, final Optional<String> zenDeskAccessToken, final Optional<String> zenDeskUrl, final Optional<String> zenDeskUser, final Optional<String> zenExcludedOrgs) {
             final String organization = validateInputs.getCommaSeparatedList(
                     prompt,
                     argsAccessor.getArgument(arguments, "zenDeskOrganization", ""));
@@ -495,10 +485,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 throw new FailedTool("Failed to get Zendesk User");
             }
 
-            final String customModel = Try.of(() -> context.get("custom_model"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> model)
-                    .get();
 
             final String startDate = OffsetDateTime.now(ZoneId.systemDefault())
                     .truncatedTo(ChronoUnit.SECONDS)
@@ -507,16 +493,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                     .minusHours(fixedHours)
                     .format(ISO_OFFSET_DATE_TIME);
 
-            final Integer contextWindowValue = Try.of(contextWindow::get)
-                    .map(Integer::parseInt)
-                    .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
-                    .get();
 
-            final int contextWindowChars = contextWindowValue == null
-                    ? Constants.DEFAULT_MAX_CONTEXT_LENGTH
-                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
-
-            return new Arguments(fixedOrganization, excludedOrganization, fixedRecipient, exclude, fixedHours, fixedDays, numComments, token.get(), url.get(), user.get(), customModel, contextWindowValue, startDate, contextWindowChars);
+            return new Arguments(fixedOrganization, excludedOrganization, fixedRecipient, exclude, fixedHours, fixedDays, numComments, token.get(), url.get(), user.get(), startDate);
         }
 
         private static int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {

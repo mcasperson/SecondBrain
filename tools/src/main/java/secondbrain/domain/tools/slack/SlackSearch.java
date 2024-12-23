@@ -9,9 +9,8 @@ import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
-import secondbrain.domain.constants.Constants;
+import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
@@ -38,12 +37,7 @@ public class SlackSearch implements Tool<MatchedItem> {
             """;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    private String model;
-
-    @Inject
-    @ConfigProperty(name = "sb.ollama.contextwindow")
-    private Optional<String> contextWindow;
+    private ModelConfig modelConfig;
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
@@ -104,9 +98,7 @@ public class SlackSearch implements Tool<MatchedItem> {
                 keywordExtractor,
                 validateString,
                 prompt,
-                slackAccessToken,
-                model,
-                contextWindow);
+                slackAccessToken);
 
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
@@ -140,19 +132,20 @@ public class SlackSearch implements Tool<MatchedItem> {
                 keywordExtractor,
                 validateString,
                 prompt,
-                slackAccessToken,
-                model,
-                contextWindow);
+                slackAccessToken);
 
         final List<RagDocumentContext<MatchedItem>> contextList = getContext(context, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<MatchedItem>> result = Try.of(() -> mergeContext(contextList))
+        final Try<RagMultiDocumentContext<MatchedItem>> result = Try.of(() -> mergeContext(contextList, context))
                 .map(ragContext -> ragContext.updateDocument(
-                        promptBuilderSelector.getPromptBuilder(parsedArgs.customModel()).buildFinalPrompt(
+                        promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildFinalPrompt(
                                 INSTRUCTIONS,
-                                ragContext.getDocumentLeft(parsedArgs.contextWindowChars()),
+                                ragContext.getDocumentLeft(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()));
+                .map(ragDoc -> ollamaClient.callOllama(
+                        ragDoc,
+                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -185,21 +178,20 @@ public class SlackSearch implements Tool<MatchedItem> {
                 0, 75) + "](" + matchedItem.getPermalink() + ")";
     }
 
-    private RagMultiDocumentContext<MatchedItem> mergeContext(final List<RagDocumentContext<MatchedItem>> context) {
+    private RagMultiDocumentContext<MatchedItem> mergeContext(final List<RagDocumentContext<MatchedItem>> ragContext, Map<String, String> context) {
         return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(ragDoc -> promptBuilderSelector.getPromptBuilder(model).buildContextPrompt("Slack Messages", ragDoc.document()))
+                ragContext.stream()
+                        .map(ragDoc -> promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildContextPrompt("Slack Messages", ragDoc.document()))
                         .collect(Collectors.joining("\n")),
-                context);
+                ragContext);
     }
 
     /**
      * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
      * the various inputs to the tool.
      */
-    record Arguments(Set<String> keywords, String accessToken, String customModel, @Nullable Integer contextWindow,
-                     int contextWindowChars) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final Encryptor textEncryptor, final KeywordExtractor keywordExtractor, final ValidateString validateString, final String prompt, final Optional<String> slackAccessToken, final String model, final Optional<String> contextWindow) {
+    record Arguments(Set<String> keywords, String accessToken) {
+        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final Encryptor textEncryptor, final KeywordExtractor keywordExtractor, final ValidateString validateString, final String prompt, final Optional<String> slackAccessToken) {
             final List<String> keywords = Stream.of(argsAccessor
                             .getArgument(arguments, "keywords", "")
                             .split(","))
@@ -219,21 +211,7 @@ public class SlackSearch implements Tool<MatchedItem> {
                     .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
                     .getOrElseThrow(() -> new FailedTool("Slack access token not found"));
 
-            final String customModel = Try.of(() -> context.get("custom_model"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> model)
-                    .get();
-
-            final Integer contextWindowValue = Try.of(contextWindow::get)
-                    .map(Integer::parseInt)
-                    .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
-                    .get();
-
-            final int contextWindowChars = contextWindowValue == null
-                    ? Constants.DEFAULT_MAX_CONTEXT_LENGTH
-                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
-
-            return new Arguments(combinedKeywords, accessToken, customModel, contextWindowValue, contextWindowChars);
+            return new Arguments(combinedKeywords, accessToken);
         }
 
     }

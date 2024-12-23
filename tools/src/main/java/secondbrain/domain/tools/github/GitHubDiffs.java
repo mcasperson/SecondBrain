@@ -9,6 +9,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -78,12 +79,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
             The summary must include all classes, functions, and variables found in the Git Diff.
             """;
     @Inject
-    @ConfigProperty(name = "sb.ollama.model", defaultValue = "llama3.2")
-    private String model;
-
-    @Inject
-    @ConfigProperty(name = "sb.ollama.contextwindow")
-    private Optional<String> contextWindow;
+    private ModelConfig modelConfig;
 
     /**
      * Each individual diff can be summarized with its own model. Typically, this model will be
@@ -189,8 +185,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 githubOwner,
                 githubRepo,
                 githubSha,
-                model,
-                contextWindow,
+                modelConfig.getCalculatedModel(context),
                 diffModel,
                 diffContextWindow,
                 prompt);
@@ -247,8 +242,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 githubOwner,
                 githubRepo,
                 githubSha,
-                model,
-                contextWindow,
+                modelConfig.getCalculatedModel(context),
                 diffModel,
                 diffContextWindow,
                 prompt);
@@ -259,17 +253,20 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
-                        parsedArgs.contextWindowChars()))
+                        modelConfig.getCalculatedContextWindowChars()))
                 .map(ragDocs -> mergeContext(ragDocs, debugArgs))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                 .map(ragDoc -> ragDoc.updateDocument(
-                        promptBuilderSelector.getPromptBuilder(parsedArgs.customModel()).buildFinalPrompt(
+                        promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildFinalPrompt(
                                 INSTRUCTIONS,
-                                promptBuilderSelector.getPromptBuilder(parsedArgs.customModel()).buildContextPrompt("Git Diffs", ragDoc.combinedDocument()),
+                                promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildContextPrompt("Git Diffs", ragDoc.combinedDocument()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(ragDoc, parsedArgs.customModel(), parsedArgs.contextWindow()));
+                .map(ragDoc -> ollamaClient.callOllama(
+                        ragDoc,
+                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -373,9 +370,9 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
      * the various inputs to the tool.
      */
     record Arguments(int days, int maxDiffs, String startDate, String endDate, String owner, String repo,
-                     String sha, String branch, String token, String customModel, @Nullable Integer contextWindow,
-                     String diffCustomModel, @Nullable Integer diffContextWindow, int contextWindowChars) {
-        public static Arguments fromToolArgs(List<ToolArgs> arguments, Map<String, String> context, ArgsAccessor argsAccessor, SanitizeArgument dateSanitizer, Encryptor textEncryptor, ValidateString validateString, Optional<String> githubAccessToken, Optional<String> githubOwner, Optional<String> githubRepo, Optional<String> githubSha, String model, Optional<String> contextWindow, Optional<String> diffModel, Optional<String> diffContextWindow, String prompt) {
+                     String sha, String branch, String token,
+                     String diffCustomModel, @Nullable Integer diffContextWindow) {
+        public static Arguments fromToolArgs(List<ToolArgs> arguments, Map<String, String> context, ArgsAccessor argsAccessor, SanitizeArgument dateSanitizer, Encryptor textEncryptor, ValidateString validateString, Optional<String> githubAccessToken, Optional<String> githubOwner, Optional<String> githubRepo, Optional<String> githubSha, String model, Optional<String> diffModel, Optional<String> diffContextWindow, String prompt) {
             final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
                     .recover(throwable -> DEFAULT_DURATION)
                     .map(i -> Math.max(0, i))
@@ -425,16 +422,6 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                     .recoverWith(e -> Try.of(() -> githubAccessToken.get()))
                     .getOrElseThrow(ex -> new FailedTool("Failed to get GitHub access token", ex));
 
-            final String customModel = Try.of(() -> context.get("custom_model"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> model)
-                    .get();
-
-            final Integer contextWindowValue = Try.of(contextWindow::get)
-                    .map(Integer::parseInt)
-                    .recover(e -> null)
-                    .get();
-
             final String diffCustomModel = Try.of(() -> context.get("diff_custom_model"))
                     .mapTry(validateString::throwIfEmpty)
                     .recover(e -> diffModel.orElse(model))
@@ -445,11 +432,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                     .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
                     .get();
 
-            final int contextWindowChars = contextWindowValue == null
-                    ? Constants.DEFAULT_MAX_CONTEXT_LENGTH
-                    : (int) (contextWindowValue * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
-
-            return new Arguments(days, maxDiffs, startDate, endDate, owner, repo, sha, branch, token, customModel, contextWindowValue, diffCustomModel, diffContextWindowValue, contextWindowChars);
+            return new Arguments(days, maxDiffs, startDate, endDate, owner, repo, sha, branch, token, diffCustomModel, diffContextWindowValue);
         }
     }
 }
