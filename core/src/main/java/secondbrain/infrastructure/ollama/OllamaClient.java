@@ -14,6 +14,7 @@ import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
 import secondbrain.domain.response.ResponseValidation;
 
+import java.util.Optional;
 import java.util.logging.Logger;
 
 import static io.vavr.control.Try.of;
@@ -34,6 +35,7 @@ public class OllamaClient {
         logger.info(body.prompt());
         logger.info("Calling: " + uri);
         logger.info("Called with model: " + body.model());
+        logger.info("Called with context window: " + Optional.of(body.options()).map(OllamaGenerateBodyOptions::num_ctx).map(Object::toString).orElse("null"));
 
         return Try.withResources(() -> client.target(uri + "/api/generate")
                         .request()
