@@ -4,6 +4,7 @@ import com.slack.api.Slack;
 import com.slack.api.model.MatchedItem;
 import io.vavr.API;
 import io.vavr.control.Try;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
@@ -22,7 +23,6 @@ import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.*;
@@ -40,17 +40,7 @@ public class SlackSearch implements Tool<MatchedItem> {
     private ModelConfig modelConfig;
 
     @Inject
-    @ConfigProperty(name = "sb.slack.accesstoken")
-    private Optional<String> slackAccessToken;
-
-    @Inject
-    private Encryptor textEncryptor;
-
-    @Inject
-    private KeywordExtractor keywordExtractor;
-
-    @Inject
-    private ArgsAccessor argsAccessor;
+    private SlackSearchArguments parsedArgs;
 
     @Inject
     private OllamaClient ollamaClient;
@@ -63,9 +53,6 @@ public class SlackSearch implements Tool<MatchedItem> {
 
     @Inject
     private SentenceVectorizer sentenceVectorizer;
-
-    @Inject
-    private ValidateString validateString;
 
     @Override
     public String getName() {
@@ -90,20 +77,12 @@ public class SlackSearch implements Tool<MatchedItem> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(
-                arguments,
-                context,
-                argsAccessor,
-                textEncryptor,
-                keywordExtractor,
-                validateString,
-                prompt,
-                slackAccessToken);
+        parsedArgs.setInputs(arguments, prompt, context);
 
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
 
-        var searchResult = Try.of(() -> client.searchAll(r -> r.token(parsedArgs.accessToken()).query(String.join(" ", parsedArgs.keywords()))));
+        var searchResult = Try.of(() -> client.searchAll(r -> r.token(parsedArgs.getAccessToken()).query(String.join(" ", parsedArgs.getKeywords()))));
 
         if (searchResult.isFailure()) {
             throw new FailedTool("Could not search messages");
@@ -123,16 +102,6 @@ public class SlackSearch implements Tool<MatchedItem> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-
-        final Arguments parsedArgs = Arguments.fromToolArgs(
-                arguments,
-                context,
-                argsAccessor,
-                textEncryptor,
-                keywordExtractor,
-                validateString,
-                prompt,
-                slackAccessToken);
 
         final List<RagDocumentContext<MatchedItem>> contextList = getContext(context, prompt, arguments);
 
@@ -185,34 +154,53 @@ public class SlackSearch implements Tool<MatchedItem> {
                         .collect(Collectors.joining("\n")),
                 ragContext);
     }
+}
 
-    /**
-     * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
-     * the various inputs to the tool.
-     */
-    record Arguments(Set<String> keywords, String accessToken) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final Encryptor textEncryptor, final KeywordExtractor keywordExtractor, final ValidateString validateString, final String prompt, final Optional<String> slackAccessToken) {
-            final List<String> keywords = Stream.of(argsAccessor
-                            .getArgument(arguments, "keywords", "")
-                            .split(","))
-                    .map(String::trim)
-                    .toList();
+@ApplicationScoped
+class SlackSearchArguments {
+    @Inject
+    private ArgsAccessor argsAccessor;
 
-            final List<String> keywordsGenerated = keywordExtractor.getKeywords(prompt);
-            keywordsGenerated.addAll(keywords);
+    @Inject
+    private Encryptor textEncryptor;
 
-            final Set<String> combinedKeywords = new HashSet<>(keywordsGenerated);
+    @Inject
+    private KeywordExtractor keywordExtractor;
 
-            // Try to decrypt the value, otherwise assume it is a plain text value, and finally
-            // fall back to the value defined in the local configuration.
-            final String accessToken = Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
-                    .recover(e -> context.get("slack_access_token"))
-                    .mapTry(Objects::requireNonNull)
-                    .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
-                    .getOrElseThrow(() -> new FailedTool("Slack access token not found"));
+    @Inject
+    @ConfigProperty(name = "sb.slack.accesstoken")
+    private Optional<String> slackAccessToken;
 
-            return new Arguments(combinedKeywords, accessToken);
-        }
+    private List<ToolArgs> arguments;
 
+    private String prompt;
+
+    private Map<String, String> context;
+
+    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        this.arguments = arguments;
+        this.prompt = prompt;
+        this.context = context;
+    }
+
+    public Set<String> getKeywords() {
+        final List<String> keywords = Stream.of(argsAccessor
+                        .getArgument(arguments, "keywords", "")
+                        .split(","))
+                .map(String::trim)
+                .toList();
+
+        final List<String> keywordsGenerated = keywordExtractor.getKeywords(prompt);
+        keywordsGenerated.addAll(keywords);
+
+        return new HashSet<>(keywordsGenerated);
+    }
+
+    public String getAccessToken() {
+        return Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
+                .recover(e -> context.get("slack_access_token"))
+                .mapTry(Objects::requireNonNull)
+                .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
+                .getOrElseThrow(() -> new FailedTool("Slack access token not found"));
     }
 }

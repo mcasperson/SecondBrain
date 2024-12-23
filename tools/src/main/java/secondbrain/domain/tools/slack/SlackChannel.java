@@ -10,6 +10,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.Tuple;
 import io.vavr.control.Try;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -51,6 +52,9 @@ public class SlackChannel implements Tool<Void> {
 
     @Inject
     private ModelConfig modelConfig;
+
+    @Inject
+    private Arguments parsedArgs;
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
@@ -105,16 +109,10 @@ public class SlackChannel implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(
-                arguments,
-                context,
-                argsAccessor,
-                textEncryptor,
-                validateString,
-                slackAccessToken);
+        parsedArgs.setInputs(arguments, prompt, context);
 
         final String oldest = Long.valueOf(LocalDateTime.now(ZoneId.systemDefault())
-                        .minusDays(parsedArgs.days())
+                        .minusDays(parsedArgs.getDays())
                         .atZone(ZoneId.systemDefault())
                         .toEpochSecond())
                 .toString();
@@ -122,16 +120,16 @@ public class SlackChannel implements Tool<Void> {
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
 
-        final Try<ChannelDetails> channelDetails = findChannelId(client, parsedArgs.accessToken(), parsedArgs.channel(), null)
+        final Try<ChannelDetails> channelDetails = findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel(), null)
                 .onFailure(error -> System.out.println("Error: " + error));
 
         if (channelDetails.isFailure()) {
-            throw new FailedTool("Channel " + parsedArgs.channel() + " not found");
+            throw new FailedTool("Channel " + parsedArgs.getChannel() + " not found");
         }
 
         final Try<String> messages = channelDetails
                 .mapTry(chanId -> client.conversationsHistory(r -> r
-                        .token(parsedArgs.accessToken())
+                        .token(parsedArgs.getAccessToken())
                         .channel(chanId.channelId())
                         .oldest(oldest)))
                 .map(this::conversationsToText)
@@ -142,13 +140,13 @@ public class SlackChannel implements Tool<Void> {
         }
 
         if (messages.get().length() < MINIMUM_MESSAGE_LENGTH) {
-            throw new FailedTool("Not enough messages found in channel " + parsedArgs.channel()
+            throw new FailedTool("Not enough messages found in channel " + parsedArgs.getChannel()
                     + System.lineSeparator() + System.lineSeparator()
                     + "* [Slack Channel](https://app.slack.com/client/" + channelDetails.get().teamId() + "/" + channelDetails.get().channelId() + ")");
         }
 
         final Try<String> messagesWithUsersReplaced = messages
-                .flatMap(m -> replaceIds(client, parsedArgs.accessToken(), m));
+                .flatMap(m -> replaceIds(client, parsedArgs.getAccessToken(), m));
 
         if (messagesWithUsersReplaced.isFailure()) {
             throw new FailedTool("The user and channel IDs could not be replaced");
@@ -163,14 +161,8 @@ public class SlackChannel implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(
-                arguments,
-                context,
-                argsAccessor,
-                textEncryptor,
-                validateString,
-                slackAccessToken);
-
+        parsedArgs.setInputs(arguments, prompt, context);
+        
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(
                         ragDoc.stream()
@@ -312,30 +304,49 @@ public class SlackChannel implements Tool<Void> {
     private String matchToUrl(final ChannelDetails channel) {
         return "[Slack " + channel.channelName() + "](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")";
     }
+}
 
-    /**
-     * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
-     * the various inputs to the tool.
-     */
-    record Arguments(String channel, int days, String accessToken) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final Encryptor textEncryptor, final ValidateString validateString, final Optional<String> slackAccessToken) {
-            final String channel = argsAccessor.getArgument(arguments, "slackChannel", "").trim()
-                    .replaceFirst("^#", "");
+@ApplicationScoped
+class Arguments {
 
-            final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "7")))
-                    .recover(throwable -> 7)
-                    .get();
+    @Inject
+    @ConfigProperty(name = "sb.slack.accesstoken")
+    private Optional<String> slackAccessToken;
 
-            // Try to decrypt the value, otherwise assume it is a plain text value, and finally
-            // fall back to the value defined in the local configuration.
-            final String accessToken = Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
-                    .recover(e -> context.get("slack_access_token"))
-                    .mapTry(Objects::requireNonNull)
-                    .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
-                    .getOrElseThrow(() -> new FailedTool("Slack access token not found"));
+    @Inject
+    private ArgsAccessor argsAccessor;
 
-            return new Arguments(channel, days, accessToken);
-        }
+    @Inject
+    private Encryptor textEncryptor;
 
+    private List<ToolArgs> arguments;
+
+    private String prompt;
+
+    private Map<String, String> context;
+
+    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        this.arguments = arguments;
+        this.prompt = prompt;
+        this.context = context;
+    }
+
+    public String getChannel() {
+        return argsAccessor.getArgument(arguments, "slackChannel", "").trim()
+                .replaceFirst("^#", "");
+    }
+
+    public int getDays() {
+        return Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "7")))
+                .recover(throwable -> 7)
+                .get();
+    }
+
+    public String getAccessToken() {
+        return Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
+                .recover(e -> context.get("slack_access_token"))
+                .mapTry(Objects::requireNonNull)
+                .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
+                .getOrElseThrow(() -> new FailedTool("Slack access token not found"));
     }
 }
