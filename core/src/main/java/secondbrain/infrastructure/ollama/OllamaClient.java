@@ -35,7 +35,7 @@ public class OllamaClient {
         logger.info(body.prompt());
         logger.info("Calling: " + uri);
         logger.info("Called with model: " + body.model());
-        logger.info("Called with context window: " + Optional.of(body.options()).map(OllamaGenerateBodyOptions::num_ctx).map(Object::toString).orElse("null"));
+        logger.info("Called with context window: " + Optional.ofNullable(body.options()).map(OllamaGenerateBodyOptions::num_ctx).map(Object::toString).orElse("null"));
 
         return Try.withResources(() -> client.target(uri + "/api/generate")
                         .request()
