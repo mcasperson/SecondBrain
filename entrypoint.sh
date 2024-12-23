@@ -39,7 +39,7 @@ java \
   -Dsb.github.owner="$4" \
   -Dsb.github.repo="$5" \
   -Dsb.github.sha="$6" \
-  -jar /usr/local/bin/secondbrain-cli.jar "$5" >> /tmp/secondbrain-cli.log
+  -jar /usr/local/bin/secondbrain-cli.jar "$7" >> /tmp/secondbrain-cli.log
 
 cat /tmp/secondbrain-cli.log
 
