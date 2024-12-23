@@ -342,6 +342,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     }
 }
 
+@ApplicationScoped
 class Arguments {
     private static final int MAX_TICKETS = 100;
 
