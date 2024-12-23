@@ -33,8 +33,8 @@ java \
   -Dsb.ollama.gitdiffmodel="$2" \
   -Dsb.ollama.toolmodel="$1" \
   -Dsb.ollama.model=llama3.2:3b \
-  -Dsb.ollama.contextwindow=16384 \
-  -Dsb.ollama.diffcontextwindow=16384 \
+  -Dsb.ollama.contextwindow=8192 \
+  -Dsb.ollama.diffcontextwindow=8192 \
   -Dsb.github.accesstoken="$3" \
   -Dsb.github.owner="$4" \
   -Dsb.github.repo="$5" \
