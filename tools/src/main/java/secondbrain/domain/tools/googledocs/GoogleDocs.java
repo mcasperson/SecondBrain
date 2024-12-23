@@ -12,6 +12,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
@@ -35,7 +36,6 @@ import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.io.ByteArrayInputStream;
@@ -75,8 +75,7 @@ public class GoogleDocs implements Tool<Void> {
     private ModelConfig modelConfig;
 
     @Inject
-    @Identifier("sanitizeList")
-    private SanitizeArgument sanitizeList;
+    private Arguments parsedArgs;
 
     @Inject
     private DocumentTrimmer documentTrimmer;
@@ -91,9 +90,6 @@ public class GoogleDocs implements Tool<Void> {
     private DebugToolArgs debugToolArgs;
 
     @Inject
-    private ArgsAccessor argsAccessor;
-
-    @Inject
     private SentenceSplitter sentenceSplitter;
 
     @Inject
@@ -101,9 +97,6 @@ public class GoogleDocs implements Tool<Void> {
 
     @Inject
     private PromptBuilderSelector promptBuilderSelector;
-
-    @Inject
-    private ValidateString validateString;
 
     @Override
     public String getName() {
@@ -128,7 +121,7 @@ public class GoogleDocs implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt);
+        parsedArgs.setInputs(arguments, prompt, context);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
@@ -164,18 +157,18 @@ public class GoogleDocs implements Tool<Void> {
                 .map(transport -> new Docs.Builder(transport, JSON_FACTORY, token.get())
                         .setApplicationName(APPLICATION_NAME)
                         .build())
-                .mapTry(service -> service.documents().get(parsedArgs.documentId()).execute())
+                .mapTry(service -> service.documents().get(parsedArgs.getDocumentId()).execute())
                 .map(this::getDocumentText)
                 .map(document -> documentTrimmer.trimDocument(
-                        document, parsedArgs.keywords(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
-                .map(document -> getDocumentContext(document, parsedArgs.documentId()))
+                        document, parsedArgs.getKeywords(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
+                .map(document -> getDocumentContext(document, parsedArgs.getDocumentId()))
                 .map(List::of)
                 .get();
     }
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString, sanitizeList, prompt);
+        parsedArgs.setInputs(arguments, prompt, context);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
@@ -307,18 +300,37 @@ public class GoogleDocs implements Tool<Void> {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
     }
 
-    /**
-     * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
-     * the various inputs to the tool.
-     */
-    record Arguments(String documentId, List<String> keywords) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString, final SanitizeArgument sanitizeList, final String prompt) {
-            final String documentId = argsAccessor.getArgument(arguments, "googleDocumentId", "");
-            final List<String> keywords = List.of(sanitizeList.sanitize(
-                    argsAccessor.getArgument(arguments, "keywords", ""),
-                    prompt).split(","));
 
-            return new Arguments(documentId, keywords);
-        }
+}
+
+@ApplicationScoped
+class Arguments {
+    @Inject
+    private ArgsAccessor argsAccessor;
+
+    @Inject
+    @Identifier("sanitizeList")
+    private SanitizeArgument sanitizeList;
+
+    private List<ToolArgs> arguments;
+
+    private String prompt;
+
+    private Map<String, String> context;
+
+    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        this.arguments = arguments;
+        this.prompt = prompt;
+        this.context = context;
+    }
+
+    public String getDocumentId() {
+        return argsAccessor.getArgument(arguments, "googleDocumentId", "");
+    }
+
+    public List<String> getKeywords() {
+        return List.of(sanitizeList.sanitize(
+                argsAccessor.getArgument(arguments, "keywords", ""),
+                prompt).split(","));
     }
 }
