@@ -3,6 +3,7 @@ package secondbrain.domain.tools.github;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -15,7 +16,6 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
-import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
@@ -34,7 +34,6 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyOptions;
 
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -53,11 +52,6 @@ import static com.google.common.base.Predicates.instanceOf;
  */
 @Dependent
 public class GitHubDiffs implements Tool<GitHubCommitResponse> {
-    private static final String DEFAULT_OWNER = "mcasperson";
-    private static final String DEFAULT_REPO = "SecondBrain";
-    private static final String DEFAULT_BRANCH = "main";
-    private static final int DEFAULT_DURATION = 30;
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
     private static final String INSTRUCTIONS = """
             You are an expert in reading Git diffs.
             You are given a question and a list of summaries of Git Diffs.
@@ -80,49 +74,14 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
             """;
     @Inject
     private ModelConfig modelConfig;
-
-    /**
-     * Each individual diff can be summarized with its own model. Typically, this model will be
-     * smaller than the one used to provide the overall summary of the git diffs. For example,
-     * diffModel might be something like "qwen2.5-coder:3b", while model will be something like
-     * "qwen2.5-coder:14b".
-     */
     @Inject
-    @ConfigProperty(name = "sb.ollama.gitdiffmodel")
-    private Optional<String> diffModel;
-
-    @Inject
-    @ConfigProperty(name = "sb.ollama.diffcontextwindow")
-    private Optional<String> diffContextWindow;
-
-    @Inject
-    @ConfigProperty(name = "sb.github.accesstoken")
-    private Optional<String> githubAccessToken;
-
-    @Inject
-    @ConfigProperty(name = "sb.github.owner")
-    private Optional<String> githubOwner;
-
-    @Inject
-    @ConfigProperty(name = "sb.github.repo")
-    private Optional<String> githubRepo;
-
-    @Inject
-    @ConfigProperty(name = "sb.github.sha")
-    private Optional<String> githubSha;
-
-    @Inject
-    private Encryptor textEncryptor;
+    private Arguments parsedArgs;
     @Inject
     private DebugToolArgs debugToolArgs;
-    @Inject
-    private ArgsAccessor argsAccessor;
     @Inject
     private GitHubClient gitHubClient;
     @Inject
     private OllamaClient ollamaClient;
-    @Inject
-    private DateParser dateParser;
     @Inject
     private ListLimiter listLimiter;
     @Inject
@@ -133,9 +92,6 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
     private SentenceSplitter sentenceSplitter;
     @Inject
     private SentenceVectorizer sentenceVectorizer;
-    @Inject
-    @Identifier("sanitizeDate")
-    private SanitizeArgument dateSanitizer;
 
     @Override
     public String getName() {
@@ -153,16 +109,13 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
 
     @Override
     public List<ToolArguments> getArguments() {
-        final String startTime = ZonedDateTime.now(ZoneId.systemDefault()).minusDays(DEFAULT_DURATION).format(FORMATTER);
-        final String endTime = ZonedDateTime.now(ZoneId.systemDefault()).format(FORMATTER);
-
         return List.of(
                 new ToolArguments("owner", "The github owner to check", "mcasperson"),
                 new ToolArguments("repo", "The repository to check", "SecondBrain"),
                 new ToolArguments("branch", "The branch to check", "main"),
                 new ToolArguments("sha", "The git sha to check", ""),
-                new ToolArguments("since", "The optional date to start checking from", startTime),
-                new ToolArguments("until", "The optional date to stop checking at", endTime),
+                new ToolArguments("since", "The optional date to start checking from", ""),
+                new ToolArguments("until", "The optional date to stop checking at", ""),
                 new ToolArguments("days", "The optional number of days worth of diffs to return", "0"),
                 new ToolArguments("maxDiffs", "The optional number of diffs to return", "0")
         );
@@ -174,31 +127,17 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(
-                arguments,
-                context,
-                argsAccessor,
-                dateSanitizer,
-                textEncryptor,
-                validateString,
-                githubAccessToken,
-                githubOwner,
-                githubRepo,
-                githubSha,
-                modelConfig.getCalculatedModel(context),
-                diffModel,
-                diffContextWindow,
-                prompt);
+        parsedArgs.setInputs(arguments, prompt, context);
 
-        final String authHeader = "Bearer " + parsedArgs.token();
+        final String authHeader = "Bearer " + parsedArgs.getToken();
 
         // If we have a sha, then we are only interested in a single commit
-        if (!parsedArgs.sha().isEmpty()) {
+        if (!parsedArgs.getSha().isEmpty()) {
             return convertCommitsToDiffSummaries(
                     Try.withResources(ClientBuilder::newClient)
                             .of(client ->
-                                    Try.of(() -> List.of(parsedArgs.sha().split(",")))
-                                            .map(commits -> gitHubClient.getCommits(client, parsedArgs.owner(), parsedArgs.repo(), commits, authHeader))
+                                    Try.of(() -> List.of(parsedArgs.getSha().split(",")))
+                                            .map(commits -> gitHubClient.getCommits(client, parsedArgs.getOwner(), parsedArgs.getRepo(), commits, authHeader))
                                             .get())
                             .get(),
                     authHeader,
@@ -207,17 +146,17 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
 
         // Otherwise, we are interested in a range of commits
         return Try.of(() -> getCommits(
-                        parsedArgs.owner(),
-                        parsedArgs.repo(),
-                        parsedArgs.branch(),
-                        dateParser.parseDate(parsedArgs.startDate()).format(FORMATTER),
-                        dateParser.parseDate(parsedArgs.endDate()).format(FORMATTER),
+                        parsedArgs.getOwner(),
+                        parsedArgs.getRepo(),
+                        parsedArgs.getBranch(),
+                        parsedArgs.getStartDate(),
+                        parsedArgs.getEndDate(),
                         authHeader))
                 // limit the number of changes
                 .map(commitsResponse -> ListUtilsEx.safeSubList(
                         commitsResponse,
                         0,
-                        parsedArgs.maxDiffs() > 0 ? parsedArgs.maxDiffs() : commitsResponse.size()))
+                        parsedArgs.getMaxDiffs() > 0 ? parsedArgs.getMaxDiffs() : commitsResponse.size()))
                 .map(commitsResponse -> convertCommitsToDiffSummaries(
                         commitsResponse,
                         authHeader,
@@ -230,22 +169,6 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-
-        final Arguments parsedArgs = Arguments.fromToolArgs(
-                arguments,
-                context,
-                argsAccessor,
-                dateSanitizer,
-                textEncryptor,
-                validateString,
-                githubAccessToken,
-                githubOwner,
-                githubRepo,
-                githubSha,
-                modelConfig.getCalculatedModel(context),
-                diffModel,
-                diffContextWindow,
-                prompt);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
@@ -272,7 +195,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new FailedTool("No diffs found for " + parsedArgs.owner() + "/" + parsedArgs.repo() + " between " + parsedArgs.startDate() + " and " + parsedArgs.endDate() + "\n" + debugArgs)),
+                                throwable -> new FailedTool("No diffs found for " + parsedArgs.getOwner() + "/" + parsedArgs.getRepo() + " between " + parsedArgs.getStartDate() + " and " + parsedArgs.getEndDate() + "\n" + debugArgs)),
                         API.Case(API.$(),
                                 throwable -> new FailedTool("Failed to get diffs: " + throwable.getMessage() + "\n" + debugArgs)))
                 .get();
@@ -298,7 +221,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
 
         return commitsResponse
                 .stream()
-                .map(commit -> getCommitSummary(commit, authorization, parsedArgs))
+                .map(commit -> getCommitSummary(commit, authorization))
                 .toList();
     }
 
@@ -308,9 +231,8 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
      * into a single document to be summarised again.
      */
     private RagDocumentContext<GitHubCommitResponse> getCommitSummary(final GitHubCommitResponse commit,
-                                                                      final String authorization,
-                                                                      final Arguments parsedArgs) {
-        final String summary = getDiffSummary(getCommitDiff(parsedArgs.owner(), parsedArgs.repo(), commit.sha(), authorization), parsedArgs);
+                                                                      final String authorization) {
+        final String summary = getDiffSummary(getCommitDiff(parsedArgs.getOwner(), parsedArgs.getRepo(), commit.sha(), authorization), parsedArgs);
         return new RagDocumentContext<GitHubCommitResponse>(
                 summary,
                 sentenceSplitter.splitDocument(summary, 10)
@@ -331,13 +253,13 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 .of(client -> ollamaClient.callOllama(
                         client,
                         new OllamaGenerateBody(
-                                parsedArgs.diffCustomModel(),
-                                promptBuilderSelector.getPromptBuilder(parsedArgs.diffCustomModel()).buildFinalPrompt(
+                                parsedArgs.getDiffCustomModel(),
+                                promptBuilderSelector.getPromptBuilder(parsedArgs.getDiffCustomModel()).buildFinalPrompt(
                                         DIFF_INSTRUCTIONS,
-                                        promptBuilderSelector.getPromptBuilder(parsedArgs.diffCustomModel()).buildContextPrompt("Git Diff", diff),
+                                        promptBuilderSelector.getPromptBuilder(parsedArgs.getDiffCustomModel()).buildContextPrompt("Git Diff", diff),
                                         "Provide a one paragraph summary of the changes in the Git Diff."),
                                 false,
-                                new OllamaGenerateBodyOptions(parsedArgs.diffContextWindow()))))
+                                new OllamaGenerateBodyOptions(parsedArgs.getDiffContextWindow()))))
                 .get()
                 .response();
     }
@@ -364,76 +286,160 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> gitHubClient.getDiff(client, owner, repo, sha, authorization)).get();
     }
+}
 
-    /**
-     * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
-     * the various inputs to the tool.
-     */
-    record Arguments(int days, int maxDiffs, String startDate, String endDate, String owner, String repo,
-                     String sha, String branch, String token,
-                     String diffCustomModel, @Nullable Integer diffContextWindow) {
-        public static Arguments fromToolArgs(List<ToolArgs> arguments, Map<String, String> context, ArgsAccessor argsAccessor, SanitizeArgument dateSanitizer, Encryptor textEncryptor, ValidateString validateString, Optional<String> githubAccessToken, Optional<String> githubOwner, Optional<String> githubRepo, Optional<String> githubSha, String model, Optional<String> diffModel, Optional<String> diffContextWindow, String prompt) {
-            final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
-                    .recover(throwable -> DEFAULT_DURATION)
-                    .map(i -> Math.max(0, i))
-                    .map(i -> i == 0 ? DEFAULT_DURATION : i)
-                    .get();
+/**
+ * Exposes the arguments for the GitHubDiffs tool.
+ */
+@ApplicationScoped
+class Arguments {
+    private static final String DEFAULT_OWNER = "mcasperson";
+    private static final String DEFAULT_REPO = "SecondBrain";
+    private static final String DEFAULT_BRANCH = "main";
+    private static final int DEFAULT_DURATION = 30;
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-            final int maxDiffs = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "maxDiffs", "0")))
-                    .recover(throwable -> 0)
-                    .map(i -> Math.max(0, i))
-                    .get();
+    @Inject
+    @ConfigProperty(name = "sb.ollama.gitdiffmodel")
+    private Optional<String> diffModel;
 
-            final String startDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), prompt, "since", ZonedDateTime.now(ZoneOffset.UTC).minusDays(days).format(FORMATTER));
-            final String endDate = argsAccessor.getArgument(arguments, List.of(dateSanitizer), prompt, "until", ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER));
+    @Inject
+    @ConfigProperty(name = "sb.ollama.diffcontextwindow")
+    private Optional<String> diffContextWindow;
 
-            final String owner = Try.of(githubOwner::get)
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> argsAccessor.getArgument(arguments, "owner", ""))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> context.get("github_owner"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> DEFAULT_OWNER)
-                    .get();
+    @Inject
+    @ConfigProperty(name = "sb.github.accesstoken")
+    private Optional<String> githubAccessToken;
 
-            final String repo = Try.of(githubRepo::get)
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> argsAccessor.getArgument(arguments, "repo", ""))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> context.get("github_repo"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> DEFAULT_REPO)
-                    .get();
+    @Inject
+    @ConfigProperty(name = "sb.github.owner")
+    private Optional<String> githubOwner;
 
-            final String sha = Try.of(githubSha::get)
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> argsAccessor.getArgument(arguments, "sha", ""))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> context.get("github_sha"))
-                    .get();
+    @Inject
+    @ConfigProperty(name = "sb.github.repo")
+    private Optional<String> githubRepo;
 
-            final String branch = argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
+    @Inject
+    @ConfigProperty(name = "sb.github.sha")
+    private Optional<String> githubSha;
 
-            // Try to decrypt the value, otherwise assume it is a plain text value, and finally
-            // fall back to the value defined in the local configuration.
-            final String token = Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
-                    .recover(e -> context.get("github_access_token"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recoverWith(e -> Try.of(() -> githubAccessToken.get()))
-                    .getOrElseThrow(ex -> new FailedTool("Failed to get GitHub access token", ex));
+    @Inject
+    private ArgsAccessor argsAccessor;
 
-            final String diffCustomModel = Try.of(() -> context.get("diff_custom_model"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recover(e -> diffModel.orElse(model))
-                    .get();
+    @Inject
+    private Encryptor textEncryptor;
 
-            final Integer diffContextWindowValue = Try.of(diffContextWindow::get)
-                    .map(Integer::parseInt)
-                    .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
-                    .get();
+    @Inject
+    private ValidateString validateString;
 
-            return new Arguments(days, maxDiffs, startDate, endDate, owner, repo, sha, branch, token, diffCustomModel, diffContextWindowValue);
-        }
+    @Inject
+    @Identifier("sanitizeDate")
+    private SanitizeArgument dateSanitizer;
+
+    @Inject
+    private ModelConfig modelConfig;
+
+    private List<ToolArgs> arguments;
+
+    private String prompt;
+
+    private Map<String, String> context;
+
+    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        this.arguments = arguments;
+        this.prompt = prompt;
+        this.context = context;
+    }
+
+    public int getDays() {
+        return Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
+                .recover(throwable -> DEFAULT_DURATION)
+                .map(i -> Math.max(0, i))
+                .map(i -> i == 0 ? DEFAULT_DURATION : i)
+                .get();
+    }
+
+    public int getMaxDiffs() {
+        return Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "maxDiffs", "0")))
+                .recover(throwable -> 0)
+                .map(i -> Math.max(0, i))
+                .get();
+    }
+
+    public String getStartDate() {
+        return argsAccessor.getArgument(
+                arguments,
+                List.of(dateSanitizer),
+                prompt,
+                "since",
+                ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays()).format(FORMATTER));
+    }
+
+    public String getEndDate() {
+        return argsAccessor.getArgument(
+                arguments,
+                List.of(dateSanitizer),
+                prompt,
+                "until",
+                ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER));
+    }
+
+    public String getOwner() {
+        return Try.of(githubOwner::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "owner", ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("github_owner"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> DEFAULT_OWNER)
+                .get();
+    }
+
+    public String getRepo() {
+        return Try.of(githubRepo::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "repo", ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("github_repo"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> DEFAULT_REPO)
+                .get();
+    }
+
+    public String getSha() {
+        return Try.of(githubSha::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "sha", ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("github_sha"))
+                .get();
+    }
+
+    public String getBranch() {
+        return argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
+    }
+
+    public String getToken() {
+        return Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
+                .recover(e -> context.get("github_access_token"))
+                .mapTry(validateString::throwIfEmpty)
+                .recoverWith(e -> Try.of(() -> githubAccessToken.get()))
+                .getOrElseThrow(ex -> new FailedTool("Failed to get GitHub access token", ex));
+    }
+
+    public String getDiffCustomModel() {
+        return Try.of(() -> context.get("diff_custom_model"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> diffModel.orElse(modelConfig.getCalculatedModel(context)))
+                .get();
+    }
+
+    @Nullable
+    public Integer getDiffContextWindow() {
+        return Try.of(diffContextWindow::get)
+                .map(Integer::parseInt)
+                .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
+                .get();
     }
 }
 
