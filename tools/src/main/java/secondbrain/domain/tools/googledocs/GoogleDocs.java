@@ -68,10 +68,6 @@ public class GoogleDocs implements Tool<Void> {
             """;
 
     @Inject
-    @ConfigProperty(name = "sb.google.serviceaccountjson")
-    private Optional<String> googleServiceAccountJson;
-
-    @Inject
     private ModelConfig modelConfig;
 
     @Inject
@@ -143,7 +139,7 @@ public class GoogleDocs implements Tool<Void> {
                         .mapTry(Objects::requireNonNull)
                         .mapTry(this::getServiceAccountCredentials))
                 // The try the service account passed in as a config setting
-                .recoverWith(e -> Try.of(() -> googleServiceAccountJson.get())
+                .recoverWith(e -> Try.of(() -> parsedArgs.getGoogleServiceAccountJson())
                         .map(b64 -> new String(new Base64().decode(b64.getBytes(UTF_8)), UTF_8))
                         .mapTry(this::getServiceAccountCredentials))
                 // Finally see if the existing gcloud login can be used
@@ -306,6 +302,10 @@ public class GoogleDocs implements Tool<Void> {
 @ApplicationScoped
 class Arguments {
     @Inject
+    @ConfigProperty(name = "sb.google.serviceaccountjson")
+    private Optional<String> googleServiceAccountJson;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -332,5 +332,9 @@ class Arguments {
         return List.of(sanitizeList.sanitize(
                 argsAccessor.getArgument(arguments, "keywords", ""),
                 prompt).split(","));
+    }
+
+    public String getGoogleServiceAccountJson() {
+        return googleServiceAccountJson.get();
     }
 }
