@@ -7,5 +7,5 @@ public interface ValidateString {
 
     String throwIfEmpty(String value);
 
-    <T> T throwIfEmpty(final T source, Function<T, String> getContext);
+    <T> T throwIfEmpty(T source, Function<T, String> getContext);
 }

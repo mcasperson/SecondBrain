@@ -11,7 +11,7 @@ import java.util.function.Function;
 @ApplicationScoped
 public class ValidateStringBlank implements ValidateString {
     @Override
-    public String throwIfEmpty(@Nullable String value) {
+    public String throwIfEmpty(@Nullable final String value) {
         if (StringUtils.isBlank(value)) {
             throw new EmptyString("String is empty");
         }
