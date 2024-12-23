@@ -43,7 +43,9 @@ jobs:
           # The output often contains all sorts of special characters like quotes, newlines, and backticks.
           # Capturing the output as an environment variable allows it to be used in subsequent steps.
           RESPONSE: ${{ steps.secondbrain.outputs.response }}
-        run: echo "$RESPONSE"
+        # Save the response as a job summary:
+        # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions#adding-a-job-summary
+        run: echo "$RESPONSE" >> "$GITHUB_STEP_SUMMARY"
 ```
 
 | Input          | Description                                                                                                                                                                                                                                                                       | Mandatory | Default                                                                                                                                                                        |

@@ -23,4 +23,4 @@ jobs:
       - name: Get the diff summary
         env:
             RESPONSE: ${{ steps.secondbrain.outputs.response }}
-        run: echo "$RESPONSE"
+        run: echo "$RESPONSE" >> "$GITHUB_STEP_SUMMARY"
