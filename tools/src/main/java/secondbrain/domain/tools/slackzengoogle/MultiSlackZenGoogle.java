@@ -19,7 +19,6 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
-import secondbrain.domain.validate.ValidateString;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.publicweb.PublicWebClient;
@@ -56,9 +55,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private ModelConfig modelConfig;
 
     @Inject
-    private ArgsAccessor argsAccessor;
-
-    @Inject
     private SlackChannel slackChannel;
 
     @Inject
@@ -74,13 +70,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private PromptBuilderSelector promptBuilderSelector;
 
     @Inject
-    private ValidateString validateString;
-
-    @Inject
     private YamlDeserializer yamlDeserializer;
 
     @Inject
     private PublicWebClient publicWebClient;
+
+    @Inject
+    private Arguments parsedArgs;
 
     @Override
     public String getName() {
@@ -108,16 +104,16 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString);
+        parsedArgs.setInputs(arguments, prompt, context);
 
         final EntityDirectory entityDirectory = Try.withResources(ClientBuilder::newClient)
-                .of(client -> publicWebClient.getDocument(client, parsedArgs.url()))
+                .of(client -> publicWebClient.getDocument(client, parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
                 .getOrElseThrow(ex -> new FailedTool("Failed to download or parse the entity directory", ex));
 
         return entityDirectory.entities()
                 .stream()
-                .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.days()).stream())
+                .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.getDays()).stream())
                 .toList();
     }
 
@@ -126,8 +122,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
@@ -201,22 +195,38 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 context);
     }
 
-    record Arguments(String url, int days) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString) {
-            final String url = argsAccessor.getArgument(arguments, "url", "").trim();
-
-            final int days = Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "0")))
-                    .recover(throwable -> 0)
-                    .map(i -> Math.max(0, i))
-                    .get();
-
-            return new Arguments(url, days);
-        }
-    }
-
     record EntityDirectory(List<Entity> entities) {
     }
 
     record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs) {
+    }
+}
+
+@ApplicationScoped
+class Arguments {
+    @Inject
+    private ArgsAccessor argsAccessor;
+
+    private List<ToolArgs> arguments;
+
+    private String prompt;
+
+    private Map<String, String> context;
+
+    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        this.arguments = arguments;
+        this.prompt = prompt;
+        this.context = context;
+    }
+
+    public String getUrl() {
+        return argsAccessor.getArgument(arguments, "url", "").trim();
+    }
+
+    public int getDays() {
+        return Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "0")))
+                .recover(throwable -> 0)
+                .map(i -> Math.max(0, i))
+                .get();
     }
 }

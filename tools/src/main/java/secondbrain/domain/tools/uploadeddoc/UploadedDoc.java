@@ -17,7 +17,6 @@ import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.List;
@@ -54,10 +53,10 @@ public class UploadedDoc implements Tool<Void> {
     private PromptBuilderSelector promptBuilderSelector;
 
     @Inject
-    private ValidateString validateString;
+    private OllamaClient ollamaClient;
 
     @Inject
-    private OllamaClient ollamaClient;
+    private Arguments parsedArgs;
 
     @Override
     public String getName() {
@@ -78,13 +77,13 @@ public class UploadedDoc implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        final Arguments parsedArgs = Arguments.fromToolArgs(context, validateString);
+        parsedArgs.setInputs(arguments, prompt, context);
 
-        if (StringUtils.isBlank(parsedArgs.document())) {
+        if (StringUtils.isBlank(parsedArgs.getDocument())) {
             throw new FailedTool("No document found in context");
         }
 
-        return List.of(getDocumentContext(parsedArgs.document()));
+        return List.of(getDocumentContext(parsedArgs.getDocument()));
     }
 
     @Override
@@ -92,8 +91,6 @@ public class UploadedDoc implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-
-        final Arguments parsedArgs = Arguments.fromToolArgs(context, validateString);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
@@ -136,14 +133,25 @@ public class UploadedDoc implements Tool<Void> {
                 .recover(e -> new RagDocumentContext<>(document, List.of()))
                 .get();
     }
+}
 
-    record Arguments(String document) {
-        public static Arguments fromToolArgs(final Map<String, String> context, final ValidateString validateString) {
-            final String uploadedDocument = Try.of(() -> context.get("document"))
-                    .recover(throwable -> "")
-                    .get();
+@ApplicationScoped
+class Arguments {
+    private List<ToolArgs> arguments;
 
-            return new Arguments(uploadedDocument);
-        }
+    private String prompt;
+
+    private Map<String, String> context;
+
+    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        this.arguments = arguments;
+        this.prompt = prompt;
+        this.context = context;
+    }
+
+    public String getDocument() {
+        return Try.of(() -> context.get("document"))
+                .recover(throwable -> "")
+                .get();
     }
 }

@@ -18,7 +18,6 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
-import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.ArrayList;
@@ -43,9 +42,6 @@ public class SlackZenGoogle implements Tool<Void> {
     private ModelConfig modelConfig;
 
     @Inject
-    private ArgsAccessor argsAccessor;
-
-    @Inject
     private SlackChannel slackChannel;
 
     @Inject
@@ -61,7 +57,7 @@ public class SlackZenGoogle implements Tool<Void> {
     private PromptBuilderSelector promptBuilderSelector;
 
     @Inject
-    private ValidateString validateString;
+    private SlackZenGoogleArguments parsedArgs;
 
     @Override
     public String getName() {
@@ -91,27 +87,27 @@ public class SlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString);
+        parsedArgs.setInputs(arguments, prompt, context);
 
         final List<ToolArgs> slackArguments = arguments.stream()
                 .filter(arg -> arg.argName().equals("slackChannel") || arg.argName().equals("days"))
                 .collect(ImmutableList.toImmutableList());
 
-        final List<RagDocumentContext<Void>> slackContext = StringUtils.isBlank(parsedArgs.slackChannel())
+        final List<RagDocumentContext<Void>> slackContext = StringUtils.isBlank(parsedArgs.getSlackChannel())
                 ? List.of() : slackChannel.getContext(context, prompt, slackArguments);
 
         final List<ToolArgs> googleArguments = arguments.stream()
                 .filter(arg -> arg.argName().equals("googleDocumentId"))
                 .collect(ImmutableList.toImmutableList());
 
-        final List<RagDocumentContext<Void>> googleContext = StringUtils.isBlank(parsedArgs.googleDocumentId())
+        final List<RagDocumentContext<Void>> googleContext = StringUtils.isBlank(parsedArgs.getGoogleDocumentId())
                 ? List.of() : googleDocs.getContext(context, prompt, googleArguments);
 
         final List<ToolArgs> zenArguments = arguments.stream()
                 .filter(arg -> arg.argName().equals("zenDeskOrganization") || arg.argName().equals("days"))
                 .collect(ImmutableList.toImmutableList());
 
-        final List<RagDocumentContext<Void>> zenContext = StringUtils.isBlank(parsedArgs.zenDeskOrganization())
+        final List<RagDocumentContext<Void>> zenContext = StringUtils.isBlank(parsedArgs.getZenDeskOrganization())
                 ? List.of() : zenDeskOrganization.getContext(context, prompt, zenArguments)
                 .stream()
                 .map(RagDocumentContext::getRagDocumentContextVoid)
@@ -130,8 +126,6 @@ public class SlackZenGoogle implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
@@ -163,15 +157,35 @@ public class SlackZenGoogle implements Tool<Void> {
                         .collect(Collectors.joining("\n")),
                 context);
     }
+}
 
-    record Arguments(String slackChannel, String googleDocumentId, String zenDeskOrganization) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, final Map<String, String> context, final ArgsAccessor argsAccessor, final ValidateString validateString) {
-            final String slackChannel = argsAccessor.getArgument(arguments, "slackChannel", "").trim();
-            final String googleDocumentId = argsAccessor.getArgument(arguments, "googleDocumentId", "").trim();
-            final String zenDeskOrganization = argsAccessor.getArgument(arguments, "zenDeskOrganization", "").trim();
+@ApplicationScoped
+class SlackZenGoogleArguments {
+    @Inject
+    private ArgsAccessor argsAccessor;
 
+    private List<ToolArgs> arguments;
 
-            return new Arguments(slackChannel, googleDocumentId, zenDeskOrganization);
-        }
+    private String prompt;
+
+    private Map<String, String> context;
+
+    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        this.arguments = arguments;
+        this.prompt = prompt;
+        this.context = context;
     }
+
+    public String getSlackChannel() {
+        return argsAccessor.getArgument(arguments, "slackChannel", "").trim();
+    }
+
+    public String getGoogleDocumentId() {
+        return argsAccessor.getArgument(arguments, "googleDocumentId", "").trim();
+    }
+
+    public String getZenDeskOrganization() {
+        return argsAccessor.getArgument(arguments, "zenDeskOrganization", "").trim();
+    }
+
 }
