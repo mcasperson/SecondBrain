@@ -29,7 +29,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.github.GitHubClient;
-import secondbrain.infrastructure.github.GitHubCommitResponse;
+import secondbrain.infrastructure.github.GitHubCommitAndDiff;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyOptions;
@@ -51,7 +51,7 @@ import static com.google.common.base.Predicates.instanceOf;
  * I couldn't find a single LLM supported by Ollama that could process a large collection of diffs in a single prompt.
  */
 @Dependent
-public class GitHubDiffs implements Tool<GitHubCommitResponse> {
+public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     private static final String INSTRUCTIONS = """
             You are an expert in reading Git diffs.
             You are given a question and a list of summaries of Git Diffs.
@@ -117,12 +117,13 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 new ToolArguments("since", "The optional date to start checking from", ""),
                 new ToolArguments("until", "The optional date to stop checking at", ""),
                 new ToolArguments("days", "The optional number of days worth of diffs to return", "0"),
-                new ToolArguments("maxDiffs", "The optional number of diffs to return", "0")
+                new ToolArguments("maxDiffs", "The optional number of diffs to return", "0"),
+                new ToolArguments("summarizeIndividualDiffs", "Set to true to first summarize each diff", "true")
         );
     }
 
     @Override
-    public List<RagDocumentContext<GitHubCommitResponse>> getContext(
+    public List<RagDocumentContext<GitHubCommitAndDiff>> getContext(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -136,16 +137,16 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
             return convertCommitsToDiffSummaries(
                     Try.withResources(ClientBuilder::newClient)
                             .of(client ->
-                                    Try.of(() -> List.of(parsedArgs.getSha().split(",")))
+                                    Try
+                                            .of(() -> List.of(parsedArgs.getSha().split(",")))
                                             .map(commits -> gitHubClient.getCommits(client, parsedArgs.getOwner(), parsedArgs.getRepo(), commits, authHeader))
                                             .get())
-                            .get(),
-                    authHeader,
-                    parsedArgs);
+                            .get());
         }
 
         // Otherwise, we are interested in a range of commits
-        return Try.of(() -> getCommits(
+        return Try
+                .of(() -> getCommits(
                         parsedArgs.getOwner(),
                         parsedArgs.getRepo(),
                         parsedArgs.getBranch(),
@@ -157,22 +158,20 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                         commitsResponse,
                         0,
                         parsedArgs.getMaxDiffs() > 0 ? parsedArgs.getMaxDiffs() : commitsResponse.size()))
-                .map(commitsResponse -> convertCommitsToDiffSummaries(
-                        commitsResponse,
-                        authHeader,
-                        parsedArgs))
+                .map(commitsResponse -> convertCommitsToDiffSummaries(commitsResponse))
                 .get();
     }
 
     @Override
-    public RagMultiDocumentContext<GitHubCommitResponse> call(
+    public RagMultiDocumentContext<GitHubCommitAndDiff> call(
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final Try<RagMultiDocumentContext<GitHubCommitResponse>> result = Try.of(() -> getContext(context, prompt, arguments))
+        final Try<RagMultiDocumentContext<GitHubCommitAndDiff>> result = Try
+                .of(() -> getContext(context, prompt, arguments))
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
@@ -205,7 +204,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
         return "Git Diff";
     }
 
-    private RagMultiDocumentContext<GitHubCommitResponse> mergeContext(final List<RagDocumentContext<GitHubCommitResponse>> context, final String debug) {
+    private RagMultiDocumentContext<GitHubCommitAndDiff> mergeContext(final List<RagDocumentContext<GitHubCommitAndDiff>> context, final String debug) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(RagDocumentContext::document)
@@ -214,14 +213,12 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 debug);
     }
 
-    private List<RagDocumentContext<GitHubCommitResponse>> convertCommitsToDiffSummaries(
-            final List<GitHubCommitResponse> commitsResponse,
-            final String authorization,
-            final Arguments parsedArgs) {
+    private List<RagDocumentContext<GitHubCommitAndDiff>> convertCommitsToDiffSummaries(
+            final List<GitHubCommitAndDiff> commitsResponse) {
 
         return commitsResponse
                 .stream()
-                .map(commit -> getCommitSummary(commit, authorization))
+                .map(this::getCommitSummary)
                 .toList();
     }
 
@@ -230,18 +227,24 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
      * or hallucinate a bunch of random release notes. Instead, each diff is summarised individually and then combined
      * into a single document to be summarised again.
      */
-    private RagDocumentContext<GitHubCommitResponse> getCommitSummary(final GitHubCommitResponse commit,
-                                                                      final String authorization) {
-        final String summary = getDiffSummary(getCommitDiff(parsedArgs.getOwner(), parsedArgs.getRepo(), commit.sha(), authorization), parsedArgs);
-        return new RagDocumentContext<GitHubCommitResponse>(
+    private RagDocumentContext<GitHubCommitAndDiff> getCommitSummary(final GitHubCommitAndDiff commit) {
+        /*
+             We can optionally summarize each commit as a way of reducing the context size of
+             when there are a lot of large diffs.
+         */
+        final String summary = parsedArgs.getSummarizeIndividualDiffs()
+                ? getDiffSummary(commit.diff(), parsedArgs)
+                : commit.diff();
+
+        return new RagDocumentContext<>(
                 summary,
                 sentenceSplitter.splitDocument(summary, 10)
                         .stream()
                         .map(sentenceVectorizer::vectorize)
                         .toList(),
-                commit.sha(),
+                commit.commit().sha(),
                 commit,
-                "[" + GitHubUrlParser.urlToCommitHash(commit.html_url()) + "](" + commit.html_url() + ")");
+                "[" + GitHubUrlParser.urlToCommitHash(commit.commit().html_url()) + "](" + commit.commit().html_url() + ")");
     }
 
     /**
@@ -264,7 +267,7 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
                 .response();
     }
 
-    private List<GitHubCommitResponse> getCommits(
+    private List<GitHubCommitAndDiff> getCommits(
             final String owner,
             final String repo,
             final String branch,
@@ -273,7 +276,12 @@ public class GitHubDiffs implements Tool<GitHubCommitResponse> {
             final String authorization) {
 
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> gitHubClient.getCommitsInRange(client, owner, repo, branch, until, since, authorization))
+                .of(client ->
+                        gitHubClient.getCommitsInRange(client, owner, repo, branch, until, since, authorization)
+                                .stream().map(commit -> new GitHubCommitAndDiff(
+                                        commit,
+                                        getCommitDiff(owner, repo, commit.sha(), authorization)))
+                                .toList())
                 .get();
     }
 
@@ -324,6 +332,10 @@ class Arguments {
     private Optional<String> githubSha;
 
     @Inject
+    @ConfigProperty(name = "sb.github.summarizeindividualdiffs")
+    private Optional<String> summarizeIndividualDiffs;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -349,6 +361,16 @@ class Arguments {
         this.arguments = arguments;
         this.prompt = prompt;
         this.context = context;
+    }
+
+    public boolean getSummarizeIndividualDiffs() {
+        return Try.of(summarizeIndividualDiffs::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("summarize_individual_diffs"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "summarizeIndividualDiffs", ""))
+                .map(Boolean::parseBoolean)
+                .get();
     }
 
     public int getDays() {

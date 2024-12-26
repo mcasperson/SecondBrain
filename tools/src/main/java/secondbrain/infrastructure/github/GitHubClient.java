@@ -52,9 +52,11 @@ public class GitHubClient {
     }
 
     @Retry
-    public List<GitHubCommitResponse> getCommits(final Client client, final String owner, final String repo, final List<String> sha, final String authorization) {
+    public List<GitHubCommitAndDiff> getCommits(final Client client, final String owner, final String repo, final List<String> sha, final String authorization) {
         return sha.stream()
-                .map(s -> getCommit(client, owner, repo, s, authorization))
+                .map(s -> new GitHubCommitAndDiff(
+                        getCommit(client, owner, repo, s, authorization),
+                        getDiff(client, owner, repo, s, authorization)))
                 .toList();
     }
 

@@ -33,13 +33,14 @@ java \
   -Dsb.ollama.gitdiffmodel="$2" \
   -Dsb.ollama.toolmodel=llama3.2:3b \
   -Dsb.ollama.model="$1" \
+  -Dsb.ollama.getSummarizeIndividualDiffs="$3" \
   -Dsb.ollama.contextwindow=8192 \
   -Dsb.ollama.diffcontextwindow=8192 \
-  -Dsb.github.accesstoken="$3" \
-  -Dsb.github.owner="$4" \
-  -Dsb.github.repo="$5" \
-  -Dsb.github.sha="$6" \
-  -jar /usr/local/bin/secondbrain-cli.jar "$7" >> /tmp/secondbrain-cli.log
+  -Dsb.github.accesstoken="$4" \
+  -Dsb.github.owner="$5" \
+  -Dsb.github.repo="$6" \
+  -Dsb.github.sha="$7" \
+  -jar /usr/local/bin/secondbrain-cli.jar "$8" >> /tmp/secondbrain-cli.log
 
 cat /tmp/secondbrain-cli.log
 
