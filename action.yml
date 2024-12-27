@@ -26,7 +26,7 @@ inputs:
   getSummarizeIndividualDiffs:
     description: 'Whether to summarize individual diffs'
     required: true
-    default: !!str 'true'
+    default: 'true'
   gitDiffModel:
     description: 'The model used to create git diffs'
     required: true

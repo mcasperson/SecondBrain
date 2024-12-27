@@ -20,6 +20,8 @@ jobs:
             owner: ${{ github.repository_owner }}
             repo: ${{ github.event.repository.name }}
             sha: ${{ github.sha }}
+            getSummarizeIndividualDiffs: 'false'
+            model: 'qwen2.5-coder'
       - name: Get the diff summary
         env:
             RESPONSE: ${{ steps.secondbrain.outputs.response }}
