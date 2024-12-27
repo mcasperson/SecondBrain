@@ -33,7 +33,7 @@ java \
   -Dsb.ollama.gitdiffmodel="$2" \
   -Dsb.ollama.toolmodel=llama3.2:3b \
   -Dsb.ollama.model="$1" \
-  -Dsb.ollama.getSummarizeIndividualDiffs="$3" \
+  -Dsb.ollama.summarizeindividualdiffs="$3" \
   -Dsb.ollama.contextwindow=8192 \
   -Dsb.ollama.diffcontextwindow=8192 \
   -Dsb.github.accesstoken="$4" \
