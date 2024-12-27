@@ -23,7 +23,7 @@ inputs:
   sha:
     description: 'Git commit SHA'
     required: true
-  getSummarizeIndividualDiffs:
+  summarizeIndividualDiffs:
     description: 'Whether to summarize individual diffs'
     required: true
     default: 'true'
@@ -44,7 +44,7 @@ runs:
   args:
     - ${{ inputs.model }}
     - ${{ inputs.gitDiffModel }}
-    - ${{ inputs.getSummarizeIndividualDiffs }}
+    - ${{ inputs.summarizeIndividualDiffs }}
     - ${{ inputs.token }}
     - ${{ inputs.owner }}
     - ${{ inputs.repo }}
