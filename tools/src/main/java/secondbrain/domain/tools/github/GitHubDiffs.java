@@ -159,7 +159,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                         commitsResponse,
                         0,
                         parsedArgs.getMaxDiffs() > 0 ? parsedArgs.getMaxDiffs() : commitsResponse.size()))
-                .map(commitsResponse -> convertCommitsToDiffSummaries(commitsResponse))
+                .map(this::convertCommitsToDiffSummaries)
                 .get();
     }
 
@@ -435,7 +435,7 @@ class Arguments {
                 .recover(e -> argsAccessor.getArgument(arguments, "sha", ""))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("github_sha"))
-                .get();
+                .getOrElse("");
     }
 
     public String getBranch() {
