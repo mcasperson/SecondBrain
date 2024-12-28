@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
@@ -133,7 +134,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
         final String authHeader = "Bearer " + parsedArgs.getToken();
 
         // If we have a sha, then we are only interested in a single commit
-        if (!parsedArgs.getSha().isEmpty()) {
+        if (StringUtils.isNotBlank(parsedArgs.getSha())) {
             return convertCommitsToDiffSummaries(
                     Try.withResources(ClientBuilder::newClient)
                             .of(client ->
