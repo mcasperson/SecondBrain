@@ -95,7 +95,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Override
     public List<ToolArguments> getArguments() {
-        return ImmutableList.of(new ToolArguments("url", "The entity directory URL", ""),
+        return ImmutableList.of(
+                new ToolArguments("url", "The entity directory URL", ""),
+                new ToolArguments("entityName", "The optional name of the entity to query", ""),
                 new ToolArguments("days", "The number of days to query", ""));
     }
 
@@ -113,6 +115,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         return entityDirectory.entities()
                 .stream()
+                .filter(entity -> StringUtils.isBlank(parsedArgs.getEntityName()) || entity.name().equalsIgnoreCase(parsedArgs.getEntityName()))
                 .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.getDays()).stream())
                 .toList();
     }
@@ -228,5 +231,9 @@ class Arguments {
                 .recover(throwable -> 0)
                 .map(i -> Math.max(0, i))
                 .get();
+    }
+
+    public String getEntityName() {
+        return argsAccessor.getArgument(arguments, "entityName", "").trim();
     }
 }
