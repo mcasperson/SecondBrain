@@ -5,7 +5,7 @@ public class Constants {
      * The default content window size. Increasing this value increases the memory
      * usage of the application.
      */
-    public static final int DEFAULT_CONTENT_WINDOW = 16384;
+    public static final int DEFAULT_CONTENT_WINDOW = 8192;
 
     /**
      * The value to multiply the content window by to get the maximum context length.
