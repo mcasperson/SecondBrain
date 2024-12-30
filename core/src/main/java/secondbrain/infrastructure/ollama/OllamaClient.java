@@ -46,11 +46,13 @@ public class OllamaClient {
                         .map(r -> r.readEntity(OllamaResponse.class))
                         .recover(InvalidResponse.class, e -> {
                             throw new RuntimeException("Failed to call Ollama:\n"
-                                    + response.getStatus());
+                                    + response.getStatus() + "\n"
+                                    + response.readEntity(String.class));
                         })
                         .recover(MissingResponse.class, e -> {
                             throw new RuntimeException("Failed to call Ollama:\n"
-                                    + response.getStatus()
+                                    + response.getStatus() + "\n"
+                                    + response.readEntity(String.class)
                                     + "\nMake sure to run 'ollama pull " + body.model() + "'"
                                     + "or 'docker exec -it secondbrain-ollama-1 ollama pull " + body.model() + "'");
                         })
