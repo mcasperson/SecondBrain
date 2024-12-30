@@ -1,7 +1,11 @@
 package secondbrain.domain.constants;
 
 public class Constants {
-    public static final int DEFAULT_CONTENT_WINDOW = 32768;
+    /**
+     * The default content window size. Increasing this value increases the memory
+     * usage of the application.
+     */
+    public static final int DEFAULT_CONTENT_WINDOW = 16384;
 
     /**
      * The value to multiply the content window by to get the maximum context length.
