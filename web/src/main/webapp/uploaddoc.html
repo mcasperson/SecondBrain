@@ -62,6 +62,7 @@
                     <textarea aria-describedby="promptHelp" class="form-control" id="prompt" rows="10"></textarea>
                 </div>
                 <div class="mb-3">
+                    <button class="btn btn-info" id="load" type="button">Load</button>
                     <button class="btn btn-primary" type="submit">Submit</button>
                 </div>
                 <div class="mb-3">
@@ -79,6 +80,14 @@
 <script>
     document.getElementById('prompt').value = stripLineBreaks(
         stripLeadingWhitespace(`Given the uploaded document, list all details about the company "Acme".`))
+
+    document.getElementById('prompt').onchange = function () {
+        localStorage.setItem('uploaddoc', document.getElementById('prompt').value)
+    }
+
+    document.getElementById('load').onclick = function () {
+        document.getElementById('prompt').value = localStorage.getItem('uploaddoc')
+    }
 
     function stripLeadingWhitespace(text) {
         return text.split("\n").map(l => l.replace(/^\s+/g, '')).join("\n");
