@@ -67,6 +67,7 @@ function postRequest(prompt, context) {
 
     context['custom_model'] = customModel;
     context['argument_debugging'] = argumentDebugging;
+    context['tool'] = "GoogleDocs";
 
     fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
         method: 'POST',

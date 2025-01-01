@@ -146,7 +146,8 @@
             body: JSON.stringify({
                 "github_access_token": githubToken,
                 "custom_model": customModel,
-                "argument_debugging": argumentDebugging
+                "argument_debugging": argumentDebugging,
+                "tool": "GitHubDiffs"
             }),
         })
             .then(response => response.text())

@@ -138,7 +138,7 @@ public class ToolSelectionTest {
     @RepeatedTest(value = 5, failureThreshold = 1)
     void testToolSelection() {
         try {
-            final ToolCall tool = toolSelector.getTool("Perform a smoke test");
+            final ToolCall tool = toolSelector.getTool("Perform a smoke test", Map.of());
             assertEquals("SmokeTest", tool.toolDefinition().toolName());
         } catch (Exception e) {
             // Allow up o one failure, or an 20% failure rate
@@ -151,7 +151,7 @@ public class ToolSelectionTest {
     @RepeatedTest(value = 5, failureThreshold = 1)
     void testZendDeskTool() {
         try {
-            final ToolCall tool = toolSelector.getTool("Given 8 hours worth of ZenDesk tickets, with up to 10 comments, provide a summary of the questions and problems in the style of a news article with up to 3 paragraphs.");
+            final ToolCall tool = toolSelector.getTool("Given 8 hours worth of ZenDesk tickets, with up to 10 comments, provide a summary of the questions and problems in the style of a news article with up to 3 paragraphs.", Map.of());
             assertEquals("ZenDeskOrganization", tool.toolDefinition().toolName());
             assertEquals("10", tool.toolDefinition().toolArgs().stream().filter(arg -> arg.argName().equals("numComments")).findFirst().get().argValue());
             assertEquals("8", tool.toolDefinition().toolArgs().stream().filter(arg -> arg.argName().equals("hours")).findFirst().get().argValue());

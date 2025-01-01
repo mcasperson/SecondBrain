@@ -15,7 +15,6 @@ import secondbrain.domain.tooldefs.ToolCall;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -65,7 +64,7 @@ public class PromptHandlerOllama implements PromptHandler {
      * So we retry a bunch of times to try and get a valid response.
      */
     public String handlePromptWithRetry(final Map<String, String> context, final String prompt, int count) {
-        return Try.of(() -> toolSelector.getTool(prompt))
+        return Try.of(() -> toolSelector.getTool(prompt, context))
                 .map(toolCall -> callTool(toolCall, context, prompt))
                 .recover(ProcessingException.class, e -> "Failed to connect to Ollama. You must install Ollama from https://ollama.com/download: " + e.toString())
                 .recoverWith(error -> Try.of(() -> {

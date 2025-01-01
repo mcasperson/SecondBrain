@@ -99,7 +99,9 @@
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({})
+            body: JSON.stringify({
+                tool: "PublicWeb"
+            })
         })
             .then(response => response.text())
             .then(data => {

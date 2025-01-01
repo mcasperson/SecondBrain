@@ -22,6 +22,7 @@ import secondbrain.infrastructure.ollama.OllamaResponse;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @ApplicationScoped
@@ -54,7 +55,7 @@ public class ToolSelector {
     @Inject
     private ToolBuilder toolBuilder;
 
-    public ToolCall getTool(final String prompt) {
+    public ToolCall getTool(final String prompt, final Map<String, String> context) {
         /*
             When forcing the selection of a tool, all arguments must be supplied
             through the context or via injected values because they can not be
@@ -63,6 +64,14 @@ public class ToolSelector {
         if (force.isPresent() && StringUtils.isNotBlank(force.get())) {
             return tools.stream()
                     .filter(tool -> tool.getName().equals(force.get()))
+                    .findFirst()
+                    .map(tool -> new ToolCall(tool, new ToolDefinition(tool.getName(), List.of())))
+                    .orElse(null);
+        }
+
+        if (context.containsKey("tool")) {
+            return tools.stream()
+                    .filter(tool -> tool.getName().equals(context.get("tool")))
                     .findFirst()
                     .map(tool -> new ToolCall(tool, new ToolDefinition(tool.getName(), List.of())))
                     .orElse(null);

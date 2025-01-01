@@ -102,7 +102,10 @@
             const reader = new FileReader();
             reader.onload = function (e) {
                 const content = e.target.result;
-                const context = {document: content}
+                const context = {
+                    document: content,
+                    tool: "UploadedDoc"
+                }
                 fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
                     method: 'POST',
                     headers: {
