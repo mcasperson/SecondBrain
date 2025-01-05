@@ -123,7 +123,7 @@ public class PromptHandlerOllama implements PromptHandler {
                                 + response.links()
                                 + response.debug()
                                 + getAnnotationCoverage(response.annotationResult(), Boolean.getBoolean(debug) || argumentDebugging))
-                .recover(FailedTool.class, Throwable::getMessage)
+                .recover(FailedTool.class, ExceptionUtils::getStackTrace)
                 .get();
     }
 
