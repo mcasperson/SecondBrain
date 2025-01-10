@@ -7,6 +7,7 @@ import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
@@ -43,6 +44,10 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
 
+/**
+ * Scans the files in a directory and answers questions about them. This is useful when you have a bunch of reports
+ * or other files that contain information that you want to query.
+ */
 @Dependent
 public class DirectoryScan implements Tool<Void> {
     private static final String INSTRUCTIONS = """
@@ -115,6 +120,10 @@ public class DirectoryScan implements Tool<Void> {
             final List<ToolArgs> arguments) {
 
         parsedArgs.setInputs(arguments, prompt, context);
+
+        if (StringUtils.isBlank(parsedArgs.getDirectory())) {
+            throw new FailedTool("You must provide a directory to scan");
+        }
 
         // Otherwise, we are interested in a range of commits
         return Try
