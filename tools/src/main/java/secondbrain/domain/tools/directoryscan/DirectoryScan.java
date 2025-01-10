@@ -204,8 +204,8 @@ public class DirectoryScan implements Tool<Void> {
      */
     private RagDocumentContext<Void> getFileSummary(final String prompt, final String file) {
         /*
-             We can optionally summarize each commit as a way of reducing the context size of
-             when there are a lot of large diffs.
+             Each individual file is converted to text and used to answer the prompt.
+             The combined answers are then used to answer the prompt again.
          */
         final String contents = FilenameUtils.getExtension(file).equals("pdf")
                 ? pdfToText.convert(file)
