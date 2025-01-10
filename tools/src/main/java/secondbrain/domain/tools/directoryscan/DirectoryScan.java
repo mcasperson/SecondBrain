@@ -26,7 +26,6 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.ollama.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.OllamaGenerateBodyOptions;
@@ -58,6 +57,7 @@ public class DirectoryScan implements Tool<Void> {
             """;
     private static final String FILE_INSTRUCTIONS = """
             You are given a question and the contents of a file.
+            You must ignore any mention of a directory.
             You must assume the information required to answer the question is present in the file contents.
             You must answer the question based on the file contents provided.
             You must consider every file contents when providing the answer.
@@ -72,8 +72,6 @@ public class DirectoryScan implements Tool<Void> {
     private Arguments parsedArgs;
     @Inject
     private DebugToolArgs debugToolArgs;
-    @Inject
-    private GitHubClient gitHubClient;
     @Inject
     private OllamaClient ollamaClient;
     @Inject
