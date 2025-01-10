@@ -51,14 +51,14 @@ import static com.google.common.base.Predicates.instanceOf;
 @Dependent
 public class DirectoryScan implements Tool<Void> {
     private static final String INSTRUCTIONS = """
-            You are given a question and a list of summaries of files.
-            You must assume the information required to answer the question is present in the file summaries.
-            You must answer the question based on the file summaries provided.
-            You must consider every file summary when providing the answer.
-            When the user asks a question indicating that they want to know the changes in the repository, you must generate the answer based on the file summaries.
+            You are given a question and the answer to the question from many individual files.
+            You must assume the information required to answer the question is present in the individual file answers.
+            You must answer the question based on the individual file answers provided.
+            You must consider every individual file answers when providing the answer.
+            When the user asks a question indicating that they want to know the changes in the repository, you must generate the answer based on the individual file answers.
             You will be penalized for suggesting manual steps to generate the answer.
             You will be penalized for responding that you don't have access to real-time data or directories.
-            If there are no file summaries, you must indicate that in the answer.
+            If there are no individual file answers, you must indicate that in the answer.
             """;
     private static final String FILE_INSTRUCTIONS = """
             You are given a question and the contents of a file.
@@ -125,7 +125,6 @@ public class DirectoryScan implements Tool<Void> {
             throw new FailedTool("You must provide a directory to scan");
         }
 
-        // Otherwise, we are interested in a range of commits
         return Try
                 .of(() -> getFiles(parsedArgs.getDirectory()))
                 .map(file -> convertFilesToSummaries(prompt, file))
@@ -153,7 +152,9 @@ public class DirectoryScan implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateDocument(
                         promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildFinalPrompt(
                                 INSTRUCTIONS,
-                                promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildContextPrompt("Git Diffs", ragDoc.combinedDocument()),
+                                promptBuilderSelector.getPromptBuilder(
+                                        modelConfig.getCalculatedModel(context)).buildContextPrompt(
+                                        "Individual File Answer", ragDoc.combinedDocument()),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllama(
                         ragDoc,
