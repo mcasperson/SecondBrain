@@ -201,10 +201,6 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 .get();
     }
 
-    public String getContextHeader() {
-        return "Git Diff";
-    }
-
     private RagMultiDocumentContext<GitHubCommitAndDiff> mergeContext(final List<RagDocumentContext<GitHubCommitAndDiff>> context, final String debug) {
         return new RagMultiDocumentContext<>(
                 context.stream()

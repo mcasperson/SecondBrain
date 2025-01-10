@@ -25,6 +25,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+        <dependency>
             <groupId>io.github.crew102</groupId>
             <artifactId>rapidrake</artifactId>
             <version>0.1.4</version>
