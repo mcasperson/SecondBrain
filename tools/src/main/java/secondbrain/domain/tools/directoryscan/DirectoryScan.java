@@ -241,16 +241,6 @@ public class DirectoryScan implements Tool<Void> {
                 .get()
                 .response();
     }
-
-    private String getCommitDiff(
-            final String owner,
-            final String repo,
-            final String sha,
-            final String authorization) {
-
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> gitHubClient.getDiff(client, owner, repo, sha, authorization)).get();
-    }
 }
 
 /**
