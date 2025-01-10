@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
@@ -109,7 +110,8 @@ public class DirectoryScan implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("directory", "The directory containing the files to scan", "")
+                new ToolArguments("directory", "The directory containing the files to scan", ""),
+                new ToolArguments("maxfiles", "The maximum number of files to scan", "-1")
         );
     }
 
@@ -193,6 +195,7 @@ public class DirectoryScan implements Tool<Void> {
 
         return files
                 .stream()
+                .limit(parsedArgs.getMaxFiles() == -1 ? Long.MAX_VALUE : parsedArgs.getMaxFiles())
                 .map(file -> getFileSummary(prompt, file))
                 .filter(Objects::nonNull)
                 .toList();
@@ -269,6 +272,10 @@ class Arguments {
     private Optional<String> directory;
 
     @Inject
+    @ConfigProperty(name = "sb.directoryscan.maxfiles")
+    private Optional<String> maxfiles;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -296,6 +303,16 @@ class Arguments {
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("directoryscan_directory"))
                 .getOrElse("");
+    }
+
+    public int getMaxFiles() {
+        return Try.of(maxfiles::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "maxfiles", ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("directoryscan_maxfiles"))
+                .map(NumberUtils::toInt)
+                .getOrElse(-1);
     }
 
     public String getFileCustomModel() {
