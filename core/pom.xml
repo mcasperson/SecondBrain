@@ -30,6 +30,11 @@
             <version>3.0.2</version>
         </dependency>
         <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>2.3.232</version>
+        </dependency>
+        <dependency>
             <groupId>io.github.crew102</groupId>
             <artifactId>rapidrake</artifactId>
             <version>0.1.4</version>

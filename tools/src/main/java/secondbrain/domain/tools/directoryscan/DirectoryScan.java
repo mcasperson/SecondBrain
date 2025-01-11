@@ -5,6 +5,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -22,6 +23,7 @@ import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.limit.ListLimiter;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -71,6 +73,8 @@ public class DirectoryScan implements Tool<Void> {
             You will be penalized for responding that you don't have access to real-time data or directories.
             If the file content is empty, you must indicate that in the answer.
             """;
+    @Inject
+    LocalStorage localStorage;
     @Inject
     private ModelConfig modelConfig;
     @Inject
@@ -218,7 +222,11 @@ public class DirectoryScan implements Tool<Void> {
             return null;
         }
 
-        final String summary = getFileSummary(prompt, contents, parsedArgs);
+        final String summary = localStorage.getOrPutString(
+                this.getName(),
+                DigestUtils.sha256Hex(contents),
+                DigestUtils.sha256Hex(prompt),
+                () -> getFileSummary(prompt, contents, parsedArgs));
 
         return new RagDocumentContext<>(
                 summary,
