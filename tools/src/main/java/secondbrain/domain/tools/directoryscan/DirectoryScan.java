@@ -262,7 +262,7 @@ public class DirectoryScan implements Tool<Void> {
 }
 
 /**
- * Exposes the arguments for the GitHubDiffs tool.
+ * Exposes the arguments for the DirectoryScan tool.
  */
 @ApplicationScoped
 class Arguments {
