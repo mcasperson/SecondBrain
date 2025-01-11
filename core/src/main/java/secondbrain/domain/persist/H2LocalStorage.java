@@ -55,7 +55,7 @@ public class H2LocalStorage implements LocalStorage {
                             preparedStatement.setString(3, promptHash);
                             preparedStatement.setString(4, value);
                             preparedStatement.executeUpdate();
-                            return value;
+                            return preparedStatement;
                         }));
     }
 }
