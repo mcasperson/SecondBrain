@@ -3,6 +3,7 @@ package secondbrain.domain.persist;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.faulttolerance.Retry;
 
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -15,6 +16,7 @@ public class H2LocalStorage implements LocalStorage {
             + "SET SCHEMA SECONDBRAIN\\;"
             + "CREATE TABLE IF NOT EXISTS local_storage (tool VARCHAR(100) NOT NULL, source VARCHAR(1024) NOT NULL, prompt_hash VARCHAR(1024) NOT NULL, response CLOB NOT NULL);";
 
+    @Retry
     @Override
     public String getString(final String tool, final String source, final String promptHash) {
         return Try.withResources(() -> DriverManager.getConnection(DATABASE))
@@ -51,6 +53,7 @@ public class H2LocalStorage implements LocalStorage {
         return newValue;
     }
 
+    @Retry
     @Override
     public void putString(final String tool, final String source, final String promptHash, final String response) {
         Try.withResources(() -> DriverManager.getConnection(DATABASE))
