@@ -3,7 +3,6 @@ package secondbrain.domain.tools.directoryscan;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.io.FilenameUtils;
@@ -49,7 +48,7 @@ import static com.google.common.base.Predicates.instanceOf;
  * Scans the files in a directory and answers questions about them. This is useful when you have a bunch of reports
  * or other files that contain information that you want to query.
  */
-@Dependent
+@ApplicationScoped
 public class DirectoryScan implements Tool<Void> {
     private static final String INSTRUCTIONS = """
             You are given a question and the answer to the question from many individual files.

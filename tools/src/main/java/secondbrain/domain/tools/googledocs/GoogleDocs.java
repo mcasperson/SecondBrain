@@ -13,7 +13,6 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -50,7 +49,7 @@ import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-@Dependent
+@ApplicationScoped
 public class GoogleDocs implements Tool<Void> {
 
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();

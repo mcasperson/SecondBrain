@@ -5,7 +5,6 @@ import com.slack.api.model.MatchedItem;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -29,7 +28,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Dependent
+@ApplicationScoped
 public class SlackSearch implements Tool<MatchedItem> {
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
