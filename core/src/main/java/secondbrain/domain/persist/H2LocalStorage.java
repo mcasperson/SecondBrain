@@ -10,13 +10,16 @@ import java.sql.PreparedStatement;
 @ApplicationScoped
 public class H2LocalStorage implements LocalStorage {
 
-    private static final String DATABASE = "jdbc:h2:~/se";
+    private static final String DATABASE = "jdbc:h2:file:./localstorage;"
+            + "INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;"
+            + "SET SCHEMA SECONDBRAIN\\;"
+            + "CREATE TABLE local_storage (tool VARCHAR(100) NOT NULL, source VARCHAR(1024) NOT NULL, prompt_hash VARCHAR(1024) NOT NULL, response CLOB NOT NULL);";
 
     @Override
     public String getString(final String tool, final String source, final String promptHash) {
         return Try.withResources(() -> DriverManager.getConnection(DATABASE))
                 .of(connection -> Try
-                        .of(() -> connection.prepareStatement("SELECT value FROM local_storage WHERE tool = ? AND source = ? AND prompt_hash = ?"))
+                        .of(() -> connection.prepareStatement("SELECT response FROM local_storage WHERE tool = ? AND source = ? AND prompt_hash = ?"))
                         .mapTry(preparedStatement -> {
                             preparedStatement.setString(1, tool);
                             preparedStatement.setString(2, source);
@@ -28,12 +31,14 @@ public class H2LocalStorage implements LocalStorage {
                             resultSet.next();
                             return resultSet.getString(1);
                         })
+                        .onFailure(Throwable::printStackTrace)
                         .getOrNull())
+                .onFailure(Throwable::printStackTrace)
                 .getOrNull();
     }
 
     @Override
-    public String getOrPutString(String tool, String source, String promptHash, GenerateValue generateValue) {
+    public String getOrPutString(final String tool, final String source, final String promptHash, final GenerateValue generateValue) {
         final String cache = getString(tool, source, promptHash);
         if (StringUtils.isNotBlank(cache)) {
             return cache;
@@ -45,17 +50,19 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public void putString(final String tool, final String source, final String promptHash, final String value) {
+    public void putString(final String tool, final String source, final String promptHash, final String response) {
         Try.withResources(() -> DriverManager.getConnection(DATABASE))
                 .of(connection -> Try
-                        .of(() -> connection.prepareStatement("INSERT INTO local_storage (tool, source, prompt_hash, value) VALUES (?, ?, ?, ?)"))
+                        .of(() -> connection.prepareStatement("INSERT INTO local_storage (tool, source, prompt_hash, response) VALUES (?, ?, ?, ?)"))
                         .mapTry(preparedStatement -> {
                             preparedStatement.setString(1, tool);
                             preparedStatement.setString(2, source);
                             preparedStatement.setString(3, promptHash);
-                            preparedStatement.setString(4, value);
+                            preparedStatement.setString(4, response);
                             preparedStatement.executeUpdate();
                             return preparedStatement;
-                        }));
+                        })
+                        .onFailure(Throwable::printStackTrace))
+                .onFailure(Throwable::printStackTrace);
     }
 }
