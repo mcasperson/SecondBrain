@@ -13,7 +13,7 @@ public class H2LocalStorage implements LocalStorage {
     private static final String DATABASE = "jdbc:h2:file:./localstorage;"
             + "INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;"
             + "SET SCHEMA SECONDBRAIN\\;"
-            + "CREATE TABLE local_storage (tool VARCHAR(100) NOT NULL, source VARCHAR(1024) NOT NULL, prompt_hash VARCHAR(1024) NOT NULL, response CLOB NOT NULL);";
+            + "CREATE TABLE IF NOT EXISTS local_storage (tool VARCHAR(100) NOT NULL, source VARCHAR(1024) NOT NULL, prompt_hash VARCHAR(1024) NOT NULL, response CLOB NOT NULL);";
 
     @Override
     public String getString(final String tool, final String source, final String promptHash) {
