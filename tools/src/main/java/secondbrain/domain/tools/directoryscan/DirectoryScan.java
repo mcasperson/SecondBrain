@@ -310,7 +310,7 @@ class Arguments {
                 .recover(e -> argsAccessor.getArgument(arguments, "maxfiles", ""))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("directoryscan_maxfiles"))
-                .map(NumberUtils::toInt)
+                .map(value -> NumberUtils.toInt(value, -1))
                 .getOrElse(-1);
     }
 
