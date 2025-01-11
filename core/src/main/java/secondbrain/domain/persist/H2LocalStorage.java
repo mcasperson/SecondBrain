@@ -28,8 +28,10 @@ public class H2LocalStorage implements LocalStorage {
                         })
                         .mapTry(PreparedStatement::executeQuery)
                         .mapTry(resultSet -> {
-                            resultSet.next();
-                            return resultSet.getString(1);
+                            if (resultSet.next()) {
+                                return resultSet.getString(1);
+                            }
+                            return null;
                         })
                         .onFailure(Throwable::printStackTrace)
                         .getOrNull())
