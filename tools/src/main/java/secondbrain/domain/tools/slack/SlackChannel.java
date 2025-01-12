@@ -11,7 +11,6 @@ import io.vavr.API;
 import io.vavr.Tuple;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -40,7 +39,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-@Dependent
+@ApplicationScoped
 public class SlackChannel implements Tool<Void> {
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final String INSTRUCTIONS = """
@@ -162,7 +161,7 @@ public class SlackChannel implements Tool<Void> {
             final List<ToolArgs> arguments) {
 
         parsedArgs.setInputs(arguments, prompt, context);
-        
+
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(
                         ragDoc.stream()

@@ -4,7 +4,6 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
@@ -51,7 +50,7 @@ import static com.google.common.base.Predicates.instanceOf;
  * smaller LLMs, which struggled to interpret a collection of diffs. Arguably larger LLMs could handle this task, but
  * I couldn't find a single LLM supported by Ollama that could process a large collection of diffs in a single prompt.
  */
-@Dependent
+@ApplicationScoped
 public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     private static final String INSTRUCTIONS = """
             You are an expert in reading Git diffs.
@@ -199,10 +198,6 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                         API.Case(API.$(),
                                 throwable -> new FailedTool("Failed to get diffs: " + throwable.getMessage() + "\n" + debugArgs)))
                 .get();
-    }
-
-    public String getContextHeader() {
-        return "Git Diff";
     }
 
     private RagMultiDocumentContext<GitHubCommitAndDiff> mergeContext(final List<RagDocumentContext<GitHubCommitAndDiff>> context, final String debug) {
