@@ -190,7 +190,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                         modelConfig.getCalculatedModel(context),
                         modelConfig.getCalculatedContextWindow()))
                 // Clean up the response
-                .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())));
+                .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())))
+                .recover(EmptyString.class, e -> new RagMultiDocumentContext<>("No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'", List.of(), ""));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
