@@ -6,7 +6,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -18,7 +17,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
-import secondbrain.domain.converter.PdfToText;
+import secondbrain.domain.converter.FileToText;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedTool;
@@ -94,7 +93,7 @@ public class DirectoryScan implements Tool<Void> {
     @Inject
     private SentenceVectorizer sentenceVectorizer;
     @Inject
-    private PdfToText pdfToText;
+    private FileToText fileToText;
 
     @Override
     public String getName() {
@@ -214,11 +213,9 @@ public class DirectoryScan implements Tool<Void> {
              Each individual file is converted to text and used to answer the prompt.
              The combined answers are then used to answer the prompt again.
          */
-        final String contents = FilenameUtils.getExtension(file).equals("pdf")
-                ? pdfToText.convert(file)
-                : Try.of(() -> Files.readString(Paths.get(file))).getOrNull();
+        final String contents = fileToText.convert(file);
 
-        if (contents == null) {
+        if (StringUtils.isBlank(contents)) {
             return null;
         }
 
