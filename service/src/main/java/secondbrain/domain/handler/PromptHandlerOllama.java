@@ -9,6 +9,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.context.*;
+import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
@@ -51,6 +52,9 @@ public class PromptHandlerOllama implements PromptHandler {
 
     @Inject
     private ToolSelector toolSelector;
+
+    @Inject
+    private ExceptionHandler exceptionHandler;
 
 
     public String handlePrompt(final Map<String, String> context, final String prompt) {
@@ -123,7 +127,7 @@ public class PromptHandlerOllama implements PromptHandler {
                                 + response.links()
                                 + response.debug()
                                 + getAnnotationCoverage(response.annotationResult(), Boolean.getBoolean(debug) || argumentDebugging))
-                .recover(FailedTool.class, ExceptionUtils::getStackTrace)
+                .recover(FailedTool.class, exceptionHandler::getExceptionMessage)
                 .get();
     }
 
