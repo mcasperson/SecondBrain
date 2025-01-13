@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
 import secondbrain.domain.response.ResponseValidation;
@@ -45,12 +46,12 @@ public class OllamaClient {
                 .of(response -> of(() -> responseValidation.validate(response))
                         .map(r -> r.readEntity(OllamaResponse.class))
                         .recover(InvalidResponse.class, e -> {
-                            throw new RuntimeException("Failed to call Ollama:\n"
+                            throw new FailedOllama("Failed to call Ollama:\n"
                                     + response.getStatus() + "\n"
                                     + response.readEntity(String.class));
                         })
                         .recover(MissingResponse.class, e -> {
-                            throw new RuntimeException("Failed to call Ollama:\n"
+                            throw new FailedOllama("Failed to call Ollama:\n"
                                     + response.getStatus() + "\n"
                                     + response.readEntity(String.class)
                                     + "\nMake sure to run 'ollama pull " + body.model() + "'"
