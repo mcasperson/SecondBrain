@@ -128,7 +128,7 @@ $companyNames -split "," | ForEach-Object {
 
     Write-Host "Processing $companyName with keywords $keywords"
 
-    $ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.contextwindow=8192`" `"-Dsb.ollama.diffcontextwindow=8192`" `"-Dsb.zendesk.excludedorgs=$( $env:EXCLUDED_ORGANIZATIONS )`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"You are given the Google document with the id $googleDoc. Assume the document is written in the first person by Matthew Casperson, also known as Matt. Trim the document with keywords '$keywords'. List all the information about $companyName. You will be penalize for including details about unrelated companies.`""
+    $ticketResult = Invoke-CustomCommand java "`"-Dsb.tools.force=GoogleDocs`" `"-Dsb.ollama.contextwindow=8192`" `"-Dsb.ollama.diffcontextwindow=8192`" `"-Dsb.google.doc=$googleDoc`" `"-Dsb.google.keywords=$keywords`" `"-Dsb.zendesk.excludedorgs=$( $env:EXCLUDED_ORGANIZATIONS )`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"You are given the Google document. Assume the document is written in the first person by Matthew Casperson, also known as Matt. List all the information about $companyName. You will be penalize for including details about unrelated companies.`""
 
     Set-Content -Path "$obsidianPath\$companyName.md" -Value $ticketResult.StdOut
 }

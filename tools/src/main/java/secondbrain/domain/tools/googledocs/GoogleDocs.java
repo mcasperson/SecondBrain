@@ -35,6 +35,7 @@ import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.io.ByteArrayInputStream;
@@ -317,6 +318,17 @@ class Arguments {
 
     private Map<String, String> context;
 
+    @Inject
+    private ValidateString validateString;
+
+    @Inject
+    @ConfigProperty(name = "sb.google.doc")
+    private Optional<String> googleDoc;
+
+    @Inject
+    @ConfigProperty(name = "sb.google.keywords")
+    private Optional<String> googleKeywords;
+
     public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
         this.arguments = arguments;
         this.prompt = prompt;
@@ -324,14 +336,28 @@ class Arguments {
     }
 
     public String getDocumentId() {
-        return argsAccessor.getArgument(arguments, "googleDocumentId", "");
+        return Try.of(googleDoc::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "googleDocumentId", ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("google_document_id"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> "")
+                .get();
     }
 
     public List<String> getKeywords() {
-        return List.of(sanitizeList.sanitize(
-                argsAccessor.getArgument(arguments, "keywords", ""),
-                prompt).split(","));
+        return Try.of(googleKeywords::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "keywords", ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("google_keywords"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> "")
+                .map(k -> List.of(k.split(",")))
+                .get();
     }
+
 
     public String getGoogleServiceAccountJson() {
         return googleServiceAccountJson.get();
