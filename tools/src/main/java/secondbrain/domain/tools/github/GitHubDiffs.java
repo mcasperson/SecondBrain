@@ -300,7 +300,7 @@ class Arguments {
     private static final String DEFAULT_OWNER = "mcasperson";
     private static final String DEFAULT_REPO = "SecondBrain";
     private static final String DEFAULT_BRANCH = "main";
-    private static final int DEFAULT_DURATION = 30;
+    private static final String DEFAULT_DURATION = "30";
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     @Inject
@@ -326,6 +326,14 @@ class Arguments {
     @Inject
     @ConfigProperty(name = "sb.github.sha")
     private Optional<String> githubSha;
+
+    @Inject
+    @ConfigProperty(name = "sb.github.days")
+    private Optional<String> githubDays;
+
+    @Inject
+    @ConfigProperty(name = "sb.github.branch")
+    private Optional<String> githubBranch;
 
     @Inject
     @ConfigProperty(name = "sb.github.summarizeindividualdiffs")
@@ -370,10 +378,13 @@ class Arguments {
     }
 
     public int getDays() {
-        return Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "" + DEFAULT_DURATION)))
+        return Try.of(githubDays::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "days", DEFAULT_DURATION))
+                .mapTry(validateString::throwIfEmpty)
                 .recover(throwable -> DEFAULT_DURATION)
-                .map(i -> Math.max(0, i))
-                .map(i -> i == 0 ? DEFAULT_DURATION : i)
+                .map(i -> Math.max(0, Integer.parseInt(i)))
+                .map(i -> i == 0 ? Integer.parseInt(DEFAULT_DURATION) : i)
                 .get();
     }
 
@@ -434,7 +445,14 @@ class Arguments {
     }
 
     public String getBranch() {
-        return argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH);
+        return Try.of(githubBranch::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("github_branch"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> DEFAULT_BRANCH)
+                .get();
     }
 
     public String getToken() {
