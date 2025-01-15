@@ -101,9 +101,12 @@ Function Get-FullException
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 
-$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
+#$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
+$jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
-$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Summarize 7 days worth of messages from the '$( $args[0] )' Slack channel in the style of a business report with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`" markdn"
+$toolModel = "llama3.1"
+
+$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.ollama.toolmodel=$toolModel`" -jar $jarFile `"Summarize 7 days worth of messages from the '$( $args[0] )' Slack channel in the style of a business report with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`" markdn"
 
 echo "Slack StdOut"
 echo $result.StdOut
