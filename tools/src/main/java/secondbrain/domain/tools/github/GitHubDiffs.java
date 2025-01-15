@@ -372,7 +372,7 @@ class Arguments {
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("summarize_individual_diffs"))
                 .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "summarizeIndividualDiffs", ""))
+                .recover(e -> argsAccessor.getArgument(arguments, "summarizeIndividualDiffs", "true"))
                 .map(Boolean::parseBoolean)
                 .get();
     }
