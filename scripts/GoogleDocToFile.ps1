@@ -107,8 +107,8 @@ Function Get-FullException
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 
-$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
-#$jarFile = "../cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
+#$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
+$jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
 $model = "mistral-nemo"
 $toolModel = "llama3.1"
