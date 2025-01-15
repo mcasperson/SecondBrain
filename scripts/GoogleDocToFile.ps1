@@ -109,7 +109,7 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 #$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
 $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
-$model = "mistral-nemo"
+$model = "llama3.3"
 $toolModel = "llama3.1"
 
 $companyNames -split "," | ForEach-Object {
