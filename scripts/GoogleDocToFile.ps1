@@ -55,7 +55,6 @@ Function Invoke-CustomCommand
     $p.BeginErrorReadLine()
 
     # Wait 30 minutes before forcibly killing the process
-    # Wait 30 minutes before forcibly killing the process
     $processTimeout = 1000 * 60 * 30
     $lastUpdate = 0
     while (($global:myprocessrunning -eq $true) -and ($processTimeout -gt 0))
@@ -107,10 +106,10 @@ Function Get-FullException
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 
-$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
-#$jarFile = "../cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
+#$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
+$jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
-$model = "mistral-nemo"
+$model = "llama3.1"
 $toolModel = "llama3.1"
 
 $companyNames -split "," | ForEach-Object {
@@ -127,7 +126,9 @@ $companyNames -split "," | ForEach-Object {
         $keywords = $split[1..($array.Length - 1)] -join ","
     }
 
-    $ticketResult = Invoke-CustomCommand java "`"-Dsb.ollama.contextwindow=8192`" `"-Dsb.zendesk.excludedorgs=$( $env:EXCLUDED_ORGANIZATIONS )`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"You are given the Google document with the id $googleDoc. Assume the document is written in the first person by Matthew Casperson, also known as Matt. Trim the document with keywords '$keywords'. List all the information about $companyName. You will be penalize for including details about unrelated companies.`""
+    Write-Host "Processing $companyName with keywords $keywords"
+
+    $ticketResult = Invoke-CustomCommand java "`"-Dsb.tools.force=GoogleDocs`" `"-Dsb.ollama.contextwindow=8192`" `"-Dsb.ollama.diffcontextwindow=8192`" `"-Dsb.google.doc=$googleDoc`" `"-Dsb.google.keywords=$keywords`" `"-Dsb.zendesk.excludedorgs=$( $env:EXCLUDED_ORGANIZATIONS )`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"You are given the Google document. Assume the document is written in the first person by Matthew Casperson, also known as Matt. List all the information about $companyName. You will be penalize for including details about unrelated companies.`""
 
     Set-Content -Path "$obsidianPath\$companyName.md" -Value $ticketResult.StdOut
 }
