@@ -116,15 +116,7 @@ $companyNames -split "," | ForEach-Object {
     $split = $_ -split ":"
 
     $companyName = $split[0]
-
-    if ($split.Length -eq 1)
-    {
-        $keywords = $companyName
-    }
-    else
-    {
-        $keywords = $split[1..($array.Length - 1)] -join ","
-    }
+    $keywords = $split -join ","
 
     Write-Host "Processing $companyName with keywords $keywords"
 
