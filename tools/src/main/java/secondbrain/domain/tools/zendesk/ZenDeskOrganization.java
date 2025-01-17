@@ -364,6 +364,30 @@ class Arguments {
     private Optional<String> zenExcludedOrgs;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.recipient")
+    private Optional<String> zenDeskRecipient;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.organization")
+    private Optional<String> zenDeskOrganization;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.days")
+    private Optional<String> zenDeskDays;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.hours")
+    private Optional<String> zenDeskHours;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.numcomments")
+    private Optional<String> zenDeskNumComments;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.excludedsubmitters")
+    private Optional<String> zenDeskExcludedSubmitters;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -400,9 +424,17 @@ class Arguments {
     }
 
     public String getRawOrganization() {
+        final String stringValue = argsAccessor.getArgument(
+                zenDeskOrganization::get,
+                arguments,
+                context,
+                "zenDeskOrganization",
+                "zendesk_organization",
+                "");
+
         return validateInputs.getCommaSeparatedList(
                 prompt,
-                argsAccessor.getArgument(arguments, "zenDeskOrganization", ""));
+                stringValue);
     }
 
     public String getOrganization() {
@@ -415,9 +447,17 @@ class Arguments {
     }
 
     public List<String> getExcludedOrganization() {
+        final String stringValue = argsAccessor.getArgument(
+                zenExcludedOrgs::get,
+                arguments,
+                context,
+                "excludeOrganization",
+                "zendesk_excludeorganization",
+                "");
+
         final List<String> excludedOrganization = Arrays.stream(validateInputs.getCommaSeparatedList(
                         prompt,
-                        argsAccessor.getArgument(arguments, "excludeOrganization", "")).split(","))
+                        stringValue).split(","))
                 .map(String::trim)
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.toList());
@@ -428,7 +468,13 @@ class Arguments {
     }
 
     public String getRawRecipient() {
-        return argsAccessor.getArgument(arguments, "recipient", "");
+        return argsAccessor.getArgument(
+                zenDeskRecipient::get,
+                arguments,
+                context,
+                "recipient",
+                "zendesk_recipient",
+                "");
     }
 
     public String getRecipient() {
@@ -441,21 +487,45 @@ class Arguments {
     }
 
     public List<String> getExcludedSubmitters() {
-        return Arrays.stream(argsAccessor.getArgument(arguments, "excludeSubmitters", "").split(","))
+        final String stringValue = argsAccessor.getArgument(
+                zenDeskExcludedSubmitters::get,
+                arguments,
+                context,
+                "excludeSubmitters",
+                "zendesk_excludesubmitters",
+                "");
+
+        return Arrays.stream(stringValue.split(","))
                 .map(String::trim)
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.toList());
     }
 
     public int getRawHours() {
-        return Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "hours", "0")))
+        final String stringValue = argsAccessor.getArgument(
+                zenDeskHours::get,
+                arguments,
+                context,
+                "hours",
+                "zendesk_hours",
+                "0");
+
+        return Try.of(() -> Integer.parseInt(stringValue))
                 .recover(throwable -> 0)
                 .map(i -> Math.max(0, i))
                 .get();
     }
 
     public int getRawDays() {
-        return Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "0")))
+        final String stringValue = argsAccessor.getArgument(
+                zenDeskDays::get,
+                arguments,
+                context,
+                "days",
+                "zendesk_days",
+                "0");
+
+        return Try.of(() -> Integer.parseInt(stringValue))
                 .recover(throwable -> 0)
                 .map(i -> Math.max(0, i))
                 .get();
@@ -469,9 +539,16 @@ class Arguments {
         return switchArguments(prompt, getRawDays(), getRawHours(), "day", "hour");
     }
 
-
     public int getNumComments() {
-        return Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "numComments", "" + MAX_TICKETS)))
+        final String stringValue = argsAccessor.getArgument(
+                zenDeskNumComments::get,
+                arguments,
+                context,
+                "numComments",
+                "zendesk_numcomments",
+                MAX_TICKETS + "");
+
+        return Try.of(() -> Integer.parseInt(stringValue))
                 .recover(throwable -> MAX_TICKETS)
                 // Must be at least 1
                 .map(i -> Math.max(1, i))
