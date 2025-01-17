@@ -332,6 +332,18 @@ class Arguments {
     private Optional<String> githubDays;
 
     @Inject
+    @ConfigProperty(name = "sb.github.maxdiffs")
+    private Optional<String> githubMaxDiffs;
+
+    @Inject
+    @ConfigProperty(name = "sb.github.since")
+    private Optional<String> githubSince;
+
+    @Inject
+    @ConfigProperty(name = "sb.github.until")
+    private Optional<String> githubUntil;
+
+    @Inject
     @ConfigProperty(name = "sb.github.branch")
     private Optional<String> githubBranch;
 
@@ -368,28 +380,43 @@ class Arguments {
     }
 
     public boolean getSummarizeIndividualDiffs() {
-        return Try.of(summarizeIndividualDiffs::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("summarize_individual_diffs"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "summarizeIndividualDiffs", "true"))
-                .map(Boolean::parseBoolean)
-                .get();
+        final String stringValue = argsAccessor.getArgument(
+                summarizeIndividualDiffs::get,
+                arguments,
+                context,
+                "summarizeIndividualDiffs",
+                "summarize_individual_diffs",
+                "");
+
+        return Boolean.parseBoolean(stringValue);
     }
 
     public int getDays() {
-        return Try.of(githubDays::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "days", DEFAULT_DURATION))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(throwable -> DEFAULT_DURATION)
+        final String stringValue = argsAccessor.getArgument(
+                githubDays::get,
+                arguments,
+                context,
+                "days",
+                "github_days",
+                DEFAULT_DURATION);
+
+        return Try.of(() -> stringValue)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
                 .map(i -> i == 0 ? Integer.parseInt(DEFAULT_DURATION) : i)
                 .get();
     }
 
     public int getMaxDiffs() {
-        return Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "maxDiffs", "0")))
+        final String stringValue = argsAccessor.getArgument(
+                githubMaxDiffs::get,
+                arguments,
+                context,
+                "maxDiffs",
+                "github_maxdiffs",
+                "0");
+
+        return Try.of(() -> stringValue)
+                .map(Integer::parseInt)
                 .recover(throwable -> 0)
                 .map(i -> Math.max(0, i))
                 .get();
@@ -397,69 +424,69 @@ class Arguments {
 
     public String getStartDate() {
         return argsAccessor.getArgument(
+                githubSince::get,
                 arguments,
-                List.of(dateSanitizer),
-                prompt,
+                context,
                 "since",
+                "github_since",
                 ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays()).format(FORMATTER));
     }
 
     public String getEndDate() {
         return argsAccessor.getArgument(
+                githubUntil::get,
                 arguments,
-                List.of(dateSanitizer),
-                prompt,
+                context,
                 "until",
+                "github_until",
                 ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER));
     }
 
     public String getOwner() {
-        return Try.of(githubOwner::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "owner", ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("github_owner"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> DEFAULT_OWNER)
-                .get();
+        return argsAccessor.getArgument(
+                githubOwner::get,
+                arguments,
+                context,
+                "owner",
+                "github_owner",
+                DEFAULT_OWNER);
     }
 
     public String getRepo() {
-        return Try.of(githubRepo::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "repo", ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("github_repo"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> DEFAULT_REPO)
-                .get();
+        return argsAccessor.getArgument(
+                githubRepo::get,
+                arguments,
+                context,
+                "repo",
+                "github_repo",
+                DEFAULT_OWNER);
     }
 
     public String getSha() {
-        return Try.of(githubSha::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "sha", ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("github_sha"))
-                .getOrElse("");
+        return argsAccessor.getArgument(
+                githubSha::get,
+                arguments,
+                context,
+                "sha",
+                "github_sha",
+                DEFAULT_OWNER);
     }
 
     public String getBranch() {
-        return Try.of(githubBranch::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "branch", DEFAULT_BRANCH))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("github_branch"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> DEFAULT_BRANCH)
-                .get();
+        return argsAccessor.getArgument(
+                githubBranch::get,
+                arguments,
+                context,
+                "branch",
+                "github_branch",
+                DEFAULT_OWNER);
     }
 
     public String getToken() {
         return Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
                 .recover(e -> context.get("github_access_token"))
                 .mapTry(validateString::throwIfEmpty)
-                .recoverWith(e -> Try.of(() -> githubAccessToken.get()))
+                .recoverWith(e -> Try.of(githubAccessToken::get))
                 .getOrElseThrow(ex -> new FailedTool("Failed to get GitHub access token", ex));
     }
 
