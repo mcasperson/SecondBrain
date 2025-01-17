@@ -491,15 +491,26 @@ class Arguments {
     }
 
     public String getDiffCustomModel() {
-        return Try.of(() -> context.get("diff_custom_model"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> diffModel.orElse(modelConfig.getCalculatedModel(context)))
-                .get();
+        return argsAccessor.getArgument(
+                diffModel::get,
+                arguments,
+                context,
+                "diffModel",
+                "diff_custom_model",
+                modelConfig.getCalculatedModel(context));
     }
 
     @Nullable
     public Integer getDiffContextWindow() {
-        return Try.of(diffContextWindow::get)
+        final String stringValue = argsAccessor.getArgument(
+                diffContextWindow::get,
+                arguments,
+                context,
+                "diffContextWindow",
+                "diff_context_window",
+                Constants.DEFAULT_CONTENT_WINDOW + "");
+
+        return Try.of(() -> stringValue)
                 .map(Integer::parseInt)
                 .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
                 .get();
