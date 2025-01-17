@@ -114,7 +114,7 @@ $gitDiffModel = "qwen2.5-coder:7b"
 $toolModel = "llama3.1"
 $contextLength = "4096"
 
-$ticketResult = Invoke-CustomCommand java "`"-Dsb.tools.force=GitHubDiffs`" `"-Dsb.github.owner=$githubOwner`" `"-Dsb.github.repo=$githubRepo`" `"-Dsb.github.days=1`" `"-Dsb.github.branch=main`" `"-Dsb.ollama.gitdiffmodel=$gitDiffModel`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextlength=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Given the git diffs, provide a summary of the changes. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.`" markdn"
+$ticketResult = Invoke-CustomCommand java "`"-Dsb.tools.force=GitHubDiffs`" `"-Dsb.github.owner=$githubOwner`" `"-Dsb.github.repo=$githubRepo`" `"-Dsb.github.days=1`" `"-Dsb.github.branch=main`" `"-Dsb.ollama.gitdiffmodel=$gitDiffModel`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" `"-Dsb.ollama.contextwindow=$contextLength`" `"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Given the git diffs, provide a summary of the changes. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.`" markdn"
 
 echo "ZenDesk StdOut for $githubOwner and $githubRepo"
 echo $ticketResult.StdOut
