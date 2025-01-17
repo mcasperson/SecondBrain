@@ -301,37 +301,48 @@ class Arguments {
     }
 
     public String getDirectory() {
-        return Try.of(directory::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "directory", ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("directoryscan_directory"))
-                .getOrElse("");
+        return argsAccessor.getArgument(
+                directory::get,
+                arguments,
+                context,
+                "directory",
+                "directoryscan_directory",
+                "");
     }
 
     public int getMaxFiles() {
-        return Try.of(maxfiles::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "maxfiles", ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("directoryscan_maxfiles"))
-                .map(value -> NumberUtils.toInt(value, -1))
-                .getOrElse(-1);
+        final String stringValue = argsAccessor.getArgument(
+                maxfiles::get,
+                arguments,
+                context,
+                "maxfiles",
+                "directoryscan_maxfiles",
+                "-1");
+
+        return NumberUtils.toInt(stringValue, -1);
     }
 
     public String getFileCustomModel() {
-        return Try.of(() -> context.get("file_custom_model"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> filemodel.orElse(modelConfig.getCalculatedModel(context)))
-                .get();
+        return argsAccessor.getArgument(
+                filemodel::get,
+                arguments,
+                context,
+                "fileCustomModel",
+                "file_custom_model",
+                filemodel.orElse(modelConfig.getCalculatedModel(context)));
     }
 
     @Nullable
     public Integer getFileContextWindow() {
-        return Try.of(fileContextWindow::get)
-                .map(Integer::parseInt)
-                .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
-                .get();
+        final String stringValue = argsAccessor.getArgument(
+                fileContextWindow::get,
+                arguments,
+                context,
+                "fileContextWindow",
+                "directoryscan_file_content_window",
+                Constants.DEFAULT_CONTENT_WINDOW + "");
+
+        return NumberUtils.toInt(stringValue, Constants.DEFAULT_CONTENT_WINDOW);
     }
 }
 
