@@ -459,7 +459,7 @@ class Arguments {
                 context,
                 "repo",
                 "github_repo",
-                DEFAULT_OWNER);
+                DEFAULT_REPO);
     }
 
     public String getSha() {
@@ -469,7 +469,7 @@ class Arguments {
                 context,
                 "sha",
                 "github_sha",
-                DEFAULT_OWNER);
+                "");
     }
 
     public String getBranch() {
@@ -479,7 +479,7 @@ class Arguments {
                 context,
                 "branch",
                 "github_branch",
-                DEFAULT_OWNER);
+                DEFAULT_BRANCH);
     }
 
     public String getToken() {
