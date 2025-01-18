@@ -6,6 +6,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
@@ -23,6 +24,7 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -164,6 +166,18 @@ class SlackZenGoogleArguments {
     @Inject
     private ArgsAccessor argsAccessor;
 
+    @Inject
+    @ConfigProperty(name = "sb.slack.channel")
+    private Optional<String> slackChannel;
+
+    @Inject
+    @ConfigProperty(name = "sb.google.doc")
+    private Optional<String> googleDoc;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.organization")
+    private Optional<String> zenDeskOrganization;
+
     private List<ToolArgs> arguments;
 
     private String prompt;
@@ -177,15 +191,33 @@ class SlackZenGoogleArguments {
     }
 
     public String getSlackChannel() {
-        return argsAccessor.getArgument(arguments, "slackChannel", "").trim();
+        return argsAccessor.getArgument(
+                slackChannel::get,
+                arguments,
+                context,
+                "slackChannel",
+                "slack_channel",
+                "");
     }
 
     public String getGoogleDocumentId() {
-        return argsAccessor.getArgument(arguments, "googleDocumentId", "").trim();
+        return argsAccessor.getArgument(
+                googleDoc::get,
+                arguments,
+                context,
+                "googleDocumentId",
+                "google_document_id",
+                "");
     }
 
     public String getZenDeskOrganization() {
-        return argsAccessor.getArgument(arguments, "zenDeskOrganization", "").trim();
+        return argsAccessor.getArgument(
+                zenDeskOrganization::get,
+                arguments,
+                context,
+                "zenDeskOrganization",
+                "zendesk_organization",
+                "");
     }
 
 }
