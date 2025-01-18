@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class ToolSelector {
@@ -55,23 +56,20 @@ public class ToolSelector {
     @Inject
     private ToolBuilder toolBuilder;
 
+    @Inject
+    private Logger logger;
+
     public ToolCall getTool(final String prompt, final Map<String, String> context) {
         /*
             When forcing the selection of a tool, all arguments must be supplied
             through the context or via injected values because they can not be
             extracted from the prompt.
          */
-        if (force.isPresent() && StringUtils.isNotBlank(force.get())) {
-            return tools.stream()
-                    .filter(tool -> tool.getName().equals(force.get()))
-                    .findFirst()
-                    .map(tool -> new ToolCall(tool, new ToolDefinition(tool.getName(), List.of())))
-                    .orElse(null);
-        }
+        final String forcedTool = force.orElseGet(() -> context.get("tool"));
 
-        if (context.containsKey("tool")) {
+        if (StringUtils.isNotBlank(forcedTool)) {
             return tools.stream()
-                    .filter(tool -> tool.getName().equals(context.get("tool")))
+                    .filter(tool -> tool.getName().equals(forcedTool))
                     .findFirst()
                     .map(tool -> new ToolCall(tool, new ToolDefinition(tool.getName(), List.of())))
                     .orElse(null);
@@ -122,6 +120,8 @@ public class ToolSelector {
         return Try.of(() -> jsonDeserializer.deserialize(response, ToolDefinition[].class))
                 .map(List::of)
                 .recoverWith(error -> Try.of(() -> parseResponseAsToolDefinitionsFallback(response)))
+                .map(validateList::throwIfEmpty)
+                .onFailure(e -> logger.warning("Failed to parse tool definition, or list was empty. The JSON returned by the LLM was:\n" + response))
                 .get();
     }
 
@@ -129,6 +129,4 @@ public class ToolSelector {
         final ToolDefinitionFallback[] tool = jsonDeserializer.deserialize(response, ToolDefinitionFallback[].class);
         return Arrays.stream(tool).map(t -> new ToolDefinition(t.toolName(), List.of())).toList();
     }
-
-
 }
