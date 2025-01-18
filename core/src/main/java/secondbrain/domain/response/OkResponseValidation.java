@@ -1,5 +1,6 @@
 package secondbrain.domain.response;
 
+import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.Response;
 import secondbrain.domain.exceptions.InvalidResponse;
@@ -16,7 +17,7 @@ public class OkResponseValidation implements ResponseValidation {
         if (response.getStatus() != 200) {
             throw new InvalidResponse("Expected status code 200, but got "
                     + response.getStatus(),
-                    response.readEntity(String.class),
+                    Try.of(() -> response.readEntity(String.class)).getOrElse(""),
                     response.getStatus());
         }
 
