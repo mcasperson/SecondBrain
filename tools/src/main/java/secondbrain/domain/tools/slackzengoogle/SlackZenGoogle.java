@@ -97,14 +97,20 @@ public class SlackZenGoogle implements Tool<Void> {
         );
 
         final List<RagDocumentContext<Void>> slackContext = StringUtils.isBlank(parsedArgs.getSlackChannel())
-                ? List.of() : slackChannel.getContext(context, prompt, slackArguments);
+                ? List.of()
+                : Try.of(() -> slackChannel.getContext(context, prompt, slackArguments))
+                    .recover(e -> List.of())
+                    .get();
 
         final List<ToolArgs> googleArguments = List.of(
                 new ToolArgs("googleDocumentId", parsedArgs.getGoogleDocumentId())
         );
 
         final List<RagDocumentContext<Void>> googleContext = StringUtils.isBlank(parsedArgs.getGoogleDocumentId())
-                ? List.of() : googleDocs.getContext(context, prompt, googleArguments);
+                ? List.of()
+                : Try.of(() -> googleDocs.getContext(context, prompt, googleArguments))
+                    .recover(e -> List.of())
+                    .get();
 
         final List<ToolArgs> zenArguments = List.of(
                 new ToolArgs("zenDeskOrganization", parsedArgs.getGoogleDocumentId()),
@@ -112,7 +118,10 @@ public class SlackZenGoogle implements Tool<Void> {
         );
 
         final List<RagDocumentContext<Void>> zenContext = StringUtils.isBlank(parsedArgs.getZenDeskOrganization())
-                ? List.of() : zenDeskOrganization.getContext(context, prompt, zenArguments)
+                ? List.of()
+                : Try.of(() -> zenDeskOrganization.getContext(context, prompt, zenArguments))
+                    .recover(e -> List.of())
+                    .get()
                 .stream()
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .collect(ImmutableList.toImmutableList());

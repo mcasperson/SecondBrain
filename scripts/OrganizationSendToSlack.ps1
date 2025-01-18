@@ -105,8 +105,9 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
 $toolModel = "llama3.1"
+$model = "llama3.1"
 
-$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.ollama.toolmodel=$toolModel`" -jar $jarFile `"Summarize 7 days worth of messages from the '$( $args[0] )' Slack channel in the style of a business report with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language.`" markdn"
+$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=SlackZenGoogle`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.slack.days=7`" `"-Dsb.google.doc=$($args[2])`" `"-Dsb.slack.channel=$($args[0])`" `"-Dsb.zendesk.organization=$($args[1])`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Provide a summary of the slack messages and zendesk tickets associated with $($args[1]). Only reference the contents of the google document when it relates to content in the slack messages and zendesk tickets. You will be penalized for mentioning that there is no google document. If there are no zendesk tickets, say so. You will be penalized for suggesting potential support tickets.`" markdn"
 
 echo "Slack StdOut"
 echo $result.StdOut
@@ -114,40 +115,9 @@ echo $result.StdOut
 #echo "Slack StdErr"
 #echo $result.StdErr
 
-if ($args.Length -ge 2)
+if (-not [string]::IsNullOrWhitespace($result.StdOut))
 {
-    $ticketResult = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Summarize 7 days worth of ZenDesk tickets from the '$( $args[1] )' organization in the style of a business report with up to 3 paragraphs. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain and professional language. You will be penalized for using emotive or excited language. You will be penalized for saying that you do not have access to the expected number of tickets.`" markdn"
-
-    echo "ZenDesk StdOut"
-    echo $ticketResult.StdOut
-}
-
-if ($args.Length -ge 3)
-{
-    $docsResult = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" -jar $jarFile `"Summarize the Google doc with id '$( $args[2] )'.`" markdn"
-
-    echo "Google StdOut"
-    echo $docsResult.StdOut
-}
-
-if (-not [string]::IsNullOrWhitespace($result.StdOut) -or -not [string]::IsNullOrWhitespace($ticketResult.StdOut) -or -not [string]::IsNullOrWhitespace($docsResult.StdOut))
-{
-    $text = "*=== " + $args[1] + " summary ===*`n`n"
-
-    if (-not [string]::IsNullOrWhitespace($result.StdOut))
-    {
-        $text += "*Slack*`n" + $result.StdOut + "`n`n"
-    }
-
-    if (-not [string]::IsNullOrWhitespace($ticketResult.StdOut))
-    {
-        $text += "*ZenDesk*`n" + $ticketResult.StdOut + "`n`n"
-    }
-
-    if (-not [string]::IsNullOrWhitespace($docsResult.StdOut))
-    {
-        $text += "*CDJ*`n" + $docsResult.StdOut
-    }
+    $text = "*=== " + $args[1] + " summary ===*`n`n" + $result.StdOut
 
     # Replace this URL with your own Slack web hook
     $uriSlack = $env:SB_SLACK_CUSTOMER_WEBHOOK
@@ -160,7 +130,7 @@ if (-not [string]::IsNullOrWhitespace($result.StdOut) -or -not [string]::IsNullO
 
     try
     {
-        Invoke-RestMethod -uri $uriSlack -Method Post -body $body -ContentType 'application/json' | Out-Null
+        #Invoke-RestMethod -uri $uriSlack -Method Post -body $body -ContentType 'application/json' | Out-Null
     }
     catch
     {
