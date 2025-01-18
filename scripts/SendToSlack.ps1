@@ -105,8 +105,6 @@ echo $result
 echo $result.StdOut
 echo $result.StdErr
 
-Add-Content -Path C:\Apps\aiofsauron.log -Value "$( $result.StdOut )`n$( $result.StdErr )"
-
 # Replace this URL with your own Slack web hook
 $uriSlack = $env:SB_SLACK_GENERAL_WEBHOOK
 $body = ConvertTo-Json @{
