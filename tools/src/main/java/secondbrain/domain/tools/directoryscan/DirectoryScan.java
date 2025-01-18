@@ -109,6 +109,10 @@ public class DirectoryScan implements Tool<Void> {
                 """;
     }
 
+    public String getContextLabel() {
+        return "File Contents";
+    }
+
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
@@ -226,6 +230,7 @@ public class DirectoryScan implements Tool<Void> {
                 () -> getFileSummary(prompt, contents, parsedArgs));
 
         return new RagDocumentContext<>(
+                getContextLabel(),
                 summary,
                 sentenceSplitter.splitDocument(summary, 10)
                         .stream()

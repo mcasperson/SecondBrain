@@ -107,6 +107,10 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 """;
     }
 
+    public String getContextLabel() {
+        return "Git Diff";
+    }
+
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
@@ -233,6 +237,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 : commit.diff();
 
         return new RagDocumentContext<>(
+                getContextLabel(),
                 summary,
                 sentenceSplitter.splitDocument(summary, 10)
                         .stream()

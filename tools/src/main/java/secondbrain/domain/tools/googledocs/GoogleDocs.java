@@ -112,6 +112,10 @@ public class GoogleDocs implements Tool<Void> {
         );
     }
 
+    public String getContextLabel() {
+        return "Google Document";
+    }
+
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,
@@ -204,6 +208,7 @@ public class GoogleDocs implements Tool<Void> {
     private RagDocumentContext<Void> getDocumentContext(final String document, final String documentId) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext<Void>(
+                        getContextLabel(),
                         document,
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
@@ -213,7 +218,7 @@ public class GoogleDocs implements Tool<Void> {
                         idToLink(documentId)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(document, List.of(), documentId, null, idToLink(documentId)))
+                .recover(e -> new RagDocumentContext<>(getContextLabel(), document, List.of(), documentId, null, idToLink(documentId)))
                 .get();
     }
 

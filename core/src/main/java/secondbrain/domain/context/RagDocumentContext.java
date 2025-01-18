@@ -24,14 +24,14 @@ import static java.util.Comparator.comparing;
  * @param meta      The metadata associated with the document
  * @param link      The link to the document
  */
-public record RagDocumentContext<T>(String document, List<RagStringContext> sentences, String id, T meta, String link) {
+public record RagDocumentContext<T>(String contextLabel, String document, List<RagStringContext> sentences, String id, T meta, String link) {
 
-    public RagDocumentContext(final String document, final List<RagStringContext> sentences, String id) {
-        this(document, sentences, id, null, null);
+    public RagDocumentContext(String contextLabel, final String document, final List<RagStringContext> sentences, String id) {
+        this(contextLabel, document, sentences, id, null, null);
     }
 
-    public RagDocumentContext(final String document, final List<RagStringContext> sentences) {
-        this(document, sentences, "", null, null);
+    public RagDocumentContext(String contextLabel, final String document, final List<RagStringContext> sentences) {
+        this(contextLabel, document, sentences, "", null, null);
     }
 
     /**
@@ -44,15 +44,15 @@ public record RagDocumentContext<T>(String document, List<RagStringContext> sent
      * @return A new copy of this object with the new document
      */
     public RagDocumentContext<T> updateDocument(final String document) {
-        return new RagDocumentContext<>(document, sentences, id, meta, link);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link);
     }
 
     public RagDocumentContext<T> updateLink(final String link) {
-        return new RagDocumentContext<>(document, sentences, id, meta, link);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link);
     }
 
     public RagDocumentContext<Void> getRagDocumentContextVoid() {
-        return new RagDocumentContext<>(document, sentences, id, null, link);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, null, link);
     }
 
     /**

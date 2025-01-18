@@ -105,6 +105,10 @@ public class SlackChannel implements Tool<Void> {
         );
     }
 
+    public String getContextLabel() {
+        return "Slack Messages";
+    }
+
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
@@ -205,6 +209,7 @@ public class SlackChannel implements Tool<Void> {
                 // Strip out any URLs from the sentences
                 .map(sentences -> sentences.stream().map(sentence -> removeMarkdnUrls.sanitize(sentence)).toList())
                 .map(sentences -> new RagDocumentContext<Void>(
+                        getContextLabel(),
                         document,
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
@@ -214,7 +219,7 @@ public class SlackChannel implements Tool<Void> {
                         matchToUrl(channelDetails)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<Void>(document, List.of()))
+                .recover(e -> new RagDocumentContext<Void>(getContextLabel(), document, List.of()))
                 .get();
     }
 

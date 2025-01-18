@@ -70,6 +70,10 @@ public class SlackSearch implements Tool<MatchedItem> {
         );
     }
 
+    public String getContextLabel() {
+        return "Slack Messages";
+    }
+
     @Override
     public List<RagDocumentContext<MatchedItem>> getContext(
             final Map<String, String> context,
@@ -126,6 +130,7 @@ public class SlackSearch implements Tool<MatchedItem> {
     private RagDocumentContext<MatchedItem> getDocumentContext(final MatchedItem meta) {
         return Try.of(() -> sentenceSplitter.splitDocument(meta.getText(), 10))
                 .map(sentences -> new RagDocumentContext<MatchedItem>(
+                        getContextLabel(),
                         meta.getText(),
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
@@ -135,7 +140,7 @@ public class SlackSearch implements Tool<MatchedItem> {
                         matchToUrl(meta)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(meta.getText(), List.of(), meta.getId(), meta, null))
+                .recover(e -> new RagDocumentContext<>(getContextLabel(), meta.getText(), List.of(), meta.getId(), meta, null))
                 .get();
     }
 

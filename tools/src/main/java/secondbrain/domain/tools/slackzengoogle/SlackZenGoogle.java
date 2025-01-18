@@ -91,30 +91,31 @@ public class SlackZenGoogle implements Tool<Void> {
 
         parsedArgs.setInputs(arguments, prompt, context);
 
-        final List<ToolArgs> slackArguments = arguments.stream()
-                .filter(arg -> arg.argName().equals("slackChannel") || arg.argName().equals("days"))
-                .collect(ImmutableList.toImmutableList());
+        final List<ToolArgs> slackArguments = List.of(
+                new ToolArgs("days", parsedArgs.getSlackDays()),
+                new ToolArgs("slackChannel", parsedArgs.getSlackChannel())
+        );
 
         final List<RagDocumentContext<Void>> slackContext = StringUtils.isBlank(parsedArgs.getSlackChannel())
                 ? List.of() : slackChannel.getContext(context, prompt, slackArguments);
 
-        final List<ToolArgs> googleArguments = arguments.stream()
-                .filter(arg -> arg.argName().equals("googleDocumentId"))
-                .collect(ImmutableList.toImmutableList());
+        final List<ToolArgs> googleArguments = List.of(
+                new ToolArgs("googleDocumentId", parsedArgs.getGoogleDocumentId())
+        );
 
         final List<RagDocumentContext<Void>> googleContext = StringUtils.isBlank(parsedArgs.getGoogleDocumentId())
                 ? List.of() : googleDocs.getContext(context, prompt, googleArguments);
 
-        final List<ToolArgs> zenArguments = arguments.stream()
-                .filter(arg -> arg.argName().equals("zenDeskOrganization") || arg.argName().equals("days"))
-                .collect(ImmutableList.toImmutableList());
+        final List<ToolArgs> zenArguments = List.of(
+                new ToolArgs("zenDeskOrganization", parsedArgs.getGoogleDocumentId()),
+                new ToolArgs("days", parsedArgs.getSlackDays())
+        );
 
         final List<RagDocumentContext<Void>> zenContext = StringUtils.isBlank(parsedArgs.getZenDeskOrganization())
                 ? List.of() : zenDeskOrganization.getContext(context, prompt, zenArguments)
                 .stream()
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .collect(ImmutableList.toImmutableList());
-
 
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
         retValue.addAll(slackContext);
@@ -154,8 +155,9 @@ public class SlackZenGoogle implements Tool<Void> {
     private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
         return new RagMultiDocumentContext<>(
                 context.stream()
-                        .map(RagDocumentContext::document)
-                        .map(content -> promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("External Data", content))
+                        .map(ragDoc ->
+                                promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt(
+                                    ragDoc.contextLabel(), ragDoc.document()))
                         .collect(Collectors.joining("\n")),
                 context);
     }
@@ -169,6 +171,10 @@ class SlackZenGoogleArguments {
     @Inject
     @ConfigProperty(name = "sb.slack.channel")
     private Optional<String> slackChannel;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.days")
+    private Optional<String> slackDays;
 
     @Inject
     @ConfigProperty(name = "sb.google.doc")
@@ -197,6 +203,16 @@ class SlackZenGoogleArguments {
                 context,
                 "slackChannel",
                 "slack_channel",
+                "");
+    }
+
+    public String getSlackDays() {
+        return argsAccessor.getArgument(
+                slackDays::get,
+                arguments,
+                context,
+                "days",
+                "slack_days",
                 "");
     }
 

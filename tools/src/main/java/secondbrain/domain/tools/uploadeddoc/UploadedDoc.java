@@ -90,6 +90,10 @@ public class UploadedDoc implements Tool<Void> {
         );
     }
 
+    public String getContextLabel() {
+        return "File Contents";
+    }
+
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,
@@ -155,20 +159,21 @@ public class UploadedDoc implements Tool<Void> {
                 .map(this::getTrimmedDocumentContext)
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(contents, List.of()))
+                .recover(e -> new RagDocumentContext<>(getContextLabel(), contents, List.of()))
                 .get();
     }
 
     private RagDocumentContext<Void> getTrimmedDocumentContext(final String document) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext<Void>(
+                        getContextLabel(),
                         document,
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList())))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(document, List.of()))
+                .recover(e -> new RagDocumentContext<>(getContextLabel(), document, List.of()))
                 .get();
     }
 

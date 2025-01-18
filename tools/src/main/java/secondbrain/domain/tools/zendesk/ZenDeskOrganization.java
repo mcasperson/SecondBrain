@@ -121,6 +121,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 new ToolArguments("hours", "The optional number of hours worth of tickets to return", "0"));
     }
 
+    public String getContextLabel() {
+        return "ZenDesk Ticket";
+    }
+
     @Override
     public List<RagDocumentContext<ZenDeskResultsResponse>> getContext(
             final Map<String, String> context,
@@ -315,6 +319,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     private RagDocumentContext<ZenDeskResultsResponse> getDocumentContext(final String document, final String id, final ZenDeskResultsResponse meta, final String authHeader) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext<ZenDeskResultsResponse>(
+                        getContextLabel(),
                         document,
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
@@ -324,7 +329,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                         null))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(document, List.of(), id, meta, null))
+                .recover(e -> new RagDocumentContext<>(getContextLabel(), document, List.of(), id, meta, null))
                 // Add the links to each of the tickets
                 .map(ragDocumentContext -> ragDocumentContext.updateLink(ticketToLink(parsedArgs.getZenDeskUrl(), meta, authHeader)))
                 .get();
