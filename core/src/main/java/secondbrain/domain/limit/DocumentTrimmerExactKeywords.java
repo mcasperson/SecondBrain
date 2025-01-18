@@ -1,6 +1,7 @@
 package secondbrain.domain.limit;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.tika.utils.StringUtils;
 
 import java.util.*;
 
@@ -101,10 +102,13 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
     }
 
     private List<KeywordPositions> getAllKeywordPositions(final String document, final List<String> keywords) {
+        final List<String> filteredKeywords = keywords.stream()
+                .filter(keyword -> !StringUtils.isBlank(keyword))
+                .toList();
         final String lowerCaseDocument = document.toLowerCase();
         final List<KeywordPositions> keywordPositions = new ArrayList<>();
 
-        for (String keyword : keywords) {
+        for (String keyword : filteredKeywords) {
             final List<Integer> positions = new ArrayList<>();
             int position = lowerCaseDocument.indexOf(keyword.toLowerCase());
             while (position != -1) {
