@@ -25,9 +25,25 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.pdfbox</groupId>
-            <artifactId>pdfbox</artifactId>
-            <version>3.0.2</version>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>3.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parsers-standard-package</artifactId>
+            <version>3.0.0</version>
+        </dependency>
+        <!-- This is required ti get the EPUB parser -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-parser-miscoffice-module</artifactId>
+            <version>3.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.27.1</version>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>

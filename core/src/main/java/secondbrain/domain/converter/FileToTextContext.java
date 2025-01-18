@@ -16,7 +16,9 @@ public class FileToTextContext implements FileToText {
 
     @Override
     public String convert(final String path) {
-        return textExtractors.stream()
+        return textExtractors
+                .stream()
+                .sorted((a, b) -> Integer.compare(b.priority(), a.priority()))
                 .filter(extractor -> extractor.isSupported(path))
                 .findFirst()
                 .map(extractor -> extractor.convert(path))

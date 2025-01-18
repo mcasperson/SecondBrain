@@ -7,4 +7,6 @@ public interface TextExtractorStrategy {
     String convert(String path);
 
     boolean isSupported(String path);
+
+    int priority();
 }
