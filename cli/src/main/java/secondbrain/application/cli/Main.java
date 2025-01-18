@@ -15,6 +15,9 @@ public class Main {
     @Inject
     private PromptHandler promptHandler;
 
+    @Inject
+    private MarkdnParser markdnParser;
+
     public static void main(final String[] args) {
         final Weld weld = new Weld();
         /*
@@ -38,14 +41,16 @@ public class Main {
 
     private void printMarkDn(final String response) {
         final String markdn = new DownParser(response, true).toSlack().toString();
-        System.out.println(markdn);
+        // The markdown parser seems to let a bunch of strong text through, so clean that up manually
+        final String fixedMarkdn = markdn.replaceAll("\\*\\*(.+)\\*\\*", "*$1*");
+        System.out.println(fixedMarkdn);
     }
 
     public void entry(String[] args) {
         final String response = promptHandler.handlePrompt(Map.of(), getPrompt(args));
 
         if (args.length > 1 && "markdn".equals(args[1])) {
-            printMarkDn(response);
+            System.out.println(markdnParser.printMarkDn(response));
         } else {
             System.out.println(response);
         }
