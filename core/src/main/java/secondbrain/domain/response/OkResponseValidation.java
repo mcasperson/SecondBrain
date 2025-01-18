@@ -15,8 +15,9 @@ public class OkResponseValidation implements ResponseValidation {
 
         if (response.getStatus() != 200) {
             throw new InvalidResponse("Expected status code 200, but got "
-                    + response.getStatus() + " "
-                    + response.readEntity(String.class));
+                    + response.getStatus(),
+                    response.readEntity(String.class),
+                    response.getStatus());
         }
 
         return response;

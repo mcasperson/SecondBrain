@@ -44,19 +44,19 @@ public class OllamaClient {
                         .header("Accept", "application/json")
                         .post(Entity.entity(body.sanitizedCopy(), MediaType.APPLICATION_JSON)))
                 .of(response -> of(() -> responseValidation.validate(response))
-                        .map(r -> r.readEntity(OllamaResponse.class))
                         .recover(InvalidResponse.class, e -> {
                             throw new FailedOllama("Failed to call Ollama:\n"
-                                    + response.getStatus() + "\n"
-                                    + response.readEntity(String.class));
+                                    + e.getCode() + "\n"
+                                    + e.getBody(), e);
                         })
                         .recover(MissingResponse.class, e -> {
                             throw new FailedOllama("Failed to call Ollama:\n"
                                     + response.getStatus() + "\n"
-                                    + response.readEntity(String.class)
+                                    + Try.of(() -> response.readEntity(String.class)).getOrElse("")
                                     + "\nMake sure to run 'ollama pull " + body.model() + "'"
                                     + "or 'docker exec -it secondbrain-ollama-1 ollama pull " + body.model() + "'");
                         })
+                        .map(r -> r.readEntity(OllamaResponse.class))
                         .get())
                 .get();
     }
