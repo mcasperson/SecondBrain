@@ -1,4 +1,4 @@
-package secondbrain.application.cli;
+package secondbrain.domain.converter;
 
 import dev.feedforward.markdownto.DownParser;
 import jakarta.enterprise.context.ApplicationScoped;

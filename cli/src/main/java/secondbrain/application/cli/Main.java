@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 import secondbrain.Marker;
+import secondbrain.domain.converter.MarkdnParser;
 import secondbrain.domain.handler.PromptHandler;
 
 import java.util.Map;
