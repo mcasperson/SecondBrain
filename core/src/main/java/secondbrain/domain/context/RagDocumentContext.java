@@ -47,6 +47,10 @@ public record RagDocumentContext<T>(String contextLabel, String document, List<R
         return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link);
     }
 
+    public RagDocumentContext<T> updateContextLabel(final String contextLabel) {
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link);
+    }
+
     public RagDocumentContext<T> updateLink(final String link) {
         return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link);
     }

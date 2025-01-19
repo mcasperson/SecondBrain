@@ -163,6 +163,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt + "\nChannel is " + args.getFirst().argValue(), args))
                         .getOrElse(List::of)
                         .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .toList();
 
         final List<RagDocumentContext<Void>> googleContext = entity.googledocs()
