@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
@@ -26,6 +27,7 @@ import secondbrain.infrastructure.publicweb.PublicWebClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -34,13 +36,13 @@ import java.util.stream.Collectors;
  * <p>
  * entities:
  * - name: Entity1
- * zendesk: [1235484986222]
- * slack: [account-entity1]
- * googledocs: [2eoub28oeyb2o8yevb82oev2e]
+ *   zendesk: [1235484986222]
+ *   slack: [account-entity1]
+ *   googledocs: [2eoub28oeyb2o8yevb82oev2e]
  * - name: Entity2
- * zendesk: [789858675]
- * slack: [account-entity2]
- * googledocs: [789752yoyf2eo86fe2o86ef982o6ef]
+ *   zendesk: [789858675]
+ *   slack: [account-entity2]
+ *   googledocs: [789752yoyf2eo86fe2o86ef982o6ef]
  */
 @ApplicationScoped
 public class MultiSlackZenGoogle implements Tool<Void> {
@@ -192,8 +194,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
         return new RagMultiDocumentContext<>(
                 context.stream()
-                        .map(RagDocumentContext::document)
-                        .map(content -> promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("External Data", content))
+                        .map(ragDoc ->
+                                promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt(
+                                        ragDoc.contextLabel(), ragDoc.document()))
                         .collect(Collectors.joining("\n")),
                 context);
     }
@@ -210,6 +213,14 @@ class Arguments {
     @Inject
     private ArgsAccessor argsAccessor;
 
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.url")
+    private Optional<String> url;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.days")
+    private Optional<String> days;
+
     private List<ToolArgs> arguments;
 
     private String prompt;
@@ -223,11 +234,25 @@ class Arguments {
     }
 
     public String getUrl() {
-        return argsAccessor.getArgument(arguments, "url", "").trim();
+        return argsAccessor.getArgument(
+                url::get,
+                arguments,
+                context,
+                "url",
+                "multislackzengoogle_url",
+                "");
     }
 
     public int getDays() {
-        return Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "0")))
+        final String stringValue = argsAccessor.getArgument(
+                days::get,
+                arguments,
+                context,
+                "days",
+                "multislackzengoogle_days",
+                "0");
+
+        return Try.of(() -> Integer.parseInt(stringValue))
                 .recover(throwable -> 0)
                 .map(i -> Math.max(0, i))
                 .get();
