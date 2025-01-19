@@ -7,6 +7,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
@@ -19,12 +20,15 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
+import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.publicweb.PublicWebClient;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +66,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private GoogleDocs googleDocs;
+
+    @Inject
+    private PlanHat planHat;
 
     @Inject
     private ZenDeskOrganization zenDeskOrganization;
@@ -191,10 +198,25 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
+        final List<RagDocumentContext<Void>> planHatContext = entity.planhat()
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(new ToolArgs("companyId", id),
+                        new ToolArgs("to", parsedArgs.getTo()),
+                        new ToolArgs("from", parsedArgs.getFrom())))
+                .flatMap(args -> Try.of(() -> planHat.getContext(context, prompt + "\nCompany is " + args.getFirst().argValue(), args))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
+
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
         retValue.addAll(slackContext);
         retValue.addAll(googleContext);
         retValue.addAll(zenContext);
+        retValue.addAll(planHatContext);
         return retValue;
     }
 
@@ -278,5 +300,23 @@ class Arguments {
                 "entityName",
                 "multislackzengoogle_entityname",
                 "");
+    }
+
+    public String getFrom() {
+        return getDays() == 0
+                ? ""
+                : "" + LocalDate.now().minusDays(getDays())
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .getEpochSecond();
+    }
+
+    public String getTo() {
+        return getDays() == 0
+                ? ""
+                : "" + LocalDate.now()
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .getEpochSecond();
     }
 }
