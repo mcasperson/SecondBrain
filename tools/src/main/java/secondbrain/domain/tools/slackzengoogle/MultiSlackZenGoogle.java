@@ -174,6 +174,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(context, prompt + "\nDocument ID is " + args.getFirst().argValue(), args))
                         .getOrElse(List::of)
                         .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .toList();
 
         final List<RagDocumentContext<Void>> zenContext = entity.zendesk()
@@ -183,6 +185,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context, prompt + "\nOrganization is " + args.getFirst().argValue(), args))
                         .getOrElse(List::of)
                         .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
