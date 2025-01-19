@@ -12,7 +12,7 @@ public class PromptBuilderPhi implements PromptBuilder {
 
     @Override
     public String modelRegex() {
-        return "^phi\\d.*$";
+        return "^phi\\d+.*$";
     }
 
     @Override
