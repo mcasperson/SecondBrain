@@ -218,6 +218,10 @@ class Arguments {
     private Optional<String> url;
 
     @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.entity")
+    private Optional<String> entity;
+
+    @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.days")
     private Optional<String> days;
 
@@ -259,6 +263,12 @@ class Arguments {
     }
 
     public String getEntityName() {
-        return argsAccessor.getArgument(arguments, "entityName", "").trim();
+        return argsAccessor.getArgument(
+                entity::get,
+                arguments,
+                context,
+                "entityName",
+                "multislackzengoogle_entityname",
+                "");
     }
 }
