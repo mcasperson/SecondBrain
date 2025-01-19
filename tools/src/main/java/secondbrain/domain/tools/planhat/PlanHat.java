@@ -191,7 +191,7 @@ class Arguments {
     private Optional<String> to;
 
     @Inject
-    @ConfigProperty(name = "sb.planhat.token")
+    @ConfigProperty(name = "sb.planhat.accesstoken")
     private Optional<String> token;
 
     @Inject
@@ -215,7 +215,7 @@ class Arguments {
     public String getCompany() {
         return Try.of(company::get)
                 .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "company", ""))
+                .recover(e -> argsAccessor.getArgument(arguments, "companyId", ""))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("planhat_company"))
                 .mapTry(validateString::throwIfEmpty)

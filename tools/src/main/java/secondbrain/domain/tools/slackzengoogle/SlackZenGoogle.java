@@ -112,7 +112,7 @@ public class SlackZenGoogle implements Tool<Void> {
                 new ToolArgs("to", parsedArgs.getPlanHatTo())
         );
 
-        final List<RagDocumentContext<Void>> planHatContext = StringUtils.isBlank(parsedArgs.getSlackChannel())
+        final List<RagDocumentContext<Void>> planHatContext = StringUtils.isBlank(parsedArgs.getPlanHatCompany())
                 ? List.of()
                 : Try.of(() -> planHat.getContext(context, prompt, planHatArguments))
                 .recover(e -> List.of())
