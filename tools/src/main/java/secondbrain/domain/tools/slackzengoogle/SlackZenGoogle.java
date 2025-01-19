@@ -42,6 +42,10 @@ public class SlackZenGoogle implements Tool<Void> {
             You are helpful agent.
             You are given the contents of a Slack channel, a Google Document, and the help desk tickets from ZenDesk.
             You must answer the prompt based on the information provided.
+            You will be penalized for referencing support tickets that were not explicitly provided.
+            You will be penalized for referencing slack messages that were not explicitly provided.
+            You will be penalized for referencing google documents that were not explicitly provided.
+            You will be penalized for saying that you will monitor for tickets or messages in future.
             """;
 
     @Inject
