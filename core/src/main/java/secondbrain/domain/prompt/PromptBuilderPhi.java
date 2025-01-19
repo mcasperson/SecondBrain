@@ -8,11 +8,11 @@ import org.apache.commons.lang3.StringUtils;
  * for the template format.
  */
 @ApplicationScoped
-public class PromptBuilderPhi3 implements PromptBuilder {
+public class PromptBuilderPhi implements PromptBuilder {
 
     @Override
     public String modelRegex() {
-        return "^phi3.*$";
+        return "^phi\\d.*$";
     }
 
     @Override
