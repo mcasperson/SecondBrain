@@ -1,5 +1,6 @@
 package secondbrain.domain.tools.slackzengoogle;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.google.common.collect.ImmutableList;
 import io.vavr.API;
 import io.vavr.control.Try;
@@ -210,7 +211,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     record EntityDirectory(List<Entity> entities) {
     }
 
-    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs) {
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat) {
     }
 }
 
