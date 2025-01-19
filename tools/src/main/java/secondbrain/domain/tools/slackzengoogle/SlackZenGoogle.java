@@ -19,10 +19,13 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
+import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +64,9 @@ public class SlackZenGoogle implements Tool<Void> {
     private ZenDeskOrganization zenDeskOrganization;
 
     @Inject
+    private PlanHat planHat;
+
+    @Inject
     private OllamaClient ollamaClient;
 
     @Inject
@@ -88,6 +94,7 @@ public class SlackZenGoogle implements Tool<Void> {
     public List<ToolArguments> getArguments() {
         return ImmutableList.of(new ToolArguments("days", "The optional number of days to include in the searches", ""),
                 new ToolArguments("slackChannel", "The optional Slack channel to query", ""),
+                new ToolArguments("planHatCompanyId", "The optional PlanHat company to query", ""),
                 new ToolArguments("googleDocumentId", "The optional Google Document to query", ""),
                 new ToolArguments("zenDeskOrganization", "The optional Zen Desk organization channel to query", ""));
     }
@@ -99,6 +106,18 @@ public class SlackZenGoogle implements Tool<Void> {
 
         parsedArgs.setInputs(arguments, prompt, context);
 
+        final List<ToolArgs> planHatArguments = List.of(
+                new ToolArgs("companyId", parsedArgs.getPlanHatCompany()),
+                new ToolArgs("from", parsedArgs.getPlanHatFrom()),
+                new ToolArgs("to", parsedArgs.getPlanHatTo())
+        );
+
+        final List<RagDocumentContext<Void>> planHatContext = StringUtils.isBlank(parsedArgs.getSlackChannel())
+                ? List.of()
+                : Try.of(() -> planHat.getContext(context, prompt, planHatArguments))
+                .recover(e -> List.of())
+                .get();
+
         final List<ToolArgs> slackArguments = List.of(
                 new ToolArgs("days", parsedArgs.getSlackDays()),
                 new ToolArgs("slackChannel", parsedArgs.getSlackChannel())
@@ -107,8 +126,8 @@ public class SlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> slackContext = StringUtils.isBlank(parsedArgs.getSlackChannel())
                 ? List.of()
                 : Try.of(() -> slackChannel.getContext(context, prompt, slackArguments))
-                    .recover(e -> List.of())
-                    .get();
+                .recover(e -> List.of())
+                .get();
 
         final List<ToolArgs> googleArguments = List.of(
                 new ToolArgs("googleDocumentId", parsedArgs.getGoogleDocumentId())
@@ -117,8 +136,8 @@ public class SlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> googleContext = StringUtils.isBlank(parsedArgs.getGoogleDocumentId())
                 ? List.of()
                 : Try.of(() -> googleDocs.getContext(context, prompt, googleArguments))
-                    .recover(e -> List.of())
-                    .get();
+                .recover(e -> List.of())
+                .get();
 
         final List<ToolArgs> zenArguments = List.of(
                 new ToolArgs("zenDeskOrganization", parsedArgs.getGoogleDocumentId()),
@@ -128,13 +147,13 @@ public class SlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> zenContext = StringUtils.isBlank(parsedArgs.getZenDeskOrganization())
                 ? List.of()
                 : Try.of(() -> zenDeskOrganization.getContext(context, prompt, zenArguments))
-                    .recover(e -> List.of())
-                    .get()
+                .recover(e -> List.of())
+                .get()
                 .stream()
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .collect(ImmutableList.toImmutableList());
 
-        if (slackContext.size() + zenContext.size() < parsedArgs.getMinSlackOrZen()) {
+        if (slackContext.size() + zenContext.size() + planHatContext.size() < parsedArgs.getMinSlackOrZen()) {
             throw new EmptyContext("No Slack message or ZenDesk tickets found");
         }
 
@@ -142,6 +161,7 @@ public class SlackZenGoogle implements Tool<Void> {
         retValue.addAll(slackContext);
         retValue.addAll(googleContext);
         retValue.addAll(zenContext);
+        retValue.addAll(planHatContext);
         return retValue;
     }
 
@@ -182,7 +202,7 @@ public class SlackZenGoogle implements Tool<Void> {
                 context.stream()
                         .map(ragDoc ->
                                 promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt(
-                                    ragDoc.contextLabel(), ragDoc.document()))
+                                        ragDoc.contextLabel(), ragDoc.document()))
                         .collect(Collectors.joining("\n")),
                 context);
     }
@@ -206,12 +226,16 @@ class SlackZenGoogleArguments {
     private Optional<String> googleDoc;
 
     @Inject
-    @ConfigProperty(name = "sb.slackzengoogle.minslackorzen")
-    private Optional<String> slackZenGoogleMinSlackOrZen;
+    @ConfigProperty(name = "sb.slackzengoogle.minTimeBasedContext")
+    private Optional<String> slackZenGoogleMinTimeBasedContext;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.organization")
     private Optional<String> zenDeskOrganization;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.company")
+    private Optional<String> planHatCompany;
 
     private List<ToolArgs> arguments;
 
@@ -237,12 +261,12 @@ class SlackZenGoogleArguments {
 
     public int getMinSlackOrZen() {
         final String stringValue = argsAccessor.getArgument(
-                slackZenGoogleMinSlackOrZen::get,
+                slackZenGoogleMinTimeBasedContext::get,
                 arguments,
                 context,
-                "slackZenGoogleMinSlackOrZen",
-                "slackzengoogle_minslackorzen",
-                "");
+                "slackZenGoogleMinTimeBasedContext",
+                "slackzengoogle_mintimebasedcontext",
+                "1");
 
         return NumberUtils.toInt(stringValue, 1);
     }
@@ -275,6 +299,34 @@ class SlackZenGoogleArguments {
                 "zenDeskOrganization",
                 "zendesk_organization",
                 "");
+    }
+
+    public String getPlanHatCompany() {
+        return argsAccessor.getArgument(
+                planHatCompany::get,
+                arguments,
+                context,
+                "planHatCompanyId",
+                "planhat_companyid",
+                "");
+    }
+
+    public String getPlanHatFrom() {
+        return StringUtils.isBlank(getSlackDays())
+                ? ""
+                : "" + LocalDate.now().minusDays(NumberUtils.toInt(getSlackDays(), 1))
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .getEpochSecond();
+    }
+
+    public String getPlanHatTo() {
+        return StringUtils.isBlank(getSlackDays())
+                ? ""
+                : "" + LocalDate.now()
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .getEpochSecond();
     }
 
 }
