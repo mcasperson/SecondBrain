@@ -145,7 +145,7 @@ foreach ($entity in $database.entities) {
 
         try
         {
-            #Invoke-RestMethod -uri $uriSlack -Method Post -body $body -ContentType 'application/json' | Out-Null
+            Invoke-RestMethod -uri $uriSlack -Method Post -body $body -ContentType 'application/json' | Out-Null
         }
         catch
         {
