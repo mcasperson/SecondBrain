@@ -616,13 +616,13 @@ class Arguments {
 
     private int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {
         // If the prompt did not mention the keyword for the first argument, assume that it was never mentioned, and return 0
-        if (!prompt.contains(aPromptKeyword)) {
+        if (!prompt.toLowerCase().contains(aPromptKeyword.toLowerCase())) {
             return 0;
         }
 
         // If the prompt did mention the first argument, but did not mention the keyword for the second argument,
         // and the first argument is 0, assume the LLM switched things up, and return the second argument
-        if (!prompt.contains(bPromptKeyword) && a == 0) {
+        if (!prompt.toLowerCase().contains(bPromptKeyword.toLowerCase()) && a == 0) {
             return b;
         }
 

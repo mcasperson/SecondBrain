@@ -206,7 +206,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("zenDeskOrganization", id), new ToolArgs("days", "" + days)))
-                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context, prompt + "\nOrganization is " + args.getFirst().argValue(), args))
+                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context,
+                                prompt + "\nOrganization is " + args.getFirst().argValue() + "\nDays is " + days, args))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
