@@ -159,7 +159,7 @@ public class PlanHat implements Tool<Conversation> {
     private RagDocumentContext<Conversation> getDocumentContext(final Conversation conversation) {
         return Try.of(() -> sentenceSplitter.splitDocument(conversation.getContent(), 10))
                 .map(sentences -> new RagDocumentContext<Conversation>(
-                        getContextLabel(),
+                        getContextLabel() + " " + conversation.date(),
                         conversation.getContent(),
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
@@ -171,7 +171,7 @@ public class PlanHat implements Tool<Conversation> {
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext<>(
                         getContextLabel(),
-                        conversation.getContent(),
+                        conversation.getContent() + " " + conversation.date(),
                         List.of()))
                 .get();
     }

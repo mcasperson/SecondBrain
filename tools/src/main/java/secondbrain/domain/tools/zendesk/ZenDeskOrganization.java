@@ -329,7 +329,13 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                         null))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(getContextLabel(), document, List.of(), id, meta, null))
+                .recover(e -> new RagDocumentContext<>(
+                        getContextLabel(),
+                        document,
+                        List.of(),
+                        id,
+                        meta,
+                        null))
                 // Add the links to each of the tickets
                 .map(ragDocumentContext -> ragDocumentContext.updateLink(ticketToLink(parsedArgs.getZenDeskUrl(), meta, authHeader)))
                 .get();
