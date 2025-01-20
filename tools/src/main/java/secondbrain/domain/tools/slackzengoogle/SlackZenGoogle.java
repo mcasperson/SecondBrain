@@ -109,8 +109,7 @@ public class SlackZenGoogle implements Tool<Void> {
 
         final List<ToolArgs> planHatArguments = List.of(
                 new ToolArgs("companyId", parsedArgs.getPlanHatCompany()),
-                new ToolArgs("from", parsedArgs.getPlanHatFrom()),
-                new ToolArgs("to", parsedArgs.getPlanHatTo())
+                new ToolArgs("days", parsedArgs.getSlackDays())
         );
 
         final List<RagDocumentContext<Void>> planHatContext = StringUtils.isBlank(parsedArgs.getPlanHatCompany())

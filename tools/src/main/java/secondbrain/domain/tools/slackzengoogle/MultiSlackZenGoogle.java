@@ -219,9 +219,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("companyId", id),
-                        new ToolArgs("to", parsedArgs.getTo()),
-                        new ToolArgs("from", parsedArgs.getFrom())))
-                .flatMap(args -> Try.of(() -> planHat.getContext(context, prompt + "\nCompany is " + args.getFirst().argValue(), args))
+                        new ToolArgs("days", parsedArgs.getDays() + "")))
+                .flatMap(args -> Try.of(() -> planHat.getContext(context, prompt + "\nCompany is " + args.getFirst().argValue() + "\nDays is " + days, args))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -325,24 +324,6 @@ class Arguments {
                 "entityName",
                 "multislackzengoogle_entityname",
                 "");
-    }
-
-    public String getFrom() {
-        return getDays() == 0
-                ? ""
-                : "" + LocalDate.now().minusDays(getDays())
-                .atStartOfDay(ZoneId.systemDefault())
-                .toInstant()
-                .getEpochSecond();
-    }
-
-    public String getTo() {
-        return getDays() == 0
-                ? ""
-                : "" + LocalDate.now()
-                .atStartOfDay(ZoneId.systemDefault())
-                .toInstant()
-                .getEpochSecond();
     }
 
     public int getMinTimeBasedContext() {

@@ -21,11 +21,9 @@ public class PlanHatClient {
     private String url;
 
     @Retry
-    public List<Conversation> getConversations(final Client client, final String company, final String from, final String to, final String token) {
+    public List<Conversation> getConversations(final Client client, final String company, final String token) {
         return Try.withResources(() -> client.target(url + "/conversations")
                         .queryParam("cId", company)
-                        .queryParam("from", from)
-                        .queryParam("to", to)
                         .request()
                         .header("Authorization", "Bearer " + token)
                         .header("Accept", MediaType.APPLICATION_JSON)

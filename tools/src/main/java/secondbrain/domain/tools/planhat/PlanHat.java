@@ -6,6 +6,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -16,6 +17,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.converter.HtmlToText;
+import secondbrain.domain.date.DateParser;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
@@ -26,6 +28,8 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.planhat.Conversation;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -46,7 +50,7 @@ public class PlanHat implements Tool<Conversation> {
     @Inject
     @ConfigProperty(name = "sb.planhat.appurl", defaultValue = "https://app-us4.planhat.com")
     private String url;
-    
+
     @Inject
     private Arguments parsedArgs;
 
@@ -71,6 +75,9 @@ public class PlanHat implements Tool<Conversation> {
     @Inject
     private HtmlToText htmlToText;
 
+    @Inject
+    private DateParser dateParser;
+
     @Override
     public String getName() {
         return PlanHat.class.getSimpleName();
@@ -92,12 +99,8 @@ public class PlanHat implements Tool<Conversation> {
                         "The company ID to query",
                         ""),
                 new ToolArguments(
-                        "from",
-                        "The date to query from",
-                        ""),
-                new ToolArguments(
-                        "to",
-                        "The date to query to",
+                        "days",
+                        "The number of days to query",
                         ""));
     }
 
@@ -113,12 +116,12 @@ public class PlanHat implements Tool<Conversation> {
                 .of(client -> planHatClient.getConversations(
                         client,
                         parsedArgs.getCompany(),
-                        parsedArgs.getFrom(),
-                        parsedArgs.getTo(),
                         parsedArgs.getToken()))
                 .get();
 
         return conversations.stream()
+                .filter(conversation -> parsedArgs.getDays() == 0
+                        || dateParser.parseDate(conversation.date()).isAfter(ZonedDateTime.now(ZoneOffset.UTC).minusDays(parsedArgs.getDays())))
                 .map(conversation -> conversation.updateDescriptionAndSnippet(
                         htmlToText.getText(conversation.description()),
                         htmlToText.getText(conversation.snippet())
@@ -196,12 +199,8 @@ class Arguments {
     private Optional<String> company;
 
     @Inject
-    @ConfigProperty(name = "sb.planhat.from")
+    @ConfigProperty(name = "sb.planhat.days")
     private Optional<String> from;
-
-    @Inject
-    @ConfigProperty(name = "sb.planhat.to")
-    private Optional<String> to;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.accesstoken")
@@ -236,27 +235,19 @@ class Arguments {
                 .get();
     }
 
-    public String getFrom() {
-        return Try.of(from::get)
+    public int getDays() {
+        final String stringValue= Try.of(from::get)
                 .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "from", ""))
+                .recover(e -> argsAccessor.getArgument(arguments, "days", ""))
                 .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("planhat_from"))
+                .recover(e -> context.get("planhat_days"))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> "")
                 .get();
+
+        return NumberUtils.toInt(stringValue, 1);
     }
 
-    public String getTo() {
-        return Try.of(to::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "to", ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("planhat_to"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> "")
-                .get();
-    }
 
     public String getToken() {
         return Try.of(token::get)
