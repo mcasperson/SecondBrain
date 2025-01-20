@@ -14,6 +14,8 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.exceptions.EmptyList;
+import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
@@ -23,6 +25,7 @@ import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
+import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.publicweb.PublicWebClient;
@@ -34,6 +37,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Predicates.instanceOf;
 
 /**
  * This meta-tool calls the zendesk, slack, and google tools to answer a prompt against multiple
@@ -88,6 +93,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     @Inject
     private Arguments parsedArgs;
 
+    @Inject
+    private ValidateList validateList;
+
     @Override
     public String getName() {
         return MultiSlackZenGoogle.class.getSimpleName();
@@ -137,6 +145,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final List<ToolArgs> arguments) {
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
+                .map(contextList -> validateList.throwIfEmpty(contextList))
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(modelConfig.getCalculatedModel(context))
@@ -154,7 +163,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
+        return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyList.class)), throwable -> throwable),
+                        API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
     }
 

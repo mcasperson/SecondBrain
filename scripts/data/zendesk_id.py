@@ -27,11 +27,11 @@ def main():
     entity_id_map = {name.strip(): id.strip() for name, id in text_data}
 
     for entity in yaml_data['entities']:
-        if 'zendesk' not in entity or not entity['zendesk']:
-            entity_name = entity['name']
-            if entity_name in entity_id_map:
-                entity['zendesk'] = [entity_id_map[entity_name]]
-                print(f"Set zendesk ID for '{entity_name}' to '{entity_id_map[entity_name]}'")
+        #if 'zendesk' not in entity or not entity['zendesk']:
+        entity_name = entity['name']
+        if entity_name in entity_id_map:
+            entity['zendesk'] = [entity_id_map[entity_name]]
+            print(f"Set zendesk ID for '{entity_name}' to '{entity_id_map[entity_name]}'")
 
     save_yaml(yaml_data, yaml_file_path)
     print(f"YAML file saved with updated zendesk IDs to {yaml_file_path}")
