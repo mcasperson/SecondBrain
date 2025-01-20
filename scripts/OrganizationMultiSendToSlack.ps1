@@ -114,6 +114,10 @@ $response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
 $database = ConvertFrom-Yaml $response.Content
 
 foreach ($entity in $database.entities) {
+    if ($entity.disabled) {
+        continue
+    }
+
     $entityName = $entity.name
 
     echo "Processing $entityName"
