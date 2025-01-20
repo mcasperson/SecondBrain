@@ -216,6 +216,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
+        if (slackContext.size() + zenContext.size() + planHatContext.size() < parsedArgs.getMinTimeBasedContext()) {
+            return List.of();
+        }
+
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
         retValue.addAll(slackContext);
         retValue.addAll(googleContext);
@@ -258,6 +262,10 @@ class Arguments {
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.days")
     private Optional<String> days;
+
+    @Inject
+    @ConfigProperty(name = "sb.slackzengoogle.minTimeBasedContext")
+    private Optional<String> slackZenGoogleMinTimeBasedContext;
 
     private List<ToolArgs> arguments;
 
@@ -322,5 +330,17 @@ class Arguments {
                 .atStartOfDay(ZoneId.systemDefault())
                 .toInstant()
                 .getEpochSecond();
+    }
+
+    public int getMinTimeBasedContext() {
+        final String stringValue = argsAccessor.getArgument(
+                slackZenGoogleMinTimeBasedContext::get,
+                arguments,
+                context,
+                "multislackzengoogleMinTimeBasedContext",
+                "multislackzengoogle_mintimebasedcontext",
+                "1");
+
+        return NumberUtils.toInt(stringValue, 1);
     }
 }
