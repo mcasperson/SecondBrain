@@ -111,8 +111,8 @@ $contextWindow = "32768"
 $response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
 $database = ConvertFrom-Yaml $response.Content
 
-$database.entities | % {
-    $entityName = $_.name
+foreach ($entity in $database.entities) {
+    $entityName = $entity.name
 
     echo "Processing $entityName"
 
