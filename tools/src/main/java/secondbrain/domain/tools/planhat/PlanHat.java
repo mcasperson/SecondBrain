@@ -115,6 +115,10 @@ public class PlanHat implements Tool<Void> {
                 .get();
 
         return conversations.stream()
+                .map(conversation -> conversation.updateDescriptionAndSnippet(
+                        htmlToText.getText(conversation.description()),
+                        htmlToText.getText(conversation.snippet())
+                ))
                 .map(this::getDocumentContext)
                 .collect(Collectors.toList());
     }
@@ -149,8 +153,7 @@ public class PlanHat implements Tool<Void> {
     }
 
     private RagDocumentContext<Void> getDocumentContext(final Conversation conversation) {
-        return Try.of(() -> htmlToText.getText(conversation.getContent()))
-                .map(text -> sentenceSplitter.splitDocument(text, 10))
+        return Try.of(() -> sentenceSplitter.splitDocument(conversation.getContent(), 10))
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
                         conversation.getContent(),
@@ -159,7 +162,10 @@ public class PlanHat implements Tool<Void> {
                                 .collect(Collectors.toList())))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(getContextLabel(), conversation.getContent(), List.of()))
+                .recover(e -> new RagDocumentContext<>(
+                        getContextLabel(),
+                        conversation.getContent(),
+                        List.of()))
                 .get();
     }
 
