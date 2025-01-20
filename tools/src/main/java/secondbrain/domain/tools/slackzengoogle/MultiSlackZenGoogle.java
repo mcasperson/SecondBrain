@@ -14,6 +14,7 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.exceptions.EmptyContext;
 import secondbrain.domain.exceptions.EmptyList;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedTool;
@@ -164,7 +165,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyList.class)), throwable -> throwable),
+                        API.Case(API.$(instanceOf(EmptyList.class)), ex -> new EmptyContext("No ZenDesk tickets, Slack messages, or PlanHat activities found.")),
                         API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
     }
