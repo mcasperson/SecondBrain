@@ -108,9 +108,8 @@ $toolModel = "llama3.1"
 $model = "llama3.1"
 $contextWindow = "32768"
 
-$url = "https://example.com"
 $response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
-$database = ConvertTo-Yaml $response.Content
+$database = ConvertFrom-Yaml $response.Content
 
 $database.entities | % {
     $entityName = $_.name
