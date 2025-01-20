@@ -44,7 +44,7 @@ public class PlanHat implements Tool<Conversation> {
             """.stripLeading();
 
     @Inject
-    @ConfigProperty(name = "sb.planhat.url", defaultValue = "https://api-us4.planhat.com")
+    @ConfigProperty(name = "sb.planhat.appurl", defaultValue = "https://app-us4.planhat.com")
     private String url;
     
     @Inject
