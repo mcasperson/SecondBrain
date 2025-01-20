@@ -107,6 +107,7 @@ $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSH
 $toolModel = "llama3.1"
 $model = "llama3.2"
 $contextWindow = "32768"
+$days="7"
 
 $response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
 
@@ -122,7 +123,7 @@ foreach ($entity in $database.entities) {
 
     echo "Processing $entityName"
 
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=MultiSlackZenGoogle`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=7`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Write a business report based on the slack messages, zendesk tickets, and planhat activities associated with $entityName. Only reference the contents of the google document when it relates to content in the slack messages, zendesk tickets, or planhat activities. You will be penalized for mentioning that there is no google document. If there are no zendesk tickets, say so. If there are no slack messages, say so. If there are no planhat activities, say so. You will be penalized for saying that you will monitor for tickets or messages in future.`" markdn"
+    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=MultiSlackZenGoogle`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Write a business report based on the the last $days days worth of slack messages, zendesk tickets, and planhat activities associated with $entityName. The google document must only be used to add supporting context to the contents of the zen desk tickets, planhat activities, and slcak messaes. You will be penalized for including a general summary of the google document in the report. You will be penalized for mentioning that there is no google document, slack messages, zendesk tickets, or planhat activities. You will be penalized for saying that you will monitor for tickets or messages in future. You will be penalized for for metioning a date range or period covered. You must assume the reader knows the number of days that the report covers`" markdn"
 
     echo "Slack StdOut"
     echo $result.StdOut
