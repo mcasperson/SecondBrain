@@ -122,6 +122,7 @@ public class PlanHat implements Tool<Conversation> {
         return conversations.stream()
                 .filter(conversation -> parsedArgs.getDays() == 0
                         || dateParser.parseDate(conversation.date()).isAfter(ZonedDateTime.now(ZoneOffset.UTC).minusDays(parsedArgs.getDays())))
+                .filter(conversation -> !"ticket".equals(conversation.type()))
                 .map(conversation -> conversation.updateDescriptionAndSnippet(
                         htmlToText.getText(conversation.description()),
                         htmlToText.getText(conversation.snippet())

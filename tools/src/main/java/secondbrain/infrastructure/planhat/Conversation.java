@@ -5,9 +5,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record Conversation(@JsonProperty("_id") String id, String description, String snippet, String date, String companyId, String subject) {
+public record Conversation(@JsonProperty("_id") String id, String description, String snippet, String date, String companyId, String subject, String type) {
     public Conversation updateDescriptionAndSnippet(String description, String snippet) {
-        return new Conversation(id, description, snippet, date, companyId, subject);
+        return new Conversation(id, description, snippet, date, companyId, subject, type);
     }
 
     public String getContent() {
