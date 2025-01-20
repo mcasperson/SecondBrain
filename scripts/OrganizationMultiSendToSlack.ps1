@@ -108,36 +108,45 @@ $toolModel = "llama3.1"
 $model = "llama3.1"
 $contextWindow = "32768"
 
-$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=MultiSlackZenGoogle`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=7`" `"-Dsb.multislackzengoogle.entity=$($args[0])`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Write a new story based on the slack messages, zendesk tickets, and planhat activities associated with $($args[1]). Only reference the contents of the google document when it relates to content in the slack messages, zendesk tickets, or planhat activities. You will be penalized for mentioning that there is no google document. If there are no zendesk tickets, say so. If there are no slack messages, say so. If there are no planhat activities, say so. You will be penalized for saying that you will monitor for tickets or messages in future.`" markdn"
+$url = "https://example.com"
+$response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
+$database = ConvertTo-Yaml $response.Content
 
-echo "Slack StdOut"
-echo $result.StdOut
+$database.entities | For-Each {
+    $entityName = $_.name
+    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=MultiSlackZenGoogle`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=7`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Write a new story based on the slack messages, zendesk tickets, and planhat activities associated with $entityName. Only reference the contents of the google document when it relates to content in the slack messages, zendesk tickets, or planhat activities. You will be penalized for mentioning that there is no google document. If there are no zendesk tickets, say so. If there are no slack messages, say so. If there are no planhat activities, say so. You will be penalized for saying that you will monitor for tickets or messages in future.`" markdn"
 
-#echo "Slack StdErr"
-#echo $result.StdErr
+    echo "Slack StdOut"
+    echo $result.StdOut
 
-if (-not [string]::IsNullOrWhitespace($result.StdOut))
-{
-    $text = "*=== " + $args[1] + " summary ===*`n`n" + $result.StdOut
+    #echo "Slack StdErr"
+    #echo $result.StdErr
 
-    # Replace this URL with your own Slack web hook
-    $uriSlack = $env:SB_SLACK_CUSTOMER_WEBHOOK
-    $body = ConvertTo-Json @{
-        type = "mrkdwn"
-        text = $text
-    }
-
-    echo $text
-
-    try
+    if (-not [string]::IsNullOrWhitespace($result.StdOut))
     {
-        Invoke-RestMethod -uri $uriSlack -Method Post -body $body -ContentType 'application/json' | Out-Null
-    }
-    catch
-    {
-        Write-Error "$( Get-Date ) : Update to Slack went wrong..."
-        Write-Error (Get-FullException $_)
+        $text = "*=== " + $args[1] + " summary ===*`n`n" + $result.StdOut
+
+        # Replace this URL with your own Slack web hook
+        $uriSlack = $env:SB_SLACK_CUSTOMER_WEBHOOK
+        $body = ConvertTo-Json @{
+            type = "mrkdwn"
+            text = $text
+        }
+
+        echo $text
+
+        try
+        {
+            #Invoke-RestMethod -uri $uriSlack -Method Post -body $body -ContentType 'application/json' | Out-Null
+        }
+        catch
+        {
+            Write-Error "$( Get-Date ) : Update to Slack went wrong..."
+            Write-Error (Get-FullException $_)
+        }
     }
 }
+
+
 
 
