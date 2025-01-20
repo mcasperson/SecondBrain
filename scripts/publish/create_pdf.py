@@ -59,8 +59,8 @@ def convert_md_to_pdf(directory, output_pdf):
 
     # Get the current date and time
     now = datetime.now()
-    start_of_month = now.replace(day=1)
-    formatted_date = start_of_month.strftime('%Y-%m-%d')
+    start_of_last_month = (now - timedelta(days=1)).replace(day=1)
+    formatted_date = start_of_last_month.strftime('%Y-%m-%d')
 
     first_day_next_month = (now.replace(day=28) + timedelta(days=4)).replace(day=1)
     last_day_of_month = first_day_next_month - timedelta(days=1)
