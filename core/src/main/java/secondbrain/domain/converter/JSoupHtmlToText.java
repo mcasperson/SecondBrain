@@ -8,6 +8,10 @@ import org.jsoup.Jsoup;
 public class JSoupHtmlToText implements HtmlToText {
     @Override
     public String getText(final String html) {
+        if (StringUtils.isEmpty(html)) {
+            return "";
+        }
+
         final String parsed = Jsoup.parse(html).text();
         return StringUtils.isBlank(parsed) ? html : parsed;
     }
