@@ -106,7 +106,7 @@ $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSH
 
 $toolModel = "llama3.1"
 $model = "llama3.1"
-$contextWindow = "16384"
+$contextWindow = "32768"
 
 $response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
 

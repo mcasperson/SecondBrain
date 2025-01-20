@@ -163,6 +163,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
      * of data. We silently fail for any downstream context that could not be retrieved rather than fail the entire operation.
      */
     private List<RagDocumentContext<Void>> getEntityContext(final Entity entity, final Map<String, String> context, final String prompt, final int days) {
+        if (entity.disabled()) {
+            return List.of();
+        }
+
         final List<RagDocumentContext<Void>> slackContext = entity.slack()
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -234,7 +238,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat) {
+    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat, boolean disabled) {
     }
 }
 
