@@ -23,6 +23,7 @@ import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.planhat.Conversation;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -116,7 +117,10 @@ public class SlackZenGoogle implements Tool<Void> {
                 ? List.of()
                 : Try.of(() -> planHat.getContext(context, prompt, planHatArguments))
                 .recover(e -> List.of())
-                .get();
+                .get()
+                .stream()
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
 
         final List<ToolArgs> slackArguments = List.of(
                 new ToolArgs("days", parsedArgs.getSlackDays()),

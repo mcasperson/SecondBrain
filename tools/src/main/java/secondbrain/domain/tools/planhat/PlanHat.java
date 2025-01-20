@@ -32,7 +32,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
-public class PlanHat implements Tool<Void> {
+public class PlanHat implements Tool<Conversation> {
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of conversations and a question related to the conversations.
@@ -43,6 +43,10 @@ public class PlanHat implements Tool<Void> {
             You will be penalized for answering that the conversation can not be accessed.
             """.stripLeading();
 
+    @Inject
+    @ConfigProperty(name = "sb.planhat.url", defaultValue = "https://api-us4.planhat.com")
+    private String url;
+    
     @Inject
     private Arguments parsedArgs;
 
@@ -98,7 +102,7 @@ public class PlanHat implements Tool<Void> {
     }
 
     @Override
-    public List<RagDocumentContext<Void>> getContext(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
+    public List<RagDocumentContext<Conversation>> getContext(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
         parsedArgs.setInputs(arguments, prompt, context);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
@@ -124,8 +128,8 @@ public class PlanHat implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
-        final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
+    public RagMultiDocumentContext<Conversation> call(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
+        final List<RagDocumentContext<Conversation>> contextList = getContext(context, prompt, arguments);
 
         parsedArgs.setInputs(arguments, prompt, context);
 
@@ -133,7 +137,7 @@ public class PlanHat implements Tool<Void> {
             throw new FailedTool("You must provide a company to query");
         }
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Conversation>> result = Try.of(() -> contextList)
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(modelConfig.getCalculatedModel(context))
@@ -152,14 +156,17 @@ public class PlanHat implements Tool<Void> {
                 .get();
     }
 
-    private RagDocumentContext<Void> getDocumentContext(final Conversation conversation) {
+    private RagDocumentContext<Conversation> getDocumentContext(final Conversation conversation) {
         return Try.of(() -> sentenceSplitter.splitDocument(conversation.getContent(), 10))
-                .map(sentences -> new RagDocumentContext<Void>(
+                .map(sentences -> new RagDocumentContext<Conversation>(
                         getContextLabel(),
                         conversation.getContent(),
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
-                                .collect(Collectors.toList())))
+                                .collect(Collectors.toList()),
+                        conversation.id(),
+                        conversation,
+                        "[PlanHat " + conversation.id() + "](" + conversation.getPublicUrl(url) + ")"))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
                 .recover(e -> new RagDocumentContext<>(
@@ -169,7 +176,7 @@ public class PlanHat implements Tool<Void> {
                 .get();
     }
 
-    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
+    private RagMultiDocumentContext<Conversation> mergeContext(final List<RagDocumentContext<Conversation>> context, final String customModel) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(ragDoc -> promptBuilderSelector
