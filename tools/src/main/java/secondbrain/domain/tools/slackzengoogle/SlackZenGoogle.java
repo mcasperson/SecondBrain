@@ -154,7 +154,7 @@ public class SlackZenGoogle implements Tool<Void> {
                 .collect(ImmutableList.toImmutableList());
 
         if (slackContext.size() + zenContext.size() + planHatContext.size() < parsedArgs.getMinSlackOrZen()) {
-            throw new EmptyContext("No Slack message or ZenDesk tickets found");
+            throw new EmptyContext("No Slack messages, ZenDesk tickets, or PlanHat activities found");
         }
 
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
