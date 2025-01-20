@@ -1,6 +1,7 @@
-import os
 import markdown2
+import os
 from fpdf import FPDF
+
 
 class PDF(FPDF):
     def header(self):
@@ -25,11 +26,18 @@ class PDF(FPDF):
         self.cell(0, 10, title, 0, 1, 'L')
         self.ln(10)
 
+    def frontage_subtitle(self, title):
+        self.set_font('DejaVu', '', 32)
+        self.set_text_color(255, 255, 255)
+        self.cell(0, 15, title, 0, 1, 'L')
+        self.ln(10)
+
     def chapter_body(self, body):
         self.set_font('DejaVu', '', 12)
         self.set_text_color(0, 0, 0)
         self.write_html(body)
         self.ln()
+
 
 def convert_md_to_pdf(directory, output_pdf):
     pdf = PDF()
@@ -39,7 +47,8 @@ def convert_md_to_pdf(directory, output_pdf):
 
     pdf.add_page()
     pdf.image('/home/matthew/Code/SecondBrain/scripts/publish/logo.jpg', x=0, y=0, w=pdf.w, h=pdf.h)
-    pdf.frontage_title('AI of Sauron\nMonthly Customer Digest')
+    pdf.frontage_title('AI of Sauron')
+    pdf.frontage_subtitle('Monthly Customer Digest')
 
     for filename in os.listdir(directory):
         if filename.endswith(".md"):
@@ -52,6 +61,7 @@ def convert_md_to_pdf(directory, output_pdf):
                 pdf.chapter_body(html_content)
 
     pdf.output(output_pdf)
+
 
 if __name__ == "__main__":
     directory = "/home/matthew/.config/JetBrains/IntelliJIdea2024.3/scratches"
