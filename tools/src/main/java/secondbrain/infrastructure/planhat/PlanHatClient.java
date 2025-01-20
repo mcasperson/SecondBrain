@@ -33,4 +33,20 @@ public class PlanHatClient {
                         .get())
                 .get();
     }
+
+    /**
+     * Look up all the responses from a ticket.
+     */
+    @Retry
+    public List<Ticket> getTicketParts(final Client client, final String ticket, final String token) {
+        return Try.withResources(() -> client.target(url + "/tickets/" + ticket + "/parts")
+                        .request()
+                        .header("Authorization", "Bearer " + token)
+                        .header("Accept", MediaType.APPLICATION_JSON)
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response))
+                        .map(r -> List.of(r.readEntity(Ticket[].class)))
+                        .get())
+                .get();
+    }
 }
