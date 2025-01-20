@@ -105,7 +105,7 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
 $toolModel = "llama3.1"
-$model = "llama3.1"
+$model = "llama3.2"
 $contextWindow = "32768"
 
 $response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
