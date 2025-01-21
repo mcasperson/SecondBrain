@@ -128,8 +128,7 @@ public class SlackChannel implements Tool<Void> {
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methodsAsync();
 
-        final Try<ChannelDetails> channelDetails = findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel(), null)
-                .onFailure(error -> System.out.println("Error: " + error));
+        final Try<ChannelDetails> channelDetails = findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel(), null);
 
         if (channelDetails.isFailure()) {
             throw new FailedTool("Channel " + parsedArgs.getChannel() + " not found");
