@@ -127,7 +127,7 @@ mkdir $subDir
 Write-Host "Working in $subDir"
 
 $toolModel = "llama3.1"
-$model = "gemma2:27b"
+$model = "gemma2:9b"
 $contextWindow = "32768"
 $days = "30"
 
