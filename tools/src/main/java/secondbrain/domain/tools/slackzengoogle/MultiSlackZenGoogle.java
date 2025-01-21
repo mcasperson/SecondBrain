@@ -33,10 +33,7 @@ import secondbrain.infrastructure.publicweb.PublicWebClient;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.instanceOf;
@@ -179,7 +176,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             return List.of();
         }
 
-        final List<RagDocumentContext<Void>> slackContext = entity.slack()
+        final List<RagDocumentContext<Void>> slackContext = Objects.requireNonNullElse(entity.slack(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("slackChannel", id), new ToolArgs("days", "" + days)))
@@ -191,7 +188,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .toList();
 
-        final List<RagDocumentContext<Void>> googleContext = entity.googledocs()
+        final List<RagDocumentContext<Void>> googleContext = Objects.requireNonNullElse(entity.googledocs(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("googleDocumentId", id)))
@@ -202,7 +199,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .toList();
 
-        final List<RagDocumentContext<Void>> zenContext = entity.zendesk()
+        final List<RagDocumentContext<Void>> zenContext = Objects.requireNonNullElse(entity.zendesk(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("zenDeskOrganization", id), new ToolArgs("days", "" + days)))
@@ -215,7 +212,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
-        final List<RagDocumentContext<Void>> planHatContext = entity.planhat()
+        final List<RagDocumentContext<Void>> planHatContext = Objects.requireNonNullElse(entity.planhat(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("companyId", id),
