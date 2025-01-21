@@ -75,15 +75,32 @@ def convert_md_to_pdf(directory, output_pdf):
 
     pdf.frontage_dates(f'{formatted_date} to {formatted_end_date}')
 
+    contents = []
     for filename in os.listdir(directory):
-        if filename.endswith(".md"):
-            filepath = os.path.join(directory, filename)
-            with open(filepath, 'r', encoding='utf-8') as file:
-                pdf.add_page()
-                md_content = file.read()
-                html_content = markdown2.markdown(md_content)
-                pdf.chapter_title(os.path.splitext(filename)[0])
-                pdf.chapter_body(html_content)
+        if filename.endswith('.md'):
+            title = os.path.splitext(filename)[0]  # Get file name without extension
+            contents.append({'title': title, 'filename': filename, 'link': pdf.add_link()})
+
+    # Add Table of Contents
+    pdf.add_page()
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font('DejaVu', 'B', 16)
+    pdf.cell(0, 10, 'Table of Contents', 0, 1, 'C')
+    pdf.ln(10)
+    pdf.set_font('DejaVu', '', 12)
+    for content in contents:
+        pdf.cell(0, 10, f'{content['title']}', 0, 1, 'L', link=content['link'])
+    pdf.ln(10)
+
+    for content in contents:
+        filepath = os.path.join(directory, content['filename'])
+        with open(filepath, 'r', encoding='utf-8') as file:
+            pdf.add_page()
+            pdf.set_link(content['link'])
+            md_content = file.read()
+            html_content = markdown2.markdown(md_content)
+            pdf.chapter_title(content['title'])
+            pdf.chapter_body(html_content)
 
     pdf.output(output_pdf)
 
