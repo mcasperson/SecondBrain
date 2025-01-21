@@ -2,11 +2,13 @@ import markdown2
 import os
 from datetime import datetime, timedelta
 from fpdf import FPDF
+import argparse
 
 
 class PDF(FPDF):
     def header(self):
         self.set_font('DejaVu', '', 12)
+        self.set_text_color(0, 0, 0)
         self.cell(0, 10, 'AI of Sauron', 0, 1, 'C')
 
     def footer(self):
@@ -85,6 +87,9 @@ def convert_md_to_pdf(directory, output_pdf):
 
 
 if __name__ == "__main__":
-    directory = "/home/matthew/.config/JetBrains/IntelliJIdea2024.3/scratches"
-    output_pdf = "/home/matthew/Dropbox/output.pdf"
-    convert_md_to_pdf(directory, output_pdf)
+    parser = argparse.ArgumentParser(description='Convert Markdown files to PDF.')
+    parser.add_argument('directory', type=str, help='The directory containing Markdown files.')
+    parser.add_argument('output_pdf', type=str, help='The output PDF file path.')
+
+    args = parser.parse_args()
+    convert_md_to_pdf(args.directory, args.output_pdf)
