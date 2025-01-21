@@ -129,7 +129,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
                 .getOrElseThrow(ex -> new FailedTool("Failed to download or parse the entity directory", ex));
 
-        return entityDirectory.entities()
+        return entityDirectory.getEntities()
                 .stream()
                 .filter(entity -> StringUtils.isBlank(parsedArgs.getEntityName()) || entity.name().equalsIgnoreCase(parsedArgs.getEntityName()))
                 .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.getDays()).stream())
@@ -176,7 +176,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             return List.of();
         }
 
-        final List<RagDocumentContext<Void>> slackContext = Objects.requireNonNullElse(entity.slack(), List.<String>of())
+        final List<RagDocumentContext<Void>> slackContext = entity.getSlack()
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("slackChannel", id), new ToolArgs("days", "" + days)))
@@ -188,7 +188,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .toList();
 
-        final List<RagDocumentContext<Void>> googleContext = Objects.requireNonNullElse(entity.googledocs(), List.<String>of())
+        final List<RagDocumentContext<Void>> googleContext = entity.getGoogleDcos()
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("googleDocumentId", id)))
@@ -199,7 +199,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .toList();
 
-        final List<RagDocumentContext<Void>> zenContext = Objects.requireNonNullElse(entity.zendesk(), List.<String>of())
+        final List<RagDocumentContext<Void>> zenContext = entity.getZenDesk()
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("zenDeskOrganization", id), new ToolArgs("days", "" + days)))
@@ -212,7 +212,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
-        final List<RagDocumentContext<Void>> planHatContext = Objects.requireNonNullElse(entity.planhat(), List.<String>of())
+        final List<RagDocumentContext<Void>> planHatContext = entity.getPlanHat()
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("companyId", id),
@@ -248,10 +248,28 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     record EntityDirectory(List<Entity> entities) {
+        public List<Entity> getEntities() {
+            return Objects.requireNonNullElse(entities, List.of());
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat, boolean disabled) {
+        public List<String> getSlack() {
+            return Objects.requireNonNullElse(slack, List.of());
+        }
+
+        public List<String> getGoogleDcos() {
+            return Objects.requireNonNullElse(googledocs, List.of());
+        }
+
+        public List<String> getZenDesk() {
+            return Objects.requireNonNullElse(zendesk, List.of());
+        }
+
+        public List<String> getPlanHat() {
+            return Objects.requireNonNullElse(planhat, List.of());
+        }
     }
 }
 
