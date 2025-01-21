@@ -70,7 +70,7 @@ Function Invoke-CustomCommand
     {
         $p.Kill($true)
     }
-    else
+    elseif ($p.StandardOutput.Peek() -gt -1)
     {
         $output = $p.StandardOutput.ReadToEnd()
     }
@@ -110,7 +110,7 @@ $toolModel = "llama3.1"
 $model = "llama3.1"
 $contextWindow = "32768"
 
-$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=SlackZenGoogle`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.slack.days=7`" `"-Dsb.google.doc=$($args[2])`" `"-Dsb.slack.channel=$($args[0])`" `"-Dsb.zendesk.organization=$($args[1])`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Provide a summary of the slack messages, zendesk tickets, and planhat activities associated with $($args[1]). Only reference the contents of the google document when it relates to content in the slack messages, zendesk tickets, or planhat activities. You will be penalized for mentioning that there is no google document. If there are no zendesk tickets, say so. If there are no slack messages, say so. If there are no planhat activities, say so. You will be penalized for saying that you will monitor for tickets or messages in future.`" markdn"
+$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=SlackZenGoogle`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.slack.days=7`" `"-Dsb.google.doc=$( $args[2] )`" `"-Dsb.slack.channel=$( $args[0] )`" `"-Dsb.zendesk.organization=$( $args[1] )`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Provide a summary of the slack messages, zendesk tickets, and planhat activities associated with $( $args[1] ). Only reference the contents of the google document when it relates to content in the slack messages, zendesk tickets, or planhat activities. You will be penalized for mentioning that there is no google document. If there are no zendesk tickets, say so. If there are no slack messages, say so. If there are no planhat activities, say so. You will be penalized for saying that you will monitor for tickets or messages in future.`" markdn"
 
 echo "Slack StdOut"
 echo $result.StdOut

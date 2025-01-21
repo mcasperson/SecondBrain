@@ -70,7 +70,7 @@ Function Invoke-CustomCommand
     {
         $p.Kill($true)
     }
-    else
+    elseif ($p.StandardOutput.Peek() -gt -1)
     {
         $output = $p.StandardOutput.ReadToEnd()
     }
@@ -115,7 +115,7 @@ $tempDir = Split-Path -Parent $tempFile.FullName
 # Remove the temporary file
 Remove-Item $tempFile.FullName
 
-$subDir = $tempDir + "/" + $(New-Guid)
+$subDir = $tempDir + "/" + $( New-Guid )
 
 mkdir $subDir
 
@@ -124,15 +124,17 @@ Write-Host "Working in $subDir"
 $toolModel = "llama3.1"
 $model = "llama3.2"
 $contextWindow = "32768"
-$days="30"
+$days = "30"
 
 $response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
 
 # https://github.com/jborean93/PowerShell-Yayaml
 $database = ConvertFrom-Yaml $response.Content
 
-foreach ($entity in $database.entities) {
-    if ($entity.disabled) {
+foreach ($entity in $database.entities)
+{
+    if ($entity.disabled)
+    {
         continue
     }
 
@@ -157,7 +159,7 @@ foreach ($entity in $database.entities) {
     Start-Sleep -Seconds 60
 }
 
-Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$tempDir`" `"$($env:PDF_OUTPUT)`""
+Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$tempDir`" `"$( $env:PDF_OUTPUT )`""
 
 
 

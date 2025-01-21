@@ -76,7 +76,7 @@ Function Invoke-CustomCommand
     {
         $p.Kill($true)
     }
-    else
+    elseif ($p.StandardOutput.Peek() -gt -1)
     {
         $output = $p.StandardOutput.ReadToEnd()
     }
