@@ -47,13 +47,16 @@ class PDF(FPDF):
 
 
 def convert_md_to_pdf(directory, output_pdf):
+    # Get the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
     pdf = PDF()
-    pdf.add_font('DejaVu', '', '/home/matthew/Code/SecondBrain/scripts/publish/fonts/DejaVuSansCondensed.ttf')
-    pdf.add_font('DejaVu', 'B', '/home/matthew/Code/SecondBrain/scripts/publish/fonts/DejaVuSansCondensed-Bold.ttf')
-    pdf.add_font('DejaVu', 'I', '/home/matthew/Code/SecondBrain/scripts/publish/fonts/DejaVuSansCondensed-Oblique.ttf')
+    pdf.add_font('DejaVu', '', os.path.join(script_dir, 'fonts/DejaVuSansCondensed.ttf'))
+    pdf.add_font('DejaVu', 'B', os.path.join(script_dir, 'fonts/DejaVuSansCondensed-Bold.ttf'))
+    pdf.add_font('DejaVu', 'I', os.path.join(script_dir, 'fonts/DejaVuSansCondensed-Oblique.ttf'))
 
     pdf.add_page()
-    pdf.image('/home/matthew/Code/SecondBrain/scripts/publish/logo.jpg', x=0, y=0, w=pdf.w, h=pdf.h)
+    pdf.image(os.path.join(script_dir, 'logo.jpg'), x=0, y=0, w=pdf.w, h=pdf.h)
     pdf.frontage_title('AI of Sauron')
     pdf.frontage_subtitle('Monthly Customer Digest')
 
