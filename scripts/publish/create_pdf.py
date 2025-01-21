@@ -22,20 +22,20 @@ class PDF(FPDF):
         self.ln(10)
 
     def frontage_title(self, title):
-        self.set_font('DejaVu', '', 48)
-        self.set_text_color(255, 255, 255)
+        self.set_font('DejaVu', 'B', 48)
+        self.set_text_color(255, 255, 0)
         self.cell(0, 10, title, 0, 1, 'L')
         self.ln(10)
 
     def frontage_subtitle(self, title):
-        self.set_font('DejaVu', '', 32)
-        self.set_text_color(255, 255, 255)
+        self.set_font('DejaVu', 'B', 32)
+        self.set_text_color(255, 255, 0)
         self.cell(0, 15, title, 0, 1, 'L')
         self.ln(10)
 
     def frontage_dates(self, title):
-        self.set_font('DejaVu', '', 32)
-        self.set_text_color(255, 255, 255)
+        self.set_font('DejaVu', 'B', 32)
+        self.set_text_color(255, 255, 0)
         self.cell(0, 0, title, 0, 1, 'L')
         self.ln(10)
 

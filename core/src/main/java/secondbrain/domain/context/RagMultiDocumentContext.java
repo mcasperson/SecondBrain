@@ -94,6 +94,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                 .trim()
                 + System.lineSeparator()
                 + System.lineSeparator()
+                + "References:" + System.lineSeparator()
                 + lookupsToString(lookups);
 
         final int annotationIds = annotations.stream().map(RagSentenceAndOriginal::id).collect(Collectors.toSet()).size();
