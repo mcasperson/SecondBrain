@@ -177,25 +177,34 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .get();
     }
 
+    /**
+     * If there is no google doc to include in the prompt, make a note in the system prompt to ignore any reference to google docs.
+     */
     private String getAdditionalGoogleDocsInstructions(final List<RagDocumentContext<Void>> ragContext) {
         if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(googleDocs.getContextLabel()))) {
-            return "No " + googleDocs.getContextLabel() + " are available. You must ignore any references to " + googleDocs.getContextLabel() + " in the prompt.";
+            return "No " + googleDocs.getContextLabel() + " are available. You will be penalized for referencing any " + googleDocs.getContextLabel() + " in the response.";
         }
 
         return "";
     }
 
+    /**
+     * If there are no slack messages to include in the prompt, make a note in the system prompt to ignore any reference to slack messages.
+     */
     private String getAdditionalSlackInstructions(final List<RagDocumentContext<Void>> ragContext) {
         if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(slackChannel.getContextLabel()))) {
-            return "No " + slackChannel.getContextLabel() + " are available. You must ignore any references to  " + slackChannel.getContextLabel() + " in the prompt.";
+            return "No " + slackChannel.getContextLabel() + " are available. You will be penalized for referencing any " + slackChannel.getContextLabel() + " in the response.";
         }
 
         return "";
     }
 
+    /**
+     * If there are no planhat activities to include in the prompt, make a note in the system prompt to ignore any reference to planhat activities.
+     */
     private String getAdditionalPlanHatInstructions(final List<RagDocumentContext<Void>> ragContext) {
         if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(planHat.getContextLabel()))) {
-            return "No " + planHat.getContextLabel() + " are available. You must ignore any references to " + planHat.getContextLabel() + " in the prompt.";
+            return "No " + planHat.getContextLabel() + " are available. You will be penalized for referencing any " + planHat.getContextLabel() + " in the response.";
         }
 
         return "";
