@@ -67,4 +67,6 @@ public interface Tool<T> {
     RagMultiDocumentContext<T> call(Map<String, String> context,
                                     String prompt,
                                     List<ToolArgs> arguments);
+
+    String getContextLabel();
 }

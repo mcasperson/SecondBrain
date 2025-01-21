@@ -45,4 +45,9 @@ public class SmokeTest implements Tool<Void> {
             final List<ToolArgs> arguments) {
         return new RagMultiDocumentContext<>("Test succeeded!");
     }
+
+    @Override
+    public String getContextLabel() {
+        return "Unused";
+    }
 }

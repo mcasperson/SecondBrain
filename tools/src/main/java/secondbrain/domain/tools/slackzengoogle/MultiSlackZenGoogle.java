@@ -142,17 +142,27 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
-                .map(contextList -> validateList.throwIfEmpty(contextList))
+
+
+        final List<RagDocumentContext<Void>> ragContext = getContext(context, prompt, arguments);
+
+        if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(googleDocs.getContextLabel()))) {
+
+        }
+
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> validateList.throwIfEmpty(ragContext))
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
-                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
+                .map(multiRagDoc -> multiRagDoc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(modelConfig.getCalculatedModel(context))
                         .buildFinalPrompt(
-                                INSTRUCTIONS,
+                                INSTRUCTIONS
+                                    + getAdditionalSlackInstructions(ragContext)
+                                    + getAdditionalPlanHatInstructions(ragContext)
+                                    + getAdditionalGoogleDocsInstructions(ragContext),
                                 // I've opted to get the end of the document if it is larger than the context window.
                                 // The end of the document is typically given more weight by LLMs, and so any long
                                 // document being processed should place the most relevant content towards the end.
-                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
+                                multiRagDoc.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllama(
                         ragDoc,
@@ -165,6 +175,35 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         API.Case(API.$(instanceOf(EmptyList.class)), ex -> new EmptyContext("No ZenDesk tickets, Slack messages, or PlanHat activities found.")),
                         API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
+    }
+
+    private String getAdditionalGoogleDocsInstructions(final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(googleDocs.getContextLabel()))) {
+            return "No " + googleDocs.getContextLabel() + " are available. You must ignore any references to " + googleDocs.getContextLabel() + " in the prompt.";
+        }
+
+        return "";
+    }
+
+    private String getAdditionalSlackInstructions(final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(slackChannel.getContextLabel()))) {
+            return "No " + slackChannel.getContextLabel() + " are available. You must ignore any references to  " + slackChannel.getContextLabel() + " in the prompt.";
+        }
+
+        return "";
+    }
+
+    private String getAdditionalPlanHatInstructions(final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(planHat.getContextLabel()))) {
+            return "No " + planHat.getContextLabel() + " are available. You must ignore any references to " + planHat.getContextLabel() + " in the prompt.";
+        }
+
+        return "";
+    }
+
+    @Override
+    public String getContextLabel() {
+        return "Unused";
     }
 
     /**

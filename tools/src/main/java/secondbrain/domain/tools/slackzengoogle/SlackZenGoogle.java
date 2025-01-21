@@ -200,6 +200,11 @@ public class SlackZenGoogle implements Tool<Void> {
                 .get();
     }
 
+    @Override
+    public String getContextLabel() {
+        return "Unused";
+    }
+
     private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
         return new RagMultiDocumentContext<>(
                 context.stream()

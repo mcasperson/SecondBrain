@@ -52,4 +52,9 @@ public class HelloWorld implements Tool<Void> {
 
         return new RagMultiDocumentContext<>(arguments.getFirst().argValue());
     }
+
+    @Override
+    public String getContextLabel() {
+        return "Unused";
+    }
 }
