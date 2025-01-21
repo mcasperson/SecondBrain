@@ -127,7 +127,7 @@ mkdir $subDir
 Write-Host "Working in $subDir"
 
 $toolModel = "llama3.1"
-$model = "gemma2:9b"
+$model = "mistral-nemo"
 
 # Consider using K/V cache quanisation to support larger context windows with the following env vars:
 # OLLAMA_KV_CACHE_TYPE="q8_0"
