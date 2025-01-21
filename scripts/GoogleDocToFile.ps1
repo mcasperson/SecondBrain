@@ -72,13 +72,18 @@ Function Invoke-CustomCommand
         }
     }
 
+    if ($p.StandardOutput.Peek() -gt -1)
+    {
+        $output = $p.StandardOutput.ReadToEnd()
+    }
+    else
+    {
+        $output = ""
+    }
+
     if ($processTimeout -le 0)
     {
         $p.Kill($true)
-    }
-    elseif ($p.StandardOutput.Peek() -gt -1)
-    {
-        $output = $p.StandardOutput.ReadToEnd()
     }
 
     $executionResults = [pscustomobject]@{
