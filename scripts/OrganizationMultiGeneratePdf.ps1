@@ -66,11 +66,13 @@ Function Invoke-CustomCommand
         }
     }
 
-    $output = $p.StandardOutput.ReadToEnd()
-
     if ($processTimeout -le 0)
     {
         $p.Kill($true)
+    }
+    else
+    {
+        $output = $p.StandardOutput.ReadToEnd()
     }
 
     $executionResults = [pscustomobject]@{
@@ -150,6 +152,9 @@ foreach ($entity in $database.entities) {
     {
         Set-Content -Path "$subDir/$entityName.md"  -Value $result.StdOut
     }
+
+    # Rate limits for services like Slack need to be respected
+    Start-Sleep -Seconds 60
 }
 
 Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$tempDir`" `"$($env:PDF_OUTPUT)`""

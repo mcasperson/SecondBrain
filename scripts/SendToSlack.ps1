@@ -57,11 +57,13 @@ Function Invoke-CustomCommand
         Start-Sleep -m 50
     }
 
-    $output = $p.StandardOutput.ReadToEnd()
-
     if ($processTimeout -le 0)
     {
         $p.Kill($true)
+    }
+    else
+    {
+        $output = $p.StandardOutput.ReadToEnd()
     }
 
     $executionResults = [pscustomobject]@{

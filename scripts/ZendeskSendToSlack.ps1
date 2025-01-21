@@ -66,11 +66,14 @@ Function Invoke-CustomCommand
             Write-Host "Still running... $( $processTimeout / 1000 ) seconds left"
         }
     }
-    $output = $p.StandardOutput.ReadToEnd()
 
     if ($processTimeout -le 0)
     {
         $p.Kill($true)
+    }
+    else
+    {
+        $output = $p.StandardOutput.ReadToEnd()
     }
 
     $executionResults = [pscustomobject]@{

@@ -66,11 +66,13 @@ Function Invoke-CustomCommand
         }
     }
 
-    $output = $p.StandardOutput.ReadToEnd()
-
     if ($processTimeout -le 0)
     {
         $p.Kill($true)
+    }
+    else
+    {
+        $output = $p.StandardOutput.ReadToEnd()
     }
 
     $executionResults = [pscustomobject]@{
