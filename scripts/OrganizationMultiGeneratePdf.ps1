@@ -122,7 +122,7 @@ mkdir $subDir
 Write-Host "Working in $subDir"
 
 $toolModel = "llama3.1"
-$model = "llama3.2"
+$model = "mistral-nemo"
 $contextWindow = "32768"
 $days = "30"
 
