@@ -14,6 +14,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
@@ -245,14 +246,18 @@ public class SlackChannel implements Tool<Void> {
                 .excludeArchived(true)
                 .cursor(cursor)).get());
 
-        if (response.isSuccess()) {
-            final Optional<ChannelDetails> id = getChannelId(response.get(), channel);
-            return id
-                    .map(Try::success)
-                    .orElseGet(() -> findChannelId(client, accessToken, channel, response.get().getResponseMetadata().getNextCursor()));
-        }
-
-        return Try.failure(new RuntimeException("Failed to get channels"));
+        return response
+                // try to get the channel
+                .map(r -> getChannelId(r, channel))
+                // this fails if nothing was returned
+                .map(Optional::get)
+                // if we fail, we try to get the next page
+                .recoverWith(ex -> findChannelId(
+                        client,
+                        accessToken,
+                        channel,
+                        // the cursor must be a non-empty string to do a recursive call
+                        validateString.throwIfEmpty(response.get().getResponseMetadata().getNextCursor())));
     }
 
 
