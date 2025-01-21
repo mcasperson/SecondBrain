@@ -32,6 +32,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.slack.SlackClient;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -89,6 +90,9 @@ public class SlackChannel implements Tool<Void> {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private SlackClient slackClient;
+
     @Override
     public String getName() {
         return SlackChannel.class.getSimpleName();
@@ -128,7 +132,7 @@ public class SlackChannel implements Tool<Void> {
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methodsAsync();
 
-        final Try<ChannelDetails> channelDetails = findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel(), null);
+        final Try<ChannelDetails> channelDetails = slackClient.findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel(), null);
 
         if (channelDetails.isFailure()) {
             throw new FailedTool("Channel " + parsedArgs.getChannel() + " not found");
@@ -196,15 +200,6 @@ public class SlackChannel implements Tool<Void> {
                 .get();
     }
 
-
-    private Optional<ChannelDetails> getChannelId(final ConversationsListResponse response, final String channel) {
-        return response.getChannels()
-                .stream()
-                .filter(c -> c.getName().equals(channel))
-                .map(c -> new ChannelDetails(channel, c.getId(), c.getContextTeamId()))
-                .findFirst();
-    }
-
     private RagDocumentContext<Void> getDocumentContext(final String document, final ChannelDetails channelDetails) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 // Strip out any URLs from the sentences
@@ -230,33 +225,6 @@ public class SlackChannel implements Tool<Void> {
                 .stream()
                 .map(Message::getText)
                 .reduce("", (a, b) -> a + "\n" + b);
-    }
-
-    private Try<ChannelDetails> findChannelId(
-            final AsyncMethodsClient client,
-            final String accessToken,
-            final String channel,
-            final String cursor) {
-
-        final Try<ConversationsListResponse> response = Try.of(() -> client.conversationsList(r -> r
-                .token(accessToken)
-                .limit(1000)
-                .types(List.of(ConversationType.PUBLIC_CHANNEL))
-                .excludeArchived(true)
-                .cursor(cursor)).get());
-
-        return response
-                // try to get the channel
-                .map(r -> getChannelId(r, channel))
-                // this fails if nothing was returned
-                .map(Optional::get)
-                // if we fail, we try to get the next page
-                .recoverWith(ex -> findChannelId(
-                        client,
-                        accessToken,
-                        channel,
-                        // the cursor must be a non-empty string to do a recursive call
-                        validateString.throwIfEmpty(response.get().getResponseMetadata().getNextCursor())));
     }
 
 
