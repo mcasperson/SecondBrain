@@ -3,48 +3,49 @@ import os
 from datetime import datetime, timedelta
 from fpdf import FPDF
 import argparse
+from fpdf.enums import XPos, YPos
 
 
 class PDF(FPDF):
     def header(self):
         self.set_font('DejaVu', '', 12)
         self.set_text_color(0, 0, 0)
-        self.cell(0, 10, 'AI of Sauron', 0, 1, 'C')
+        self.cell(0, 10, 'AI of Sauron', 0, align = 'C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     def footer(self):
         self.set_y(-15)
         self.set_font('DejaVu', '', 8)
         self.set_text_color(0, 0, 0)
-        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+        self.cell(0, 10, f'Page {self.page_no()}', 0, align ='C', new_x=XPos.RIGHT, new_y=YPos.TOP)
 
     def chapter_title(self, title):
         self.set_font('DejaVu', 'B', 24)
         self.set_text_color(0, 0, 0)
-        self.cell(0, 10, title, 0, 1, 'L')
+        self.cell(0, 10, title, 0, align = 'L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.ln(10)
 
     def frontage_title(self, title):
         self.set_font('DejaVu', 'B', 48)
         self.set_text_color(255, 255, 0)
-        self.cell(0, 10, title, 0, 1, 'L')
+        self.cell(0, 10, title, 0, align ='L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.ln(10)
 
     def frontage_subtitle(self, title):
         self.set_font('DejaVu', 'B', 32)
         self.set_text_color(255, 255, 0)
-        self.cell(0, 15, title, 0, 1, 'L')
+        self.cell(0, 15, title, 0, align = 'L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.ln(10)
 
     def frontage_dates(self, title):
         self.set_font('DejaVu', 'B', 32)
         self.set_text_color(255, 255, 0)
-        self.cell(0, 0, title, 0, 1, 'L')
+        self.cell(0, 0, title, 0, align = 'L', new_x=XPos.RIGHT, new_y=YPos.TOP)
         self.ln(10)
 
     def chapter_body(self, body):
         self.set_font('DejaVu', '', 12)
         self.set_text_color(0, 0, 0)
-        self.write_html(body)
+        self.write_html(body, ul_bullet_char="•", li_prefix_color=(0, 0, 0))
         self.ln()
 
 
@@ -53,9 +54,9 @@ def convert_md_to_pdf(directory, output_pdf):
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     pdf = PDF()
-    pdf.add_font('DejaVu', '', os.path.join(script_dir, 'fonts/DejaVuSansCondensed.ttf'))
-    pdf.add_font('DejaVu', 'B', os.path.join(script_dir, 'fonts/DejaVuSansCondensed-Bold.ttf'))
-    pdf.add_font('DejaVu', 'I', os.path.join(script_dir, 'fonts/DejaVuSansCondensed-Oblique.ttf'))
+    pdf.add_font('DejaVu', '', os.path.join(script_dir, 'fonts/roboto/Roboto-Regular.ttf'))
+    pdf.add_font('DejaVu', 'B', os.path.join(script_dir, 'fonts/roboto/Roboto-Bold.ttf'))
+    pdf.add_font('DejaVu', 'I', os.path.join(script_dir, 'fonts/roboto/Roboto-Italic.ttf'))
 
     pdf.add_page()
     pdf.image(os.path.join(script_dir, 'logo.jpg'), x=0, y=0, w=pdf.w, h=pdf.h)
