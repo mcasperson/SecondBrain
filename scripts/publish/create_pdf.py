@@ -18,7 +18,7 @@ class PDF(FPDF):
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
     def chapter_title(self, title):
-        self.set_font('DejaVu', '', 12)
+        self.set_font('DejaVu', 'B', 24)
         self.set_text_color(0, 0, 0)
         self.cell(0, 10, title, 0, 1, 'L')
         self.ln(10)
