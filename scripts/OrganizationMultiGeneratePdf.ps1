@@ -164,7 +164,7 @@ foreach ($entity in $database.entities)
     Start-Sleep -Seconds 60
 }
 
-$pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$tempDir`" `"$( $env:PDF_OUTPUT )`""
+$pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$subDir`" `"$( $env:PDF_OUTPUT )`""
 
 Write-Host $pdfResult.StdOut
 Write-Host $pdfResult.StdErr
