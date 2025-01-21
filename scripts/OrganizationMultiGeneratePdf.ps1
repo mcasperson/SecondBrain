@@ -70,7 +70,7 @@ Function Invoke-CustomCommand
 
     if ($processTimeout -le 0)
     {
-        $p.Kill()
+        $p.Kill($true)
     }
 
     $executionResults = [pscustomobject]@{
