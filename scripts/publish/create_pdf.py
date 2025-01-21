@@ -57,6 +57,7 @@ def convert_md_to_pdf(directory, output_pdf):
     pdf.add_font('DejaVu', '', os.path.join(script_dir, 'fonts/roboto/Roboto-Regular.ttf'))
     pdf.add_font('DejaVu', 'B', os.path.join(script_dir, 'fonts/roboto/Roboto-Bold.ttf'))
     pdf.add_font('DejaVu', 'I', os.path.join(script_dir, 'fonts/roboto/Roboto-Italic.ttf'))
+    pdf.add_font('DejaVu', 'BI', os.path.join(script_dir, 'fonts/roboto/Roboto-BoldItalic.ttf'))
 
     pdf.add_page()
     pdf.image(os.path.join(script_dir, 'logo.jpg'), x=0, y=0, w=pdf.w, h=pdf.h)
