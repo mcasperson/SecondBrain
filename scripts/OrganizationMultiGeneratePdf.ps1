@@ -128,6 +128,10 @@ Write-Host "Working in $subDir"
 
 $toolModel = "llama3.1"
 $model = "gemma2:9b"
+
+# Consider using K/V cache quanisation to support larger context windows with the following env vars:
+# OLLAMA_KV_CACHE_TYPE="q8_0"
+# OLLAMA_FLASH_ATTENTION=1
 $contextWindow = "32768"
 $days = "30"
 
