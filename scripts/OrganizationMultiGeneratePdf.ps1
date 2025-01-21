@@ -164,7 +164,15 @@ foreach ($entity in $database.entities)
     Start-Sleep -Seconds 60
 }
 
-Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$tempDir`" `"$( $env:PDF_OUTPUT )`""
+$pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$tempDir`" `"$( $env:PDF_OUTPUT )`""
+
+Write-Host $pdfResult.StdOut
+Write-Host $pdfResult.StdErr
+
+if ($pdfResult.ExitCode -ne 0)
+{
+    Write-Error "Failed to create PDF"
+}
 
 
 
