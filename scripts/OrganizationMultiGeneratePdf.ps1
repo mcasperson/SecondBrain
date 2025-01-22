@@ -157,6 +157,8 @@ foreach ($entity in $database.entities)
     #echo "Slack StdErr"
     #echo $result.StdErr
 
+    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
+
     if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("EmptyContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
     {
         Set-Content -Path "$subDir/$entityName.md"  -Value $result.StdOut
