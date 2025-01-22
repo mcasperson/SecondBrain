@@ -225,7 +225,7 @@ public class DirectoryScan implements Tool<Void> {
 
         final String summary = localStorage.getOrPutString(
                 this.getName(),
-                DigestUtils.sha256Hex(contents),
+                "File",
                 DigestUtils.sha256Hex(prompt),
                 () -> getFileSummary(prompt, contents, parsedArgs));
 

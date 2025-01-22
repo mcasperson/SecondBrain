@@ -7,12 +7,15 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
+import secondbrain.domain.json.JsonDeserializer;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 
 import java.util.Optional;
@@ -31,6 +34,12 @@ public class OllamaClient {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private LocalStorage localStorage;
+
+    @Inject
+    private JsonDeserializer jsonDeserializer;
 
     public OllamaResponse callOllama(final Client client, final OllamaGenerateBody body) {
         logger.info(body.prompt());
@@ -76,5 +85,20 @@ public class OllamaClient {
                         client,
                         new OllamaGenerateBodyWithContext<>(model, contextWindow, ragDoc, false)))
                 .get();
+    }
+
+    public <T> RagMultiDocumentContext<T> callOllamaWithCache(
+            final RagMultiDocumentContext<T> ragDoc,
+            final String model,
+            final String tool,
+            @Nullable final Integer contextWindow) {
+        final String promptHash = DigestUtils.sha256Hex(ragDoc.combinedDocument() + model + contextWindow);
+
+        final String result = localStorage.getOrPutString(tool, "LLM", promptHash, () -> {
+            final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
+            return response.combinedDocument();
+        });
+
+        return ragDoc.updateDocument(result);
     }
 }

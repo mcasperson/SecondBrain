@@ -40,7 +40,7 @@ public class SlackClient {
         final String hash = DigestUtils.sha256Hex(accessToken + channel + SALT);
 
         // get the result from the cache
-        return Try.of(() -> localStorage.getString(SlackClient.class.getSimpleName(), "API", hash))
+        return Try.of(() -> localStorage.getString(SlackClient.class.getSimpleName(), "SlackAPI", hash))
                 // a cache miss means the string is empty, so we throw an exception
                 .map(validateString::throwIfEmpty)
                 // a cache hit means we deserialize the result
@@ -49,7 +49,7 @@ public class SlackClient {
                 .recoverWith(ex -> findChannelIdFromApi(client, accessToken, channel, cursor)
                         .onSuccess(r -> localStorage.putString(
                                 SlackClient.class.getSimpleName(),
-                                "API",
+                                "SlackAPI",
                                 hash,
                                 jsonDeserializer.serialize(r))));
 

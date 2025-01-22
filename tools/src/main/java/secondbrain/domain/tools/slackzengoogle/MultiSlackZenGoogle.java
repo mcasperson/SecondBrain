@@ -16,7 +16,6 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.EmptyContext;
 import secondbrain.domain.exceptions.EmptyList;
-import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
@@ -31,8 +30,6 @@ import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.publicweb.PublicWebClient;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,13 +41,13 @@ import static com.google.common.base.Predicates.instanceOf;
  * <p>
  * entities:
  * - name: Entity1
- *   zendesk: [1235484986222]
- *   slack: [account-entity1]
- *   googledocs: [2eoub28oeyb2o8yevb82oev2e]
+ * zendesk: [1235484986222]
+ * slack: [account-entity1]
+ * googledocs: [2eoub28oeyb2o8yevb82oev2e]
  * - name: Entity2
- *   zendesk: [789858675]
- *   slack: [account-entity2]
- *   googledocs: [789752yoyf2eo86fe2o86ef982o6ef]
+ * zendesk: [789858675]
+ * slack: [account-entity2]
+ * googledocs: [789752yoyf2eo86fe2o86ef982o6ef]
  */
 @ApplicationScoped
 public class MultiSlackZenGoogle implements Tool<Void> {
@@ -142,8 +139,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-
-
         final List<RagDocumentContext<Void>> ragContext = getContext(context, prompt, arguments);
 
         if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(googleDocs.getContextLabel()))) {
@@ -156,17 +151,18 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .getPromptBuilder(modelConfig.getCalculatedModel(context))
                         .buildFinalPrompt(
                                 INSTRUCTIONS
-                                    + getAdditionalSlackInstructions(ragContext)
-                                    + getAdditionalPlanHatInstructions(ragContext)
-                                    + getAdditionalGoogleDocsInstructions(ragContext),
+                                        + getAdditionalSlackInstructions(ragContext)
+                                        + getAdditionalPlanHatInstructions(ragContext)
+                                        + getAdditionalGoogleDocsInstructions(ragContext),
                                 // I've opted to get the end of the document if it is larger than the context window.
                                 // The end of the document is typically given more weight by LLMs, and so any long
                                 // document being processed should place the most relevant content towards the end.
                                 multiRagDoc.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(
+                .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
                         modelConfig.getCalculatedModel(context),
+                        getName(),
                         modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
@@ -302,7 +298,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat, boolean disabled) {
+    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat,
+                  boolean disabled) {
         public List<String> getSlack() {
             return Objects.requireNonNullElse(slack, List.of());
         }
