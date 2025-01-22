@@ -7,7 +7,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang.StringUtils;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tools.slack.ChannelDetails;
@@ -18,6 +17,7 @@ import java.util.Optional;
 
 @ApplicationScoped
 public class SlackClient {
+    private static final String SALT = "YrZqGXwuNKEeWRN1sTA9";
     @Inject
     private ValidateString validateString;
 
@@ -37,7 +37,7 @@ public class SlackClient {
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
          */
-        final String hash = DigestUtils.sha256Hex(accessToken + channel);
+        final String hash = DigestUtils.sha256Hex(accessToken + channel + SALT);
 
         // get the result from the cache
         return Try.of(() -> localStorage.getString(SlackClient.class.getSimpleName(), "API", hash))
