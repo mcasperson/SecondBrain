@@ -155,7 +155,7 @@ foreach ($entity in $database.entities)
     #echo "Slack StdErr"
     #echo $result.StdErr
 
-    if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("No ZenDesk tickets, Slack messages, or PlanHat activities found.") -and -not $result.StdOut.Contains("Failed to call Ollama"))
+    if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("EmptyContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
     {
         Set-Content -Path "$subDir/$entityName.md"  -Value $result.StdOut
     }
