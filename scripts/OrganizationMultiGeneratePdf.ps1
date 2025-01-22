@@ -70,16 +70,18 @@ Function Invoke-CustomCommand
     {
         $p.Kill($true)
         $output = ""
+        $exitCode = -1
     }
     else
     {
         $output = $p.StandardOutput.ReadToEnd()
+        $exitCode = $p.ExitCode
     }
 
     $executionResults = [pscustomobject]@{
         StdOut = $output
         StdErr = $global:stdErr.ToString()
-        ExitCode = $p.ExitCode
+        ExitCode = $exitCode
     }
 
     return $executionResults
