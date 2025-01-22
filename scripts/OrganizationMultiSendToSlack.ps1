@@ -66,11 +66,18 @@ Function Invoke-CustomCommand
         }
     }
 
-    $output = $p.StandardOutput.ReadToEnd()
+    if ($p.StandardOutput.Peek() -gt -1)
+    {
+        $output = $p.StandardOutput.ReadToEnd()
+    }
+    else
+    {
+        $output = ""
+    }
 
     if ($processTimeout -le 0)
     {
-        $p.Kill()
+        $p.Kill($true)
     }
 
     $executionResults = [pscustomobject]@{
@@ -107,15 +114,17 @@ $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSH
 $toolModel = "llama3.1"
 $model = "llama3.2"
 $contextWindow = "32768"
-$days="7"
+$days = "7"
 
 $response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
 
 # https://github.com/jborean93/PowerShell-Yayaml
 $database = ConvertFrom-Yaml $response.Content
 
-foreach ($entity in $database.entities) {
-    if ($entity.disabled) {
+foreach ($entity in $database.entities)
+{
+    if ($entity.disabled)
+    {
         continue
     }
 

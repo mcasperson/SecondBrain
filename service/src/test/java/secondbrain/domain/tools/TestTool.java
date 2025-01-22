@@ -43,4 +43,9 @@ public class TestTool implements Tool<Void> {
             final List<ToolArgs> arguments) {
         return new RagMultiDocumentContext<>("");
     }
+
+    @Override
+    public String getContextLabel() {
+        return "Unused";
+    }
 }

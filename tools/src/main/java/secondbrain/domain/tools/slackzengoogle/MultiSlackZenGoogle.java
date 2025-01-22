@@ -33,10 +33,7 @@ import secondbrain.infrastructure.publicweb.PublicWebClient;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.instanceOf;
@@ -132,7 +129,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
                 .getOrElseThrow(ex -> new FailedTool("Failed to download or parse the entity directory", ex));
 
-        return entityDirectory.entities()
+        return entityDirectory.getEntities()
                 .stream()
                 .filter(entity -> StringUtils.isBlank(parsedArgs.getEntityName()) || entity.name().equalsIgnoreCase(parsedArgs.getEntityName()))
                 .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.getDays()).stream())
@@ -145,17 +142,27 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
-                .map(contextList -> validateList.throwIfEmpty(contextList))
+
+
+        final List<RagDocumentContext<Void>> ragContext = getContext(context, prompt, arguments);
+
+        if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(googleDocs.getContextLabel()))) {
+
+        }
+
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> validateList.throwIfEmpty(ragContext))
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
-                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
+                .map(multiRagDoc -> multiRagDoc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(modelConfig.getCalculatedModel(context))
                         .buildFinalPrompt(
-                                INSTRUCTIONS,
+                                INSTRUCTIONS
+                                    + getAdditionalSlackInstructions(ragContext)
+                                    + getAdditionalPlanHatInstructions(ragContext)
+                                    + getAdditionalGoogleDocsInstructions(ragContext),
                                 // I've opted to get the end of the document if it is larger than the context window.
                                 // The end of the document is typically given more weight by LLMs, and so any long
                                 // document being processed should place the most relevant content towards the end.
-                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
+                                multiRagDoc.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllama(
                         ragDoc,
@@ -171,6 +178,44 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     /**
+     * If there is no google doc to include in the prompt, make a note in the system prompt to ignore any reference to google docs.
+     */
+    private String getAdditionalGoogleDocsInstructions(final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(googleDocs.getContextLabel()))) {
+            return "No " + googleDocs.getContextLabel() + " are available. You will be penalized for referencing any " + googleDocs.getContextLabel() + " in the response.";
+        }
+
+        return "";
+    }
+
+    /**
+     * If there are no slack messages to include in the prompt, make a note in the system prompt to ignore any reference to slack messages.
+     */
+    private String getAdditionalSlackInstructions(final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(slackChannel.getContextLabel()))) {
+            return "No " + slackChannel.getContextLabel() + " are available. You will be penalized for referencing any " + slackChannel.getContextLabel() + " in the response.";
+        }
+
+        return "";
+    }
+
+    /**
+     * If there are no planhat activities to include in the prompt, make a note in the system prompt to ignore any reference to planhat activities.
+     */
+    private String getAdditionalPlanHatInstructions(final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(planHat.getContextLabel()))) {
+            return "No " + planHat.getContextLabel() + " are available. You will be penalized for referencing any " + planHat.getContextLabel() + " in the response.";
+        }
+
+        return "";
+    }
+
+    @Override
+    public String getContextLabel() {
+        return "Unused";
+    }
+
+    /**
      * Try and get all the downstream context. Note that this tool is a long-running operation that attempts to access a lot
      * of data. We silently fail for any downstream context that could not be retrieved rather than fail the entire operation.
      */
@@ -179,7 +224,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             return List.of();
         }
 
-        final List<RagDocumentContext<Void>> slackContext = entity.slack()
+        final List<RagDocumentContext<Void>> slackContext = entity.getSlack()
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("slackChannel", id), new ToolArgs("days", "" + days)))
@@ -191,7 +236,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .toList();
 
-        final List<RagDocumentContext<Void>> googleContext = entity.googledocs()
+        final List<RagDocumentContext<Void>> googleContext = entity.getGoogleDcos()
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("googleDocumentId", id)))
@@ -202,7 +247,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .toList();
 
-        final List<RagDocumentContext<Void>> zenContext = entity.zendesk()
+        final List<RagDocumentContext<Void>> zenContext = entity.getZenDesk()
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("zenDeskOrganization", id), new ToolArgs("days", "" + days)))
@@ -215,7 +260,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
-        final List<RagDocumentContext<Void>> planHatContext = entity.planhat()
+        final List<RagDocumentContext<Void>> planHatContext = entity.getPlanHat()
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("companyId", id),
@@ -251,10 +296,28 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     record EntityDirectory(List<Entity> entities) {
+        public List<Entity> getEntities() {
+            return Objects.requireNonNullElse(entities, List.of());
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat, boolean disabled) {
+        public List<String> getSlack() {
+            return Objects.requireNonNullElse(slack, List.of());
+        }
+
+        public List<String> getGoogleDcos() {
+            return Objects.requireNonNullElse(googledocs, List.of());
+        }
+
+        public List<String> getZenDesk() {
+            return Objects.requireNonNullElse(zendesk, List.of());
+        }
+
+        public List<String> getPlanHat() {
+            return Objects.requireNonNullElse(planhat, List.of());
+        }
     }
 }
 

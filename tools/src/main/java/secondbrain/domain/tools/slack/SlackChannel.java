@@ -1,6 +1,7 @@
 package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
+import com.slack.api.methods.AsyncMethodsClient;
 import com.slack.api.methods.MethodsClient;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
@@ -13,6 +14,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
@@ -30,6 +32,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.slack.SlackClient;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -87,6 +90,9 @@ public class SlackChannel implements Tool<Void> {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private SlackClient slackClient;
+
     @Override
     public String getName() {
         return SlackChannel.class.getSimpleName();
@@ -124,10 +130,9 @@ public class SlackChannel implements Tool<Void> {
                 .toString();
 
         // you can get this instance via ctx.client() in a Bolt app
-        var client = Slack.getInstance().methods();
+        var client = Slack.getInstance().methodsAsync();
 
-        final Try<ChannelDetails> channelDetails = findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel(), null)
-                .onFailure(error -> System.out.println("Error: " + error));
+        final Try<ChannelDetails> channelDetails = slackClient.findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel(), null);
 
         if (channelDetails.isFailure()) {
             throw new FailedTool("Channel " + parsedArgs.getChannel() + " not found");
@@ -137,7 +142,7 @@ public class SlackChannel implements Tool<Void> {
                 .mapTry(chanId -> client.conversationsHistory(r -> r
                         .token(parsedArgs.getAccessToken())
                         .channel(chanId.channelId())
-                        .oldest(oldest)))
+                        .oldest(oldest)).get())
                 .map(this::conversationsToText)
                 .onFailure(error -> System.out.println("Error: " + error));
 
@@ -195,15 +200,6 @@ public class SlackChannel implements Tool<Void> {
                 .get();
     }
 
-
-    private Optional<ChannelDetails> getChannelId(final ConversationsListResponse response, final String channel) {
-        return response.getChannels()
-                .stream()
-                .filter(c -> c.getName().equals(channel))
-                .map(c -> new ChannelDetails(channel, c.getId(), c.getContextTeamId()))
-                .findFirst();
-    }
-
     private RagDocumentContext<Void> getDocumentContext(final String document, final ChannelDetails channelDetails) {
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 // Strip out any URLs from the sentences
@@ -231,31 +227,8 @@ public class SlackChannel implements Tool<Void> {
                 .reduce("", (a, b) -> a + "\n" + b);
     }
 
-    private Try<ChannelDetails> findChannelId(
-            final MethodsClient client,
-            final String accessToken,
-            final String channel,
-            final String cursor) {
 
-        final Try<ConversationsListResponse> response = Try.of(() -> client.conversationsList(r -> r
-                .token(accessToken)
-                .limit(1000)
-                .types(List.of(ConversationType.PUBLIC_CHANNEL))
-                .excludeArchived(true)
-                .cursor(cursor)));
-
-        if (response.isSuccess()) {
-            final Optional<ChannelDetails> id = getChannelId(response.get(), channel);
-            return id
-                    .map(Try::success)
-                    .orElseGet(() -> findChannelId(client, accessToken, channel, response.get().getResponseMetadata().getNextCursor()));
-        }
-
-        return Try.failure(new RuntimeException("Failed to get channels"));
-    }
-
-
-    private Try<String> replaceIds(final MethodsClient client, final String token, final String messages) {
+    private Try<String> replaceIds(final AsyncMethodsClient client, final String token, final String messages) {
         final Pattern userPattern = Pattern.compile("<@(?<username>\\w+)>");
         final Pattern channelPattern = Pattern.compile("<#(?<channelname>\\w+)\\|?>");
 
@@ -288,8 +261,8 @@ public class SlackChannel implements Tool<Void> {
     }
 
 
-    private Try<String> getUsername(final MethodsClient client, final String token, final String userId) {
-        return Try.of(() -> client.usersInfo(r -> r.token(token).user(userId)))
+    private Try<String> getUsername(final AsyncMethodsClient client, final String token, final String userId) {
+        return Try.of(() -> client.usersInfo(r -> r.token(token).user(userId)).get())
                 .map(response -> response.getUser().getName())
                 /*
                     If the username could not be retrieved, we return a placeholder.
@@ -300,8 +273,8 @@ public class SlackChannel implements Tool<Void> {
     }
 
 
-    private Try<String> getChannel(final MethodsClient client, final String token, final String channelId) {
-        return Try.of(() -> client.conversationsInfo(r -> r.token(token).channel(channelId)))
+    private Try<String> getChannel(final AsyncMethodsClient client, final String token, final String channelId) {
+        return Try.of(() -> client.conversationsInfo(r -> r.token(token).channel(channelId)).get())
                 .map(response -> "#" + response.getChannel().getName())
                 /*
                     If the channel name could not be retrieved, we return a placeholder.
