@@ -15,14 +15,14 @@ jobs:
         id: secondbrain
         uses: mcasperson/SecondBrain@main
         with:
-            prompt: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
-            token: ${{ secrets.GITHUB_TOKEN }}
-            owner: ${{ github.repository_owner }}
-            repo: ${{ github.event.repository.name }}
-            sha: ${{ github.sha }}
-            summarizeIndividualDiffs: 'false'
-            model: 'qwen2.5-coder'
+          prompt: 'Identity any code that might generate an exception or introduce a security vulnerability. Offer suggestions to improve the code.'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          sha: ${{ github.sha }}
+          summarizeIndividualDiffs: 'false'
+          model: 'qwen2.5-coder'
       - name: Get the diff summary
         env:
-            RESPONSE: ${{ steps.secondbrain.outputs.response }}
+          RESPONSE: ${{ steps.secondbrain.outputs.response }}
         run: echo "$RESPONSE" >> "$GITHUB_STEP_SUMMARY"
