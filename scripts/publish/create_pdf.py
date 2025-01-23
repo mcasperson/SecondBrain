@@ -1,8 +1,8 @@
+import argparse
 import markdown2
 import os
 from datetime import datetime, timedelta
 from fpdf import FPDF
-import argparse
 from fpdf.enums import XPos, YPos
 
 
@@ -10,36 +10,36 @@ class PDF(FPDF):
     def header(self):
         self.set_font('DejaVu', '', 12)
         self.set_text_color(0, 0, 0)
-        self.cell(0, 10, 'AI of Sauron', 0, align = 'C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.cell(0, 10, 'AI of Sauron', 0, align='C', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     def footer(self):
         self.set_y(-15)
         self.set_font('DejaVu', '', 8)
         self.set_text_color(0, 0, 0)
-        self.cell(0, 10, f'Page {self.page_no()}', 0, align ='C', new_x=XPos.RIGHT, new_y=YPos.TOP)
+        self.cell(0, 10, f'Page {self.page_no()}', 0, align='C', new_x=XPos.RIGHT, new_y=YPos.TOP)
 
     def chapter_title(self, title):
         self.set_font('DejaVu', 'B', 24)
         self.set_text_color(0, 0, 0)
-        self.cell(0, 10, title, 0, align = 'L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.cell(0, 10, title, 0, align='L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.ln(10)
 
     def frontage_title(self, title):
         self.set_font('DejaVu', 'B', 48)
         self.set_text_color(255, 255, 0)
-        self.cell(0, 10, title, 0, align ='L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.cell(0, 10, title, 0, align='L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.ln(10)
 
     def frontage_subtitle(self, title):
         self.set_font('DejaVu', 'B', 32)
         self.set_text_color(255, 255, 0)
-        self.cell(0, 15, title, 0, align = 'L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.cell(0, 15, title, 0, align='L', new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         self.ln(10)
 
     def frontage_dates(self, title):
         self.set_font('DejaVu', 'B', 32)
         self.set_text_color(255, 255, 0)
-        self.cell(0, 0, title, 0, align = 'L', new_x=XPos.RIGHT, new_y=YPos.TOP)
+        self.cell(0, 0, title, 0, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
         self.ln(10)
 
     def chapter_body(self, body):
@@ -74,6 +74,14 @@ def convert_md_to_pdf(directory, output_pdf):
     formatted_end_date = last_day_of_month.strftime('%Y-%m-%d')
 
     pdf.frontage_dates(f'{formatted_date} to {formatted_end_date}')
+
+    pdf.add_page()
+    pdf.chapter_title("Introduction")
+    pdf.chapter_body("""
+    <p>Welcome to the AI of Sauron Monthly Customer Digest.</p>
+    <p>This document is an AI generated summary the interactions between Octopus and our customers.</p>
+    <p>Because it is AI generated, mistakes may occur. Please verify the information before taking any action.</p>
+    """)
 
     contents = []
     for filename in os.listdir(directory):
