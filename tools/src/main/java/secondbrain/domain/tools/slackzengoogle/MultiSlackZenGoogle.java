@@ -24,6 +24,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
+import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.yaml.YamlDeserializer;
@@ -63,6 +64,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private SlackChannel slackChannel;
+
+    @Inject
+    private SlackSearch slackSearch;
 
     @Inject
     private GoogleDocs googleDocs;
@@ -232,6 +236,23 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .toList();
 
+        /*
+            Search slack for any mention of the salesforce id. This will pick up call summaries that are posted
+            to slack by the salesforce integration.
+         */
+        final List<RagDocumentContext<Void>> slackKeywordSearch = entity.getSalesforce()
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(new ToolArgs("keywords", id)))
+                // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
+                .flatMap(args -> Try.of(() -> slackSearch.getContext(context, prompt + "\nKeywords are " + args.getFirst().argValue(), args))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
+
         final List<RagDocumentContext<Void>> googleContext = entity.getGoogleDcos()
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -269,11 +290,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
-        if (slackContext.size() + zenContext.size() + planHatContext.size() < parsedArgs.getMinTimeBasedContext()) {
+        // There must be a minimum amount of time-based context to proceed
+        if (slackKeywordSearch.size() + slackContext.size() + zenContext.size() + planHatContext.size() < parsedArgs.getMinTimeBasedContext()) {
             return List.of();
         }
 
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
+        retValue.addAll(slackKeywordSearch);
         retValue.addAll(slackContext);
         retValue.addAll(googleContext);
         retValue.addAll(zenContext);
@@ -298,7 +321,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat,
+    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat, List<String> salesforce,
                   boolean disabled) {
         public List<String> getSlack() {
             return Objects.requireNonNullElse(slack, List.of());
@@ -314,6 +337,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         public List<String> getPlanHat() {
             return Objects.requireNonNullElse(planhat, List.of());
+        }
+
+        public List<String> getSalesforce() {
+            return Objects.requireNonNullElse(salesforce, List.of());
         }
     }
 }
