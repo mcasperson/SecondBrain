@@ -36,10 +36,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -183,6 +180,7 @@ public class DirectoryScan implements Tool<Void> {
         try (final Stream<Path> paths = Files.walk(Paths.get(directory))) {
             return paths
                     .filter(Files::isRegularFile)
+                    .filter(path -> parsedArgs.getExcluded() == null || !parsedArgs.getExcluded().contains(path.getFileName().toString()))
                     .map(Path::toString)
                     .collect(Collectors.toList());
         }
@@ -285,6 +283,10 @@ class Arguments {
     private Optional<String> maxfiles;
 
     @Inject
+    @ConfigProperty(name = "sb.directoryscan.exclude")
+    private Optional<String> exclude;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -348,6 +350,20 @@ class Arguments {
                 Constants.DEFAULT_CONTENT_WINDOW + "");
 
         return NumberUtils.toInt(stringValue, Constants.DEFAULT_CONTENT_WINDOW);
+    }
+
+    @Nullable
+    public List<String> getExcluded() {
+        return Arrays.stream(argsAccessor.getArgument(
+                                exclude::get,
+                                arguments,
+                                context,
+                                "excludeFiles",
+                                "directoryscan_exclude_files",
+                                "")
+                        .split(","))
+                .map(StringUtils::trim)
+                .toList();
     }
 }
 

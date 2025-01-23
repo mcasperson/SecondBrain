@@ -101,6 +101,9 @@ def convert_md_to_pdf(directory, output_pdf):
     pdf.ln(10)
 
     for content in contents:
+        if content['title'] == 'Executive Summary':
+            continue
+
         filepath = os.path.join(directory, content['filename'])
         with open(filepath, 'r', encoding='utf-8') as file:
             pdf.add_page()
