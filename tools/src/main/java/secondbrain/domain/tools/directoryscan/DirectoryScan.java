@@ -252,7 +252,7 @@ public class DirectoryScan implements Tool<Void> {
                                         FILE_INSTRUCTIONS,
                                         promptBuilderSelector.getPromptBuilder(
                                                 parsedArgs.getFileCustomModel()).buildContextPrompt(
-                                                "File Contents", contents),
+                                                getContextLabel(), contents),
                                         parsedArgs.getIndividualDocumentPrompt()),
                                 false,
                                 new OllamaGenerateBodyOptions(parsedArgs.getFileContextWindow()))))
