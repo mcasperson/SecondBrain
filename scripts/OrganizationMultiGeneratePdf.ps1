@@ -170,8 +170,10 @@ foreach ($entity in $database.entities)
 
 $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.individualdocumentprompt=Summarize the document as a single paragraph`" `"-Dsb.directoryscan.exclude=Executive Summary.md`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.directoryscan.directory=$subDir`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize each of the supplied File Contents into a combined executive summary.`""
 Set-Content -Path "$subDir/Executive Summary.md"  -Value $result.StdOut
+Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
 
 $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$subDir`" `"$( $env:PDF_OUTPUT )`""
+Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
 
 Write-Host $pdfResult.StdOut
 Write-Host $pdfResult.StdErr
