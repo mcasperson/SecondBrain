@@ -89,6 +89,11 @@ def convert_md_to_pdf(directory, output_pdf):
             title = os.path.splitext(filename)[0]  # Get file name without extension
             contents.append({'title': title, 'filename': filename, 'link': pdf.add_link()})
 
+    # Move the Executive Summary to the top
+    executive_summary = next((content for content in contents if content['title'] == 'Executive Summary'), None)
+    if executive_summary:
+        contents = [executive_summary] + list(filter(lambda content: content['title'] != 'Executive Summary', contents))
+
     # Add Table of Contents
     pdf.add_page()
     pdf.set_text_color(0, 0, 0)
