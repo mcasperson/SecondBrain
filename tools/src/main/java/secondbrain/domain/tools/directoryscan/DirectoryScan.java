@@ -253,7 +253,7 @@ public class DirectoryScan implements Tool<Void> {
                                         promptBuilderSelector.getPromptBuilder(
                                                 parsedArgs.getFileCustomModel()).buildContextPrompt(
                                                 "File Contents", contents),
-                                        prompt),
+                                        parsedArgs.getIndividualDocumentPrompt()),
                                 false,
                                 new OllamaGenerateBodyOptions(parsedArgs.getFileContextWindow()))))
                 .get()
@@ -285,6 +285,10 @@ class Arguments {
     @Inject
     @ConfigProperty(name = "sb.directoryscan.exclude")
     private Optional<String> exclude;
+
+    @Inject
+    @ConfigProperty(name = "sb.directoryscan.individualdocumentprompt")
+    private Optional<String> documentPrompt;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -337,6 +341,16 @@ class Arguments {
                 "fileCustomModel",
                 "file_custom_model",
                 filemodel.orElse(modelConfig.getCalculatedModel(context)));
+    }
+
+    public String getIndividualDocumentPrompt() {
+        return argsAccessor.getArgument(
+                documentPrompt::get,
+                arguments,
+                context,
+                "individualDocumentPrompt",
+                "individual_document_prompt",
+                prompt);
     }
 
     @Nullable

@@ -168,7 +168,7 @@ foreach ($entity in $database.entities)
     Start-Sleep -Seconds 60
 }
 
-$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.exclude=Executive Summary.md`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.directoryscan.directory=$subDir`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize the content in the style of an executive summary.`""
+$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.individualdocumentprompt=Summarize the document as a single paragraph`" `"-Dsb.directoryscan.exclude=Executive Summary.md`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.directoryscan.directory=$subDir`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize the content in the style of an executive summary.`""
 Set-Content -Path "$subDir/Executive Summary.md"  -Value $result.StdOut
 
 $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$subDir`" `"$( $env:PDF_OUTPUT )`""
