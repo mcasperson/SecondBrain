@@ -150,7 +150,7 @@ public class DirectoryScan implements Tool<Void> {
                         list,
                         RagDocumentContext::document,
                         modelConfig.getCalculatedContextWindowChars()))
-                .map(ragDocs -> mergeContext(ragDocs, debugArgs))
+                .map(ragDocs -> mergeContext(ragDocs, context, debugArgs))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
@@ -186,12 +186,17 @@ public class DirectoryScan implements Tool<Void> {
         }
     }
 
-    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String debug) {
+    private RagMultiDocumentContext<Void> mergeContext(
+            final List<RagDocumentContext<Void>> ragContext,
+            final Map<String, String> context,
+            final String debug) {
         return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(RagDocumentContext::document)
+                ragContext.stream()
+                        .map(ragDoc -> promptBuilderSelector.getPromptBuilder(
+                                        modelConfig.getCalculatedModel(context))
+                                .buildContextPrompt(getContextLabel(), ragDoc.document()))
                         .collect(Collectors.joining("\n")),
-                context,
+                ragContext,
                 debug);
     }
 
