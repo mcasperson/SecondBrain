@@ -84,7 +84,7 @@ def convert_md_to_pdf(directory, output_pdf):
     """)
 
     contents = []
-    for filename in os.listdir(directory):
+    for filename in sorted(os.listdir(directory)):
         if filename.endswith('.md'):
             title = os.path.splitext(filename)[0]  # Get file name without extension
             contents.append({'title': title, 'filename': filename, 'link': pdf.add_link()})
