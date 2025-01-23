@@ -168,7 +168,7 @@ foreach ($entity in $database.entities)
     Start-Sleep -Seconds 60
 }
 
-$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.individualdocumentprompt=Summarize the document as a single paragraph`" `"-Dsb.directoryscan.exclude=Executive Summary.md`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.directoryscan.directory=$subDir`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize each of the supplied File Contents into a combined executive summary.`""
+$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.individualdocumentprompt=Summarize the document as a single paragraph`" `"-Dsb.directoryscan.exclude=Executive Summary.md`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.directoryscan.directory=$subDir`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize each of the supplied File Contents under a header including the company name and a paragraph with a summary of the company's activities.`""
 Set-Content -Path "$subDir/Executive Summary.md"  -Value $result.StdOut
 Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
 
