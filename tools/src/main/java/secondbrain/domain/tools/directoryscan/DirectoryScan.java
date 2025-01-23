@@ -223,9 +223,9 @@ public class DirectoryScan implements Tool<Void> {
 
         final String summary = localStorage.getOrPutString(
                 this.getName(),
-                "File",
+                file,
                 DigestUtils.sha256Hex(prompt),
-                () -> getFileSummary(prompt, contents, parsedArgs));
+                () -> getFileSummary(contents, parsedArgs));
 
         return new RagDocumentContext<>(
                 getContextLabel(),
@@ -242,7 +242,7 @@ public class DirectoryScan implements Tool<Void> {
     /**
      * Use the LLM to answer the prompt based on the contents of the file.
      */
-    private String getFileSummary(final String prompt, final String contents, final Arguments parsedArgs) {
+    private String getFileSummary(final String contents, final Arguments parsedArgs) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.callOllama(
                         client,
