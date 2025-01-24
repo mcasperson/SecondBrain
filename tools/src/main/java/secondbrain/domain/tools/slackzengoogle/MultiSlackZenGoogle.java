@@ -243,9 +243,15 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> slackKeywordSearch = entity.getSalesforce()
                 .stream()
                 .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(new ToolArgs("keywords", id)))
+                .map(id -> List.of(
+                        new ToolArgs("keywords", id),
+                        new ToolArgs("days", "" + days)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
-                .flatMap(args -> Try.of(() -> slackSearch.getContext(context, prompt + "\nKeywords are " + args.getFirst().argValue(), args))
+                .flatMap(args -> Try.of(() -> slackSearch.getContext(
+                                context,
+                                prompt
+                                        + "\nKeywords are " + args.getFirst().argValue()
+                                        + "\nDays is " + days, args))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name

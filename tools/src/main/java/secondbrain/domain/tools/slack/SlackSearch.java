@@ -2,6 +2,7 @@ package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
 import com.slack.api.model.MatchedItem;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -16,6 +17,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
+import secondbrain.domain.date.DateParser;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.keyword.KeywordExtractor;
@@ -25,6 +27,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -53,6 +56,10 @@ public class SlackSearch implements Tool<MatchedItem> {
 
     @Inject
     private SentenceVectorizer sentenceVectorizer;
+
+    @Inject
+    @Identifier("unix")
+    private DateParser dateParser;
 
     @Override
     public String getName() {
@@ -97,6 +104,7 @@ public class SlackSearch implements Tool<MatchedItem> {
                 .getMessages()
                 .getMatches()
                 .stream()
+                .filter(matchedItem -> parsedArgs.getDays() == 0 || dateParser.parseDate(matchedItem.getTs()).isAfter(ZonedDateTime.now().minusDays(parsedArgs.getDays())))
                 .map(this::getDocumentContext)
                 .toList();
 
@@ -185,6 +193,10 @@ class SlackSearchArguments {
     @ConfigProperty(name = "sb.slack.genetarekeywords")
     private Optional<String> generateKeywords;
 
+    @Inject
+    @ConfigProperty(name = "sb.slack.days")
+    private Optional<String> days;
+
     private List<ToolArgs> arguments;
 
     private String prompt;
@@ -236,5 +248,19 @@ class SlackSearchArguments {
                 .mapTry(Objects::requireNonNull)
                 .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
                 .getOrElseThrow(() -> new FailedTool("Slack access token not found"));
+    }
+
+    public int getDays() {
+        final String stringValue = argsAccessor.getArgument(
+                days::get,
+                arguments,
+                context,
+                "days",
+                "slack_days",
+                "");
+
+        return Try.of(() -> stringValue)
+                .map(i -> Math.max(0, Integer.parseInt(i)))
+                .get();
     }
 }
