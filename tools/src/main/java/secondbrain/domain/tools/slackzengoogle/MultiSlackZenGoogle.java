@@ -227,9 +227,16 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> slackContext = entity.getSlack()
                 .stream()
                 .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(new ToolArgs("slackChannel", id), new ToolArgs("days", "" + days)))
+                .map(id -> List.of(
+                        new ToolArgs("slackChannel", id),
+                        new ToolArgs("days", "" + days)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
-                .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt + "\nChannel is " + args.getFirst().argValue(), args))
+                .flatMap(args -> Try.of(() -> slackChannel.getContext(
+                                context,
+                                prompt
+                                        + "\nChannel is " + args.getFirst().argValue()
+                                        + "\nDays is " + days,
+                                args))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -251,7 +258,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 context,
                                 prompt
                                         + "\nKeywords are " + args.getFirst().argValue()
-                                        + "\nDays is " + days, args))
+                                        + "\nDays is " + days,
+                                args))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
