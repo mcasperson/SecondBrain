@@ -11,7 +11,7 @@ import java.time.ZonedDateTime;
 @Identifier("unix")
 public class DateParserUnix implements DateParser {
     @Override
-    public ZonedDateTime parseDate(String date) {
+    public ZonedDateTime parseDate(final String date) {
         final String[] parts = date.split("\\.");
         return ZonedDateTime.ofInstant(Instant.ofEpochSecond(Long.parseLong(parts[0])), ZoneId.systemDefault());
     }
