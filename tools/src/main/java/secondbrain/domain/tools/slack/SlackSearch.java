@@ -6,6 +6,7 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -85,7 +86,8 @@ public class SlackSearch implements Tool<MatchedItem> {
         // you can get this instance via ctx.client() in a Bolt app
         var client = Slack.getInstance().methods();
 
-        var searchResult = Try.of(() -> client.searchAll(r -> r.token(parsedArgs.getAccessToken()).query(String.join(" ", parsedArgs.getKeywords()))));
+        var searchResult = Try.of(() -> client.searchAll(r -> r.token(parsedArgs.getAccessToken())
+                .query(String.join(" ", parsedArgs.getKeywords()))));
 
         if (searchResult.isFailure()) {
             throw new FailedTool("Could not search messages");
@@ -175,6 +177,14 @@ class SlackSearchArguments {
     @ConfigProperty(name = "sb.slack.accesstoken")
     private Optional<String> slackAccessToken;
 
+    @Inject
+    @ConfigProperty(name = "sb.slack.keywords")
+    private Optional<String> keywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.genetarekeywords")
+    private Optional<String> generateKeywords;
+
     private List<ToolArgs> arguments;
 
     private String prompt;
@@ -188,16 +198,36 @@ class SlackSearchArguments {
     }
 
     public Set<String> getKeywords() {
-        final List<String> keywords = Stream.of(argsAccessor
-                        .getArgument(arguments, "keywords", "")
-                        .split(","))
+        final String stringValue = argsAccessor.getArgument(
+                keywords::get,
+                arguments,
+                context,
+                "keywords",
+                "slack_keywords",
+                "");
+
+        final List<String> keywords = Stream.of(stringValue.split(","))
                 .map(String::trim)
                 .toList();
 
-        final List<String> keywordsGenerated = keywordExtractor.getKeywords(prompt);
-        keywordsGenerated.addAll(keywords);
+        final List<String> keywordsGenerated = getGenerateKeywords() ? keywordExtractor.getKeywords(prompt) : List.of();
 
-        return new HashSet<>(keywordsGenerated);
+        final HashSet<String> retValue = new HashSet<>(keywords);
+        retValue.addAll(keywords);
+        retValue.addAll(keywordsGenerated);
+        return retValue;
+    }
+
+    public boolean getGenerateKeywords() {
+        final String stringValue = argsAccessor.getArgument(
+                generateKeywords::get,
+                arguments,
+                context,
+                "generateKeywords",
+                "slack_generatekeywords",
+                "false");
+
+        return BooleanUtils.toBoolean(stringValue);
     }
 
     public String getAccessToken() {

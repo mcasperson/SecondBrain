@@ -6,6 +6,9 @@ import com.slack.api.model.ConversationType;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.codec.digest.DigestUtils;
+import secondbrain.domain.json.JsonDeserializer;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tools.slack.ChannelDetails;
 import secondbrain.domain.validate.ValidateString;
 
@@ -14,10 +17,45 @@ import java.util.Optional;
 
 @ApplicationScoped
 public class SlackClient {
+    private static final String SALT = "YrZqGXwuNKEeWRN1sTA9";
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private LocalStorage localStorage;
+
+    @Inject
+    private JsonDeserializer jsonDeserializer;
+
     public Try<ChannelDetails> findChannelId(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channel,
+            final String cursor) {
+
+        /*
+            The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
+            based on a hash of the channel name and the access token.
+         */
+        final String hash = DigestUtils.sha256Hex(accessToken + channel + SALT);
+
+        // get the result from the cache
+        return Try.of(() -> localStorage.getString(SlackClient.class.getSimpleName(), "SlackAPI", hash))
+                // a cache miss means the string is empty, so we throw an exception
+                .map(validateString::throwIfEmpty)
+                // a cache hit means we deserialize the result
+                .mapTry(r -> jsonDeserializer.deserialize(r, ChannelDetails.class))
+                // a cache miss means we call the API and then save the result in the cache
+                .recoverWith(ex -> findChannelIdFromApi(client, accessToken, channel, cursor)
+                        .onSuccess(r -> localStorage.putString(
+                                SlackClient.class.getSimpleName(),
+                                "SlackAPI",
+                                hash,
+                                jsonDeserializer.serialize(r))));
+
+    }
+
+    private Try<ChannelDetails> findChannelIdFromApi(
             final AsyncMethodsClient client,
             final String accessToken,
             final String channel,

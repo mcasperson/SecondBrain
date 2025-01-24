@@ -36,10 +36,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -153,7 +150,7 @@ public class DirectoryScan implements Tool<Void> {
                         list,
                         RagDocumentContext::document,
                         modelConfig.getCalculatedContextWindowChars()))
-                .map(ragDocs -> mergeContext(ragDocs, debugArgs))
+                .map(ragDocs -> mergeContext(ragDocs, context, debugArgs))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
@@ -183,17 +180,23 @@ public class DirectoryScan implements Tool<Void> {
         try (final Stream<Path> paths = Files.walk(Paths.get(directory))) {
             return paths
                     .filter(Files::isRegularFile)
+                    .filter(path -> parsedArgs.getExcluded() == null || !parsedArgs.getExcluded().contains(path.getFileName().toString()))
                     .map(Path::toString)
                     .collect(Collectors.toList());
         }
     }
 
-    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String debug) {
+    private RagMultiDocumentContext<Void> mergeContext(
+            final List<RagDocumentContext<Void>> ragContext,
+            final Map<String, String> context,
+            final String debug) {
         return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(RagDocumentContext::document)
+                ragContext.stream()
+                        .map(ragDoc -> promptBuilderSelector.getPromptBuilder(
+                                        modelConfig.getCalculatedModel(context))
+                                .buildContextPrompt(getContextLabel(), ragDoc.document()))
                         .collect(Collectors.joining("\n")),
-                context,
+                ragContext,
                 debug);
     }
 
@@ -225,9 +228,9 @@ public class DirectoryScan implements Tool<Void> {
 
         final String summary = localStorage.getOrPutString(
                 this.getName(),
-                DigestUtils.sha256Hex(contents),
+                file,
                 DigestUtils.sha256Hex(prompt),
-                () -> getFileSummary(prompt, contents, parsedArgs));
+                () -> getFileSummary(contents, parsedArgs));
 
         return new RagDocumentContext<>(
                 getContextLabel(),
@@ -244,7 +247,7 @@ public class DirectoryScan implements Tool<Void> {
     /**
      * Use the LLM to answer the prompt based on the contents of the file.
      */
-    private String getFileSummary(final String prompt, final String contents, final Arguments parsedArgs) {
+    private String getFileSummary(final String contents, final Arguments parsedArgs) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> ollamaClient.callOllama(
                         client,
@@ -254,8 +257,8 @@ public class DirectoryScan implements Tool<Void> {
                                         FILE_INSTRUCTIONS,
                                         promptBuilderSelector.getPromptBuilder(
                                                 parsedArgs.getFileCustomModel()).buildContextPrompt(
-                                                "File Contents", contents),
-                                        prompt),
+                                                getContextLabel(), contents),
+                                        parsedArgs.getIndividualDocumentPrompt()),
                                 false,
                                 new OllamaGenerateBodyOptions(parsedArgs.getFileContextWindow()))))
                 .get()
@@ -283,6 +286,14 @@ class Arguments {
     @Inject
     @ConfigProperty(name = "sb.directoryscan.maxfiles")
     private Optional<String> maxfiles;
+
+    @Inject
+    @ConfigProperty(name = "sb.directoryscan.exclude")
+    private Optional<String> exclude;
+
+    @Inject
+    @ConfigProperty(name = "sb.directoryscan.individualdocumentprompt")
+    private Optional<String> documentPrompt;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -337,6 +348,16 @@ class Arguments {
                 filemodel.orElse(modelConfig.getCalculatedModel(context)));
     }
 
+    public String getIndividualDocumentPrompt() {
+        return argsAccessor.getArgument(
+                documentPrompt::get,
+                arguments,
+                context,
+                "individualDocumentPrompt",
+                "individual_document_prompt",
+                prompt);
+    }
+
     @Nullable
     public Integer getFileContextWindow() {
         final String stringValue = argsAccessor.getArgument(
@@ -348,6 +369,20 @@ class Arguments {
                 Constants.DEFAULT_CONTENT_WINDOW + "");
 
         return NumberUtils.toInt(stringValue, Constants.DEFAULT_CONTENT_WINDOW);
+    }
+
+    @Nullable
+    public List<String> getExcluded() {
+        return Arrays.stream(argsAccessor.getArgument(
+                                exclude::get,
+                                arguments,
+                                context,
+                                "excludeFiles",
+                                "directoryscan_exclude_files",
+                                "")
+                        .split(","))
+                .map(StringUtils::trim)
+                .toList();
     }
 }
 

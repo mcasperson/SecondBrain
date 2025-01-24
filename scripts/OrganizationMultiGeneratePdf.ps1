@@ -49,7 +49,7 @@ Function Invoke-CustomCommand
     $p.BeginErrorReadLine()
 
     # Wait 30 minutes before forcibly killing the process
-    $processTimeout = 1000 * 60 * 30
+    $processTimeout = 1000 * 60 * 120
     $lastUpdate = 0
     while (($global:myprocessrunning -eq $true) -and ($processTimeout -gt 0))
     {
@@ -70,16 +70,18 @@ Function Invoke-CustomCommand
     {
         $p.Kill($true)
         $output = ""
+        $exitCode = -1
     }
     else
     {
         $output = $p.StandardOutput.ReadToEnd()
+        $exitCode = $p.ExitCode
     }
 
     $executionResults = [pscustomobject]@{
         StdOut = $output
         StdErr = $global:stdErr.ToString()
-        ExitCode = $p.ExitCode
+        ExitCode = $exitCode
     }
 
     return $executionResults
@@ -123,7 +125,7 @@ mkdir $subDir
 Write-Host "Working in $subDir"
 
 $toolModel = "llama3.1"
-$model = "mistral-nemo"
+$model = "phi4"
 
 # Consider using K/V cache quanisation to support larger context windows with the following env vars:
 # OLLAMA_KV_CACHE_TYPE="q8_0"
@@ -147,7 +149,7 @@ foreach ($entity in $database.entities)
 
     echo "Processing $entityName"
 
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=MultiSlackZenGoogle`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.multislackzengoogle.days=$days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Write a business report based on the the last $days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName. Include an executive summary as the first paragraph. If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes. You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt. You will be penalized for including a general summary of the Google Document in the report. You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities. You will be penalized for saying that you will monitor for tickets or messages in future. You will be penalized for for metioning a date range or period covered. You will be penalized for providing statistics or counts of the ZenDesk tickets. You will be penalized for providing instructions to refer to or link to the Google Document. You will be penalized for providing next steps, action items, or recommendations. You will be penalized for attempting to resolve the ZenDesk tickets. You will be penalized for mentioning the duration covered. You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID.`""
+    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.minTimeBasedContext=4`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.multislackzengoogle.days=$days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Write a business report based on the the last $days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName. Include an executive summary as the first paragraph. If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes. You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt. You will be penalized for including a general summary of the Google Document in the report. You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities. You will be penalized for saying that you will monitor for tickets or messages in future. You will be penalized for for metioning a date range or period covered. You will be penalized for providing statistics or counts of the ZenDesk tickets. You will be penalized for providing instructions to refer to or link to the Google Document. You will be penalized for providing next steps, action items, recommendations, or looking ahead. You will be penalized for attempting to resolve the ZenDesk tickets. You will be penalized for mentioning the duration covered. You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID.`""
 
     echo "Slack StdOut"
     echo $result.StdOut
@@ -155,7 +157,9 @@ foreach ($entity in $database.entities)
     #echo "Slack StdErr"
     #echo $result.StdErr
 
-    if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("No ZenDesk tickets, Slack messages, or PlanHat activities found.") -and -not $result.StdOut.Contains("Failed to call Ollama"))
+    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
+
+    if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("EmptyContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
     {
         Set-Content -Path "$subDir/$entityName.md"  -Value $result.StdOut
     }
@@ -164,7 +168,12 @@ foreach ($entity in $database.entities)
     Start-Sleep -Seconds 60
 }
 
+$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.individualdocumentprompt=Summarize the document as a single paragraph`" `"-Dsb.directoryscan.exclude=Executive Summary.md`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.directoryscan.directory=$subDir`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize each of the supplied File Contents under a header including the company name and a paragraph with a summary of the company's activities.`""
+Set-Content -Path "$subDir/Executive Summary.md"  -Value $result.StdOut
+Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
+
 $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$subDir`" `"$( $env:PDF_OUTPUT )`""
+Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
 
 Write-Host $pdfResult.StdOut
 Write-Host $pdfResult.StdErr

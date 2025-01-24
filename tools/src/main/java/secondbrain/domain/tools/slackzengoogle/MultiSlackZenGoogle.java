@@ -16,7 +16,6 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.EmptyContext;
 import secondbrain.domain.exceptions.EmptyList;
-import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
@@ -25,14 +24,13 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
+import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.publicweb.PublicWebClient;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,13 +42,13 @@ import static com.google.common.base.Predicates.instanceOf;
  * <p>
  * entities:
  * - name: Entity1
- *   zendesk: [1235484986222]
- *   slack: [account-entity1]
- *   googledocs: [2eoub28oeyb2o8yevb82oev2e]
+ * zendesk: [1235484986222]
+ * slack: [account-entity1]
+ * googledocs: [2eoub28oeyb2o8yevb82oev2e]
  * - name: Entity2
- *   zendesk: [789858675]
- *   slack: [account-entity2]
- *   googledocs: [789752yoyf2eo86fe2o86ef982o6ef]
+ * zendesk: [789858675]
+ * slack: [account-entity2]
+ * googledocs: [789752yoyf2eo86fe2o86ef982o6ef]
  */
 @ApplicationScoped
 public class MultiSlackZenGoogle implements Tool<Void> {
@@ -66,6 +64,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private SlackChannel slackChannel;
+
+    @Inject
+    private SlackSearch slackSearch;
 
     @Inject
     private GoogleDocs googleDocs;
@@ -142,8 +143,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-
-
         final List<RagDocumentContext<Void>> ragContext = getContext(context, prompt, arguments);
 
         if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(googleDocs.getContextLabel()))) {
@@ -156,17 +155,18 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .getPromptBuilder(modelConfig.getCalculatedModel(context))
                         .buildFinalPrompt(
                                 INSTRUCTIONS
-                                    + getAdditionalSlackInstructions(ragContext)
-                                    + getAdditionalPlanHatInstructions(ragContext)
-                                    + getAdditionalGoogleDocsInstructions(ragContext),
+                                        + getAdditionalSlackInstructions(ragContext)
+                                        + getAdditionalPlanHatInstructions(ragContext)
+                                        + getAdditionalGoogleDocsInstructions(ragContext),
                                 // I've opted to get the end of the document if it is larger than the context window.
                                 // The end of the document is typically given more weight by LLMs, and so any long
                                 // document being processed should place the most relevant content towards the end.
                                 multiRagDoc.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(
+                .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
                         modelConfig.getCalculatedModel(context),
+                        getName(),
                         modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
@@ -236,6 +236,23 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .toList();
 
+        /*
+            Search slack for any mention of the salesforce id. This will pick up call summaries that are posted
+            to slack by the salesforce integration.
+         */
+        final List<RagDocumentContext<Void>> slackKeywordSearch = entity.getSalesforce()
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(new ToolArgs("keywords", id)))
+                // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
+                .flatMap(args -> Try.of(() -> slackSearch.getContext(context, prompt + "\nKeywords are " + args.getFirst().argValue(), args))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
+
         final List<RagDocumentContext<Void>> googleContext = entity.getGoogleDcos()
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -273,11 +290,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
-        if (slackContext.size() + zenContext.size() + planHatContext.size() < parsedArgs.getMinTimeBasedContext()) {
+        // There must be a minimum amount of time-based context to proceed
+        if (slackKeywordSearch.size() + slackContext.size() + zenContext.size() + planHatContext.size() < parsedArgs.getMinTimeBasedContext()) {
             return List.of();
         }
 
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
+        retValue.addAll(slackKeywordSearch);
         retValue.addAll(slackContext);
         retValue.addAll(googleContext);
         retValue.addAll(zenContext);
@@ -302,7 +321,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat, boolean disabled) {
+    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat, List<String> salesforce,
+                  boolean disabled) {
         public List<String> getSlack() {
             return Objects.requireNonNullElse(slack, List.of());
         }
@@ -317,6 +337,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         public List<String> getPlanHat() {
             return Objects.requireNonNullElse(planhat, List.of());
+        }
+
+        public List<String> getSalesforce() {
+            return Objects.requireNonNullElse(salesforce, List.of());
         }
     }
 }
