@@ -23,7 +23,7 @@ public interface LocalStorage {
      * @param generateValue A way to generate a new value
      * @return The value, if one was saved, or the generated value
      */
-    String getOrPutString(String tool, String source, String promptHash, GenerateValue generateValue);
+    String getOrPutString(String tool, String source, String promptHash, int ttlSeconds, GenerateValue generateValue);
 
     /**
      * Save a value associated with a tool, source, and prompt hash.
@@ -31,7 +31,10 @@ public interface LocalStorage {
      * @param tool       The name of the tool
      * @param source     A way to identify the source
      * @param promptHash A way to identify the prompt
+     * @param ttlSeconds The time to live in seconds for the cached value
      * @param value      The value to save
      */
+    void putString(String tool, String source, String promptHash, int ttlSeconds, String value);
+
     void putString(String tool, String source, String promptHash, String value);
 }
