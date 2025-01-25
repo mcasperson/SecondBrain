@@ -14,7 +14,6 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.exceptions.EmptyList;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -33,8 +32,6 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static com.google.common.base.Predicates.instanceOf;
 
 /**
  * This meta-tool calls the zendesk, slack, and google tools to answer a prompt against multiple
@@ -144,7 +141,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> ragContext = getContext(context, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> validateList.throwIfEmpty(ragContext))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> validateList.throwIfInsufficient(ragContext, parsedArgs.getMinTimeBasedContext()))
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
                 .map(multiRagDoc -> multiRagDoc.updateDocument(promptBuilderSelector
                         .getPromptBuilder(modelConfig.getCalculatedModel(context))
@@ -162,12 +159,17 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         ragDoc,
                         modelConfig.getCalculatedModel(context),
                         getName(),
-                        modelConfig.getCalculatedContextWindow()));
+                        modelConfig.getCalculatedContextWindow()))
+                /*
+                    InsufficientContext is expected when there is not enough information to answer the prompt.
+                    It is not passed up though, as it is not a failure, but rather a lack of information.
+                 */
+                .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<>(
+                        e.getClass().getSimpleName() + ": No ZenDesk tickets, Slack messages, or PlanHat activities found."));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyList.class)), ex -> new InsufficientContext("No ZenDesk tickets, Slack messages, or PlanHat activities found.")),
                         API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
     }
