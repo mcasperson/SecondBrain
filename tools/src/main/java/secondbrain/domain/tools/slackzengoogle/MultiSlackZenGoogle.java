@@ -144,10 +144,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> ragContext = getContext(context, prompt, arguments);
 
-        if (ragContext.stream().noneMatch(ragDoc -> ragDoc.contextLabel().contains(googleDocs.getContextLabel()))) {
-
-        }
-
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> validateList.throwIfEmpty(ragContext))
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
                 .map(multiRagDoc -> multiRagDoc.updateDocument(promptBuilderSelector

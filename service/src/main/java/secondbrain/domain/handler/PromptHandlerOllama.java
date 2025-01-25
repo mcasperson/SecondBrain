@@ -11,6 +11,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.context.*;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
 
@@ -71,6 +72,7 @@ public class PromptHandlerOllama implements PromptHandler {
         return Try.of(() -> toolSelector.getTool(prompt, context))
                 .map(toolCall -> callTool(toolCall, context, prompt))
                 .recover(ProcessingException.class, e -> "Failed to connect to Ollama. You must install Ollama from https://ollama.com/download: " + e.toString())
+                .recover(InsufficientContext.class, Throwable::getMessage)
                 .recoverWith(error -> Try.of(() -> {
                     // Selecting the wrong tool can manifest itself as an exception
                     if (count < TOOL_RETRY) {
