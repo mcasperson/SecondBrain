@@ -70,6 +70,7 @@ Function Invoke-CustomCommand
         $p.Kill($true)
         $output = ""
         $exitCode = -1
+        Write-Host "Killed process"
     }
     else
     {
@@ -157,7 +158,12 @@ foreach ($entity in $database.entities)
     #echo $result.StdErr
 
     Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) $entityName`n"
+    if ($result.ExitCode -ne 0)
+    {
+        Add-Content -Path /tmp/pdfgenerate.log -Value "Failed to process $entityName"
+    }
     Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
+    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
 
     if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("EmptyContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
     {
