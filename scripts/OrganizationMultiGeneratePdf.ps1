@@ -157,16 +157,13 @@ foreach ($entity in $database.entities)
     #echo "Slack StdErr"
     #echo $result.StdErr
 
-    Add-Content -Path /tmp/pdfgenerate.log -Value "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") $entityName`n"
+    Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) $entityName`n"
     Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
 
     if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("EmptyContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
     {
         Set-Content -Path "$subDir/$entityName.md"  -Value $result.StdOut
     }
-
-    # Rate limits for services like Slack need to be respected
-    Start-Sleep -Seconds 60
 }
 
 $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.individualdocumentprompt=Summarize the document as a single paragraph`" `"-Dsb.directoryscan.exclude=Executive Summary.md`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.directoryscan.directory=$subDir`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize each of the supplied File Contents under a header including the company name and a paragraph with a summary of the company's activities.`""

@@ -7,6 +7,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -244,10 +245,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .toList();
 
         /*
-            Search slack for any mention of the salesforce id. This will pick up call summaries that are posted
+            Search slack for any mention of the salesforce and planhat ids. This will pick up call summaries that are posted
             to slack by the salesforce integration.
          */
-        final List<RagDocumentContext<Void>> slackKeywordSearch = entity.getSalesforce()
+        final List<RagDocumentContext<Void>> slackKeywordSearch = CollectionUtils.collate(entity.getSalesforce(), entity.planhat())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
@@ -335,7 +336,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat, List<String> salesforce,
+    record Entity(String name, List<String> zendesk, List<String> slack, List<String> googledocs, List<String> planhat,
+                  List<String> salesforce,
                   boolean disabled) {
         public List<String> getSlack() {
             return Objects.requireNonNullElse(slack, List.of());
