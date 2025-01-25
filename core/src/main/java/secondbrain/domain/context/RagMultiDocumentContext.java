@@ -92,20 +92,27 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                                 acc.replaceAll(Pattern.quote(entry.originalContext()), entry.originalContext() + " [" + (lookups.indexOf(entry.toRagSentence()) + 1) + "]"),
                         (acc1, acc2) -> acc1 + acc2)
                 .trim()
-                + System.lineSeparator()
-                + System.lineSeparator()
-                + "References:"
-                + System.lineSeparator()
-                + System.lineSeparator()
-                + lookupsToString(lookups);
+                + getReferences(lookups);
 
         final int annotationIds = annotations.stream().map(RagSentenceAndOriginal::id).collect(Collectors.toSet()).size();
 
         return new AnnotationResult<>(result, (float) annotationIds / individualContexts.size(), this);
     }
 
-    public String lookupsToString(final List<RagSentence> lookups) {
+    private String getReferences(final List<RagSentence> lookups) {
+        if (lookups.isEmpty()) {
+            return "";
+        }
 
+        return System.lineSeparator()
+                + System.lineSeparator()
+                + "References:"
+                + System.lineSeparator()
+                + System.lineSeparator()
+                + lookupsToString(lookups);
+    }
+
+    public String lookupsToString(final List<RagSentence> lookups) {
         final List<String> output = new ArrayList<>();
         for (int i = 0; i < lookups.size(); i++) {
             RagSentence lookup = lookups.get(i);
