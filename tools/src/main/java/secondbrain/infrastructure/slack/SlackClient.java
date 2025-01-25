@@ -31,8 +31,7 @@ public class SlackClient {
     public Try<ChannelDetails> findChannelId(
             final AsyncMethodsClient client,
             final String accessToken,
-            final String channel,
-            final String cursor) {
+            final String channel) {
 
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
@@ -75,7 +74,7 @@ public class SlackClient {
                 // this fails if nothing was returned
                 .map(Optional::get)
                 // if we fail, we try to get the next page
-                .recoverWith(ex -> findChannelId(
+                .recoverWith(ex -> findChannelIdFromApi(
                         client,
                         accessToken,
                         channel,

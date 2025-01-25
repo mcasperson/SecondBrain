@@ -1,6 +1,7 @@
 package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
+import com.slack.api.methods.AsyncMethodsClient;
 import com.slack.api.model.MatchedItem;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
@@ -26,6 +27,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.slack.SlackClient;
 
 import java.time.ZonedDateTime;
 import java.util.*;
@@ -60,6 +62,8 @@ public class SlackSearch implements Tool<MatchedItem> {
     @Inject
     @Identifier("unix")
     private DateParser dateParser;
+    @Inject
+    private SlackClient slackClient;
 
     @Override
     public String getName() {
@@ -100,11 +104,17 @@ public class SlackSearch implements Tool<MatchedItem> {
             throw new FailedTool("Could not search messages");
         }
 
+        // you can get this instance via ctx.client() in a Bolt app
+        final AsyncMethodsClient asyncClient = Slack.getInstance().methodsAsync();
+
         return searchResult.get()
                 .getMessages()
                 .getMatches()
                 .stream()
                 .filter(matchedItem -> parsedArgs.getDays() == 0 || dateParser.parseDate(matchedItem.getTs()).isAfter(ZonedDateTime.now().minusDays(parsedArgs.getDays())))
+                .filter(matchedItem -> parsedArgs.getIgnoreChannels()
+                        .stream()
+                        .noneMatch(matchedItem.getChannel().getName()::equalsIgnoreCase))
                 .map(this::getDocumentContext)
                 .toList();
 
@@ -190,6 +200,10 @@ class SlackSearchArguments {
     private Optional<String> keywords;
 
     @Inject
+    @ConfigProperty(name = "sb.slack.ignorechannels")
+    private Optional<String> ignoreChannels;
+
+    @Inject
     @ConfigProperty(name = "sb.slack.genetarekeywords")
     private Optional<String> generateKeywords;
 
@@ -262,5 +276,21 @@ class SlackSearchArguments {
         return Try.of(() -> stringValue)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
                 .get();
+    }
+
+    public List<String> getIgnoreChannels() {
+        final String stringValue = argsAccessor.getArgument(
+                ignoreChannels::get,
+                arguments,
+                context,
+                "ignoreChannels",
+                "slack_ignorechannels",
+                "");
+
+        return Arrays.stream(stringValue.split(","))
+                .filter(StringUtils::isNotBlank)
+                .map(StringUtils::trim)
+                .map(channel -> channel.replaceFirst("^#", ""))
+                .toList();
     }
 }
