@@ -32,8 +32,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Predicates.instanceOf;
-
 /**
  * This is an example of a meta-tool that calls multiple child tools to get an answer. In this case, it
  * queries a Slack channel, a Google Document, and a Zen Desk organization channel to answer a prompt.
@@ -187,13 +185,17 @@ public class SlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ollamaClient.callOllama(
                         ragDoc,
                         modelConfig.getCalculatedModel(context),
-                        modelConfig.getCalculatedContextWindow()));
+                        modelConfig.getCalculatedContextWindow()))
+                /*
+                    InsufficientContext is expected when there is not enough information to answer the prompt.
+                    It is not passed up though, as it is not a failure, but rather a lack of information.
+                 */
+                .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<>(
+                        e.getClass().getSimpleName() + " " + e.getMessage()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(instanceOf(InsufficientContext.class)),
-                                throwable -> new FailedTool(throwable.getMessage())),
                         API.Case(API.$(),
                                 throwable -> new FailedTool("Failed to process tickets, google doc, or slack messages: " + throwable.getMessage())))
                 .get();
