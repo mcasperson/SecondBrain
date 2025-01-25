@@ -18,6 +18,7 @@ import java.util.Optional;
 @ApplicationScoped
 public class SlackClient {
     private static final String SALT = "YrZqGXwuNKEeWRN1sTA9";
+
     @Inject
     private ValidateString validateString;
 
