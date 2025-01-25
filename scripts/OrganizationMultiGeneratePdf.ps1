@@ -133,7 +133,8 @@ $model = "phi4"
 $contextWindow = "32768"
 $days = "30"
 
-$response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
+#$response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
+$response = Get-Content -Path $filePath -Raw
 
 # https://github.com/jborean93/PowerShell-Yayaml
 $database = ConvertFrom-Yaml $response.Content
