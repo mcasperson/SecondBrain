@@ -2,10 +2,7 @@ package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
 import com.slack.api.methods.AsyncMethodsClient;
-import com.slack.api.methods.MethodsClient;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
-import com.slack.api.methods.response.conversations.ConversationsListResponse;
-import com.slack.api.model.ConversationType;
 import com.slack.api.model.Message;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
@@ -14,7 +11,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
@@ -297,6 +293,10 @@ class Arguments {
     private Optional<String> slackAccessToken;
 
     @Inject
+    @ConfigProperty(name = "sb.slack.channel")
+    private Optional<String> channel;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -315,7 +315,13 @@ class Arguments {
     }
 
     public String getChannel() {
-        return argsAccessor.getArgument(arguments, "slackChannel", "").trim()
+        return argsAccessor.getArgument(
+                        channel::get,
+                        arguments,
+                        context,
+                        "slackChannel",
+                        "slack_channel",
+                        "")
                 .replaceFirst("^#", "");
     }
 
