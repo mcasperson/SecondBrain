@@ -2,11 +2,14 @@ package secondbrain.domain.persist;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
 
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.util.Optional;
 
 @ApplicationScoped
 public class H2LocalStorage implements LocalStorage {
@@ -16,9 +19,21 @@ public class H2LocalStorage implements LocalStorage {
             + "SET SCHEMA SECONDBRAIN\\;"
             + "CREATE TABLE IF NOT EXISTS local_storage (tool VARCHAR(100) NOT NULL, source VARCHAR(1024) NOT NULL, prompt_hash VARCHAR(1024) NOT NULL, response CLOB NOT NULL);";
 
+    @Inject
+    @ConfigProperty(name = "sb.cache.disable")
+    private Optional<String> disable;
+
+    private boolean isDisabled() {
+        return disable.isPresent() && Boolean.parseBoolean(disable.get());
+    }
+
     @Retry
     @Override
     public String getString(final String tool, final String source, final String promptHash) {
+        if (isDisabled()) {
+            return null;
+        }
+
         return Try.withResources(() -> DriverManager.getConnection(DATABASE))
                 .of(connection -> Try
                         .of(() -> connection.prepareStatement("SELECT response FROM local_storage WHERE tool = ? AND source = ? AND prompt_hash = ?"))
@@ -43,8 +58,12 @@ public class H2LocalStorage implements LocalStorage {
 
     @Override
     public String getOrPutString(final String tool, final String source, final String promptHash, final GenerateValue generateValue) {
+        if (isDisabled()) {
+            return generateValue.generate();
+        }
+
         final String cache = getString(tool, source, promptHash);
-        if (StringUtils.isNotBlank(cache)) {
+        if (StringUtils.isNotBlank(cache) && !isDisabled()) {
             return cache;
         }
 
@@ -56,6 +75,10 @@ public class H2LocalStorage implements LocalStorage {
     @Retry
     @Override
     public void putString(final String tool, final String source, final String promptHash, final String response) {
+        if (isDisabled()) {
+            return;
+        }
+
         Try.withResources(() -> DriverManager.getConnection(DATABASE))
                 .of(connection -> Try
                         .of(() -> connection.prepareStatement("INSERT INTO local_storage (tool, source, prompt_hash, response) VALUES (?, ?, ?, ?)"))
