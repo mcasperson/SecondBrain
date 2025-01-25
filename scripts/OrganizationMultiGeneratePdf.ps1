@@ -134,7 +134,7 @@ $contextWindow = "32768"
 $days = "30"
 
 #$response = Invoke-WebRequest -Uri $env:sb_multislackzengoogle_url
-$response = Get-Content -Path $filePath -Raw
+$response = Get-Content -Path $env:sb_multislackzengoogle_url -Raw
 
 # https://github.com/jborean93/PowerShell-Yayaml
 $database = ConvertFrom-Yaml $response.Content
