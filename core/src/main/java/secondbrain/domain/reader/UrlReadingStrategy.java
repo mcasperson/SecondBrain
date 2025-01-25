@@ -1,20 +1,20 @@
-package secondbrain.infrastructure.publicweb;
+package secondbrain.domain.reader;
 
+import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.response.ResponseValidation;
 
 @ApplicationScoped
-public class PublicWebClient {
+public class UrlReadingStrategy implements FileReadingStrategy {
     @Inject
     private ResponseValidation responseValidation;
 
-    @Retry
-    public String getDocument(final Client client, final String url) {
+    private String downloadDocument(final Client client, final String url) {
         String newUrl = url;
         int count = 0;
 
@@ -30,5 +30,22 @@ public class PublicWebClient {
         } while (count < 5);
 
         throw new InvalidResponse("Failed to get document from " + url);
+    }
+
+    @Override
+    public String read(final String pathOrUrl) {
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> downloadDocument(client, pathOrUrl))
+                .get();
+    }
+
+    @Override
+    public boolean isSupported(String pathOrUrl) {
+        return Try.of(() -> new java.net.URI(pathOrUrl)).isSuccess();
+    }
+
+    @Override
+    public int getPriority() {
+        return 100;
     }
 }

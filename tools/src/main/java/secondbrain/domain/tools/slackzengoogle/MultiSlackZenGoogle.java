@@ -6,7 +6,6 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -19,6 +18,7 @@ import secondbrain.domain.exceptions.EmptyContext;
 import secondbrain.domain.exceptions.EmptyList;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -30,7 +30,6 @@ import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.publicweb.PublicWebClient;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -88,7 +87,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private YamlDeserializer yamlDeserializer;
 
     @Inject
-    private PublicWebClient publicWebClient;
+    private FileReader fileReader;
 
     @Inject
     private Arguments parsedArgs;
@@ -126,8 +125,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         parsedArgs.setInputs(arguments, prompt, context);
 
-        final EntityDirectory entityDirectory = Try.withResources(ClientBuilder::newClient)
-                .of(client -> publicWebClient.getDocument(client, parsedArgs.getUrl()))
+        final EntityDirectory entityDirectory = Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
                 .getOrElseThrow(ex -> new FailedTool("Failed to download or parse the entity directory", ex));
 

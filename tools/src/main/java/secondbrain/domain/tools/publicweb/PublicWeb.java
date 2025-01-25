@@ -5,7 +5,6 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import secondbrain.domain.args.ArgsAccessor;
@@ -16,12 +15,12 @@ import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.publicweb.PublicWebClient;
 
 import java.util.List;
 import java.util.Map;
@@ -47,7 +46,7 @@ public class PublicWeb implements Tool<Void> {
     private ModelConfig modelConfig;
 
     @Inject
-    private PublicWebClient publicWebClient;
+    private FileReader fileReader;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -100,8 +99,7 @@ public class PublicWeb implements Tool<Void> {
             throw new FailedTool("You must provide a URL to download");
         }
 
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> publicWebClient.getDocument(client, parsedArgs.url()))
+        return Try.of(() -> fileReader.read(parsedArgs.url()))
                 .map(this::getDocumentContext)
                 .map(List::of)
                 .get();
