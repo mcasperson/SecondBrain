@@ -17,7 +17,7 @@ public class LocalFileReadingStrategy implements FileReadingStrategy {
     }
 
     @Override
-    public boolean isSupported(String pathOrUrl) {
+    public boolean isSupported(final String pathOrUrl) {
         return FileUtils.isRegularFile(new File(pathOrUrl));
     }
 

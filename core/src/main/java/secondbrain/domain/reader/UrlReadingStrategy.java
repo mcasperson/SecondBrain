@@ -40,7 +40,7 @@ public class UrlReadingStrategy implements FileReadingStrategy {
     }
 
     @Override
-    public boolean isSupported(String pathOrUrl) {
+    public boolean isSupported(final String pathOrUrl) {
         return Try.of(() -> new java.net.URI(pathOrUrl)).isSuccess();
     }
 
