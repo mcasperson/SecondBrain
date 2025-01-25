@@ -7,7 +7,8 @@ Function Invoke-CustomCommand
         $commandPath,
         $commandArguments,
         $workingDir = (Get-Location),
-        $path = @()
+        $path = @(),
+        $processTimeout = 1000 * 60 * 30
     )
 
     $global:stdErr.Clear()
@@ -48,8 +49,6 @@ Function Invoke-CustomCommand
 
     $p.BeginErrorReadLine()
 
-    # Wait 30 minutes before forcibly killing the process
-    $processTimeout = 1000 * 60 * 120
     $lastUpdate = 0
     while (($global:myprocessrunning -eq $true) -and ($processTimeout -gt 0))
     {
@@ -166,7 +165,7 @@ foreach ($entity in $database.entities)
     }
 }
 
-$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.individualdocumentprompt=Summarize the document as a single paragraph`" `"-Dsb.directoryscan.exclude=Executive Summary.md`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.directoryscan.directory=$subDir`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize each of the supplied File Contents under a header including the company name and a paragraph with a summary of the company's activities.`""
+$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.individualdocumentprompt=Summarize the document as a single paragraph`" `"-Dsb.directoryscan.exclude=Executive Summary.md`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.directoryscan.directory=$subDir`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize each of the supplied File Contents under a header including the company name and a paragraph with a summary of the company's activities.`"" -processTimeout (1000 * 60 * 120)
 Set-Content -Path "$subDir/Executive Summary.md"  -Value $result.StdOut
 Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
 
