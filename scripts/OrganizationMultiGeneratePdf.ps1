@@ -137,7 +137,7 @@ $days = "30"
 $response = Get-Content -Path $env:sb_multislackzengoogle_url -Raw
 
 # https://github.com/jborean93/PowerShell-Yayaml
-$database = ConvertFrom-Yaml $response.Content
+$database = ConvertFrom-Yaml $response
 
 foreach ($entity in $database.entities)
 {
