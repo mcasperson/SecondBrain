@@ -63,7 +63,7 @@ public class SlackClient {
     private Try<SearchAllResponse> searchFromApi(
             final AsyncMethodsClient client,
             final String accessToken,
-            final List<String> keywords) {
+            final Set<String> keywords) {
         return Try.of(() -> client.searchAll(r -> r.token(accessToken)
                         .query(String.join(" ", keywords)))
                 .get());

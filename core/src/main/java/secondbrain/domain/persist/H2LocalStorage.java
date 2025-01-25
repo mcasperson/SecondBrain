@@ -86,6 +86,11 @@ public class H2LocalStorage implements LocalStorage {
         return newValue;
     }
 
+    @Override
+    public String getOrPutString(String tool, String source, String promptHash, GenerateValue generateValue) {
+        return getOrPutString(tool, source, promptHash, 0, generateValue);
+    }
+
     @Retry
     @Override
     public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
