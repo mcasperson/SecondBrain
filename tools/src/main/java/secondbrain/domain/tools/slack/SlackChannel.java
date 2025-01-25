@@ -135,10 +135,12 @@ public class SlackChannel implements Tool<Void> {
         }
 
         final Try<String> messages = channelDetails
-                .mapTry(chanId -> client.conversationsHistory(r -> r
-                        .token(parsedArgs.getAccessToken())
-                        .channel(chanId.channelId())
-                        .oldest(oldest)).get())
+                .mapTry(chanId -> slackClient.conversationHistory(
+                        client,
+                        parsedArgs.getAccessToken(),
+                        chanId.channelId(),
+                        oldest,
+                        parsedArgs.getSearchTTL()).get())
                 .map(this::conversationsToText)
                 .onFailure(error -> System.out.println("Error: " + error));
 
@@ -287,6 +289,7 @@ public class SlackChannel implements Tool<Void> {
 
 @ApplicationScoped
 class Arguments {
+    private static final String DEFAULT_TTL = "3600";
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
@@ -299,6 +302,10 @@ class Arguments {
     @Inject
     @ConfigProperty(name = "sb.slack.days")
     private Optional<String> days;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.historytto")
+    private Optional<String> historyttl;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -349,5 +356,19 @@ class Arguments {
                 .mapTry(Objects::requireNonNull)
                 .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
                 .getOrElseThrow(() -> new FailedTool("Slack access token not found"));
+    }
+
+    public int getSearchTTL() {
+        final String stringValue = argsAccessor.getArgument(
+                historyttl::get,
+                arguments,
+                context,
+                "historyTtl",
+                "slack_historyttl",
+                DEFAULT_TTL);
+
+        return Try.of(() -> stringValue)
+                .map(i -> Math.max(0, Integer.parseInt(i)))
+                .get();
     }
 }

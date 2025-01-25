@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.slack;
 
 import com.slack.api.methods.AsyncMethodsClient;
+import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.methods.response.search.SearchAllResponse;
 import com.slack.api.model.ConversationType;
@@ -29,6 +30,48 @@ public class SlackClient {
 
     @Inject
     private JsonDeserializer jsonDeserializer;
+
+    public Try<ConversationsHistoryResponse> conversationHistory(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channelId,
+            final String oldest,
+            final int ttlSeconds) {
+
+        /*
+            The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
+            based on a hash of the channel name and the access token.
+         */
+        final String hash = DigestUtils.sha256Hex(accessToken + channelId + oldest + SALT);
+
+        // get the result from the cache
+        return Try.of(() -> localStorage.getString(SlackClient.class.getSimpleName(), "SlackAPIConversationHistory", hash))
+                // a cache miss means the string is empty, so we throw an exception
+                .map(validateString::throwIfEmpty)
+                // a cache hit means we deserialize the result
+                .mapTry(r -> jsonDeserializer.deserialize(r, ConversationsHistoryResponse.class))
+                // a cache miss means we call the API and then save the result in the cache
+                .recoverWith(ex -> conversationHistoryFromApi(client, accessToken, channelId, oldest)
+                        .onSuccess(r -> localStorage.putString(
+                                SlackClient.class.getSimpleName(),
+                                "SlackAPIConversationHistory",
+                                hash,
+                                ttlSeconds,
+                                jsonDeserializer.serialize(r))));
+
+
+    }
+
+    private Try<ConversationsHistoryResponse> conversationHistoryFromApi(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channelId,
+            final String oldest) {
+        return Try.of(() -> client.conversationsHistory(r -> r
+                .token(accessToken)
+                .channel(channelId)
+                .oldest(oldest)).get());
+    }
 
     public Try<SearchAllResponse> search(
             final AsyncMethodsClient client,
