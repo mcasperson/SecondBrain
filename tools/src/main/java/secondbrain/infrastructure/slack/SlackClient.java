@@ -2,6 +2,7 @@ package secondbrain.infrastructure.slack;
 
 import com.slack.api.methods.AsyncMethodsClient;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
+import com.slack.api.methods.response.search.SearchAllResponse;
 import com.slack.api.model.ConversationType;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -14,6 +15,7 @@ import secondbrain.domain.validate.ValidateString;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @ApplicationScoped
 public class SlackClient {
@@ -27,6 +29,45 @@ public class SlackClient {
 
     @Inject
     private JsonDeserializer jsonDeserializer;
+
+    public Try<SearchAllResponse> search(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final Set<String> keywords,
+            final int ttlSeconds) {
+
+        /*
+            The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
+            based on a hash of the channel name and the access token.
+         */
+        final String hash = DigestUtils.sha256Hex(accessToken + String.join(" ", keywords) + SALT);
+
+        // get the result from the cache
+        return Try.of(() -> localStorage.getString(SlackClient.class.getSimpleName(), "SlackAPISearch", hash))
+                // a cache miss means the string is empty, so we throw an exception
+                .map(validateString::throwIfEmpty)
+                // a cache hit means we deserialize the result
+                .mapTry(r -> jsonDeserializer.deserialize(r, SearchAllResponse.class))
+                // a cache miss means we call the API and then save the result in the cache
+                .recoverWith(ex -> searchFromApi(client, accessToken, keywords)
+                        .onSuccess(r -> localStorage.putString(
+                                SlackClient.class.getSimpleName(),
+                                "SlackAPISearch",
+                                hash,
+                                ttlSeconds,
+                                jsonDeserializer.serialize(r))));
+
+
+    }
+
+    private Try<SearchAllResponse> searchFromApi(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final List<String> keywords) {
+        return Try.of(() -> client.searchAll(r -> r.token(accessToken)
+                        .query(String.join(" ", keywords)))
+                .get());
+    }
 
     public Try<ChannelDetails> findChannelId(
             final AsyncMethodsClient client,
@@ -46,7 +87,7 @@ public class SlackClient {
                 // a cache hit means we deserialize the result
                 .mapTry(r -> jsonDeserializer.deserialize(r, ChannelDetails.class))
                 // a cache miss means we call the API and then save the result in the cache
-                .recoverWith(ex -> findChannelIdFromApi(client, accessToken, channel, cursor)
+                .recoverWith(ex -> findChannelIdFromApi(client, accessToken, channel, null)
                         .onSuccess(r -> localStorage.putString(
                                 SlackClient.class.getSimpleName(),
                                 "SlackAPI",

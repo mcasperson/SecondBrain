@@ -1,7 +1,6 @@
 package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
-import com.slack.api.methods.AsyncMethodsClient;
 import com.slack.api.model.MatchedItem;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
@@ -94,18 +93,15 @@ public class SlackSearch implements Tool<MatchedItem> {
 
         parsedArgs.setInputs(arguments, prompt, context);
 
-        // you can get this instance via ctx.client() in a Bolt app
-        var client = Slack.getInstance().methods();
-
-        var searchResult = Try.of(() -> client.searchAll(r -> r.token(parsedArgs.getAccessToken())
-                .query(String.join(" ", parsedArgs.getKeywords()))));
+        var searchResult = slackClient.search(
+                Slack.getInstance().methodsAsync(),
+                parsedArgs.getAccessToken(),
+                parsedArgs.getKeywords(),
+                parsedArgs.getSearchTTL());
 
         if (searchResult.isFailure()) {
             throw new FailedTool("Could not search messages");
         }
-
-        // you can get this instance via ctx.client() in a Bolt app
-        final AsyncMethodsClient asyncClient = Slack.getInstance().methodsAsync();
 
         return searchResult.get()
                 .getMessages()
@@ -182,6 +178,8 @@ public class SlackSearch implements Tool<MatchedItem> {
 
 @ApplicationScoped
 class SlackSearchArguments {
+    private static final String DEFAULT_TTL = "3600";
+
     @Inject
     private ArgsAccessor argsAccessor;
 
@@ -210,6 +208,10 @@ class SlackSearchArguments {
     @Inject
     @ConfigProperty(name = "sb.slack.days")
     private Optional<String> days;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.searchttl")
+    private Optional<String> searchTtl;
 
     private List<ToolArgs> arguments;
 
@@ -272,6 +274,20 @@ class SlackSearchArguments {
                 "days",
                 "slack_days",
                 "");
+
+        return Try.of(() -> stringValue)
+                .map(i -> Math.max(0, Integer.parseInt(i)))
+                .get();
+    }
+
+    public int getSearchTTL() {
+        final String stringValue = argsAccessor.getArgument(
+                searchTtl::get,
+                arguments,
+                context,
+                "searchTtl",
+                "slack_searchttl",
+                DEFAULT_TTL);
 
         return Try.of(() -> stringValue)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
