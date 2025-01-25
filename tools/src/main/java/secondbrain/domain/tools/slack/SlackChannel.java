@@ -297,6 +297,10 @@ class Arguments {
     private Optional<String> channel;
 
     @Inject
+    @ConfigProperty(name = "sb.slack.days")
+    private Optional<String> days;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -326,8 +330,16 @@ class Arguments {
     }
 
     public int getDays() {
-        return Try.of(() -> Integer.parseInt(argsAccessor.getArgument(arguments, "days", "7")))
-                .recover(throwable -> 7)
+        final String stringValue = argsAccessor.getArgument(
+                days::get,
+                arguments,
+                context,
+                "days",
+                "slack_days",
+                "");
+
+        return Try.of(() -> stringValue)
+                .map(i -> Math.max(0, Integer.parseInt(i)))
                 .get();
     }
 

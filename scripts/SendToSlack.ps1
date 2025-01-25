@@ -105,7 +105,7 @@ $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSH
 $toolModel = "llama3.1"
 
 # Replace the location of the Jar file with your copy of the CLI UberJAR
-$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.tools.force=SlackChannel`" `"-Dsb.slack.channel=$( $args[0] )`" -jar $jarFile `"Summarize 7 days worth of messages from the '$( $args[0] )' Slack channel in the style of a news article with up to 3 paragraphs and a bold heading. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain language. You will be penalized for using emotive or excited language.`" markdn"
+$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.tools.force=SlackChannel`" `"-Dsb.slack.channel=$( $args[0] )`"  `"-Dsb.slack.days=7`" -jar $jarFile `"Summarize 7 days worth of messages from the '$( $args[0] )' Slack channel in the style of a news article with up to 3 paragraphs and a bold heading. You can use fewer paragraphs if there is only a small amount of chat text to summarize. Use plain language. You will be penalized for using emotive or excited language.`" markdn"
 
 echo $result
 
