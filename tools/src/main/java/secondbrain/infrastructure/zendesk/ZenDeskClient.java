@@ -73,6 +73,11 @@ public class ZenDeskClient {
                 .get();
     }
 
+    /**
+     * ZenDesk has API rate limits measured in requests per minute, so we
+     * attempt to retry a few times with a delay.
+     */
+    @Retry(delay = 30000, maxRetries = 10)
     public ZenDeskTicketResponse getTicket(
             final Client client,
             final String authorization,
@@ -112,7 +117,11 @@ public class ZenDeskClient {
                 .get();
     }
 
-    @Retry
+    /**
+     * ZenDesk has API rate limits measured in requests per minute, so we
+     * attempt to retry a few times with a delay.
+     */
+    @Retry(delay = 30000, maxRetries = 10)
     public ZenDeskOrganizationResponse getOrganization(
             final Client client,
             final String authorization,
@@ -147,7 +156,11 @@ public class ZenDeskClient {
         return org.organization();
     }
 
-    @Retry
+    /**
+     * ZenDesk has API rate limits measured in requests per minute, so we
+     * attempt to retry a few times with a delay.
+     */
+    @Retry(delay = 30000, maxRetries = 10)
     public ZenDeskUserResponse getUser(
             final Client client,
             final String authorization,
