@@ -246,7 +246,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             Search slack for any mention of the salesforce and planhat ids. This will pick up call summaries that are posted
             to slack by the salesforce integration.
          */
-        final List<RagDocumentContext<Void>> slackKeywordSearch = CollectionUtils.collate(entity.getSalesforce(), entity.planhat())
+        final List<RagDocumentContext<Void>> slackKeywordSearch = CollectionUtils.collate(entity.getSalesforce(), entity.getPlanHat())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
