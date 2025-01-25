@@ -17,10 +17,10 @@ import java.util.Optional;
 @ApplicationScoped
 public class H2LocalStorage implements LocalStorage {
 
-    private static final String DATABASE = "jdbc:h2:file:./localstorage;"
-            + "INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;"
-            + "SET SCHEMA SECONDBRAIN\\;"
-            + """
+    private static final String DATABASE = """
+            jdbc:h2:file:./localstorage;
+            INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
+            SET SCHEMA SECONDBRAIN\\;
             CREATE TABLE IF NOT EXISTS local_storage
              (tool VARCHAR(100) NOT NULL,
               source VARCHAR(1024) NOT NULL,
@@ -100,7 +100,9 @@ public class H2LocalStorage implements LocalStorage {
 
         Try.withResources(() -> DriverManager.getConnection(DATABASE))
                 .of(connection -> Try
-                        .of(() -> connection.prepareStatement("INSERT INTO local_storage (tool, source, prompt_hash, response) VALUES (?, ?, ?, ?, ?)"))
+                        .of(() -> connection.prepareStatement("""
+                                INSERT INTO local_storage (tool, source, prompt_hash, response)
+                                VALUES (?, ?, ?, ?, ?)""".stripIndent()))
                         .mapTry(preparedStatement -> {
                             preparedStatement.setString(1, tool);
                             preparedStatement.setString(2, source);
