@@ -12,8 +12,8 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.exceptions.EmptyContext;
 import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -23,7 +23,6 @@ import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.planhat.Conversation;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -157,7 +156,7 @@ public class SlackZenGoogle implements Tool<Void> {
                 .collect(ImmutableList.toImmutableList());
 
         if (slackContext.size() + zenContext.size() + planHatContext.size() < parsedArgs.getMinSlackOrZen()) {
-            throw new EmptyContext("No Slack messages, ZenDesk tickets, or PlanHat activities found");
+            throw new InsufficientContext("No Slack messages, ZenDesk tickets, or PlanHat activities found");
         }
 
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
@@ -193,7 +192,7 @@ public class SlackZenGoogle implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyContext.class)),
+                        API.Case(API.$(instanceOf(InsufficientContext.class)),
                                 throwable -> new FailedTool(throwable.getMessage())),
                         API.Case(API.$(),
                                 throwable -> new FailedTool("Failed to process tickets, google doc, or slack messages: " + throwable.getMessage())))

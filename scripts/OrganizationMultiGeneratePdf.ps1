@@ -165,7 +165,7 @@ foreach ($entity in $database.entities)
     Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
     Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
 
-    if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("EmptyContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
+    if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
     {
         Set-Content -Path "$subDir/$entityName.md"  -Value $result.StdOut
     }
