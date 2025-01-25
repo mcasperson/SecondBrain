@@ -338,23 +338,38 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                   List<String> salesforce,
                   boolean disabled) {
         public List<String> getSlack() {
-            return Objects.requireNonNullElse(slack, List.of());
+            return Objects.requireNonNullElse(slack, List.<String>of())
+                    .stream()
+                    .filter(StringUtils::isNotBlank)
+                    .toList();
         }
 
         public List<String> getGoogleDcos() {
-            return Objects.requireNonNullElse(googledocs, List.of());
+            return Objects.requireNonNullElse(googledocs, List.<String>of())
+                    .stream()
+                    .filter(StringUtils::isNotBlank)
+                    .toList();
         }
 
         public List<String> getZenDesk() {
-            return Objects.requireNonNullElse(zendesk, List.of());
+            return Objects.requireNonNullElse(zendesk, List.<String>of())
+                    .stream()
+                    .filter(StringUtils::isNotBlank)
+                    .toList();
         }
 
         public List<String> getPlanHat() {
-            return Objects.requireNonNullElse(planhat, List.of());
+            return Objects.requireNonNullElse(planhat, List.<String>of())
+                    .stream()
+                    .filter(StringUtils::isNotBlank)
+                    .toList();
         }
 
         public List<String> getSalesforce() {
-            return Objects.requireNonNullElse(salesforce, List.of());
+            return Objects.requireNonNullElse(salesforce, List.<String>of())
+                    .stream()
+                    .filter(StringUtils::isNotBlank)
+                    .toList();
         }
     }
 }
