@@ -1,6 +1,7 @@
 package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
+import com.slack.api.methods.response.search.SearchAllResponse;
 import com.slack.api.model.MatchedItem;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
@@ -93,17 +94,14 @@ public class SlackSearch implements Tool<MatchedItem> {
 
         parsedArgs.setInputs(arguments, prompt, context);
 
-        var searchResult = slackClient.search(
-                Slack.getInstance().methodsAsync(),
-                parsedArgs.getAccessToken(),
-                parsedArgs.getKeywords(),
-                parsedArgs.getSearchTTL());
+        final SearchAllResponse searchResult = Try.of(() -> slackClient.search(
+                        Slack.getInstance().methodsAsync(),
+                        parsedArgs.getAccessToken(),
+                        parsedArgs.getKeywords(),
+                        parsedArgs.getSearchTTL()))
+                .getOrElseThrow(() -> new FailedTool("Could not search messages"));
 
-        if (searchResult.isFailure()) {
-            throw new FailedTool("Could not search messages");
-        }
-
-        return searchResult.get()
+        return searchResult
                 .getMessages()
                 .getMatches()
                 .stream()

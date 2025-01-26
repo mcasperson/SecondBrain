@@ -128,40 +128,29 @@ public class SlackChannel implements Tool<Void> {
         // you can get this instance via ctx.client() in a Bolt app
         final AsyncMethodsClient client = Slack.getInstance().methodsAsync();
 
-        final ChannelDetails channelDetails = slackClient.findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel());
+        final ChannelDetails channelDetails = Try.of(() -> slackClient.findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel()))
+                .getOrElseThrow(() -> new FailedTool("Channel not found"));
 
-        if (channelDetails.isFailure()) {
-            throw new FailedTool("Channel " + parsedArgs.getChannel() + " not found");
-        }
-
-        final Try<String> messages = channelDetails
-                .mapTry(chanId -> slackClient.conversationHistory(
+        final String messages = Try.of(() -> slackClient.conversationHistory(
                         client,
                         parsedArgs.getAccessToken(),
-                        chanId.channelId(),
+                        channelDetails.channelId(),
                         oldest,
                         parsedArgs.getSearchTTL()))
                 .map(this::conversationsToText)
-                .onFailure(error -> System.out.println("Error: " + error));
+                .onFailure(error -> System.out.println("Error: " + error))
+                .getOrElseThrow(() -> new FailedTool("Messages could not be read"));
 
-        if (messages.isFailure()) {
-            throw new FailedTool("Messages could not be read");
-        }
-
-        if (messages.get().length() < MINIMUM_MESSAGE_LENGTH) {
+        if (messages.length() < MINIMUM_MESSAGE_LENGTH) {
             throw new FailedTool("Not enough messages found in channel " + parsedArgs.getChannel()
                     + System.lineSeparator() + System.lineSeparator()
-                    + "* [Slack Channel](https://app.slack.com/client/" + channelDetails.get().teamId() + "/" + channelDetails.get().channelId() + ")");
+                    + "* [Slack Channel](https://app.slack.com/client/" + channelDetails.teamId() + "/" + channelDetails.channelId() + ")");
         }
 
-        final Try<String> messagesWithUsersReplaced = messages
-                .flatMap(m -> replaceIds(client, parsedArgs.getAccessToken(), m));
+        final String messagesWithUsersReplaced = replaceIds(client, parsedArgs.getAccessToken(), messages)
+                .getOrElseThrow(() -> new FailedTool("The user and channel IDs could not be replaced"));
 
-        if (messagesWithUsersReplaced.isFailure()) {
-            throw new FailedTool("The user and channel IDs could not be replaced");
-        }
-
-        return List.of(getDocumentContext(messagesWithUsersReplaced.get(), channelDetails.get()));
+        return List.of(getDocumentContext(messagesWithUsersReplaced, channelDetails));
     }
 
     @Override
