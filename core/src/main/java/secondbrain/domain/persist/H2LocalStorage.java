@@ -27,6 +27,7 @@ public class H2LocalStorage implements LocalStorage {
             prompt_hash VARCHAR(1024) NOT NULL,
             response CLOB NOT NULL,
             timestamp TIMESTAMP DEFAULT NULL)\\;
+            CREATE INDEX IF NOT EXISTS idx_timestamp ON local_storage(timestamp)\\;
             CREATE INDEX IF NOT EXISTS idx_tool ON local_storage(tool)\\;
             CREATE INDEX IF NOT EXISTS idx_source ON local_storage(source)\\;
             CREATE INDEX IF NOT EXISTS idx_prompt_hash ON local_storage(prompt_hash);""".stripIndent().replaceAll("\n", "");
@@ -39,12 +40,32 @@ public class H2LocalStorage implements LocalStorage {
         return disable != null && disable.isPresent() && Boolean.parseBoolean(disable.get());
     }
 
+    private boolean deleteExpired() {
+        if (isDisabled()) {
+            return false;
+        }
+
+        return Try.withResources(() -> DriverManager.getConnection(DATABASE))
+                .of(connection -> Try
+                        .of(() -> connection.prepareStatement("""
+                                DELETE FROM local_storage
+                                WHERE timestamp IS NOT NULL
+                                AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
+                        .mapTry(PreparedStatement::executeUpdate)
+                        .onFailure(Throwable::printStackTrace)
+                        .isSuccess())
+                .onFailure(Throwable::printStackTrace)
+                .getOrElse(false);
+    }
+
     @Retry
     @Override
     public String getString(final String tool, final String source, final String promptHash) {
         if (isDisabled()) {
             return null;
         }
+
+        deleteExpired();
 
         return Try.withResources(() -> DriverManager.getConnection(DATABASE))
                 .of(connection -> Try
