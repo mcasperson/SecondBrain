@@ -31,7 +31,7 @@ public class SlackClient {
     @Inject
     private JsonDeserializer jsonDeserializer;
 
-    public Try<ConversationsHistoryResponse> conversationHistory(
+    public ConversationsHistoryResponse conversationHistory(
             final AsyncMethodsClient client,
             final String accessToken,
             final String channelId,
@@ -44,36 +44,28 @@ public class SlackClient {
          */
         final String hash = DigestUtils.sha256Hex(accessToken + channelId + oldest + SALT);
 
-        // get the result from the cache
-        return Try.of(() -> localStorage.getString(SlackClient.class.getSimpleName(), "SlackAPIConversationHistory", hash))
-                // a cache miss means the string is empty, so we throw an exception
-                .map(validateString::throwIfEmpty)
-                // a cache hit means we deserialize the result
-                .mapTry(r -> jsonDeserializer.deserialize(r, ConversationsHistoryResponse.class))
-                // a cache miss means we call the API and then save the result in the cache
-                .recoverWith(ex -> conversationHistoryFromApi(client, accessToken, channelId, oldest)
-                        .onSuccess(r -> localStorage.putString(
-                                SlackClient.class.getSimpleName(),
-                                "SlackAPIConversationHistory",
-                                hash,
-                                ttlSeconds,
-                                jsonDeserializer.serialize(r))));
-
-
+        return localStorage.getOrPutObject(
+                SlackClient.class.getSimpleName(),
+                "SlackAPIConversationHistory",
+                hash,
+                ttlSeconds,
+                ConversationsHistoryResponse.class,
+                () -> conversationHistoryFromApi(client, accessToken, channelId, oldest));
     }
 
-    private Try<ConversationsHistoryResponse> conversationHistoryFromApi(
+    private ConversationsHistoryResponse conversationHistoryFromApi(
             final AsyncMethodsClient client,
             final String accessToken,
             final String channelId,
             final String oldest) {
         return Try.of(() -> client.conversationsHistory(r -> r
-                .token(accessToken)
-                .channel(channelId)
-                .oldest(oldest)).get());
+                        .token(accessToken)
+                        .channel(channelId)
+                        .oldest(oldest)).get())
+                .get();
     }
 
-    public Try<SearchAllResponse> search(
+    public SearchAllResponse search(
             final AsyncMethodsClient client,
             final String accessToken,
             final Set<String> keywords,
@@ -85,31 +77,23 @@ public class SlackClient {
          */
         final String hash = DigestUtils.sha256Hex(accessToken + String.join(" ", keywords) + SALT);
 
-        // get the result from the cache
-        return Try.of(() -> localStorage.getString(SlackClient.class.getSimpleName(), "SlackAPISearch", hash))
-                // a cache miss means the string is empty, so we throw an exception
-                .map(validateString::throwIfEmpty)
-                // a cache hit means we deserialize the result
-                .mapTry(r -> jsonDeserializer.deserialize(r, SearchAllResponse.class))
-                // a cache miss means we call the API and then save the result in the cache
-                .recoverWith(ex -> searchFromApi(client, accessToken, keywords)
-                        .onSuccess(r -> localStorage.putString(
-                                SlackClient.class.getSimpleName(),
-                                "SlackAPISearch",
-                                hash,
-                                ttlSeconds,
-                                jsonDeserializer.serialize(r))));
-
-
+        return localStorage.getOrPutObject(
+                SlackClient.class.getSimpleName(),
+                "SlackAPISearch",
+                hash,
+                ttlSeconds,
+                SearchAllResponse.class,
+                () -> searchFromApi(client, accessToken, keywords));
     }
 
-    private Try<SearchAllResponse> searchFromApi(
+    private SearchAllResponse searchFromApi(
             final AsyncMethodsClient client,
             final String accessToken,
             final Set<String> keywords) {
         return Try.of(() -> client.searchAll(r -> r.token(accessToken)
-                        .query(String.join(" ", keywords)))
-                .get());
+                                .query(String.join(" ", keywords)))
+                        .get())
+                .get();
     }
 
     public Try<ChannelDetails> findChannelId(

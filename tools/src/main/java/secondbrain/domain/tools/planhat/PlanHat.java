@@ -116,7 +116,8 @@ public class PlanHat implements Tool<Conversation> {
                 .of(client -> planHatClient.getConversations(
                         client,
                         parsedArgs.getCompany(),
-                        parsedArgs.getToken()))
+                        parsedArgs.getToken(),
+                        parsedArgs.getSearchTTL()))
                 .get();
 
         return conversations.stream()
@@ -195,6 +196,8 @@ public class PlanHat implements Tool<Conversation> {
 
 @ApplicationScoped
 class Arguments {
+    private static final String DEFAULT_TTL = "3600";
+
     @Inject
     @ConfigProperty(name = "sb.planhat.company")
     private Optional<String> company;
@@ -206,6 +209,10 @@ class Arguments {
     @Inject
     @ConfigProperty(name = "sb.planhat.accesstoken")
     private Optional<String> token;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.searchttl")
+    private Optional<String> searchTtl;
 
     @Inject
     private ValidateString validateString;
@@ -237,7 +244,7 @@ class Arguments {
     }
 
     public int getDays() {
-        final String stringValue= Try.of(from::get)
+        final String stringValue = Try.of(from::get)
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> argsAccessor.getArgument(arguments, "days", ""))
                 .mapTry(validateString::throwIfEmpty)
@@ -256,6 +263,20 @@ class Arguments {
                 .recover(e -> context.get("planhat_token"))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> "")
+                .get();
+    }
+
+    public int getSearchTTL() {
+        final String stringValue = argsAccessor.getArgument(
+                searchTtl::get,
+                arguments,
+                context,
+                "searchTtl",
+                "slack_searchttl",
+                DEFAULT_TTL);
+
+        return Try.of(() -> stringValue)
+                .map(i -> Math.max(0, Integer.parseInt(i)))
                 .get();
     }
 }

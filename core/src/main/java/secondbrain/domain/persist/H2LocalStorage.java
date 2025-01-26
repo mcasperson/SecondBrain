@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import secondbrain.domain.json.JsonDeserializer;
 
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -35,6 +36,9 @@ public class H2LocalStorage implements LocalStorage {
     @Inject
     @ConfigProperty(name = "sb.cache.disable")
     private Optional<String> disable;
+
+    @Inject
+    private JsonDeserializer jsonDeserializer;
 
     private boolean isDisabled() {
         return disable != null && disable.isPresent() && Boolean.parseBoolean(disable.get());
@@ -95,7 +99,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public String getOrPutString(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue generateValue) {
+    public String getOrPutString(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
         if (isDisabled()) {
             return generateValue.generate();
         }
@@ -111,8 +115,36 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public String getOrPutString(String tool, String source, String promptHash, GenerateValue generateValue) {
+    public String getOrPutString(String tool, String source, String promptHash, GenerateValue<String> generateValue) {
         return getOrPutString(tool, source, promptHash, 0, generateValue);
+    }
+
+    @Override
+    public <T> T getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
+        return Try.of(() -> getString(tool, source, promptHash))
+                // a cache miss means the string is empty, so we throw an exception
+                .map(result -> {
+                    if (StringUtils.isBlank(result)) {
+                        throw new RuntimeException("Cache miss");
+                    }
+                    return result;
+                })
+                // a cache hit means we deserialize the result
+                .mapTry(r -> jsonDeserializer.deserialize(r, clazz))
+                // a cache miss means we call the API and then save the result in the cache
+                .recoverWith(ex -> Try.of(generateValue::generate)
+                        .onSuccess(r -> putString(
+                                tool,
+                                source,
+                                promptHash,
+                                ttlSeconds,
+                                jsonDeserializer.serialize(r))))
+                .get();
+    }
+
+    @Override
+    public <T> T getOrPutObject(final String tool, final String source, final String promptHash, final Class<T> clazz, final GenerateValue<T> generateValue) {
+        return getOrPutObject(tool, source, promptHash, 0, clazz, generateValue);
     }
 
     @Retry

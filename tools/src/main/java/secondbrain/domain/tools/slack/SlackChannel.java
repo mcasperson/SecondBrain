@@ -140,7 +140,7 @@ public class SlackChannel implements Tool<Void> {
                         parsedArgs.getAccessToken(),
                         chanId.channelId(),
                         oldest,
-                        parsedArgs.getSearchTTL()).get())
+                        parsedArgs.getSearchTTL()))
                 .map(this::conversationsToText)
                 .onFailure(error -> System.out.println("Error: " + error));
 

@@ -1,5 +1,5 @@
 package secondbrain.domain.persist;
 
-public interface GenerateValue {
-    String generate();
+public interface GenerateValue<T> {
+    T generate();
 }

@@ -140,18 +140,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        
+
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragContext -> mergeContext(ragContext, modelConfig.getCalculatedModel(context)))
                 .map(multiRagDoc -> multiRagDoc.updateDocument(
                         promptBuilderSelector
                                 .getPromptBuilder(modelConfig.getCalculatedModel(context))
-                                .buildFinalPrompt(
-                                        INSTRUCTIONS
-                                                + getAdditionalSlackInstructions(multiRagDoc.individualContexts())
-                                                + getAdditionalPlanHatInstructions(multiRagDoc.individualContexts())
-                                                + getAdditionalGoogleDocsInstructions(multiRagDoc.individualContexts())
-                                                + getAdditionalZenDeskInstructions(multiRagDoc.individualContexts()),
+                                .buildFinalPrompt(getInstructions(multiRagDoc),
                                         // I've opted to get the end of the document if it is larger than the context window.
                                         // The end of the document is typically given more weight by LLMs, and so any long
                                         // document being processed should place the most relevant content towards the end.
@@ -174,6 +169,14 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return result.mapFailure(
                         API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
                 .get();
+    }
+
+    private String getInstructions(final RagMultiDocumentContext<Void> multiRagDoc) {
+        return INSTRUCTIONS
+                + getAdditionalSlackInstructions(multiRagDoc.individualContexts())
+                + getAdditionalPlanHatInstructions(multiRagDoc.individualContexts())
+                + getAdditionalGoogleDocsInstructions(multiRagDoc.individualContexts())
+                + getAdditionalZenDeskInstructions(multiRagDoc.individualContexts());
     }
 
     private List<RagDocumentContext<Void>> validateSufficientContext(final List<RagDocumentContext<Void>> ragContext) {
@@ -333,9 +336,14 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> planHatContext = entity.getPlanHat()
                 .stream()
                 .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(new ToolArgs("companyId", id),
+                .map(id -> List.of(
+                        new ToolArgs("companyId", id),
                         new ToolArgs("days", parsedArgs.getDays() + "")))
-                .flatMap(args -> Try.of(() -> planHat.getContext(context, prompt + "\nCompany is " + args.getFirst().argValue() + "\nDays is " + days, args))
+                .flatMap(args -> Try.of(() -> planHat.getContext(
+                                context,
+                                prompt
+                                        + "\nCompany is " + args.getFirst().argValue()
+                                        + "\nDays is " + days, args))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name

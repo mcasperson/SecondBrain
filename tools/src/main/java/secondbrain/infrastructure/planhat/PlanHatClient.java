@@ -7,6 +7,7 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 
 import java.util.List;
@@ -20,8 +21,25 @@ public class PlanHatClient {
     @ConfigProperty(name = "sb.planhat.url", defaultValue = "https://api-us4.planhat.com")
     private String url;
 
+    @Inject
+    private LocalStorage localStorage;
+
+    public List<Conversation> getConversations(
+            final Client client,
+            final String company,
+            final String token,
+            final int ttlSeconds) {
+        return List.of(localStorage.getOrPutObject(
+                PlanHatClient.class.getSimpleName(),
+                "PlanHatAPIConversations",
+                company,
+                ttlSeconds,
+                Conversation[].class,
+                () -> getConversationsApi(client, company, token)));
+    }
+
     @Retry
-    public List<Conversation> getConversations(final Client client, final String company, final String token) {
+    private Conversation[] getConversationsApi(final Client client, final String company, final String token) {
         return Try.withResources(() -> client.target(url + "/conversations")
                         .queryParam("cId", company)
                         .request()
@@ -29,23 +47,7 @@ public class PlanHatClient {
                         .header("Accept", MediaType.APPLICATION_JSON)
                         .get())
                 .of(response -> Try.of(() -> responseValidation.validate(response))
-                        .map(r -> List.of(r.readEntity(Conversation[].class)))
-                        .get())
-                .get();
-    }
-
-    /**
-     * Look up all the responses from a ticket.
-     */
-    @Retry
-    public List<Ticket> getTicketParts(final Client client, final String ticket, final String token) {
-        return Try.withResources(() -> client.target(url + "/tickets/" + ticket + "/parts")
-                        .request()
-                        .header("Authorization", "Bearer " + token)
-                        .header("Accept", MediaType.APPLICATION_JSON)
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response))
-                        .map(r -> List.of(r.readEntity(Ticket[].class)))
+                        .map(r -> r.readEntity(Conversation[].class))
                         .get())
                 .get();
     }

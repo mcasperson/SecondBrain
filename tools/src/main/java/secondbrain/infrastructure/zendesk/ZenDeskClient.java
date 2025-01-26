@@ -6,10 +6,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import org.apache.commons.collections4.ListUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
-import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
-import secondbrain.domain.validate.ValidateString;
 
 import java.util.List;
 
@@ -25,12 +23,6 @@ public class ZenDeskClient {
 
     @Inject
     private LocalStorage localStorage;
-
-    @Inject
-    private JsonDeserializer jsonDeserializer;
-
-    @Inject
-    private ValidateString validateString;
 
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
@@ -152,16 +144,12 @@ public class ZenDeskClient {
             final String url,
             final String orgId) {
 
-        return Try.of(() -> localStorage.getString(ZenDeskClient.class.getSimpleName(), "ZenDeskAPIOrganizations", orgId))
-                .map(validateString::throwIfEmpty)
-                .map(r -> jsonDeserializer.deserialize(r, ZenDeskOrganizationResponse.class))
-                .recover(e -> getOrganization(client, authorization, url, orgId))
-                .onSuccess(r -> localStorage.putString(
-                        ZenDeskClient.class.getSimpleName(),
-                        "ZenDeskAPIOrganizations",
-                        orgId,
-                        jsonDeserializer.serialize(r)))
-                .get().organization();
+        return localStorage.getOrPutObject(
+                ZenDeskClient.class.getSimpleName(),
+                "ZenDeskAPIOrganizations",
+                orgId,
+                ZenDeskOrganizationResponse.class,
+                () -> getOrganization(client, authorization, url, orgId)).organization();
     }
 
     /**
@@ -192,15 +180,11 @@ public class ZenDeskClient {
             final String url,
             final String userId) {
 
-        return Try.of(() -> localStorage.getString(ZenDeskClient.class.getSimpleName(), "ZenDeskAPIUsers", userId))
-                .map(validateString::throwIfEmpty)
-                .map(r -> jsonDeserializer.deserialize(r, ZenDeskUserResponse.class))
-                .recover(e -> getUser(client, authorization, url, userId))
-                .onSuccess(r -> localStorage.putString(
-                        ZenDeskClient.class.getSimpleName(),
-                        "ZenDeskAPIUsers",
-                        userId,
-                        jsonDeserializer.serialize(r)))
-                .get().user();
+        return localStorage.getOrPutObject(
+                ZenDeskClient.class.getSimpleName(),
+                "ZenDeskAPIUsers",
+                userId,
+                ZenDeskUserResponse.class,
+                () -> getUser(client, authorization, url, userId)).user();
     }
 }
