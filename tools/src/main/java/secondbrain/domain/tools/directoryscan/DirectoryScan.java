@@ -342,7 +342,7 @@ class Arguments {
                 arguments,
                 context,
                 "fileCustomModel",
-                "file_custom_model",
+                "directoryscan_file_custom_model",
                 filemodel.orElse(modelConfig.getCalculatedModel(context)));
     }
 
@@ -352,7 +352,7 @@ class Arguments {
                 arguments,
                 context,
                 "individualDocumentPrompt",
-                "individual_document_prompt",
+                "directoryscan_individual_document_prompt",
                 prompt);
     }
 
