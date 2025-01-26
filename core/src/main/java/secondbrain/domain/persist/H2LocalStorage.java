@@ -18,7 +18,7 @@ import java.util.Optional;
 public class H2LocalStorage implements LocalStorage {
 
     private static final String DATABASE = """
-            jdbc:h2:file:./localstorage;
+            jdbc:h2:file:./localstoragev2;
             INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
             SET SCHEMA SECONDBRAIN\\;
             CREATE TABLE IF NOT EXISTS local_storage
@@ -26,7 +26,10 @@ public class H2LocalStorage implements LocalStorage {
               source VARCHAR(1024) NOT NULL,
               prompt_hash VARCHAR(1024) NOT NULL,
               response CLOB NOT NULL,
-              timestamp TIMESTAMP DEFAULT NULL);""".stripIndent();
+              timestamp TIMESTAMP DEFAULT NULL,
+              INDEX (tool),
+              INDEX(source),
+              INDEX(prompt_hash));""".stripIndent();
 
     @Inject
     @ConfigProperty(name = "sb.cache.disable")
