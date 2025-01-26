@@ -277,6 +277,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                         + "\nChannel is " + args.getFirst().argValue()
                                         + "\nDays is " + days,
                                 args))
+                        .onFailure(Throwable::printStackTrace)
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -301,6 +302,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 + "\nKeywords are " + args.getFirst().argValue()
                                 + "\nDays is " + days,
                         args))
+                .onFailure(Throwable::printStackTrace)
                 // If anything fails, get an empty list
                 .getOrElse(List::of)
                 // Post-process the rag context
@@ -314,6 +316,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(new ToolArgs("googleDocumentId", id)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(context, prompt + "\nDocument ID is " + args.getFirst().argValue(), args))
+                        .onFailure(Throwable::printStackTrace)
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -326,6 +329,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(new ToolArgs("zenDeskOrganization", id), new ToolArgs("days", "" + days)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context,
                                 prompt + "\nOrganization is " + args.getFirst().argValue() + "\nDays is " + days, args))
+                        .onFailure(Throwable::printStackTrace)
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -344,6 +348,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt
                                         + "\nCompany is " + args.getFirst().argValue()
                                         + "\nDays is " + days, args))
+                        .onFailure(Throwable::printStackTrace)
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
