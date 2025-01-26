@@ -22,21 +22,18 @@ public class H2LocalStorage implements LocalStorage {
             INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
             SET SCHEMA SECONDBRAIN\\;
             CREATE TABLE IF NOT EXISTS local_storage
-             (tool VARCHAR(100) NOT NULL,
-              source VARCHAR(1024) NOT NULL,
-              prompt_hash VARCHAR(1024) NOT NULL,
-              response CLOB NOT NULL,
-              timestamp TIMESTAMP DEFAULT NULL,
-              INDEX (tool),
-              INDEX(source),
-              INDEX(prompt_hash));""".stripIndent();
+            (tool VARCHAR(100) NOT NULL,
+            source VARCHAR(1024) NOT NULL,
+            prompt_hash VARCHAR(1024) NOT NULL,
+            response CLOB NOT NULL,
+            timestamp TIMESTAMP DEFAULT NULL);""".stripIndent().replaceAll("\n", "");
 
     @Inject
     @ConfigProperty(name = "sb.cache.disable")
     private Optional<String> disable;
 
     private boolean isDisabled() {
-        return disable.isPresent() && Boolean.parseBoolean(disable.get());
+        return disable != null && disable.isPresent() && Boolean.parseBoolean(disable.get());
     }
 
     @Retry
