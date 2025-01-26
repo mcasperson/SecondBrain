@@ -26,7 +26,6 @@ import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.slack.SlackClient;
 
@@ -58,13 +57,6 @@ public class SlackChannel implements Tool<Void> {
     private Arguments parsedArgs;
 
     @Inject
-    @ConfigProperty(name = "sb.slack.accesstoken")
-    private Optional<String> slackAccessToken;
-
-    @Inject
-    private Encryptor textEncryptor;
-
-    @Inject
     @Identifier("removeMarkdnUrls")
     private SanitizeDocument removeMarkdnUrls;
 
@@ -75,16 +67,10 @@ public class SlackChannel implements Tool<Void> {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
-    private ArgsAccessor argsAccessor;
-
-    @Inject
     private OllamaClient ollamaClient;
 
     @Inject
     private PromptBuilderSelector promptBuilderSelector;
-
-    @Inject
-    private ValidateString validateString;
 
     @Inject
     private SlackClient slackClient;
@@ -107,6 +93,7 @@ public class SlackChannel implements Tool<Void> {
         );
     }
 
+    @Override
     public String getContextLabel() {
         return "Slack Messages";
     }

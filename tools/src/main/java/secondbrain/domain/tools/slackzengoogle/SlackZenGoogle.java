@@ -24,8 +24,6 @@ import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -97,6 +95,7 @@ public class SlackZenGoogle implements Tool<Void> {
                 new ToolArguments("zenDeskOrganization", "The optional Zen Desk organization channel to query", ""));
     }
 
+    @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,
@@ -319,23 +318,4 @@ class SlackZenGoogleArguments {
                 "planhat_companyid",
                 "");
     }
-
-    public String getPlanHatFrom() {
-        return StringUtils.isBlank(getSlackDays())
-                ? ""
-                : "" + LocalDate.now().minusDays(NumberUtils.toInt(getSlackDays(), 1))
-                .atStartOfDay(ZoneId.systemDefault())
-                .toInstant()
-                .getEpochSecond();
-    }
-
-    public String getPlanHatTo() {
-        return StringUtils.isBlank(getSlackDays())
-                ? ""
-                : "" + LocalDate.now()
-                .atStartOfDay(ZoneId.systemDefault())
-                .toInstant()
-                .getEpochSecond();
-    }
-
 }

@@ -106,6 +106,7 @@ public class DirectoryScan implements Tool<Void> {
                 """;
     }
 
+    @Override
     public String getContextLabel() {
         return "File Contents";
     }
@@ -297,9 +298,6 @@ class Arguments {
 
     @Inject
     private ArgsAccessor argsAccessor;
-
-    @Inject
-    private ValidateString validateString;
 
     @Inject
     private ModelConfig modelConfig;

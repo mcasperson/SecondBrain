@@ -121,6 +121,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 new ToolArguments("hours", "The optional number of hours worth of tickets to return", "0"));
     }
 
+    @Override
     public String getContextLabel() {
         return "ZenDesk Ticket";
     }
@@ -621,14 +622,16 @@ class Arguments {
     }
 
     private int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {
+        final Locale locale = Locale.getDefault();
+
         // If the prompt did not mention the keyword for the first argument, assume that it was never mentioned, and return 0
-        if (!prompt.toLowerCase().contains(aPromptKeyword.toLowerCase())) {
+        if (!prompt.toLowerCase(locale).contains(aPromptKeyword.toLowerCase(locale))) {
             return 0;
         }
 
         // If the prompt did mention the first argument, but did not mention the keyword for the second argument,
         // and the first argument is 0, assume the LLM switched things up, and return the second argument
-        if (!prompt.toLowerCase().contains(bPromptKeyword.toLowerCase()) && a == 0) {
+        if (!prompt.toLowerCase(locale).contains(bPromptKeyword.toLowerCase(locale)) && a == 0) {
             return b;
         }
 

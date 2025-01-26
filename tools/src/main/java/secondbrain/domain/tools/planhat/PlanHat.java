@@ -88,6 +88,7 @@ public class PlanHat implements Tool<Conversation> {
         return "Queries PlanHat for customer information, activities, emails, and conversations";
     }
 
+    @Override
     public String getContextLabel() {
         return "PlanHat Activity";
     }

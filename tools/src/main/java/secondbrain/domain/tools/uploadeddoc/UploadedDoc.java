@@ -90,10 +90,12 @@ public class UploadedDoc implements Tool<Void> {
         );
     }
 
+    @Override
     public String getContextLabel() {
         return "File Contents";
     }
 
+    @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,
@@ -138,7 +140,7 @@ public class UploadedDoc implements Tool<Void> {
                         .map(ragDoc -> promptBuilderSelector
                                 .getPromptBuilder(customModel)
                                 .buildContextPrompt(
-                                        "Uploaded Document",
+                                        getContextLabel(),
                                         ragDoc.document()))
                         .collect(Collectors.joining("\n")),
                 context);

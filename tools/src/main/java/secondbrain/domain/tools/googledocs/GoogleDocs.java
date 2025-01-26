@@ -26,7 +26,6 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
-import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.limit.DocumentTrimmer;
@@ -83,9 +82,6 @@ public class GoogleDocs implements Tool<Void> {
     private OllamaClient ollamaClient;
 
     @Inject
-    private DebugToolArgs debugToolArgs;
-
-    @Inject
     private SentenceSplitter sentenceSplitter;
 
     @Inject
@@ -117,6 +113,7 @@ public class GoogleDocs implements Tool<Void> {
         return "Google Document";
     }
 
+    @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,

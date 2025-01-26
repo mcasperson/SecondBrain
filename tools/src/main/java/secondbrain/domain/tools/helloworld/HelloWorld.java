@@ -34,6 +34,7 @@ public class HelloWorld implements Tool<Void> {
                 "World"));
     }
 
+    @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,

@@ -29,6 +29,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.slack.SlackClient;
 
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -82,6 +83,7 @@ public class SlackSearch implements Tool<MatchedItem> {
         );
     }
 
+    @Override
     public String getContextLabel() {
         return "Slack Messages";
     }
@@ -105,7 +107,7 @@ public class SlackSearch implements Tool<MatchedItem> {
                 .getMessages()
                 .getMatches()
                 .stream()
-                .filter(matchedItem -> parsedArgs.getDays() == 0 || dateParser.parseDate(matchedItem.getTs()).isAfter(ZonedDateTime.now().minusDays(parsedArgs.getDays())))
+                .filter(matchedItem -> parsedArgs.getDays() == 0 || dateParser.parseDate(matchedItem.getTs()).isAfter(parsedArgs.getFromDate()))
                 .filter(matchedItem -> parsedArgs.getIgnoreChannels()
                         .stream()
                         .noneMatch(matchedItem.getChannel().getName()::equalsIgnoreCase))
@@ -276,6 +278,10 @@ class SlackSearchArguments {
         return Try.of(() -> stringValue)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
                 .get();
+    }
+
+    public ZonedDateTime getFromDate() {
+        return ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays());
     }
 
     public int getSearchTTL() {

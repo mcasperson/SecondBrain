@@ -1,6 +1,5 @@
 package secondbrain.domain.tools.github;
 
-import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -23,7 +22,6 @@ import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.ListUtilsEx;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -107,6 +105,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 """;
     }
 
+    @Override
     public String getContextLabel() {
         return "Git Diff";
     }
@@ -364,10 +363,6 @@ class Arguments {
 
     @Inject
     private ValidateString validateString;
-
-    @Inject
-    @Identifier("sanitizeDate")
-    private SanitizeArgument dateSanitizer;
 
     @Inject
     private ModelConfig modelConfig;

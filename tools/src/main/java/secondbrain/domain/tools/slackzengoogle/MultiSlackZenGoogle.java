@@ -26,7 +26,6 @@ import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
-import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
@@ -89,9 +88,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     @Inject
     private Arguments parsedArgs;
 
-    @Inject
-    private ValidateList validateList;
-
     @Override
     public String getName() {
         return MultiSlackZenGoogle.class.getSimpleName();
@@ -115,6 +111,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 new ToolArguments("days", "The number of days to query", ""));
     }
 
+    @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> context,
             final String prompt,

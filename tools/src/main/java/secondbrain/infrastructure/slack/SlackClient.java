@@ -9,7 +9,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
-import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tools.slack.ChannelDetails;
 import secondbrain.domain.validate.ValidateString;
@@ -27,9 +26,6 @@ public class SlackClient {
 
     @Inject
     private LocalStorage localStorage;
-
-    @Inject
-    private JsonDeserializer jsonDeserializer;
 
     public ConversationsHistoryResponse conversationHistory(
             final AsyncMethodsClient client,
