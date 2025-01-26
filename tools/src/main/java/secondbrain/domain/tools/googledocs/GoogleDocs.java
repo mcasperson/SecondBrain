@@ -9,7 +9,6 @@ import com.google.api.services.docs.v1.model.*;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
-import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -30,7 +29,6 @@ import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.FailedTool;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -225,6 +223,7 @@ public class GoogleDocs implements Tool<Void> {
         return "[Document](https://docs.google.com/document/d/" + documentId + ")";
     }
 
+    @SuppressWarnings("JavaUtilDate")
     private HttpRequestInitializer getCredentials(final String accessToken, final Date expires) {
         final GoogleCredentials credentials = GoogleCredentials.create(new AccessToken(accessToken, expires));
         return new HttpCredentialsAdapter(credentials);
@@ -311,10 +310,6 @@ class Arguments {
 
     @Inject
     private ArgsAccessor argsAccessor;
-
-    @Inject
-    @Identifier("sanitizeList")
-    private SanitizeArgument sanitizeList;
 
     private List<ToolArgs> arguments;
 

@@ -385,7 +385,7 @@ class Arguments {
                 arguments,
                 context,
                 "summarizeIndividualDiffs",
-                "summarize_individual_diffs",
+                "github_summarize_individual_diffs",
                 "");
 
         return Boolean.parseBoolean(stringValue);
@@ -412,7 +412,7 @@ class Arguments {
                 arguments,
                 context,
                 "maxDiffs",
-                "github_maxdiffs",
+                "github_max_diffs",
                 "0");
 
         return Try.of(() -> stringValue)
@@ -496,7 +496,7 @@ class Arguments {
                 arguments,
                 context,
                 "diffModel",
-                "diff_custom_model",
+                "github_diff_custom_model",
                 modelConfig.getCalculatedModel(context));
     }
 
@@ -507,7 +507,7 @@ class Arguments {
                 arguments,
                 context,
                 "diffContextWindow",
-                "diff_context_window",
+                "github_diff_context_window",
                 Constants.DEFAULT_CONTENT_WINDOW + "");
 
         return Try.of(() -> stringValue)
