@@ -157,7 +157,7 @@ public class H2LocalStorage implements LocalStorage {
         Try.withResources(() -> DriverManager.getConnection(DATABASE))
                 .of(connection -> Try
                         .of(() -> connection.prepareStatement("""
-                                INSERT INTO local_storage (tool, source, prompt_hash, response)
+                                INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
                                 VALUES (?, ?, ?, ?, ?)""".stripIndent()))
                         .mapTry(preparedStatement -> {
                             preparedStatement.setString(1, tool);
