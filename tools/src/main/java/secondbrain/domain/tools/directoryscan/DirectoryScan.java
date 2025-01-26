@@ -37,6 +37,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -91,6 +92,8 @@ public class DirectoryScan implements Tool<Void> {
     private SentenceVectorizer sentenceVectorizer;
     @Inject
     private FileToText fileToText;
+    @Inject
+    private Logger logger;
 
     @Override
     public String getName() {
@@ -217,6 +220,8 @@ public class DirectoryScan implements Tool<Void> {
      * into a single document to be summarised again.
      */
     private RagDocumentContext<Void> getFileSummary(final String prompt, final String file) {
+        logger.info("DirectoryScan processing file: " + file);
+
         /*
              Each individual file is converted to text and used to answer the prompt.
              The combined answers are then used to answer the prompt again.
