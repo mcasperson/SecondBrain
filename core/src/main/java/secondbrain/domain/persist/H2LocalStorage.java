@@ -26,7 +26,10 @@ public class H2LocalStorage implements LocalStorage {
             source VARCHAR(1024) NOT NULL,
             prompt_hash VARCHAR(1024) NOT NULL,
             response CLOB NOT NULL,
-            timestamp TIMESTAMP DEFAULT NULL);""".stripIndent().replaceAll("\n", "");
+            timestamp TIMESTAMP DEFAULT NULL)\\;
+            CREATE INDEX IF NOT EXISTS idx_tool ON local_storage(tool)\\;
+            CREATE INDEX IF NOT EXISTS idx_source ON local_storage(source)\\;
+            CREATE INDEX IF NOT EXISTS idx_prompt_hash ON local_storage(prompt_hash);""".stripIndent().replaceAll("\n", "");
 
     @Inject
     @ConfigProperty(name = "sb.cache.disable")
