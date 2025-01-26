@@ -96,7 +96,7 @@ public class SlackClient {
                 .get();
     }
 
-    public Try<ChannelDetails> findChannelId(
+    public ChannelDetails findChannelId(
             final AsyncMethodsClient client,
             final String accessToken,
             final String channel) {
@@ -108,22 +108,15 @@ public class SlackClient {
         final String hash = DigestUtils.sha256Hex(accessToken + channel + SALT);
 
         // get the result from the cache
-        return Try.of(() -> localStorage.getString(SlackClient.class.getSimpleName(), "SlackAPI", hash))
-                // a cache miss means the string is empty, so we throw an exception
-                .map(validateString::throwIfEmpty)
-                // a cache hit means we deserialize the result
-                .mapTry(r -> jsonDeserializer.deserialize(r, ChannelDetails.class))
-                // a cache miss means we call the API and then save the result in the cache
-                .recoverWith(ex -> findChannelIdFromApi(client, accessToken, channel, null)
-                        .onSuccess(r -> localStorage.putString(
-                                SlackClient.class.getSimpleName(),
-                                "SlackAPI",
-                                hash,
-                                jsonDeserializer.serialize(r))));
-
+        return localStorage.getOrPutObject(
+                SlackClient.class.getSimpleName(),
+                "SlackAPI",
+                hash,
+                ChannelDetails.class,
+                () -> findChannelIdFromApi(client, accessToken, channel, null));
     }
 
-    private Try<ChannelDetails> findChannelIdFromApi(
+    private ChannelDetails findChannelIdFromApi(
             final AsyncMethodsClient client,
             final String accessToken,
             final String channel,
@@ -142,12 +135,13 @@ public class SlackClient {
                 // this fails if nothing was returned
                 .map(Optional::get)
                 // if we fail, we try to get the next page
-                .recoverWith(ex -> findChannelIdFromApi(
+                .recover(ex -> findChannelIdFromApi(
                         client,
                         accessToken,
                         channel,
                         // the cursor must be a non-empty string to do a recursive call
-                        validateString.throwIfEmpty(response.get().getResponseMetadata().getNextCursor())));
+                        validateString.throwIfEmpty(response.get().getResponseMetadata().getNextCursor())))
+                .get();
     }
 
     private Optional<ChannelDetails> getChannelId(final ConversationsListResponse response, final String channel) {
