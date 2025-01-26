@@ -138,7 +138,7 @@ foreach ($entity in $database.entities)
     #echo "Slack StdErr"
     #echo $result.StdErr
 
-    if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("No ZenDesk tickets, Slack messages, or PlanHat activities found."))
+    if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext"))
     {
         $text = "*=== $entityName summary ===*`n`n" + $result.StdOut
 
