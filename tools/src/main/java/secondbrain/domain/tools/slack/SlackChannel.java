@@ -138,7 +138,7 @@ public class SlackChannel implements Tool<Void> {
                         oldest,
                         parsedArgs.getSearchTTL()))
                 .map(this::conversationsToText)
-                .onFailure(error -> System.out.println("Error: " + error))
+                .onFailure(Throwable::printStackTrace)
                 .getOrElseThrow(() -> new FailedTool("Messages could not be read"));
 
         if (messages.length() < MINIMUM_MESSAGE_LENGTH) {
