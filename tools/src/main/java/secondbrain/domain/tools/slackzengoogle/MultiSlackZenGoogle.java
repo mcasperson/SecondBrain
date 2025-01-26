@@ -244,22 +244,24 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             Search slack for any mention of the salesforce and planhat ids. This will pick up call summaries that are posted
             to slack by the salesforce integration.
          */
-        final List<RagDocumentContext<Void>> slackKeywordSearch = CollectionUtils.collate(entity.getSalesforce(), entity.getPlanHat())
-                .stream()
-                .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(
-                        new ToolArgs("keywords", id),
+        final List<RagDocumentContext<Void>> slackKeywordSearch = Try
+                // Combine all the keywords we are going to search for
+                .of(() -> CollectionUtils.collate(entity.getSalesforce(), entity.getPlanHat()))
+                // Get a list of arguments using the keywords
+                .map(ids -> List.of(
+                        new ToolArgs("keywords", String.join(",", ids)),
                         new ToolArgs("days", "" + days)))
-                // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
-                .flatMap(args -> Try.of(() -> slackSearch.getContext(
-                                context,
-                                prompt
-                                        + "\nKeywords are " + args.getFirst().argValue()
-                                        + "\nDays is " + days,
-                                args))
-                        .getOrElse(List::of)
-                        .stream())
-                // The context label is updated to include the entity name
+                // Search for the keywords
+                .map(args -> slackSearch.getContext(
+                        context,
+                        prompt
+                                + "\nKeywords are " + args.getFirst().argValue()
+                                + "\nDays is " + days,
+                        args))
+                // If anything fails, get an empty list
+                .getOrElse(List::of)
+                // Post-process the rag context
+                .stream()
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
