@@ -182,9 +182,10 @@ public class GoogleDocs implements Tool<Void> {
                                 // document being processed should place the most relevant content twoards the end.
                                 ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(
+                .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
                         modelConfig.getCalculatedModel(context),
+                        GoogleDocs.class.getSimpleName(),
                         modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
