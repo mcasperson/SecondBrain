@@ -5,6 +5,7 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -156,6 +157,10 @@ public class PublicWeb implements Tool<Void> {
     }
 
     private RagDocumentContext<Void> getDocumentContext(final String document) {
+        if (parsedArgs.getDisableLinks()) {
+            return new RagDocumentContext<>(getContextLabel(), document, List.of());
+        }
+
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
@@ -183,6 +188,10 @@ class Arguments {
     private Optional<String> url;
 
     @Inject
+    @ConfigProperty(name = "sb.publicweb.disablelinks")
+    private Optional<String> disableLinks;
+
+    @Inject
     private ValidateString validateString;
 
     @Inject
@@ -203,5 +212,18 @@ class Arguments {
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> "")
                 .get();
+    }
+
+    public boolean getDisableLinks() {
+        final String stringValue = Try.of(disableLinks::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "disableLinks", ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("publicweb_disable_links"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> "")
+                .get();
+
+        return BooleanUtils.toBoolean(stringValue);
     }
 }

@@ -204,7 +204,7 @@ foreach ($file in $files) {
 
     Write-Host "Processing file: $($file.Name)"
 
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=PublicWeb`" `"-Dsb.publicweb.url=$($file.FullName)`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize the document as a single paragraph. Write the company name as a level 2 markdown header and then write the summary as plain text.`""
+    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=PublicWeb`" `"-Dsb.publicweb.disablelinks=true`" `"-Dsb.publicweb.url=$($file.FullName)`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize the document as a single paragraph. Write the company name as a level 2 markdown header and then write the summary as plain text. You will be penalized for inlucding links or references.`""
     Add-Content -Path "$subDir/Executive Summary.md" -Value $result.StdOut + "`n`n"
     Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
     Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
