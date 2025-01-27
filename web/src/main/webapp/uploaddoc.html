@@ -63,7 +63,12 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="keywordWindow">Keyword Window</label>
-                    <input class="form-control" id="keywordWindow" type="text">
+                    <input class="form-control" id="keywordWindow" type="text" value="2000">
+                    <div class="form-text" id="keywordWindowHelp">This is the number of characters around keyword
+                        matches to include in the context.
+                        Larger values provide more context but can take longer to process.
+                        Smaller values may miss important context but will process faster.
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="prompt">Prompt</label>
@@ -90,7 +95,11 @@
                         <option value="qwq">qwq</option>
                     </select>
                     <div class="form-text" id="customModelHelp">These models must be <a
-                            href="https://github.com/ollama/ollama?tab=readme-ov-file#pull-a-model">pulled by Ollama</a>.
+                            href="https://github.com/ollama/ollama?tab=readme-ov-file#pull-a-model">pulled by Ollama</a>
+                        e.g.
+                        <code>ollama pull phi4:14b</code> (when running Ollama locally)
+                        or <code>docker exec secondbrain-ollama-1 ollama pull phi4</code> (when running Ollama in
+                        Docker).
                     </div>
                 </div>
                 <div class="mb-3">
