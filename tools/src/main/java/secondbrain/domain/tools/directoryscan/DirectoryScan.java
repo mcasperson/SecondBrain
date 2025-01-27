@@ -226,7 +226,10 @@ public class DirectoryScan implements Tool<Void> {
              Each individual file is converted to text and used to answer the prompt.
              The combined answers are then used to answer the prompt again.
          */
-        final String contents = fileToText.convert(file);
+        final String contents = Arrays.stream(fileToText.convert(file).split("\n"))
+                .map(StringUtils::trim)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.joining("\n"));
 
         if (StringUtils.isBlank(contents)) {
             return null;
