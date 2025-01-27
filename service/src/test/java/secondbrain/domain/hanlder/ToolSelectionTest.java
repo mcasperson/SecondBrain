@@ -23,6 +23,7 @@ import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.ListLimiterAtomicCutOff;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.persist.H2LocalStorage;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.response.OkResponseValidation;
 import secondbrain.domain.sanitize.RemoveSpacing;
@@ -65,6 +66,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @Testcontainers
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
+@AddBeanClasses(H2LocalStorage.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(JasyptEncryptor.class)
 @AddBeanClasses(OkResponseValidation.class)
