@@ -13,6 +13,7 @@ Function Invoke-CustomCommand
     )
 
     $global:stdErr.Clear()
+    $global:stdOut.Clear()
     $global:myprocessrunning = $true
 
     $path += $env:PATH
@@ -68,8 +69,11 @@ Function Invoke-CustomCommand
             $lastUpdate = 1000 * 10
             Write-Host "Still running... $( $processTimeout / 1000 ) seconds left"
 
-            $tail = if ($global:stdOut.ToString().Length -gt 100) { $global:stdOut.ToString().Substring($global:stdOut.ToString().Length - 100) } else { $global:stdOut.ToString() }
-            Write-Host "StdOut: $tail"
+            $tailStdOut = if ($global:stdOut.ToString().Length -gt 100) { $global:stdOut.ToString().Substring($global:stdOut.ToString().Length - 100) } else { $global:stdOut.ToString() }
+            Write-Host "StdOut: $tailStdOut"
+
+            $tailStdErr = if ($global:stdErr.ToString().Length -gt 100) { $global:stdErr.ToString().Substring($global:stdErr.ToString().Length - 100) } else { $global:stdErr.ToString() }
+            Write-Host "StdErr: $tailStdErr"
         }
     }
 
