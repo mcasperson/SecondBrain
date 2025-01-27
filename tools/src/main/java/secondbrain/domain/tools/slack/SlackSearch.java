@@ -138,7 +138,7 @@ public class SlackSearch implements Tool<MatchedItem> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result
-                .mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
+                .mapFailure(API.Case(API.$(), ex -> new FailedTool(getName() + " failed to call Ollama", ex)))
                 .get();
 
     }
