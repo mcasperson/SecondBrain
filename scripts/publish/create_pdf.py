@@ -42,6 +42,12 @@ class PDF(FPDF):
         self.cell(0, 0, title, 0, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
         self.ln(10)
 
+    def frontage_slack(self):
+        self.set_font('DejaVu', 'B', 32)
+        self.set_text_color(255, 255, 0)
+        self.cell(0, 0, "#topic-solutions-engineeing", 0, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
+        self.ln(10)
+
     def chapter_body(self, body):
         self.set_font('DejaVu', '', 12)
         self.set_text_color(0, 0, 0)
@@ -74,6 +80,7 @@ def convert_md_to_pdf(directory, output_pdf):
     formatted_end_date = last_day_of_month.strftime('%Y-%m-%d')
 
     pdf.frontage_dates(f'{formatted_date} to {formatted_end_date}')
+    pdf.frontage_slack()
 
     pdf.add_page()
     pdf.chapter_title("Introduction")

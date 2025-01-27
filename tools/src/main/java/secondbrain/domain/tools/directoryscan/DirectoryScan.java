@@ -205,7 +205,6 @@ public class DirectoryScan implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> convertFilesToSummaries(final String prompt, final List<String> files) {
-
         return files
                 .stream()
                 .limit(parsedArgs.getMaxFiles() == -1 ? Long.MAX_VALUE : parsedArgs.getMaxFiles())
@@ -237,7 +236,7 @@ public class DirectoryScan implements Tool<Void> {
 
         final String summary = localStorage.getOrPutString(
                 this.getName(),
-                DigestUtils.sha256Hex(file + contents),
+                DigestUtils.sha256Hex("File"),
                 DigestUtils.sha256Hex(prompt),
                 () -> getFileSummary(contents, parsedArgs));
 
