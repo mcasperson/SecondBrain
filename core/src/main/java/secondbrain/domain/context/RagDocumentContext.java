@@ -25,7 +25,7 @@ import static java.util.Comparator.comparing;
  * @param link      The link to the document
  */
 public record RagDocumentContext<T>(String contextLabel, String document, List<RagStringContext> sentences, String id,
-                                    T meta, @Nullable String link) {
+                                    @Nullable T meta, @Nullable String link) {
 
     public RagDocumentContext(String contextLabel, final String document, final List<RagStringContext> sentences, String id) {
         this(contextLabel, document, sentences, id, null, null);
