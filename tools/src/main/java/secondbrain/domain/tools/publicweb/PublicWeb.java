@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
@@ -22,8 +23,10 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -49,9 +52,6 @@ public class PublicWeb implements Tool<Void> {
     private FileReader fileReader;
 
     @Inject
-    private ArgsAccessor argsAccessor;
-
-    @Inject
     private SentenceSplitter sentenceSplitter;
 
     @Inject
@@ -65,6 +65,9 @@ public class PublicWeb implements Tool<Void> {
 
     @Inject
     private ValidateString validateString;
+
+    @Inject
+    private Arguments parsedArgs;
 
     @Override
     public String getName() {
@@ -94,13 +97,13 @@ public class PublicWeb implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        final Arguments parsedArgs = Arguments.fromToolArgs(arguments, context, argsAccessor, validateString);
+        parsedArgs.setInputs(arguments, prompt, context);
 
-        if (StringUtils.isBlank(parsedArgs.url())) {
+        if (StringUtils.isBlank(parsedArgs.getUrl())) {
             throw new FailedTool("You must provide a URL to download");
         }
 
-        return Try.of(() -> fileReader.read(parsedArgs.url()))
+        return Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(this::getDocumentContext)
                 .map(List::of)
                 .get();
@@ -114,13 +117,9 @@ public class PublicWeb implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
 
-        final Arguments parsedArgs = Arguments.fromToolArgs(
-                arguments,
-                context,
-                argsAccessor,
-                validateString);
+        parsedArgs.setInputs(arguments, prompt, context);
 
-        if (StringUtils.isBlank(parsedArgs.url())) {
+        if (StringUtils.isBlank(parsedArgs.getUrl())) {
             throw new FailedTool("You must provide a URL to download");
         }
 
@@ -168,16 +167,40 @@ public class PublicWeb implements Tool<Void> {
                 .recover(e -> new RagDocumentContext<>(getContextLabel(), document, List.of()))
                 .get();
     }
+}
 
-    /**
-     * A record that hold the arguments used by the tool. This centralizes the logic for extracting, validating, and sanitizing
-     * the various inputs to the tool.
-     */
-    record Arguments(String url) {
-        public static Arguments fromToolArgs(final List<ToolArgs> arguments, Map<String, String> context, ArgsAccessor argsAccessor, ValidateString validateString) {
-            final String url = argsAccessor.getArgument(arguments, "url", "");
+@ApplicationScoped
+class Arguments {
+    private List<ToolArgs> arguments;
 
-            return new Arguments(url);
-        }
+    private String prompt;
+
+    private Map<String, String> context;
+
+    @Inject
+    @ConfigProperty(name = "sb.upload.url")
+    private Optional<String> url;
+
+    @Inject
+    private ValidateString validateString;
+
+    @Inject
+    private ArgsAccessor argsAccessor;
+
+    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        this.arguments = arguments;
+        this.prompt = prompt;
+        this.context = context;
+    }
+
+    public String getUrl() {
+        return Try.of(url::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "url", ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("publicweb_url"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> "")
+                .get();
     }
 }
