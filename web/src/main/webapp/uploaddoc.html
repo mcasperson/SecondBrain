@@ -62,6 +62,10 @@
                     <input class="form-control" id="keywords" type="text">
                 </div>
                 <div class="mb-3">
+                    <label class="form-label" for="keywordWindow">Keyword Window</label>
+                    <input class="form-control" id="keywordWindow" type="text">
+                </div>
+                <div class="mb-3">
                     <label class="form-label" for="prompt">Prompt</label>
                     <textarea aria-describedby="promptHelp" class="form-control" id="prompt" rows="10"></textarea>
                 </div>
@@ -129,7 +133,8 @@
                     tool: "UploadedDoc",
                     document: content,
                     filename: file.name,
-                    upload_keywords: keywords.value
+                    upload_keywords: keywords.value,
+                    upload_keyword_window: keywordWindow.value
                 }
                 fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
                     method: 'POST',

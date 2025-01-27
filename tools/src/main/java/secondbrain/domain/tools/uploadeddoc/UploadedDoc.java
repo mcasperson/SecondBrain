@@ -6,6 +6,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
@@ -157,7 +158,7 @@ public class UploadedDoc implements Tool<Void> {
         return Try.of(() -> documentTrimmer.trimDocument(
                         contents,
                         parsedArgs.getKeywords(),
-                        Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
+                        parsedArgs.getKeywordWindow()))
                 .map(this::getTrimmedDocumentContext)
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
@@ -199,6 +200,10 @@ class Arguments {
     private Optional<String> uploadKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.upload.keywordwindow")
+    private Optional<String> keywordWindow;
+
+    @Inject
     private ValidateString validateString;
 
     @Inject
@@ -233,5 +238,18 @@ class Arguments {
                 .recover(e -> "")
                 .map(k -> List.of(k.split(",")))
                 .get();
+    }
+
+    public int getKeywordWindow() {
+        final String stringValue = Try.of(keywordWindow::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "keywordWindow", ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("upload_keyword_window"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "")
+                .get();
+
+        return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
     }
 }
