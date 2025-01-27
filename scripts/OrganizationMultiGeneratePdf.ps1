@@ -189,9 +189,26 @@ foreach ($entity in $database.entities)
     $index++
 }
 
-$result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.individualdocumentprompt=Summarize the document as a single paragraph`" `"-Dsb.directoryscan.exclude=Executive Summary.md`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.directoryscan.directory=$subDir`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize each of the supplied File Contents under a header including the company name and a paragraph with a summary of the company's activities.`"" -processTimeout (1000 * 60 * 240)
-Set-Content -Path "$subDir/Executive Summary.md"  -Value $result.StdOut
-Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
+# Delete the executie summary file
+Remove-Item "$subDir/Executive Summary.md"
+
+# Get all files in the directory
+$files = Get-ChildItem -Path $subDir
+
+# Loop over each file
+foreach ($file in $files) {
+    if ($file.Name -eq "Executive Summary.md")
+    {
+        continue
+    }
+
+    Write-Host "Processing file: $($file.Name)"
+
+    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=PublicWeb`" `"-Dsb.publicweb.url=$($file.FullName)`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize the document as a single paragraph. Write the company name as a level 2 markdown header and then write the summary as plain text.`""
+    Add-Content -Path "$subDir/Executive Summary.md" -Value $result.StdOut + "`n`n"
+    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
+    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
+}
 
 $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$subDir`" `"$( $env:PDF_OUTPUT )`""
 Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut

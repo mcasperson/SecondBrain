@@ -131,9 +131,10 @@ public class PublicWeb implements Tool<Void> {
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(
+                .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
                         modelConfig.getCalculatedModel(context),
+                        getName(),
                         modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
@@ -148,7 +149,7 @@ public class PublicWeb implements Tool<Void> {
                         .map(ragDoc -> promptBuilderSelector
                                 .getPromptBuilder(customModel)
                                 .buildContextPrompt(
-                                        "Downloaded Document",
+                                        getContextLabel(),
                                         ragDoc.document()))
                         .collect(Collectors.joining("\n")),
                 context);
@@ -178,7 +179,7 @@ class Arguments {
     private Map<String, String> context;
 
     @Inject
-    @ConfigProperty(name = "sb.upload.url")
+    @ConfigProperty(name = "sb.publicweb.url")
     private Optional<String> url;
 
     @Inject
