@@ -17,7 +17,7 @@ import java.io.FileInputStream;
 public class TikaTextExtractor implements TextExtractorStrategy {
     @Override
     public String convert(final String path) {
-        final BodyContentHandler handler = new BodyContentHandler();
+        final BodyContentHandler handler = new BodyContentHandler(Integer.MAX_VALUE);
         final Parser parser = new AutoDetectParser();
         final ParseContext context = new ParseContext();
         final Metadata metadata = new Metadata();
