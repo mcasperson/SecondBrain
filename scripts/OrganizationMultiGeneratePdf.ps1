@@ -1,4 +1,5 @@
 $global:stdErr = [System.Text.StringBuilder]::new()
+$global:stdOut = [System.Text.StringBuilder]::new()
 $global:myprocessrunning = $true
 
 Function Invoke-CustomCommand
@@ -37,6 +38,10 @@ Function Invoke-CustomCommand
         $global:stdErr.AppendLine($EventArgs.Data)
     } | Out-Null
 
+    Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action {
+        $global:stdOut.AppendLine($EventArgs.Data)
+    } | Out-Null
+
     # We must wait for the Exited event rather than WaitForExit()
     # because WaitForExit() can result in events being missed
     # https://stackoverflow.com/questions/13113624/captured-output-of-command-run-by-powershell-is-sometimes-incomplete
@@ -62,6 +67,9 @@ Function Invoke-CustomCommand
         {
             $lastUpdate = 1000 * 10
             Write-Host "Still running... $( $processTimeout / 1000 ) seconds left"
+
+            $tail = if ($global:stdOut.ToString().Length -gt 100) { $global:stdOut.ToString().Substring($global:stdOut.ToString().Length - 100) } else { $global:stdOut.ToString() }
+            Write-Host "StdOut: $tail"
         }
     }
 
