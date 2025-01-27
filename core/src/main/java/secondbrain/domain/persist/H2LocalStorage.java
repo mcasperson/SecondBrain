@@ -38,10 +38,26 @@ public class H2LocalStorage implements LocalStorage {
     private Optional<String> disable;
 
     @Inject
+    @ConfigProperty(name = "sb.cache.readonly")
+    private Optional<String> readOnly;
+
+    @Inject
+    @ConfigProperty(name = "sb.cache.writeonly")
+    private Optional<String> writeOnly;
+
+    @Inject
     private JsonDeserializer jsonDeserializer;
 
     private boolean isDisabled() {
         return disable != null && disable.isPresent() && Boolean.parseBoolean(disable.get());
+    }
+
+    private boolean isReadOnly() {
+        return readOnly != null && readOnly.isPresent() && Boolean.parseBoolean(readOnly.get());
+    }
+
+    private boolean isWriteOnly() {
+        return writeOnly != null && writeOnly.isPresent() && Boolean.parseBoolean(writeOnly.get());
     }
 
     private boolean deleteExpired() {
@@ -65,7 +81,7 @@ public class H2LocalStorage implements LocalStorage {
     @Retry
     @Override
     public String getString(final String tool, final String source, final String promptHash) {
-        if (isDisabled()) {
+        if (isDisabled() || isWriteOnly()) {
             return null;
         }
 
@@ -111,6 +127,7 @@ public class H2LocalStorage implements LocalStorage {
 
         final String newValue = generateValue.generate();
         putString(tool, source, promptHash, ttlSeconds, newValue);
+
         return newValue;
     }
 
@@ -150,7 +167,7 @@ public class H2LocalStorage implements LocalStorage {
     @Retry
     @Override
     public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
-        if (isDisabled()) {
+        if (isDisabled() || isReadOnly()) {
             return;
         }
 
