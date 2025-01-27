@@ -8,6 +8,15 @@
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked@14.1.2/lib/marked.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.2.2/purify.min.js"></script>
+    <style>
+        #savedPromptsList li a {
+            display: block;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
 </head>
 <body>
 
@@ -74,6 +83,9 @@
                     <label class="form-label" for="prompt">Prompt</label>
                     <textarea aria-describedby="promptHelp" class="form-control" id="prompt" rows="10"></textarea>
                 </div>
+                <div class="mb-3">
+                    <ul id="savedPromptsList"></ul>
+                </div>
 
                 <div class="mb-3">
                     <label class="form-label" for="customModel">Custom Model</label>
@@ -118,15 +130,15 @@
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    document.getElementById('prompt').value = localStorage.getItem('uploaddoc')
-    document.getElementById('keywords').value = localStorage.getItem('keywords')
+    document.getElementById('prompt').value = localStorage.getItem('uploaddoc') || '';
+    document.getElementById('keywords').value = localStorage.getItem('keywords') || '';
 
     document.getElementById('prompt').onchange = function () {
-        localStorage.setItem('uploaddoc', document.getElementById('prompt').value)
+        localStorage.setItem('uploaddoc', document.getElementById('prompt').value);
     }
 
     document.getElementById('keywords').onchange = function () {
-        localStorage.setItem('keywords', document.getElementById('keywords').value)
+        localStorage.setItem('keywords', document.getElementById('keywords').value);
     }
 
     function stripLeadingWhitespace(text) {
@@ -137,7 +149,6 @@
         return text.replace(/\n/g, ' ');
     }
 
-    // https://stackoverflow.com/a/9458996/157605
     function arrayBufferToBase64(buffer) {
         var binary = '';
         var bytes = new Uint8Array(buffer);
@@ -151,18 +162,21 @@
     function handleSubmit(event) {
         event.preventDefault();
 
-        disableForm()
+        disableForm();
 
-        response.innerText = 'Loading...'
+        response.innerText = 'Loading...';
 
         const prompt = document.getElementById('prompt').value;
         const customModel = document.getElementById('customModel').value;
+
+        savePrompt(prompt);
+        displaySavedPrompts();
 
         const file = uploadDoc.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = function (e) {
-                const content = arrayBufferToBase64(e.target.result)
+                const content = arrayBufferToBase64(e.target.result);
                 const context = {
                     tool: "UploadedDoc",
                     document: content,
@@ -170,7 +184,7 @@
                     upload_keywords: keywords.value,
                     upload_keyword_window: keywordWindow.value,
                     custom_model: customModel
-                }
+                };
                 fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
                     method: 'POST',
                     headers: {
@@ -180,23 +194,46 @@
                 })
                     .then(response => response.text())
                     .then(data => {
-                        response.innerHTML = DOMPurify.sanitize(marked.parse(data))
+                        response.innerHTML = DOMPurify.sanitize(marked.parse(data));
                     })
                     .catch((error) => {
-                        response.innerText = error
+                        response.innerText = error;
                     })
                     .finally(() => {
-                        enableForm()
+                        enableForm();
                     });
             };
             reader.readAsArrayBuffer(file);
-
-
         } else {
             alert("Please select a file.");
+            enableForm();
         }
+    }
 
+    function savePrompt(prompt) {
+        let savedPrompts = JSON.parse(localStorage.getItem('savedPrompts')) || [];
+        if (savedPrompts.length >= 5) {
+            savedPrompts.shift();
+        }
+        savedPrompts.push(prompt);
+        localStorage.setItem('savedPrompts', JSON.stringify(savedPrompts));
+    }
 
+    function displaySavedPrompts() {
+        const savedPrompts = JSON.parse(localStorage.getItem('savedPrompts')) || [];
+        const savedPromptsList = document.getElementById('savedPromptsList');
+        savedPromptsList.innerHTML = '';
+        savedPrompts.forEach((prompt, index) => {
+            const listItem = document.createElement('li');
+            const link = document.createElement('a');
+            link.href = '#';
+            link.innerText = prompt;
+            link.onclick = function () {
+                document.getElementById('prompt').value = prompt;
+            };
+            listItem.appendChild(link);
+            savedPromptsList.appendChild(listItem);
+        });
     }
 
     function disableForm() {
@@ -208,6 +245,9 @@
         document.getElementById('prompt').disabled = false;
         document.querySelectorAll('button').forEach(b => b.disabled = false);
     }
+
+    // Initial display of saved prompts
+    displaySavedPrompts();
 </script>
 </body>
 </html>
