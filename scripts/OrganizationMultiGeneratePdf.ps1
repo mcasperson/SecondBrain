@@ -67,9 +67,9 @@ Function Invoke-CustomCommand
         if ($lastUpdate -lt 0)
         {
             $lastUpdate = 1000 * 10
-            Write-Host "Still running... $( $processTimeout / 1000 ) seconds left"
+            Write-Host "Still running... $( $processTimeout / 1000 ) seconds left" -ForegroundColor yellow
 
-            $tail = 1000
+            $tail = 5000
 
             $tailStdOut = if ($global:stdOut.ToString().Length -gt $tail) { $global:stdOut.ToString().Substring($global:stdOut.ToString().Length - $tail) } else { $global:stdOut.ToString() }
             Write-Host "StdOut: $tailStdOut"
