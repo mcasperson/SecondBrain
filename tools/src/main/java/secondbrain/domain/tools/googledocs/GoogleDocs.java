@@ -195,7 +195,7 @@ public class GoogleDocs implements Tool<Void> {
                         .map(ragDoc -> promptBuilderSelector
                                 .getPromptBuilder(customModel)
                                 .buildContextPrompt(
-                                        "Google Document " + ragDoc.id(),
+                                        getContextLabel() + " " + ragDoc.id(),
                                         ragDoc.document()))
                         .collect(Collectors.joining("\n")),
                 context);
