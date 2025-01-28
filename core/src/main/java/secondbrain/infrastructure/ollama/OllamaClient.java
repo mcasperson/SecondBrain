@@ -54,12 +54,12 @@ public class OllamaClient {
                         .post(Entity.entity(body.sanitizedCopy(), MediaType.APPLICATION_JSON)))
                 .of(response -> of(() -> responseValidation.validate(response))
                         .recover(InvalidResponse.class, e -> {
-                            throw new FailedOllama("Failed to call Ollama:\n"
+                            throw new FailedOllama("OllamaClient failed to call Ollama:\n"
                                     + e.getCode() + "\n"
                                     + e.getBody(), e);
                         })
                         .recover(MissingResponse.class, e -> {
-                            throw new FailedOllama("Failed to call Ollama:\n"
+                            throw new FailedOllama("OllamaClient failed to call Ollama:\n"
                                     + response.getStatus() + "\n"
                                     + Try.of(() -> response.readEntity(String.class)).getOrElse("")
                                     + "\nMake sure to run 'ollama pull " + body.model() + "'"

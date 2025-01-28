@@ -24,7 +24,6 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -140,7 +139,7 @@ public class PublicWeb implements Tool<Void> {
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool("Failed to call Ollama", ex)))
+        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool(getName() + " failed to call Ollama", ex)))
                 .get();
     }
 
