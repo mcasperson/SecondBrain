@@ -14,7 +14,6 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
-import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 
@@ -37,9 +36,6 @@ public class OllamaClient {
 
     @Inject
     private LocalStorage localStorage;
-
-    @Inject
-    private JsonDeserializer jsonDeserializer;
 
     public OllamaResponse callOllama(final Client client, final OllamaGenerateBody body) {
         logger.info(body.prompt());
