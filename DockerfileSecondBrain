@@ -48,4 +48,8 @@ ENV SB_ZENDESK_ACCESSTOKEN=changeme
 ENV SB_GOOGLE_CLIENTID=changeme
 ENV SB_GOOGLE_CLIENTSECRET=changeme
 ENV SB_GOOGLE_REDIRECTURL=changeme
+ENV SB_CACHE_PATH=/cache
+
+RUN mkdir -p $SB_CACHE_PATH
+
 CMD ["--deploymentDir", "/opt/payara/deployments", "--nocluster", "--port", "8080", "--sslPort", "8181", "--contextroot", "ROOT"]

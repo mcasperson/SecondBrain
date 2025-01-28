@@ -8,6 +8,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.json.JsonDeserializer;
 
+import java.nio.file.Paths;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
@@ -46,7 +47,34 @@ public class H2LocalStorage implements LocalStorage {
     private Optional<String> writeOnly;
 
     @Inject
+    @ConfigProperty(name = "sb.cache.path")
+    private Optional<String> path;
+
+    @Inject
     private JsonDeserializer jsonDeserializer;
+
+    private String getDatabasePath() {
+        return path
+                .map(p -> Paths.get(p, "localstoragev2").toAbsolutePath().toString())
+                .orElse("./localstoragev2");
+    }
+
+    private String getConnectionString() {
+        return "jdbc:h2:file:" + getDatabasePath() + """
+                jdbc:h2:file:./localstoragev2;
+                INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
+                SET SCHEMA SECONDBRAIN\\;
+                CREATE TABLE IF NOT EXISTS local_storage
+                (tool VARCHAR(100) NOT NULL,
+                source VARCHAR(1024) NOT NULL,
+                prompt_hash VARCHAR(1024) NOT NULL,
+                response CLOB NOT NULL,
+                timestamp TIMESTAMP DEFAULT NULL)\\;
+                CREATE INDEX IF NOT EXISTS idx_timestamp ON local_storage(timestamp)\\;
+                CREATE INDEX IF NOT EXISTS idx_tool ON local_storage(tool)\\;
+                CREATE INDEX IF NOT EXISTS idx_source ON local_storage(source)\\;
+                CREATE INDEX IF NOT EXISTS idx_prompt_hash ON local_storage(prompt_hash);""".stripIndent().replaceAll("\n", "");
+    }
 
     private boolean isDisabled() {
         return disable != null && disable.isPresent() && Boolean.parseBoolean(disable.get());
