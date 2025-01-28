@@ -242,15 +242,15 @@
 
     function disableForm() {
         document.getElementById('prompt').disabled = true;
-        document.getElementById('text').disabled = true;
-        document.getElementById('select').disabled = true;
+        document.querySelectorAll('text').disabled = true;
+        document.querySelectorAll('select').disabled = true;
         document.querySelectorAll('button').forEach(b => b.disabled = true);
     }
 
     function enableForm() {
         document.getElementById('prompt').disabled = false;
-        document.getElementById('text').disabled = false;
-        document.getElementById('select').disabled = false;
+        document.querySelectorAll('text').disabled = false;
+        document.querySelectorAll('select').disabled = false;
         document.querySelectorAll('button').forEach(b => b.disabled = false);
     }
 
