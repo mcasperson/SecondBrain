@@ -71,10 +71,24 @@ Function Invoke-CustomCommand
 
             $tail = 5000
 
-            $tailStdOut = if ($global:stdOut.ToString().Length -gt $tail) { $global:stdOut.ToString().Substring($global:stdOut.ToString().Length - $tail) } else { $global:stdOut.ToString() }
+            $tailStdOut = if ($global:stdOut.ToString().Length -gt $tail)
+            {
+                $global:stdOut.ToString().Substring($global:stdOut.ToString().Length - $tail)
+            }
+            else
+            {
+                $global:stdOut.ToString()
+            }
             Write-Host "StdOut: $tailStdOut"
 
-            $tailStdErr = if ($global:stdErr.ToString().Length -gt $tail) { $global:stdErr.ToString().Substring($global:stdErr.ToString().Length - $tail) } else { $global:stdErr.ToString() }
+            $tailStdErr = if ($global:stdErr.ToString().Length -gt $tail)
+            {
+                $global:stdErr.ToString().Substring($global:stdErr.ToString().Length - $tail)
+            }
+            else
+            {
+                $global:stdErr.ToString()
+            }
             Write-Host "StdErr: $tailStdErr"
         }
     }
@@ -163,7 +177,7 @@ foreach ($entity in $database.entities)
 
     $entityName = $entity.name
 
-    echo "Processing $entityName in $subDir $($index + 1) of $($database.entities.Count)"
+    echo "Processing $entityName in $subDir $( $index + 1 ) of $( $database.entities.Count )"
 
     $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.minTimeBasedContext=4`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.multislackzengoogle.days=$days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Write a business report based on the the last $days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName. Include an executive summary as the first paragraph. If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes. You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt. You will be penalized for including a general summary of the Google Document in the report. You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities. You will be penalized for saying that you will monitor for tickets or messages in future. You will be penalized for for metioning a date range or period covered. You will be penalized for providing statistics or counts of the ZenDesk tickets. You will be penalized for providing instructions to refer to or link to the Google Document. You will be penalized for providing next steps, action items, recommendations, or looking ahead. You will be penalized for attempting to resolve the ZenDesk tickets. You will be penalized for mentioning the duration covered. You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID. You must use bullet point lists instead of numbered lists. You will be penalized for using numbered lists in the output.`""
 
@@ -196,16 +210,17 @@ Remove-Item "$subDir/Executive Summary.md"
 $files = Get-ChildItem -Path $subDir
 
 # Loop over each file
-foreach ($file in $files) {
+foreach ($file in $files)
+{
     if ($file.Name -eq "Executive Summary.md")
     {
         continue
     }
 
-    Write-Host "Processing file: $($file.Name)"
+    Write-Host "Processing file: $( $file.Name )"
 
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=PublicWeb`" `"-Dsb.publicweb.disablelinks=true`" `"-Dsb.publicweb.url=$($file.FullName)`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize the document as a single paragraph. Write the company name as a level 2 markdown header and then write the summary as plain text. You will be penalized for inlucding links or references. You will be penalized for outputing tokens lke '<|end|>'. You will be penalized for including number in square brackets, like [1], in the output.`""
-    Add-Content -Path "$subDir/Executive Summary.md" -Value $result.StdOut + "`n`n"
+    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=PublicWeb`" `"-Dsb.publicweb.disablelinks=true`" `"-Dsb.publicweb.url=$( $file.FullName )`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize the document as a single paragraph. Write the company name as a level 2 markdown header and then write the summary as plain text. You will be penalized for inlucding links or references. You will be penalized for outputing tokens lke '<|end|>'. You will be penalized for including number in square brackets, like [1], in the output.`""
+    Add-Content -Path "$subDir/Executive Summary.md" -Value "$( $result.StdOut )`n`n"
     Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
     Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
 }
