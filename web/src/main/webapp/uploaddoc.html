@@ -210,17 +210,21 @@
         }
     }
 
+    function getUniqueList(arr) {
+        return [...new Set(arr)];
+    }
+
     function savePrompt(prompt) {
         let savedPrompts = JSON.parse(localStorage.getItem('savedPrompts')) || [];
         if (savedPrompts.length >= 5) {
             savedPrompts.shift();
         }
         savedPrompts.push(prompt);
-        localStorage.setItem('savedPrompts', JSON.stringify(savedPrompts));
+        localStorage.setItem('savedPrompts', JSON.stringify(getUniqueList(savedPrompts)));
     }
 
     function displaySavedPrompts() {
-        const savedPrompts = JSON.parse(localStorage.getItem('savedPrompts')) || [];
+        const savedPrompts = getUniqueList(JSON.parse(localStorage.getItem('savedPrompts')) || []);
         const savedPromptsList = document.getElementById('savedPromptsList');
         savedPromptsList.innerHTML = '';
         savedPrompts.forEach((prompt, index) => {
