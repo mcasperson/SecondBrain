@@ -132,7 +132,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public String getOrPutString(String tool, String source, String promptHash, GenerateValue<String> generateValue) {
+    public String getOrPutString(final String tool, final String source, final String promptHash, final GenerateValue<String> generateValue) {
         return getOrPutString(tool, source, promptHash, 0, generateValue);
     }
 
@@ -195,7 +195,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public void putString(String tool, String source, String promptHash, String value) {
+    public void putString(final String tool, final String source, final String promptHash, final String value) {
         putString(tool, source, promptHash, 0, value);
     }
 }
