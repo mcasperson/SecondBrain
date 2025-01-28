@@ -8,6 +8,7 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -102,6 +103,10 @@ public class SlackSearch implements Tool<MatchedItem> {
                         parsedArgs.getKeywords(),
                         parsedArgs.getSearchTTL()))
                 .getOrElseThrow(() -> new FailedTool("Could not search messages"));
+
+        if (searchResult.getMessages() == null || CollectionUtils.isEmpty(searchResult.getMessages().getMatches())) {
+            return List.of();
+        }
 
         return searchResult
                 .getMessages()
