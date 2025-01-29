@@ -1,6 +1,7 @@
 package secondbrain.domain.context;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -12,7 +13,7 @@ import java.util.stream.Stream;
 public class SimpleSentenceSplitter implements SentenceSplitter {
     @Override
     public List<String> splitDocument(final String document, final int minWords) {
-        if (document == null) {
+        if (StringUtils.isBlank(document)) {
             return List.of();
         }
 
