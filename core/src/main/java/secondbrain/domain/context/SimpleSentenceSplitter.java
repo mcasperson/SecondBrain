@@ -25,6 +25,8 @@ public class SimpleSentenceSplitter implements SentenceSplitter {
                 .map(sentence -> sentence.replaceFirst("^• ", ""))
                 .map(sentence -> sentence.replaceFirst("^◦ ", ""))
                 .map(sentence -> sentence.replaceFirst("^- ", ""))
+                // Train again to remove any leading or trailing whitespace
+                .map(String::trim)
                 .toList();
     }
 }
