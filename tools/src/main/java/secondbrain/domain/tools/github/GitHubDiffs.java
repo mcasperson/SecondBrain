@@ -188,9 +188,10 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                                 INSTRUCTIONS,
                                 promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildContextPrompt("Git Diffs", ragDoc.combinedDocument()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(
+                .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
                         modelConfig.getCalculatedModel(context),
+                        getName(),
                         modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting

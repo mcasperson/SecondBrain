@@ -181,9 +181,10 @@ public class SlackZenGoogle implements Tool<Void> {
                                 // document being processed should place the most relevant content towards the end.
                                 ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(
+                .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
                         modelConfig.getCalculatedModel(context),
+                        getName(),
                         modelConfig.getCalculatedContextWindow()))
                 /*
                     InsufficientContext is expected when there is not enough information to answer the prompt.

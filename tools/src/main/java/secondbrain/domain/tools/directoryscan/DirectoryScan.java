@@ -165,9 +165,10 @@ public class DirectoryScan implements Tool<Void> {
                                         modelConfig.getCalculatedModel(context)).buildContextPrompt(
                                         "Individual File Answer", ragDoc.combinedDocument()),
                                 prompt)))
-                .map(ragDoc -> ollamaClient.callOllama(
+                .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
                         modelConfig.getCalculatedModel(context),
+                        getName(),
                         modelConfig.getCalculatedContextWindow()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting

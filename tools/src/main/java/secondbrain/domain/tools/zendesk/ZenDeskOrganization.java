@@ -190,9 +190,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                                 .getPromptBuilder(modelConfig.getCalculatedModel(context))
                                 .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
                 // Call Ollama with the final prompt
-                .map(ragDoc -> ollamaClient.callOllama(
+                .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
                         modelConfig.getCalculatedModel(context),
+                        getName(),
                         modelConfig.getCalculatedContextWindow()))
                 // Clean up the response
                 .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())))
