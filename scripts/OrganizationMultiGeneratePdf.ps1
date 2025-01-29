@@ -226,8 +226,8 @@ foreach ($file in $files)
 }
 
 $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$subDir`" `"$( $env:PDF_OUTPUT )`""
-Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
-Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
+Add-Content -Path /tmp/pdfgenerate.log -Value $pdfResult.StdOut
+Add-Content -Path /tmp/pdfgenerate.log -Value $pdfResult.StdErr
 
 Write-Host $pdfResult.StdOut
 Write-Host $pdfResult.StdErr
