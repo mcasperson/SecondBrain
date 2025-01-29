@@ -45,6 +45,15 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
+    public static final String ZENDESK_ORGANIZATION_ARG = "zenDeskOrganization";
+    public static final String EXCLUDE_ORGANIZATION_ARG = "excludeOrganization";
+    public static final String EXCLUDE_SUBMITTERS_ARG = "excludeSubmitters";
+    public static final String RECIPIENT_ARG = "recipient";
+    public static final String NUM_COMMENTS_ARG = "numComments";
+    public static final String DAYS_ARG = "days";
+    public static final String HOURS_ARG = "hours";
+
+
     private static final int MAX_TICKETS = 100;
 
     private static final String INSTRUCTIONS = """
@@ -112,13 +121,13 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 
     @Override
     public List<ToolArguments> getArguments() {
-        return List.of(new ToolArguments("zenDeskOrganization", "An optional name of the organization", ""),
-                new ToolArguments("excludeOrganization", "An optional comma separated list of organizations to exclude", ""),
-                new ToolArguments("excludeSubmitters", "An optional comma separated list of submitters to exclude", ""),
-                new ToolArguments("recipient", "An optional recipient email address that tickets must be sent to", ""),
-                new ToolArguments("numComments", "The optional number of comments to include in the context", "1"),
-                new ToolArguments("days", "The optional number of days worth of tickets to return", "0"),
-                new ToolArguments("hours", "The optional number of hours worth of tickets to return", "0"));
+        return List.of(new ToolArguments(ZENDESK_ORGANIZATION_ARG, "An optional name of the organization", ""),
+                new ToolArguments(EXCLUDE_ORGANIZATION_ARG, "An optional comma separated list of organizations to exclude", ""),
+                new ToolArguments(EXCLUDE_SUBMITTERS_ARG, "An optional comma separated list of submitters to exclude", ""),
+                new ToolArguments(RECIPIENT_ARG, "An optional recipient email address that tickets must be sent to", ""),
+                new ToolArguments(NUM_COMMENTS_ARG, "The optional number of comments to include in the context", "1"),
+                new ToolArguments(DAYS_ARG, "The optional number of days worth of tickets to return", "0"),
+                new ToolArguments(HOURS_ARG, "The optional number of hours worth of tickets to return", "0"));
     }
 
     @Override
@@ -441,7 +450,7 @@ class Arguments {
                 zenDeskOrganization::get,
                 arguments,
                 context,
-                "zenDeskOrganization",
+                ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG,
                 "zendesk_organization",
                 "");
 
@@ -464,7 +473,7 @@ class Arguments {
                 zenExcludedOrgs::get,
                 arguments,
                 context,
-                "excludeOrganization",
+                ZenDeskOrganization.EXCLUDE_ORGANIZATION_ARG,
                 "zendesk_excludeorganization",
                 "");
 
@@ -485,7 +494,7 @@ class Arguments {
                 zenDeskRecipient::get,
                 arguments,
                 context,
-                "recipient",
+                ZenDeskOrganization.RECIPIENT_ARG,
                 "zendesk_recipient",
                 "");
     }
@@ -504,7 +513,7 @@ class Arguments {
                 zenDeskExcludedSubmitters::get,
                 arguments,
                 context,
-                "excludeSubmitters",
+                ZenDeskOrganization.EXCLUDE_SUBMITTERS_ARG,
                 "zendesk_excludesubmitters",
                 "");
 
@@ -519,7 +528,7 @@ class Arguments {
                 zenDeskHours::get,
                 arguments,
                 context,
-                "hours",
+                ZenDeskOrganization.HOURS_ARG,
                 "zendesk_hours",
                 "0");
 
@@ -534,7 +543,7 @@ class Arguments {
                 zenDeskDays::get,
                 arguments,
                 context,
-                "days",
+                ZenDeskOrganization.DAYS_ARG,
                 "zendesk_days",
                 "0");
 
@@ -557,7 +566,7 @@ class Arguments {
                 zenDeskNumComments::get,
                 arguments,
                 context,
-                "numComments",
+                ZenDeskOrganization.NUM_COMMENTS_ARG,
                 "zendesk_numcomments",
                 MAX_TICKETS + "");
 

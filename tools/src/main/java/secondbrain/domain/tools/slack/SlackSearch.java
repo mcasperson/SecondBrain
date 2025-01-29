@@ -38,6 +38,9 @@ import java.util.stream.Stream;
 
 @ApplicationScoped
 public class SlackSearch implements Tool<MatchedItem> {
+    public static final String SLACK_SEARCH_DAYS_ARG = "days";
+    public static final String SLACK_SEARCH_KEYWORDS_ARG = "keywords";
+
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
             You are given Slack search results and asked to answer questions based on the messages provided.
@@ -80,7 +83,7 @@ public class SlackSearch implements Tool<MatchedItem> {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("keywords", "Optional comma separated list of keywords defined in the prompt", "")
+                new ToolArguments(SLACK_SEARCH_KEYWORDS_ARG, "Optional comma separated list of keywords defined in the prompt", "")
         );
     }
 
@@ -236,7 +239,7 @@ class SlackSearchArguments {
                 keywords::get,
                 arguments,
                 context,
-                "keywords",
+                SlackSearch.SLACK_SEARCH_KEYWORDS_ARG,
                 "slack_keywords",
                 "");
 
@@ -277,7 +280,7 @@ class SlackSearchArguments {
                 days::get,
                 arguments,
                 context,
-                "days",
+                SlackSearch.SLACK_SEARCH_DAYS_ARG,
                 "slack_days",
                 "");
 

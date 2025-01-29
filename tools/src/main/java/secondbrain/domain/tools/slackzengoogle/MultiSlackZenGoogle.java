@@ -49,6 +49,7 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class MultiSlackZenGoogle implements Tool<Void> {
 
+
     private static final String INSTRUCTIONS = """
             You are helpful agent.
             You are given the contents of a multiple Slack channels, Google Documents, and the help desk tickets from ZenDesk.
@@ -265,8 +266,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs("slackChannel", id),
-                        new ToolArgs("days", "" + days)))
+                        new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id),
+                        new ToolArgs(SlackChannel.DAYS_ARG, "" + days)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(
                                 context,
@@ -290,8 +291,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .of(() -> CollectionUtils.collate(entity.getSalesforce(), entity.getPlanHat()))
                 // Get a list of arguments using the keywords
                 .map(ids -> List.of(
-                        new ToolArgs("keywords", String.join(",", ids)),
-                        new ToolArgs("days", "" + days)))
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, String.join(",", ids)),
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + days)))
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(
                         context,
@@ -311,7 +312,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> googleContext = entity.getGoogleDcos()
                 .stream()
                 .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(new ToolArgs("googleDocumentId", id)))
+                .map(id -> List.of(new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(context, prompt + "\nDocument ID is " + args.getFirst().argValue(), args))
                         .onFailure(Throwable::printStackTrace)
                         .getOrElse(List::of)
@@ -323,9 +324,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> zenContext = entity.getZenDesk()
                 .stream()
                 .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(new ToolArgs("zenDeskOrganization", id), new ToolArgs("days", "" + days)))
+                .map(id -> List.of(
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id),
+                        new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + days)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context,
-                                prompt + "\nOrganization is " + args.getFirst().argValue() + "\nDays is " + days, args))
+                                prompt
+                                        + "\nOrganization is " + args.getFirst().argValue()
+                                        + "\nDays is " + days, args))
                         .onFailure(Throwable::printStackTrace)
                         .getOrElse(List::of)
                         .stream())
@@ -338,8 +343,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs("companyId", id),
-                        new ToolArgs("days", parsedArgs.getDays() + "")))
+                        new ToolArgs(PlanHat.COMPANY_ID_ARGS, id),
+                        new ToolArgs(PlanHat.DAYS_ARG, parsedArgs.getDays() + "")))
                 .flatMap(args -> Try.of(() -> planHat.getContext(
                                 context,
                                 prompt

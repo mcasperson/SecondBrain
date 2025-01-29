@@ -37,6 +37,9 @@ import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class PlanHat implements Tool<Conversation> {
+    public static final String DAYS_ARG = "days";
+    public static final String COMPANY_ID_ARGS = "companyId";
+
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of conversations and a question related to the conversations.
@@ -96,11 +99,11 @@ public class PlanHat implements Tool<Conversation> {
     @Override
     public List<ToolArguments> getArguments() {
         return ImmutableList.of(new ToolArguments(
-                        "companyId",
+                        COMPANY_ID_ARGS,
                         "The company ID to query",
                         ""),
                 new ToolArguments(
-                        "days",
+                        DAYS_ARG,
                         "The number of days to query",
                         ""));
     }
@@ -237,7 +240,7 @@ class Arguments {
     public String getCompany() {
         return Try.of(company::get)
                 .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "companyId", ""))
+                .recover(e -> argsAccessor.getArgument(arguments, PlanHat.COMPANY_ID_ARGS, ""))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("planhat_company"))
                 .mapTry(validateString::throwIfEmpty)
@@ -248,7 +251,7 @@ class Arguments {
     public int getDays() {
         final String stringValue = Try.of(from::get)
                 .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "days", ""))
+                .recover(e -> argsAccessor.getArgument(arguments, PlanHat.DAYS_ARG, ""))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("planhat_days"))
                 .mapTry(validateString::throwIfEmpty)

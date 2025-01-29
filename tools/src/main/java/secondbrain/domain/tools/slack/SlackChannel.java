@@ -42,6 +42,9 @@ import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class SlackChannel implements Tool<Void> {
+    public static final String SLACK_CHANEL_ARG = "slackChannel";
+    public static final String DAYS_ARG = "days";
+
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
@@ -88,8 +91,8 @@ public class SlackChannel implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("slackChannel", "The Slack channel to read", "general"),
-                new ToolArguments("days", "The number of days worth of messages to return", "7")
+                new ToolArguments(SLACK_CHANEL_ARG, "The Slack channel to read", "general"),
+                new ToolArguments(DAYS_ARG, "The number of days worth of messages to return", "7")
         );
     }
 
@@ -307,7 +310,7 @@ class Arguments {
                         channel::get,
                         arguments,
                         context,
-                        "slackChannel",
+                        SlackChannel.SLACK_CHANEL_ARG,
                         "slack_channel",
                         "")
                 .replaceFirst("^#", "");
@@ -318,7 +321,7 @@ class Arguments {
                 days::get,
                 arguments,
                 context,
-                "days",
+                SlackChannel.DAYS_ARG,
                 "slack_days",
                 "");
 

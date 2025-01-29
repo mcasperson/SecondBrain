@@ -49,6 +49,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 @ApplicationScoped
 public class GoogleDocs implements Tool<Void> {
+    public static final String GOOGLE_DOC_ID_ARG = "googleDocumentId";
+    public static final String KEYWORD_ARG = "keywords";
 
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String APPLICATION_NAME = "SecondBrain";
@@ -101,8 +103,8 @@ public class GoogleDocs implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("googleDocumentId", "The ID of the Google Docs document to use.", ""),
-                new ToolArguments("keywords", "An optional list of keywords used to trim the document", "")
+                new ToolArguments(GOOGLE_DOC_ID_ARG, "The ID of the Google Docs document to use.", ""),
+                new ToolArguments(KEYWORD_ARG, "An optional list of keywords used to trim the document", "")
         );
     }
 
@@ -337,7 +339,7 @@ class Arguments {
     public String getDocumentId() {
         return Try.of(googleDoc::get)
                 .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "googleDocumentId", ""))
+                .recover(e -> argsAccessor.getArgument(arguments, GoogleDocs.GOOGLE_DOC_ID_ARG, ""))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("google_document_id"))
                 .mapTry(validateString::throwIfEmpty)
@@ -348,7 +350,7 @@ class Arguments {
     public List<String> getKeywords() {
         return Try.of(googleKeywords::get)
                 .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "keywords", ""))
+                .recover(e -> argsAccessor.getArgument(arguments, GoogleDocs.KEYWORD_ARG, ""))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("google_keywords"))
                 .mapTry(validateString::throwIfEmpty)
