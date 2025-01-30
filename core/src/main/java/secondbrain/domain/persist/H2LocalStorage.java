@@ -9,6 +9,7 @@ import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.nio.file.Paths;
+import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.Timestamp;
@@ -45,8 +46,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     private String getConnectionString() {
-        return "jdbc:h2:file:" + getDatabasePath() + """
-                jdbc:h2:file:./localstoragev2;
+        return "jdbc:h2:file:" + getDatabasePath() + ";" + """
                 INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
                 SET SCHEMA SECONDBRAIN\\;
                 CREATE TABLE IF NOT EXISTS local_storage
@@ -73,23 +73,19 @@ public class H2LocalStorage implements LocalStorage {
         return writeOnly != null && writeOnly.isPresent() && Boolean.parseBoolean(writeOnly.get());
     }
 
-    private boolean deleteExpired() {
+    private boolean deleteExpired(final Connection connection) {
         if (isDisabled()) {
             return false;
         }
 
-        return Try.withResources(() -> DriverManager.getConnection(getConnectionString()))
-                .of(connection -> Try
-                        .of(() -> connection.prepareStatement("""
-                                DELETE FROM local_storage
-                                WHERE timestamp IS NOT NULL
-                                AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
-                        .mapTry(PreparedStatement::executeUpdate)
-                        .onFailure(Throwable::printStackTrace)
-                        .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
-                        .isSuccess())
+        return Try
+                .of(() -> connection.prepareStatement("""
+                        DELETE FROM local_storage
+                        WHERE timestamp IS NOT NULL
+                        AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
+                .mapTry(PreparedStatement::executeUpdate)
                 .onFailure(Throwable::printStackTrace)
-                .getOrElse(false);
+                .isSuccess();
     }
 
     @Retry
@@ -99,33 +95,45 @@ public class H2LocalStorage implements LocalStorage {
             return null;
         }
 
-        deleteExpired();
-
         return Try.withResources(() -> DriverManager.getConnection(getConnectionString()))
                 .of(connection -> Try
-                        .of(() -> connection.prepareStatement("""
-                                SELECT response FROM local_storage
-                                                WHERE tool = ?
-                                                AND source = ?
-                                                AND prompt_hash = ?
-                                                AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
-                        .mapTry(preparedStatement -> {
-                            preparedStatement.setString(1, tool);
-                            preparedStatement.setString(2, source);
-                            preparedStatement.setString(3, promptHash);
-                            return preparedStatement;
-                        })
-                        .mapTry(PreparedStatement::executeQuery)
-                        .mapTry(resultSet -> {
-                            if (resultSet.next()) {
-                                return resultSet.getString(1);
-                            }
-                            return null;
-                        })
+                        .of(() -> getString(connection, tool, source, promptHash))
                         .onFailure(Throwable::printStackTrace)
+                        .andFinallyTry(() -> deleteExpired(connection))
                         .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                         .getOrNull())
                 .onFailure(Throwable::printStackTrace)
+                .getOrNull();
+    }
+
+
+    private String getString(final Connection connection, final String tool, final String source, final String promptHash) {
+        if (isDisabled() || isWriteOnly()) {
+            return null;
+        }
+
+        return Try
+                .of(() -> connection.prepareStatement("""
+                        SELECT response FROM local_storage
+                                        WHERE tool = ?
+                                        AND source = ?
+                                        AND prompt_hash = ?
+                                        AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
+                .mapTry(preparedStatement -> {
+                    preparedStatement.setString(1, tool);
+                    preparedStatement.setString(2, source);
+                    preparedStatement.setString(3, promptHash);
+                    return preparedStatement;
+                })
+                .mapTry(PreparedStatement::executeQuery)
+                .mapTry(resultSet -> {
+                    if (resultSet.next()) {
+                        return resultSet.getString(1);
+                    }
+                    return null;
+                })
+                .onFailure(Throwable::printStackTrace)
+                .onSuccess(value -> deleteExpired(connection))
                 .getOrNull();
     }
 
@@ -135,15 +143,27 @@ public class H2LocalStorage implements LocalStorage {
             return generateValue.generate();
         }
 
-        final String cache = getString(tool, source, promptHash);
-        if (StringUtils.isNotBlank(cache) && !isDisabled()) {
-            return cache;
-        }
-
-        final String newValue = generateValue.generate();
-        putString(tool, source, promptHash, ttlSeconds, newValue);
-
-        return newValue;
+        return Try.withResources(() -> DriverManager.getConnection(getConnectionString()))
+                .of(connection -> Try
+                        .of(() -> getString(connection, tool, source, promptHash))
+                        .onFailure(Throwable::printStackTrace)
+                        // a cache miss means the string is empty, so we throw an exception
+                        .map(result -> {
+                            if (StringUtils.isBlank(result)) {
+                                throw new RuntimeException("Cache miss");
+                            }
+                            return result;
+                        })
+                        // recover from a cache miss by generating the value and saving it
+                        .recover(result -> {
+                            final String value = generateValue.generate();
+                            putString(connection, tool, source, promptHash, ttlSeconds, value);
+                            return value;
+                        })
+                        .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
+                        .getOrNull())
+                .onFailure(Throwable::printStackTrace)
+                .getOrNull();
     }
 
     @Override
@@ -153,25 +173,30 @@ public class H2LocalStorage implements LocalStorage {
 
     @Override
     public <T> T getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
-        return Try.of(() -> getString(tool, source, promptHash))
-                // a cache miss means the string is empty, so we throw an exception
-                .map(result -> {
-                    if (StringUtils.isBlank(result)) {
-                        throw new RuntimeException("Cache miss");
-                    }
-                    return result;
-                })
-                // a cache hit means we deserialize the result
-                .mapTry(r -> jsonDeserializer.deserialize(r, clazz))
-                // a cache miss means we call the API and then save the result in the cache
-                .recoverWith(ex -> Try.of(generateValue::generate)
-                        .onSuccess(r -> putString(
-                                tool,
-                                source,
-                                promptHash,
-                                ttlSeconds,
-                                jsonDeserializer.serialize(r))))
-                .get();
+        return Try.withResources(() -> DriverManager.getConnection(getConnectionString()))
+                .of(connection ->
+                        Try.of(() -> getString(connection, tool, source, promptHash))
+                                // a cache miss means the string is empty, so we throw an exception
+                                .map(result -> {
+                                    if (StringUtils.isBlank(result)) {
+                                        throw new RuntimeException("Cache miss");
+                                    }
+                                    return result;
+                                })
+                                // a cache hit means we deserialize the result
+                                .mapTry(r -> jsonDeserializer.deserialize(r, clazz))
+                                // a cache miss means we call the API and then save the result in the cache
+                                .recoverWith(ex -> Try.of(generateValue::generate)
+                                        .onSuccess(r -> putString(
+                                                connection,
+                                                tool,
+                                                source,
+                                                promptHash,
+                                                ttlSeconds,
+                                                jsonDeserializer.serialize(r))))
+                                .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
+                                .get())
+                .getOrNull();
     }
 
     @Override
@@ -188,25 +213,35 @@ public class H2LocalStorage implements LocalStorage {
 
         Try.withResources(() -> DriverManager.getConnection(getConnectionString()))
                 .of(connection -> Try
-                        .of(() -> connection.prepareStatement("""
-                                INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
-                                VALUES (?, ?, ?, ?, ?)""".stripIndent()))
-                        .mapTry(preparedStatement -> {
-                            preparedStatement.setString(1, tool);
-                            preparedStatement.setString(2, source);
-                            preparedStatement.setString(3, promptHash);
-                            preparedStatement.setString(4, response);
-                            preparedStatement.setTimestamp(5, ttlSeconds == 0
-                                    ? null
-                                    : Timestamp.from(ZonedDateTime
-                                    .now(ZoneOffset.UTC)
-                                    .plusSeconds(ttlSeconds)
-                                    .toInstant()));
-                            preparedStatement.executeUpdate();
-                            return preparedStatement;
-                        })
+                        .run(() -> putString(connection, tool, source, promptHash, ttlSeconds, response))
                         .onFailure(Throwable::printStackTrace)
                         .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN")))
+                .onFailure(Throwable::printStackTrace);
+    }
+
+    private void putString(final Connection connection, final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
+        if (isDisabled() || isReadOnly()) {
+            return;
+        }
+
+        Try
+                .of(() -> connection.prepareStatement("""
+                        INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
+                        VALUES (?, ?, ?, ?, ?)""".stripIndent()))
+                .mapTry(preparedStatement -> {
+                    preparedStatement.setString(1, tool);
+                    preparedStatement.setString(2, source);
+                    preparedStatement.setString(3, promptHash);
+                    preparedStatement.setString(4, response);
+                    preparedStatement.setTimestamp(5, ttlSeconds == 0
+                            ? null
+                            : Timestamp.from(ZonedDateTime
+                            .now(ZoneOffset.UTC)
+                            .plusSeconds(ttlSeconds)
+                            .toInstant()));
+                    preparedStatement.executeUpdate();
+                    return preparedStatement;
+                })
                 .onFailure(Throwable::printStackTrace);
     }
 
