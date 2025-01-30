@@ -32,9 +32,9 @@ public class PromptBuilderQwen2 implements PromptBuilder {
     @Override
     public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
         return "<|im_start|>system\n"
-                + instructions.trim()
+                + StringUtils.trim(instructions)
                 + "\n"
-                + context.trim()
+                + StringUtils.trim(context)
                 + "\n<|im_end|>\n"
                 + "\n<|im_start|>user\n"
                 + prompt

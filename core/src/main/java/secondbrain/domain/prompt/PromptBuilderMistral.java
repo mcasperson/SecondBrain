@@ -34,11 +34,11 @@ public class PromptBuilderMistral implements PromptBuilder {
     @Override
     public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
         return "[INST]"
-                + instructions.trim()
+                + StringUtils.trim(instructions)
                 + "\n"
-                + context.trim()
+                + StringUtils.trim(context)
                 + "\n"
-                + prompt.trim()
+                + StringUtils.trim(prompt)
                 + "[/INST]";
     }
 }
