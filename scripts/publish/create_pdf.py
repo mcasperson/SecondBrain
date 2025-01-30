@@ -1,9 +1,11 @@
 import argparse
-import markdown2
 import os
 from datetime import datetime, timedelta
-from fpdf import FPDF
+
+import markdown2
 from fpdf.enums import XPos, YPos
+from fpdf.fpdf import FPDF
+import re
 
 
 class PDF(FPDF):
@@ -119,6 +121,16 @@ def convert_md_to_pdf(directory, output_pdf):
             pdf.set_link(content['link'])
             md_content = file.read()
             html_content = markdown2.markdown(md_content)
+
+            # The generated HTML will often have nested lists with structures like this
+            # <li><p><strong>License Management:</strong></p>
+            # <ul>
+            # <li>whatever</li>
+            # </ul></li>
+            # This doesn't render well, so we need to get rid of the paragraph tag
+
+            html_content = re.sub(r'<li><p>(<strong>.*</strong>)</p>', r'<li>\1', html_content)
+
             pdf.chapter_title(content['title'])
             pdf.chapter_body(html_content)
 
