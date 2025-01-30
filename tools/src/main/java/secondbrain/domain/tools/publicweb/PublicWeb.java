@@ -35,6 +35,9 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class PublicWeb implements Tool<Void> {
 
+    public static final String PUBLICWEB_URL_ARG = "url";
+    public static final String PUBLICWEB_DISABLELINKS_ARG = "disableLinks";
+
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given a question and the contents of a document related to the question.
@@ -82,7 +85,7 @@ public class PublicWeb implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return ImmutableList.of(new ToolArguments(
-                "url",
+                PUBLICWEB_URL_ARG,
                 "The URL of the document to download",
                 ""));
     }
@@ -205,7 +208,7 @@ class Arguments {
     public String getUrl() {
         return Try.of(url::get)
                 .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "url", ""))
+                .recover(e -> argsAccessor.getArgument(arguments, PublicWeb.PUBLICWEB_URL_ARG, ""))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("publicweb_url"))
                 .mapTry(validateString::throwIfEmpty)
@@ -216,7 +219,7 @@ class Arguments {
     public boolean getDisableLinks() {
         final String stringValue = Try.of(disableLinks::get)
                 .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "disableLinks", ""))
+                .recover(e -> argsAccessor.getArgument(arguments, PublicWeb.PUBLICWEB_DISABLELINKS_ARG, ""))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("publicweb_disable_links"))
                 .mapTry(validateString::throwIfEmpty)
