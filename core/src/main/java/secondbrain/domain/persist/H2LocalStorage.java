@@ -86,6 +86,7 @@ public class H2LocalStorage implements LocalStorage {
                                 AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
                         .mapTry(PreparedStatement::executeUpdate)
                         .onFailure(Throwable::printStackTrace)
+                        .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                         .isSuccess())
                 .onFailure(Throwable::printStackTrace)
                 .getOrElse(false);
@@ -122,6 +123,7 @@ public class H2LocalStorage implements LocalStorage {
                             return null;
                         })
                         .onFailure(Throwable::printStackTrace)
+                        .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                         .getOrNull())
                 .onFailure(Throwable::printStackTrace)
                 .getOrNull();
@@ -203,7 +205,8 @@ public class H2LocalStorage implements LocalStorage {
                             preparedStatement.executeUpdate();
                             return preparedStatement;
                         })
-                        .onFailure(Throwable::printStackTrace))
+                        .onFailure(Throwable::printStackTrace)
+                        .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN")))
                 .onFailure(Throwable::printStackTrace);
     }
 
