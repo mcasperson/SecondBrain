@@ -19,22 +19,6 @@ import java.util.Optional;
 @ApplicationScoped
 public class H2LocalStorage implements LocalStorage {
 
-    private static final String DATABASE = """
-            jdbc:h2:file:./localstoragev2;
-            FILE_LOCK=FS;
-            INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
-            SET SCHEMA SECONDBRAIN\\;
-            CREATE TABLE IF NOT EXISTS local_storage
-            (tool VARCHAR(100) NOT NULL,
-            source VARCHAR(1024) NOT NULL,
-            prompt_hash VARCHAR(1024) NOT NULL,
-            response CLOB NOT NULL,
-            timestamp TIMESTAMP DEFAULT NULL)\\;
-            CREATE INDEX IF NOT EXISTS idx_timestamp ON local_storage(timestamp)\\;
-            CREATE INDEX IF NOT EXISTS idx_tool ON local_storage(tool)\\;
-            CREATE INDEX IF NOT EXISTS idx_source ON local_storage(source)\\;
-            CREATE INDEX IF NOT EXISTS idx_prompt_hash ON local_storage(prompt_hash);""".stripIndent().replaceAll("\n", "");
-
     @Inject
     @ConfigProperty(name = "sb.cache.disable")
     private Optional<String> disable;
@@ -94,7 +78,7 @@ public class H2LocalStorage implements LocalStorage {
             return false;
         }
 
-        return Try.withResources(() -> DriverManager.getConnection(DATABASE))
+        return Try.withResources(() -> DriverManager.getConnection(getConnectionString()))
                 .of(connection -> Try
                         .of(() -> connection.prepareStatement("""
                                 DELETE FROM local_storage
@@ -116,7 +100,7 @@ public class H2LocalStorage implements LocalStorage {
 
         deleteExpired();
 
-        return Try.withResources(() -> DriverManager.getConnection(DATABASE))
+        return Try.withResources(() -> DriverManager.getConnection(getConnectionString()))
                 .of(connection -> Try
                         .of(() -> connection.prepareStatement("""
                                 SELECT response FROM local_storage
@@ -200,7 +184,7 @@ public class H2LocalStorage implements LocalStorage {
             return;
         }
 
-        Try.withResources(() -> DriverManager.getConnection(DATABASE))
+        Try.withResources(() -> DriverManager.getConnection(getConnectionString()))
                 .of(connection -> Try
                         .of(() -> connection.prepareStatement("""
                                 INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
