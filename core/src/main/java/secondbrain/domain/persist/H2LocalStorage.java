@@ -21,6 +21,7 @@ public class H2LocalStorage implements LocalStorage {
 
     private static final String DATABASE = """
             jdbc:h2:file:./localstoragev2;
+            FILE_LOCK=FS;
             INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
             SET SCHEMA SECONDBRAIN\\;
             CREATE TABLE IF NOT EXISTS local_storage
