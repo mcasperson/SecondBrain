@@ -1,11 +1,11 @@
 import argparse
 import os
+import re
 from datetime import datetime, timedelta
 
 import markdown2
 from fpdf.enums import XPos, YPos
 from fpdf.fpdf import FPDF
-import re
 
 
 class PDF(FPDF):
@@ -129,7 +129,8 @@ def convert_md_to_pdf(directory, output_pdf):
             # </ul></li>
             # This doesn't render well, so we need to get rid of the paragraph tag
 
-            html_content = re.sub(r'<li><p>(<strong>.*</strong>)</p>', r'<li>\1', html_content)
+            html_content = re.sub(r'<li><p>(.*?)</p>', r'<li>\1', html_content)
+            html_content = re.sub(r'<li><p>(.*?)</p></li>', r'<li>\1</li>', html_content, flags=re.DOTALL)
 
             pdf.chapter_title(content['title'])
             pdf.chapter_body(html_content)
