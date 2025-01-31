@@ -106,6 +106,7 @@ public class SlackSearch implements Tool<MatchedItem> {
                         parsedArgs.getAccessToken(),
                         parsedArgs.getKeywords(),
                         parsedArgs.getSearchTTL()))
+                .onFailure(Throwable::printStackTrace)
                 .getOrElseThrow(() -> new FailedTool("Could not search messages"));
 
         if (searchResult == null || searchResult.getMessages() == null || CollectionUtils.isEmpty(searchResult.getMessages().getMatches())) {
