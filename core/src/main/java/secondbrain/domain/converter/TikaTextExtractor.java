@@ -1,5 +1,6 @@
 package secondbrain.domain.converter;
 
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.tika.metadata.Metadata;
@@ -7,6 +8,7 @@ import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.Parser;
 import org.apache.tika.sax.BodyContentHandler;
+import secondbrain.domain.exceptions.ExternalFailure;
 
 import java.io.FileInputStream;
 
@@ -23,8 +25,12 @@ public class TikaTextExtractor implements TextExtractorStrategy {
         final Metadata metadata = new Metadata();
 
         Try.withResources(() -> new FileInputStream(path))
-                .of(stream -> Try.run(() -> parser.parse(stream, handler, metadata, context))
-                        .onFailure(Throwable::printStackTrace));
+                .of(stream -> Try
+                        .run(() -> parser.parse(stream, handler, metadata, context))
+                        .mapFailure(
+                                API.Case(API.$(), ex -> new ExternalFailure("Failed to parse file", ex))
+                        ))
+                .get();
 
         return handler.toString();
     }

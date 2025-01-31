@@ -1,11 +1,14 @@
 package secondbrain.domain.persist;
 
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import secondbrain.domain.exceptionhandling.ExceptionHandler;
+import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.nio.file.Paths;
@@ -16,6 +19,9 @@ import java.sql.Timestamp;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Optional;
+import java.util.logging.Logger;
+
+import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class H2LocalStorage implements LocalStorage {
@@ -38,6 +44,12 @@ public class H2LocalStorage implements LocalStorage {
 
     @Inject
     private JsonDeserializer jsonDeserializer;
+
+    @Inject
+    private ExceptionHandler exceptionHandler;
+
+    @Inject
+    private Logger logger;
 
     private String getDatabasePath() {
         return path
@@ -84,7 +96,9 @@ public class H2LocalStorage implements LocalStorage {
                         WHERE timestamp IS NOT NULL
                         AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
                 .mapTry(PreparedStatement::executeUpdate)
-                .onFailure(Throwable::printStackTrace)
+                .mapFailure(
+                        API.Case(API.$(), ex -> new ExternalFailure("Failed to delete old records", ex))
+                )
                 .isSuccess();
     }
 
@@ -98,11 +112,13 @@ public class H2LocalStorage implements LocalStorage {
         return Try.withResources(() -> DriverManager.getConnection(getConnectionString()))
                 .of(connection -> Try
                         .of(() -> getString(connection, tool, source, promptHash))
-                        .onFailure(Throwable::printStackTrace)
                         .andFinallyTry(() -> deleteExpired(connection))
                         .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                         .getOrNull())
-                .onFailure(Throwable::printStackTrace)
+                .mapFailure(
+                        API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex),
+                        API.Case(API.$(), ex -> new ExternalFailure("Failed to delete old records", ex))
+                )
                 .getOrNull();
     }
 
@@ -132,7 +148,9 @@ public class H2LocalStorage implements LocalStorage {
                     }
                     return null;
                 })
-                .onFailure(Throwable::printStackTrace)
+                .mapFailure(
+                        API.Case(API.$(), ex -> new ExternalFailure("Failed to get record", ex))
+                )
                 .onSuccess(value -> deleteExpired(connection))
                 .getOrNull();
     }
@@ -161,7 +179,7 @@ public class H2LocalStorage implements LocalStorage {
                         })
                         .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                         .getOrNull())
-                .onFailure(Throwable::printStackTrace)
+                .onFailure(ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
                 // If we can't open the database for some reason, just generate the value
                 .recover(ex -> generateValue.generate())
                 .getOrNull();
@@ -195,10 +213,10 @@ public class H2LocalStorage implements LocalStorage {
                                                 promptHash,
                                                 ttlSeconds,
                                                 jsonDeserializer.serialize(r))))
-                                .onFailure(Throwable::printStackTrace)
+                                .onFailure(ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
                                 .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                                 .get())
-                .onFailure(Throwable::printStackTrace)
+                .onFailure(ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
                 // If we can't open the database for some reason, just generate the value
                 .recover(ex -> generateValue.generate())
                 .getOrNull();
@@ -219,9 +237,12 @@ public class H2LocalStorage implements LocalStorage {
         Try.withResources(() -> DriverManager.getConnection(getConnectionString()))
                 .of(connection -> Try
                         .run(() -> putString(connection, tool, source, promptHash, ttlSeconds, response))
-                        .onFailure(Throwable::printStackTrace)
-                        .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN")))
-                .onFailure(Throwable::printStackTrace);
+                        .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
+                        .mapFailure(
+                                API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex),
+                                API.Case(API.$(), ex -> new ExternalFailure("Failed to add records", ex))
+                        ))
+                .get();
     }
 
     private void putString(final Connection connection, final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
@@ -247,7 +268,10 @@ public class H2LocalStorage implements LocalStorage {
                     preparedStatement.executeUpdate();
                     return preparedStatement;
                 })
-                .onFailure(Throwable::printStackTrace);
+                .mapFailure(
+                        API.Case(API.$(), ex -> new ExternalFailure("Failed to cerate record", ex))
+                )
+                .get();
     }
 
     @Override

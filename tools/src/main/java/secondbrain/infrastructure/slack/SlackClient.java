@@ -5,10 +5,12 @@ import com.slack.api.methods.response.conversations.ConversationsHistoryResponse
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.methods.response.search.SearchAllResponse;
 import com.slack.api.model.ConversationType;
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
+import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tools.slack.ChannelDetails;
 import secondbrain.domain.validate.ValidateString;
@@ -56,7 +58,7 @@ public class SlackClient {
                         .token(accessToken)
                         .channel(channelId)
                         .oldest(oldest)).get())
-                .onFailure(Throwable::printStackTrace)
+                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsHistory", ex)))
                 .get();
     }
 
@@ -88,7 +90,7 @@ public class SlackClient {
         return Try.of(() -> client.searchAll(r -> r.token(accessToken)
                                 .query(String.join(" ", keywords)))
                         .get())
-                .onFailure(Throwable::printStackTrace)
+                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call searchAll", ex)))
                 .get();
     }
 
@@ -124,7 +126,7 @@ public class SlackClient {
                         .types(List.of(ConversationType.PUBLIC_CHANNEL))
                         .excludeArchived(true)
                         .cursor(cursor)).get())
-                .onFailure(Throwable::printStackTrace);
+                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsList", ex)));
 
         return response
                 // try to get the channel

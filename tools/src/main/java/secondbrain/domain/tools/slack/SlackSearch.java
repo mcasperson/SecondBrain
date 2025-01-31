@@ -108,8 +108,8 @@ public class SlackSearch implements Tool<MatchedItem> {
                         parsedArgs.getAccessToken(),
                         parsedArgs.getKeywords(),
                         parsedArgs.getSearchTTL()))
-                .onFailure(Throwable::printStackTrace)
-                .getOrElseThrow(() -> new ExternalFailure("Could not search messages"));
+                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not search messages", ex)))
+                .get();
 
         if (searchResult == null || searchResult.getMessages() == null || CollectionUtils.isEmpty(searchResult.getMessages().getMatches())) {
             return List.of();

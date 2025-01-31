@@ -133,8 +133,11 @@ public class SlackChannel implements Tool<Void> {
                         oldest,
                         parsedArgs.getSearchTTL()))
                 .map(this::conversationsToText)
-                .onFailure(Throwable::printStackTrace)
-                .getOrElseThrow(() -> new ExternalFailure("Messages could not be read"));
+                .mapFailure(
+                        API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex),
+                        API.Case(API.$(), ex -> new InternalFailure("Failed to get messages", ex))
+                )
+                .get();
 
         if (messages.length() < MINIMUM_MESSAGE_LENGTH) {
             throw new InternalFailure("Not enough messages found in channel " + parsedArgs.getChannel()
