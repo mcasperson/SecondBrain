@@ -28,6 +28,8 @@ services:
       # must also be pulled:
       # docker exec secondbrain-ollama-1 ollama pull llama3.1
       SB_OLLAMA_TOOLMODEL: llama3.1
+      # This aids in debugging
+      SB_EXCEPTIONS_PRINTSTACKTRACE: true
     pull_policy: always
     volumes:
       - cache:/cache
