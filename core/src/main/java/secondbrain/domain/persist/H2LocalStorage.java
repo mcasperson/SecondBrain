@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
+import secondbrain.domain.exceptions.CacheMiss;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.json.JsonDeserializer;
 
@@ -202,7 +203,7 @@ public class H2LocalStorage implements LocalStorage {
                                 // a cache miss means the string is empty, so we throw an exception
                                 .map(result -> {
                                     if (StringUtils.isBlank(result)) {
-                                        throw new RuntimeException("Cache miss");
+                                        throw new CacheMiss();
                                     }
                                     return result;
                                 })
@@ -248,7 +249,7 @@ public class H2LocalStorage implements LocalStorage {
                         .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                         .mapFailure(
                                 API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex),
-                                API.Case(API.$(), ex -> new ExternalFailure("Failed to add records", ex))
+                                API.Case(API.$(), ex -> new ExternalFailure("Failed to add records for tool " + tool, ex))
                         ))
                 .get();
     }
@@ -277,7 +278,7 @@ public class H2LocalStorage implements LocalStorage {
                     return preparedStatement;
                 })
                 .mapFailure(
-                        API.Case(API.$(), ex -> new ExternalFailure("Failed to cerate record", ex))
+                        API.Case(API.$(), ex -> new ExternalFailure("Failed to create record for tool " + tool, ex))
                 )
                 .get();
     }
