@@ -3,7 +3,6 @@ package secondbrain.domain.handler;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.ProcessingException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -76,10 +75,13 @@ public class PromptHandlerOllama implements PromptHandler {
         return Try.of(() -> toolSelector.getTool(prompt, context))
                 .map(toolCall -> callTool(toolCall, context, prompt))
                 /*
-                    This usually means Ollama isn't running or has not pulled the required model used
-                    for function calling.
+                    Internal errors are not resolved with retires, so we capture the error message
+                    and return it to the user.
                  */
-                .recover(ProcessingException.class, e -> "Failed to connect to Ollama. You must install Ollama from https://ollama.com/download: " + e.toString())
+                .recover(InternalFailure.class, exceptionHandler::getExceptionMessage)
+                /*
+                    We assume everything else is an external error that may be resolved with retries.
+                 */
                 .recoverWith(error -> Try.of(() -> {
                     // Selecting the wrong tool can manifest itself as an exception
                     if (count < TOOL_RETRY) {
@@ -87,6 +89,9 @@ public class PromptHandlerOllama implements PromptHandler {
                     }
                     throw error;
                 }))
+                /*
+                    The retry count is exhausted, so we return the error message to the user.
+                 */
                 .recover(Throwable.class, e -> "Failed to find a tool or call it: " + ExceptionUtils.getRootCauseMessage(e))
                 .get();
     }
