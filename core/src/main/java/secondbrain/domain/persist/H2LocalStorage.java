@@ -146,7 +146,6 @@ public class H2LocalStorage implements LocalStorage {
         return Try.withResources(() -> DriverManager.getConnection(getConnectionString()))
                 .of(connection -> Try
                         .of(() -> getString(connection, tool, source, promptHash))
-                        .onFailure(Throwable::printStackTrace)
                         // a cache miss means the string is empty, so we throw an exception
                         .map(result -> {
                             if (StringUtils.isBlank(result)) {
@@ -187,8 +186,6 @@ public class H2LocalStorage implements LocalStorage {
                                 })
                                 // a cache hit means we deserialize the result
                                 .mapTry(r -> jsonDeserializer.deserialize(r, clazz))
-                                // Print an error if we couldn't deserialize the result
-                                .onFailure(Throwable::printStackTrace)
                                 // a cache miss means we call the API and then save the result in the cache
                                 .recoverWith(ex -> Try.of(generateValue::generate)
                                         .onSuccess(r -> putString(
