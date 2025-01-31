@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -50,6 +51,8 @@ import static com.google.common.base.Predicates.instanceOf;
  */
 @ApplicationScoped
 public class DirectoryScan implements Tool<Void> {
+    public static final String DIRECTORYSCAN_DISABLELINKS_ARG = "disableLinks";
+
     private static final String INSTRUCTIONS = """
             You are given a question and the answer to the question from many individual files.
             You must assume the information required to answer the question is present in the individual file answers.
@@ -248,6 +251,10 @@ public class DirectoryScan implements Tool<Void> {
                 DigestUtils.sha256Hex(parsedArgs.getIndividualDocumentPrompt() + contents),
                 () -> getFileSummary(contents, parsedArgs));
 
+        if (parsedArgs.getDisableLinks()) {
+            return new RagDocumentContext<>(getContextLabel(), summary, List.of());
+        }
+
         return new RagDocumentContext<>(
                 getContextLabel(),
                 summary,
@@ -318,6 +325,10 @@ class Arguments {
     @Inject
     @ConfigProperty(name = "sb.directoryscan.keywordwindow")
     private Optional<String> keywordWindow;
+
+    @Inject
+    @ConfigProperty(name = "sb.directoryscan.disablelinks")
+    private Optional<String> disableLinks;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -432,6 +443,19 @@ class Arguments {
                 .get();
 
         return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+    }
+
+    public boolean getDisableLinks() {
+        final String stringValue = Try.of(disableLinks::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, DirectoryScan.DIRECTORYSCAN_DISABLELINKS_ARG, ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("directoryscan_disable_links"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> "")
+                .get();
+
+        return BooleanUtils.toBoolean(stringValue);
     }
 }
 
