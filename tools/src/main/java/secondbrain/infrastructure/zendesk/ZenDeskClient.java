@@ -36,6 +36,10 @@ public class ZenDeskClient {
             final String url,
             final String query) {
 
+        if (StringUtils.isBlank(query)) {
+            throw new IllegalArgumentException("Query is required");
+        }
+
         return getTickets(client, authorization, url, query, 1, MAX_PAGES);
     }
 
@@ -43,7 +47,7 @@ public class ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 30000, maxRetries = 10)
+    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
     private List<ZenDeskResultsResponse> getTickets(
             final Client client,
             final String authorization,
@@ -51,6 +55,10 @@ public class ZenDeskClient {
             final String query,
             final int page,
             final int maxPage) {
+
+        if (StringUtils.isBlank(query)) {
+            throw new IllegalArgumentException("Query is required");
+        }
 
         return Try.withResources(() -> client.target(url + "/api/v2/search.json")
                         .queryParam("query", query)
@@ -77,12 +85,16 @@ public class ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 30000, maxRetries = 10)
+    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
     public ZenDeskTicketResponse getTicket(
             final Client client,
             final String authorization,
             final String url,
             final String id) {
+
+        if (StringUtils.isBlank(id)) {
+            throw new IllegalArgumentException("Ticket ID is required");
+        }
 
         return Try.withResources(() -> client.target(url + "/api/v2/tickets/" + id + ".json")
                         .request()
@@ -99,12 +111,16 @@ public class ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 30000, maxRetries = 10)
+    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
     public ZenDeskCommentsResponse getComments(
             final Client client,
             final String authorization,
             final String url,
             final String ticketId) {
+
+        if (StringUtils.isBlank(ticketId)) {
+            throw new IllegalArgumentException("Ticket ID is required");
+        }
 
         return Try.withResources(() -> client.target(url + "/api/v2/tickets/" + ticketId + "/comments")
                         .request()
