@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
@@ -120,12 +121,16 @@ public class ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 30000, maxRetries = 10)
+    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
     public ZenDeskOrganizationResponse getOrganization(
             final Client client,
             final String authorization,
             final String url,
             final String orgId) {
+
+        if (StringUtils.isBlank(orgId)) {
+            throw new IllegalArgumentException("Organization ID is required");
+        }
 
         return Try.withResources(() -> client.target(url + "/api/v2/organizations/" + orgId)
                         .request()
@@ -144,6 +149,10 @@ public class ZenDeskClient {
             final String url,
             final String orgId) {
 
+        if (StringUtils.isBlank(orgId)) {
+            throw new IllegalArgumentException("Organization ID is required");
+        }
+
         return localStorage.getOrPutObject(
                 ZenDeskClient.class.getSimpleName(),
                 "ZenDeskAPIOrganizations",
@@ -156,12 +165,16 @@ public class ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 30000, maxRetries = 10)
+    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
     public ZenDeskUserResponse getUser(
             final Client client,
             final String authorization,
             final String url,
             final String userId) {
+
+        if (StringUtils.isBlank(userId)) {
+            throw new IllegalArgumentException("User ID is required");
+        }
 
         return Try.withResources(() -> client.target(url + "/api/v2/users/" + userId)
                         .request()
@@ -179,6 +192,10 @@ public class ZenDeskClient {
             final String authorization,
             final String url,
             final String userId) {
+
+        if (StringUtils.isBlank(userId)) {
+            throw new IllegalArgumentException("User ID is required");
+        }
 
         return localStorage.getOrPutObject(
                 ZenDeskClient.class.getSimpleName(),
