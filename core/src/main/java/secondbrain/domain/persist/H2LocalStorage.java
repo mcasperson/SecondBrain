@@ -196,6 +196,7 @@ public class H2LocalStorage implements LocalStorage {
                                                 jsonDeserializer.serialize(r))))
                                 .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                                 .get())
+                .onFailure(Throwable::printStackTrace)
                 .getOrNull();
     }
 
