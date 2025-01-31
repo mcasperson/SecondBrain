@@ -188,6 +188,7 @@ public class DirectoryScan implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
+                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(instanceOf(EmptyString.class)),
                                 throwable -> new InternalFailure("No files found for " + parsedArgs.getDirectory() + debugArgs)),
                         API.Case(API.$(),

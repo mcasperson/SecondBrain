@@ -18,6 +18,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InsufficientContext;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
@@ -35,6 +36,8 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Predicates.instanceOf;
 
 /**
  * This meta-tool calls the zendesk, slack, and google tools to answer a prompt against multiple
@@ -176,6 +179,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
+                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }

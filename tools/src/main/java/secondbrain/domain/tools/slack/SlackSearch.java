@@ -38,6 +38,8 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Predicates.instanceOf;
+
 @ApplicationScoped
 public class SlackSearch implements Tool<MatchedItem> {
     public static final String SLACK_SEARCH_DAYS_ARG = "days";
@@ -151,7 +153,9 @@ public class SlackSearch implements Tool<MatchedItem> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result
-                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
+                .mapFailure(
+                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
 
     }

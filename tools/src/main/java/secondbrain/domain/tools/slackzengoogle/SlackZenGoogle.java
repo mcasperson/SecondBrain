@@ -14,6 +14,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InsufficientContext;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -29,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Predicates.instanceOf;
 
 /**
  * This is an example of a meta-tool that calls multiple child tools to get an answer. In this case, it
@@ -196,8 +199,8 @@ public class SlackZenGoogle implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(),
-                                throwable -> new ExternalFailure("Failed to process tickets, google doc, or slack messages: " + throwable.getMessage())))
+                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(), throwable -> new ExternalFailure("Failed to process tickets, google doc, or slack messages: " + throwable.getMessage())))
                 .get();
     }
 

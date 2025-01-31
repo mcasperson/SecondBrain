@@ -31,6 +31,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Predicates.instanceOf;
+
 /**
  * A tool that downloads a public file from HTTP and uses it as the context for a query.
  */
@@ -144,7 +146,9 @@ public class PublicWeb implements Tool<Void> {
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
+        return result.mapFailure(
+                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }
 
