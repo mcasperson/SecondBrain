@@ -465,29 +465,23 @@ class Arguments {
 
     @Nullable
     public List<String> getExcluded() {
-        return Arrays.stream(argsAccessor.getArgument(
-                                exclude::get,
-                                arguments,
-                                context,
-                                DirectoryScan.DIRECTORYSCAN_EXCLUDE_FILES,
-                                "directoryscan_exclude_files",
-                                "")
-                        .split(","))
-                .map(StringUtils::trim)
-                .toList();
+        return argsAccessor.getArgumentList(
+                exclude::get,
+                arguments,
+                context,
+                DirectoryScan.DIRECTORYSCAN_EXCLUDE_FILES,
+                "directoryscan_exclude_files",
+                "");
     }
 
     public List<String> getKeywords() {
-        return Arrays.stream(argsAccessor.getArgument(
-                                keywords::get,
-                                arguments,
-                                context,
-                                DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
-                                "directoryscan_keywords",
-                                "")
-                        .split(","))
-                .map(StringUtils::trim)
-                .toList();
+        return argsAccessor.getArgumentList(
+                keywords::get,
+                arguments,
+                context,
+                DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
+                "directoryscan_keywords",
+                "");
     }
 
     public int getKeywordWindow() {

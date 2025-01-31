@@ -40,6 +40,22 @@ public interface ArgsAccessor {
             String defaultValue);
 
     /**
+     * Get the argument value as a comma separated list from the list of arguments.
+     *
+     * @param arguments    The list of arguments
+     * @param argName      The name of the argument to return
+     * @param defaultValue The default value to return if the argument is not found
+     * @return The argument, or the default value if the argument was not found
+     */
+    List<String> getArgumentList(
+            ArgsAccessorSystemProperty systemProperty,
+            List<ToolArgs> arguments,
+            Map<String, String> context,
+            String argName,
+            String contextName,
+            String defaultValue);
+
+    /**
      * Get the argument value from the list of arguments.
      *
      * @param arguments    The list of arguments

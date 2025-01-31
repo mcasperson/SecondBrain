@@ -347,26 +347,23 @@ class Arguments {
     }
 
     public String getDocumentId() {
-        return Try.of(googleDoc::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, GoogleDocs.GOOGLE_DOC_ID_ARG, ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("google_document_id"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> "")
-                .get();
+        return argsAccessor.getArgument(
+                googleDoc::get,
+                arguments,
+                context,
+                GoogleDocs.GOOGLE_DOC_ID_ARG,
+                "google_document_id",
+                "");
     }
 
     public List<String> getKeywords() {
-        return Try.of(googleKeywords::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, GoogleDocs.GOOGLE_KEYWORD_ARG, ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("google_keywords"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> "")
-                .map(k -> List.of(k.split(",")))
-                .get();
+        return argsAccessor.getArgumentList(
+                googleKeywords::get,
+                arguments,
+                context,
+                GoogleDocs.GOOGLE_KEYWORD_ARG,
+                "google_keywords",
+                "");
     }
 
 
@@ -380,7 +377,7 @@ class Arguments {
                 arguments,
                 context,
                 GoogleDocs.GOOGLE_DISABLE_LINKS_ARG,
-                "google_disablelinks",
+                "google_disable_links",
                 "false");
 
         return BooleanUtils.toBoolean(stringValue);

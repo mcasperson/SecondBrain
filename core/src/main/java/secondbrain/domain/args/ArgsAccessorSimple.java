@@ -8,6 +8,7 @@ import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.validate.ValidateString;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -50,6 +51,19 @@ public class ArgsAccessorSimple implements ArgsAccessor {
                 // fallback to the default
                 .recover(e -> defaultValue)
                 .get();
+    }
+
+    @Override
+    public List<String> getArgumentList(
+            final ArgsAccessorSystemProperty systemProperty,
+            final List<ToolArgs> arguments,
+            final Map<String, String> context,
+            final String argName,
+            final String contextName,
+            final String defaultValue) {
+        return Arrays.stream(getArgument(systemProperty, arguments, context, argName, contextName, defaultValue).split(","))
+                .map(String::trim)
+                .toList();
     }
 
     @Override
