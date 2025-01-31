@@ -118,7 +118,7 @@ public class SlackClient {
         // get the result from the cache
         return localStorage.getOrPutObject(
                 SlackClient.class.getSimpleName(),
-                "SlackAPI",
+                "SlackAPIChannel",
                 hash,
                 ChannelDetails.class,
                 () -> findChannelIdFromApi(client, accessToken, channel, null));
