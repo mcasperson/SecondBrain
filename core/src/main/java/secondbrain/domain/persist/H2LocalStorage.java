@@ -163,6 +163,8 @@ public class H2LocalStorage implements LocalStorage {
                         .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                         .getOrNull())
                 .onFailure(Throwable::printStackTrace)
+                // If we can't open the database for some reason, just generate the value
+                .recover(ex -> generateValue.generate())
                 .getOrNull();
     }
 
@@ -198,6 +200,8 @@ public class H2LocalStorage implements LocalStorage {
                                 .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                                 .get())
                 .onFailure(Throwable::printStackTrace)
+                // If we can't open the database for some reason, just generate the value
+                .recover(ex -> generateValue.generate())
                 .getOrNull();
     }
 
