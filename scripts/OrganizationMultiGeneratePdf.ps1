@@ -223,7 +223,7 @@ foreach ($entity in $database.entities)
 
         if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
         {
-            Set-Content -Path "$subDir/$( $topic.name )/COMPANY $entityName.md"  -Value $result.StdOut
+            Set-Content -Path "$subDir/$( $topic.name )/$entityName.md"  -Value $result.StdOut
         }
     }
 
