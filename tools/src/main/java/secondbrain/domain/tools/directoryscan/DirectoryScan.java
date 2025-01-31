@@ -21,6 +21,7 @@ import secondbrain.domain.converter.FileToText;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -94,6 +95,8 @@ public class DirectoryScan implements Tool<Void> {
     private FileToText fileToText;
     @Inject
     private Logger logger;
+    @Inject
+    private DocumentTrimmer documentTrimmer;
 
     @Override
     public String getName() {
@@ -136,7 +139,7 @@ public class DirectoryScan implements Tool<Void> {
 
         return Try
                 .of(() -> getFiles(parsedArgs.getDirectory()))
-                .map(file -> convertFilesToSummaries(prompt, file))
+                .map(this::convertFilesToSummaries)
                 .get();
     }
 
@@ -205,11 +208,11 @@ public class DirectoryScan implements Tool<Void> {
                 debug);
     }
 
-    private List<RagDocumentContext<Void>> convertFilesToSummaries(final String prompt, final List<String> files) {
+    private List<RagDocumentContext<Void>> convertFilesToSummaries(final List<String> files) {
         return files
                 .stream()
                 .limit(parsedArgs.getMaxFiles() == -1 ? Long.MAX_VALUE : parsedArgs.getMaxFiles())
-                .map(file -> getFileSummary(prompt, file))
+                .map(this::getFileSummary)
                 .filter(Objects::nonNull)
                 .toList();
     }
@@ -219,7 +222,7 @@ public class DirectoryScan implements Tool<Void> {
      * or hallucinate a bunch of random release notes. Instead, each diff is summarised individually and then combined
      * into a single document to be summarised again.
      */
-    private RagDocumentContext<Void> getFileSummary(final String prompt, final String file) {
+    private RagDocumentContext<Void> getFileSummary(final String file) {
         logger.info("DirectoryScan processing file: " + file);
 
         /*
@@ -227,6 +230,10 @@ public class DirectoryScan implements Tool<Void> {
              The combined answers are then used to answer the prompt again.
          */
         final String contents = Arrays.stream(fileToText.convert(file).split("\n"))
+                .map(rawContents -> documentTrimmer.trimDocument(
+                        rawContents,
+                        parsedArgs.getKeywords(),
+                        parsedArgs.getKeywordWindow()))
                 .map(StringUtils::trim)
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.joining("\n"));
@@ -237,8 +244,8 @@ public class DirectoryScan implements Tool<Void> {
 
         final String summary = localStorage.getOrPutString(
                 this.getName(),
-                DigestUtils.sha256Hex("File"),
-                DigestUtils.sha256Hex(prompt),
+                "File",
+                DigestUtils.sha256Hex(parsedArgs.getIndividualDocumentPrompt() + contents),
                 () -> getFileSummary(contents, parsedArgs));
 
         return new RagDocumentContext<>(
@@ -305,10 +312,21 @@ class Arguments {
     private Optional<String> documentPrompt;
 
     @Inject
+    @ConfigProperty(name = "sb.directoryscan.keywords")
+    private Optional<String> keywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.directoryscan.keywordwindow")
+    private Optional<String> keywordWindow;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
     private ModelConfig modelConfig;
+
+    @Inject
+    private ValidateString validateString;
 
     private List<ToolArgs> arguments;
 
@@ -389,6 +407,31 @@ class Arguments {
                         .split(","))
                 .map(StringUtils::trim)
                 .toList();
+    }
+
+    public List<String> getKeywords() {
+        return Try.of(keywords::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "keywords", ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("directoryscan_keywords"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> "")
+                .map(k -> List.of(k.split(",")))
+                .get();
+    }
+
+    public int getKeywordWindow() {
+        final String stringValue = Try.of(keywordWindow::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> argsAccessor.getArgument(arguments, "keywordWindow", ""))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> context.get("directoryscan_window"))
+                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "")
+                .get();
+
+        return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
     }
 }
 

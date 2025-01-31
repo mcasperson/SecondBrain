@@ -31,9 +31,8 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
 
         final List<Section> mergedSections = mergeSections(keywordPositions);
 
-        // If no keywords match, assume the prompt is wrong and return the entire document
         if (mergedSections.isEmpty()) {
-            return document;
+            return "";
         }
 
         return String.join(" ",
