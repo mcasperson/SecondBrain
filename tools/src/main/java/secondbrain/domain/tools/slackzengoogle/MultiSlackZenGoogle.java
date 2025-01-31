@@ -33,6 +33,7 @@ import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -95,6 +96,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private ExceptionHandler exceptionHandler;
+
+    @Inject
+    private Logger log;
 
     @Override
     public String getName() {
@@ -278,7 +282,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(SlackChannel.SLACK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt, args))
-                        .onFailure(exceptionHandler::getExceptionMessage)
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(ex -> log.info(exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -299,7 +304,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(context, prompt, args))
-                .onFailure(exceptionHandler::getExceptionMessage)
+                // We continue on even if one tool fails, so log and swallow the exception
+                .onFailure(ex -> log.info(exceptionHandler.getExceptionMessage(ex)))
                 // If anything fails, get an empty list
                 .getOrElse(List::of)
                 // Post-process the rag context
@@ -315,7 +321,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
                         new ToolArgs(GoogleDocs.GOOGLE_DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(context, prompt, args))
-                        .onFailure(exceptionHandler::getExceptionMessage)
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(ex -> log.info(exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -330,7 +337,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + days, true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context, prompt, args))
-                        .onFailure(exceptionHandler::getExceptionMessage)
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(ex -> log.info(exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -346,7 +354,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
                         new ToolArgs(PlanHat.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> planHat.getContext(context, prompt, args))
-                        .onFailure(exceptionHandler::getExceptionMessage)
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(ex -> log.info(exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
