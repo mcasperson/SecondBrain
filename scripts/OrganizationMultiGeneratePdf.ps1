@@ -262,7 +262,8 @@ foreach ($file in $files)
 # Step 3
 # Generate a topic summary
 
-for ($topic in $topics.topics) {
+foreach ($topic in $topics.topics)
+{
     Remove-Item "$subDir/TOPIC $( $topic.name ).md"
     $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.disablelinks=true`" `"-Dsb.directoryscan.directory=$subDir/$( $topic.name )`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"$( $topic.executiveSummaryPrompt )`""
     Set-Content -Path "$subDir/TOPIC $( $topic.name ).md" -Value "$( $result.StdOut )`n`n"
