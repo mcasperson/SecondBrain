@@ -52,6 +52,7 @@ import static com.google.common.base.Predicates.instanceOf;
 @ApplicationScoped
 public class DirectoryScan implements Tool<Void> {
     public static final String DIRECTORYSCAN_DISABLELINKS_ARG = "disableLinks";
+    public static final String DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG = "summarizeIndividualFiles";
 
     private static final String INSTRUCTIONS = """
             You are given a question and the answer to the question from many individual files.
@@ -215,9 +216,53 @@ public class DirectoryScan implements Tool<Void> {
         return files
                 .stream()
                 .limit(parsedArgs.getMaxFiles() == -1 ? Long.MAX_VALUE : parsedArgs.getMaxFiles())
-                .map(this::getFileSummary)
+                .map(this::getFileContext)
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    private RagDocumentContext<Void> getFileContext(final String file) {
+        if (parsedArgs.getSummarizeIndividualFiles()) {
+            return getFileSummary(file);
+        }
+
+        return getRawFile(file);
+    }
+
+    private RagDocumentContext<Void> getRawFile(final String file) {
+        logger.info("DirectoryScan processing file: " + file);
+
+        /*
+             Each individual file is converted to text and used to answer the prompt.
+             The combined answers are then used to answer the prompt again.
+         */
+        final String contents = Arrays.stream(fileToText.convert(file).split("\n"))
+                .map(rawContents -> documentTrimmer.trimDocument(
+                        rawContents,
+                        parsedArgs.getKeywords(),
+                        parsedArgs.getKeywordWindow()))
+                .map(StringUtils::trim)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.joining("\n"));
+
+        if (StringUtils.isBlank(contents)) {
+            return null;
+        }
+
+        if (parsedArgs.getDisableLinks()) {
+            return new RagDocumentContext<>(getContextLabel(), contents, List.of());
+        }
+
+        return new RagDocumentContext<>(
+                getContextLabel(),
+                contents,
+                sentenceSplitter.splitDocument(contents, 10)
+                        .stream()
+                        .map(sentenceVectorizer::vectorize)
+                        .toList(),
+                file,
+                null,
+                "[" + file + "](file://" + file + ")");
     }
 
     /**
@@ -329,6 +374,10 @@ class Arguments {
     @Inject
     @ConfigProperty(name = "sb.directoryscan.disablelinks")
     private Optional<String> disableLinks;
+
+    @Inject
+    @ConfigProperty(name = "sb.directoryscan.summarizeindividualfiles")
+    private Optional<String> summarizeIndividualFiles;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -446,14 +495,25 @@ class Arguments {
     }
 
     public boolean getDisableLinks() {
-        final String stringValue = Try.of(disableLinks::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, DirectoryScan.DIRECTORYSCAN_DISABLELINKS_ARG, ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("directoryscan_disable_links"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> "")
-                .get();
+        final String stringValue = argsAccessor.getArgument(
+                disableLinks::get,
+                arguments,
+                context,
+                DirectoryScan.DIRECTORYSCAN_DISABLELINKS_ARG,
+                "directoryscan_disable_links",
+                "false");
+
+        return BooleanUtils.toBoolean(stringValue);
+    }
+
+    public boolean getSummarizeIndividualFiles() {
+        final String stringValue = argsAccessor.getArgument(
+                summarizeIndividualFiles::get,
+                arguments,
+                context,
+                DirectoryScan.DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG,
+                "directoryscan_summarize_individual_files",
+                "true");
 
         return BooleanUtils.toBoolean(stringValue);
     }
