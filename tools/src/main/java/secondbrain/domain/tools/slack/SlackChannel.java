@@ -10,6 +10,7 @@ import io.vavr.Tuple;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
@@ -26,6 +27,7 @@ import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.slack.SlackClient;
 
@@ -44,6 +46,7 @@ import static com.google.common.base.Predicates.instanceOf;
 public class SlackChannel implements Tool<Void> {
     public static final String SLACK_CHANEL_ARG = "slackChannel";
     public static final String DAYS_ARG = "days";
+    public static final String SLACK_DISABLELINKS_ARG = "disableLinks";
 
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final String INSTRUCTIONS = """
@@ -179,6 +182,10 @@ public class SlackChannel implements Tool<Void> {
     }
 
     private RagDocumentContext<Void> getDocumentContext(final String document, final ChannelDetails channelDetails) {
+        if (parsedArgs.getDisableLinks()) {
+            return new RagDocumentContext<>(getContextLabel(), document, List.of());
+        }
+
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 // Strip out any URLs from the sentences
                 .map(sentences -> sentences.stream().map(sentence -> removeMarkdnUrls.sanitize(sentence)).toList())
@@ -288,6 +295,13 @@ class Arguments {
     private Optional<String> historyttl;
 
     @Inject
+    @ConfigProperty(name = "sb.slack.disablelinks")
+    private Optional<String> disableLinks;
+
+    @Inject
+    private ValidateString validateString;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -350,5 +364,17 @@ class Arguments {
         return Try.of(() -> stringValue)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
                 .get();
+    }
+
+    public boolean getDisableLinks() {
+        final String stringValue = argsAccessor.getArgument(
+                disableLinks::get,
+                arguments,
+                context,
+                SlackChannel.SLACK_DISABLELINKS_ARG,
+                "slack_disable_links",
+                "false");
+
+        return BooleanUtils.toBoolean(stringValue);
     }
 }

@@ -27,6 +27,7 @@ import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.slack.SlackClient;
 
@@ -40,6 +41,7 @@ import java.util.stream.Stream;
 public class SlackSearch implements Tool<MatchedItem> {
     public static final String SLACK_SEARCH_DAYS_ARG = "days";
     public static final String SLACK_SEARCH_KEYWORDS_ARG = "keywords";
+    public static final String SLACK_SEARCH_DISABLELINKS_ARG = "disableLinks";
 
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
@@ -153,6 +155,10 @@ public class SlackSearch implements Tool<MatchedItem> {
     }
 
     private RagDocumentContext<MatchedItem> getDocumentContext(final MatchedItem meta) {
+        if (parsedArgs.getDisableLinks()) {
+            return new RagDocumentContext<>(getContextLabel(), meta.getText(), List.of());
+        }
+
         return Try.of(() -> sentenceSplitter.splitDocument(meta.getText(), 10))
                 .map(sentences -> new RagDocumentContext<MatchedItem>(
                         getContextLabel(),
@@ -222,6 +228,13 @@ class SlackSearchArguments {
     @Inject
     @ConfigProperty(name = "sb.slack.searchttl")
     private Optional<String> searchTtl;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.disablelinks")
+    private Optional<String> disableLinks;
+
+    @Inject
+    private ValidateString validateString;
 
     private List<ToolArgs> arguments;
 
@@ -322,5 +335,17 @@ class SlackSearchArguments {
                 .map(StringUtils::trim)
                 .map(channel -> channel.replaceFirst("^#", ""))
                 .toList();
+    }
+
+    public boolean getDisableLinks() {
+        final String stringValue = argsAccessor.getArgument(
+                disableLinks::get,
+                arguments,
+                context,
+                SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG,
+                "slack_disable_links",
+                "false");
+
+        return BooleanUtils.toBoolean(stringValue);
     }
 }

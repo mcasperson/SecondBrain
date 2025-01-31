@@ -16,6 +16,7 @@ import secondbrain.domain.tooldefs.ToolCall;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -37,6 +38,10 @@ public class PromptHandlerOllama implements PromptHandler {
     @Inject
     @ConfigProperty(name = "sb.tools.debug", defaultValue = "false")
     private String debug;
+
+    @Inject
+    @ConfigProperty(name = "sb.disablelinks")
+    private Optional<String> disableLinks;
 
     @Inject
     private SimilarityCalculator similarityCalculator;
@@ -118,12 +123,7 @@ public class PromptHandlerOllama implements PromptHandler {
          */
         return Try.of(() -> toolCall.call(context, prompt))
                 .map(document -> new PromptResponse(
-                        document.annotateDocumentContext(
-                                parsedMinSimilarity,
-                                parsedMinWords,
-                                sentenceSplitter,
-                                similarityCalculator,
-                                sentenceVectorizer),
+                        getAnnotations(document, parsedMinSimilarity, parsedMinWords),
                         getLinks(document),
                         getDebugLinks(document, Boolean.getBoolean(debug) || argumentDebugging)))
                 .map(response ->
@@ -133,6 +133,19 @@ public class PromptHandlerOllama implements PromptHandler {
                                 + getAnnotationCoverage(response.annotationResult(), Boolean.getBoolean(debug) || argumentDebugging))
                 .recover(FailedTool.class, exceptionHandler::getExceptionMessage)
                 .get();
+    }
+
+    private boolean getDisableLinks() {
+        return disableLinks.map(Boolean::parseBoolean).orElse(false);
+    }
+
+    private AnnotationResult<? extends RagMultiDocumentContext<?>> getAnnotations(final RagMultiDocumentContext<?> document, final float parsedMinSimilarity, final int parsedMinWords) {
+        return document.annotateDocumentContext(
+                parsedMinSimilarity,
+                parsedMinWords,
+                sentenceSplitter,
+                similarityCalculator,
+                sentenceVectorizer);
     }
 
     private String getLinks(final RagMultiDocumentContext<?> document) {
@@ -159,7 +172,7 @@ public class PromptHandlerOllama implements PromptHandler {
     }
 
     private String getAnnotationCoverage(AnnotationResult<? extends RagMultiDocumentContext<?>> annotationResult, final boolean argumentDebugging) {
-        if (!argumentDebugging) {
+        if (!argumentDebugging || annotationResult == null) {
             return "";
         }
 

@@ -14,6 +14,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -50,7 +51,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 @ApplicationScoped
 public class GoogleDocs implements Tool<Void> {
     public static final String GOOGLE_DOC_ID_ARG = "googleDocumentId";
-    public static final String KEYWORD_ARG = "keywords";
+    public static final String GOOGLE_KEYWORD_ARG = "keywords";
+    public static final String GOOGLE_DISABLE_LINKS_ARG = "disableLinks";
 
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String APPLICATION_NAME = "SecondBrain";
@@ -104,7 +106,7 @@ public class GoogleDocs implements Tool<Void> {
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments(GOOGLE_DOC_ID_ARG, "The ID of the Google Docs document to use.", ""),
-                new ToolArguments(KEYWORD_ARG, "An optional list of keywords used to trim the document", "")
+                new ToolArguments(GOOGLE_KEYWORD_ARG, "An optional list of keywords used to trim the document", "")
         );
     }
 
@@ -205,6 +207,10 @@ public class GoogleDocs implements Tool<Void> {
 
 
     private RagDocumentContext<Void> getDocumentContext(final String document, final String documentId) {
+        if (parsedArgs.getDisableLinks()) {
+            return new RagDocumentContext<>(getContextLabel(), document, List.of());
+        }
+
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
@@ -311,6 +317,10 @@ class Arguments {
     private Optional<String> googleServiceAccountJson;
 
     @Inject
+    @ConfigProperty(name = "sb.google.disablelinks")
+    private Optional<String> disableLinks;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     private List<ToolArgs> arguments;
@@ -350,7 +360,7 @@ class Arguments {
     public List<String> getKeywords() {
         return Try.of(googleKeywords::get)
                 .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, GoogleDocs.KEYWORD_ARG, ""))
+                .recover(e -> argsAccessor.getArgument(arguments, GoogleDocs.GOOGLE_KEYWORD_ARG, ""))
                 .mapTry(validateString::throwIfEmpty)
                 .recover(e -> context.get("google_keywords"))
                 .mapTry(validateString::throwIfEmpty)
@@ -362,5 +372,17 @@ class Arguments {
 
     public String getGoogleServiceAccountJson() {
         return googleServiceAccountJson.get();
+    }
+
+    public boolean getDisableLinks() {
+        final String stringValue = argsAccessor.getArgument(
+                disableLinks::get,
+                arguments,
+                context,
+                GoogleDocs.GOOGLE_DISABLE_LINKS_ARG,
+                "google_disablelinks",
+                "false");
+
+        return BooleanUtils.toBoolean(stringValue);
     }
 }

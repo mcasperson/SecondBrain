@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -39,6 +40,7 @@ import java.util.stream.Collectors;
 public class PlanHat implements Tool<Conversation> {
     public static final String DAYS_ARG = "days";
     public static final String COMPANY_ID_ARGS = "companyId";
+    public static final String DISABLE_LINKS_ARG = "disableLinks";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -167,6 +169,10 @@ public class PlanHat implements Tool<Conversation> {
     }
 
     private RagDocumentContext<Conversation> getDocumentContext(final Conversation conversation) {
+        if (parsedArgs.getDisableLinks()) {
+            return new RagDocumentContext<>(getContextLabel(), conversation.getContent(), List.of());
+        }
+
         return Try.of(() -> sentenceSplitter.splitDocument(conversation.getContent(), 10))
                 .map(sentences -> new RagDocumentContext<Conversation>(
                         getContextLabel() + " " + conversation.date(),
@@ -218,6 +224,10 @@ class Arguments {
     @Inject
     @ConfigProperty(name = "sb.planhat.searchttl")
     private Optional<String> searchTtl;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.disablelinks")
+    private Optional<String> disableLinks;
 
     @Inject
     private ValidateString validateString;
@@ -277,11 +287,23 @@ class Arguments {
                 arguments,
                 context,
                 "searchTtl",
-                "slack_searchttl",
+                "planhat_searchttl",
                 DEFAULT_TTL);
 
         return Try.of(() -> stringValue)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
                 .get();
+    }
+
+    public boolean getDisableLinks() {
+        final String stringValue = argsAccessor.getArgument(
+                disableLinks::get,
+                arguments,
+                context,
+                PlanHat.DISABLE_LINKS_ARG,
+                "planhat_disablelinks",
+                "false");
+
+        return BooleanUtils.toBoolean(stringValue);
     }
 }

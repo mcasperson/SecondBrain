@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.validator.routines.EmailValidator;
@@ -45,6 +46,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
+    public static final String ZENDESK_DISABLELINKS_ARG = "disableLinks";
     public static final String ZENDESK_ORGANIZATION_ARG = "zenDeskOrganization";
     public static final String EXCLUDE_ORGANIZATION_ARG = "excludeOrganization";
     public static final String EXCLUDE_SUBMITTERS_ARG = "excludeSubmitters";
@@ -328,6 +330,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     }
 
     private RagDocumentContext<ZenDeskResultsResponse> getDocumentContext(final String document, final String id, final ZenDeskResultsResponse meta, final String authHeader) {
+        if (parsedArgs.getDisableLinks()) {
+            return new RagDocumentContext<>(getContextLabel(), document, List.of());
+        }
+
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext<ZenDeskResultsResponse>(
                         getContextLabel(),
@@ -408,6 +414,10 @@ class Arguments {
     @Inject
     @ConfigProperty(name = "sb.zendesk.excludedsubmitters")
     private Optional<String> zenDeskExcludedSubmitters;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.disablelinks")
+    private Optional<String> disableLinks;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -647,5 +657,17 @@ class Arguments {
 
         // If both the first and second keywords were mentioned, we just have to trust the LLM
         return a;
+    }
+
+    public boolean getDisableLinks() {
+        final String stringValue = argsAccessor.getArgument(
+                disableLinks::get,
+                arguments,
+                context,
+                ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG,
+                "zendesk_disable_links",
+                "false");
+
+        return BooleanUtils.toBoolean(stringValue);
     }
 }
