@@ -202,7 +202,7 @@ foreach ($entity in $database.entities)
 
     if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
     {
-        Set-Content -Path "$subDir/$entityName.md"  -Value $result.StdOut
+        Set-Content -Path "$subDir/COMPANY $entityName.md"  -Value $result.StdOut
     }
 
     foreach ($topic in $topics.topics)
