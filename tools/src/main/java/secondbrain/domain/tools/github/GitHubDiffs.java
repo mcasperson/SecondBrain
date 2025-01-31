@@ -18,7 +18,8 @@ import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.ListUtilsEx;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -196,9 +197,9 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new FailedTool("No diffs found for " + parsedArgs.getOwner() + "/" + parsedArgs.getRepo() + " between " + parsedArgs.getStartDate() + " and " + parsedArgs.getEndDate() + "\n" + debugArgs)),
+                                throwable -> new InternalFailure("No diffs found for " + parsedArgs.getOwner() + "/" + parsedArgs.getRepo() + " between " + parsedArgs.getStartDate() + " and " + parsedArgs.getEndDate() + "\n" + debugArgs)),
                         API.Case(API.$(),
-                                throwable -> new FailedTool("Failed to get diffs: " + throwable.getMessage() + "\n" + debugArgs)))
+                                throwable -> new ExternalFailure("Failed to get diffs: " + throwable.getMessage() + "\n" + debugArgs)))
                 .get();
     }
 
@@ -482,7 +483,7 @@ class Arguments {
                 .recover(e -> context.get("github_access_token"))
                 .mapTry(validateString::throwIfEmpty)
                 .recoverWith(e -> Try.of(githubAccessToken::get))
-                .getOrElseThrow(ex -> new FailedTool("Failed to get GitHub access token", ex));
+                .getOrElseThrow(ex -> new InternalFailure("Failed to get GitHub access token", ex));
     }
 
     public String getDiffCustomModel() {

@@ -12,7 +12,7 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
@@ -197,7 +197,7 @@ public class SlackZenGoogle implements Tool<Void> {
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
                         API.Case(API.$(),
-                                throwable -> new FailedTool("Failed to process tickets, google doc, or slack messages: " + throwable.getMessage())))
+                                throwable -> new ExternalFailure("Failed to process tickets, google doc, or slack messages: " + throwable.getMessage())))
                 .get();
     }
 

@@ -17,7 +17,8 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.converter.FileToText;
-import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
@@ -105,7 +106,7 @@ public class UploadedDoc implements Tool<Void> {
         parsedArgs.setInputs(arguments, prompt, context);
 
         if (parsedArgs.getDocument().length == 0) {
-            throw new FailedTool("No document found in context");
+            throw new InternalFailure("No document found in context");
         }
 
         return List.of(getDocumentContext(parsedArgs.getDocument()));
@@ -133,7 +134,7 @@ public class UploadedDoc implements Tool<Void> {
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool(getName() + " failed to call Ollama", ex)))
+        return result.mapFailure(API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }
 

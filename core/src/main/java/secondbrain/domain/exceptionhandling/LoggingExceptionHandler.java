@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.exceptions.ExternalFailure;
 
 @ApplicationScoped
 public class LoggingExceptionHandler implements ExceptionHandler {
@@ -14,7 +15,7 @@ public class LoggingExceptionHandler implements ExceptionHandler {
 
     @Override
     public String getExceptionMessage(Throwable e) {
-        if (Boolean.parseBoolean(printStackTrace)) {
+        if (Boolean.parseBoolean(printStackTrace) || e instanceof ExternalFailure) {
             return ExceptionUtils.getStackTrace(e);
         }
 

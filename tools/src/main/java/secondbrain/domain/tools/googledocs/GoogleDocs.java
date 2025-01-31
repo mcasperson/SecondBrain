@@ -28,7 +28,8 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.encryption.Encryptor;
-import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
@@ -151,7 +152,7 @@ public class GoogleDocs implements Tool<Void> {
                 .recoverWith(e -> Try.of(this::getDefaultCredentials));
 
         if (token.isFailure()) {
-            throw new FailedTool("Failed to get Google access token: " + token.getCause().getMessage());
+            throw new InternalFailure("Failed to get Google access token: " + token.getCause().getMessage());
         }
 
         return Try.of(GoogleNetHttpTransport::newTrustedTransport)
@@ -190,7 +191,7 @@ public class GoogleDocs implements Tool<Void> {
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool(getName() + " failed to call Ollama", ex)))
+        return result.mapFailure(API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }
 

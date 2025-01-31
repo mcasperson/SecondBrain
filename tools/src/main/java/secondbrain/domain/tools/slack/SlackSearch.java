@@ -22,7 +22,8 @@ import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.encryption.Encryptor;
-import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
@@ -108,7 +109,7 @@ public class SlackSearch implements Tool<MatchedItem> {
                         parsedArgs.getKeywords(),
                         parsedArgs.getSearchTTL()))
                 .onFailure(Throwable::printStackTrace)
-                .getOrElseThrow(() -> new FailedTool("Could not search messages"));
+                .getOrElseThrow(() -> new ExternalFailure("Could not search messages"));
 
         if (searchResult == null || searchResult.getMessages() == null || CollectionUtils.isEmpty(searchResult.getMessages().getMatches())) {
             return List.of();
@@ -150,7 +151,7 @@ public class SlackSearch implements Tool<MatchedItem> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result
-                .mapFailure(API.Case(API.$(), ex -> new FailedTool(getName() + " failed to call Ollama", ex)))
+                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
 
     }
@@ -286,7 +287,7 @@ class SlackSearchArguments {
                 .recover(e -> context.get("slack_access_token"))
                 .mapTry(Objects::requireNonNull)
                 .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
-                .getOrElseThrow(() -> new FailedTool("Slack access token not found"));
+                .getOrElseThrow(() -> new InternalFailure("Slack access token not found"));
     }
 
     public int getDays() {

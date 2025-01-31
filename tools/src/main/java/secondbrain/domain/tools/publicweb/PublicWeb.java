@@ -16,7 +16,8 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
-import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
@@ -104,7 +105,7 @@ public class PublicWeb implements Tool<Void> {
         parsedArgs.setInputs(arguments, prompt, context);
 
         if (StringUtils.isBlank(parsedArgs.getUrl())) {
-            throw new FailedTool("You must provide a URL to download");
+            throw new InternalFailure("You must provide a URL to download");
         }
 
         return Try.of(() -> fileReader.read(parsedArgs.getUrl()))
@@ -124,7 +125,7 @@ public class PublicWeb implements Tool<Void> {
         parsedArgs.setInputs(arguments, prompt, context);
 
         if (StringUtils.isBlank(parsedArgs.getUrl())) {
-            throw new FailedTool("You must provide a URL to download");
+            throw new InternalFailure("You must provide a URL to download");
         }
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
@@ -143,7 +144,7 @@ public class PublicWeb implements Tool<Void> {
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool(getName() + " failed to call Ollama", ex)))
+        return result.mapFailure(API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }
 

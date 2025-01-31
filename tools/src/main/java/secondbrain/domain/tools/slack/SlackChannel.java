@@ -21,8 +21,9 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
-import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
@@ -123,7 +124,7 @@ public class SlackChannel implements Tool<Void> {
         final AsyncMethodsClient client = Slack.getInstance().methodsAsync();
 
         final ChannelDetails channelDetails = Try.of(() -> slackClient.findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel()))
-                .getOrElseThrow(() -> new FailedTool("Channel not found"));
+                .getOrElseThrow(() -> new InternalFailure("Channel not found"));
 
         final String messages = Try.of(() -> slackClient.conversationHistory(
                         client,
@@ -133,16 +134,16 @@ public class SlackChannel implements Tool<Void> {
                         parsedArgs.getSearchTTL()))
                 .map(this::conversationsToText)
                 .onFailure(Throwable::printStackTrace)
-                .getOrElseThrow(() -> new FailedTool("Messages could not be read"));
+                .getOrElseThrow(() -> new ExternalFailure("Messages could not be read"));
 
         if (messages.length() < MINIMUM_MESSAGE_LENGTH) {
-            throw new FailedTool("Not enough messages found in channel " + parsedArgs.getChannel()
+            throw new InternalFailure("Not enough messages found in channel " + parsedArgs.getChannel()
                     + System.lineSeparator() + System.lineSeparator()
                     + "* [Slack Channel](https://app.slack.com/client/" + channelDetails.teamId() + "/" + channelDetails.channelId() + ")");
         }
 
         final String messagesWithUsersReplaced = replaceIds(client, parsedArgs.getAccessToken(), messages)
-                .getOrElseThrow(() -> new FailedTool("The user and channel IDs could not be replaced"));
+                .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
 
         return List.of(getDocumentContext(messagesWithUsersReplaced, channelDetails));
     }
@@ -176,9 +177,9 @@ public class SlackChannel implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(instanceOf(FailedTool.class)), throwable -> throwable),
+                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> throwable),
-                        API.Case(API.$(), ex -> new FailedTool("Unexpected error", ex)))
+                        API.Case(API.$(), ex -> new ExternalFailure("Unexpected error", ex)))
                 .get();
     }
 
@@ -351,7 +352,7 @@ class Arguments {
                 .recover(e -> context.get("slack_access_token"))
                 .mapTry(Objects::requireNonNull)
                 .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
-                .getOrElseThrow(() -> new FailedTool("Slack access token not found"));
+                .getOrElseThrow(() -> new InternalFailure("Slack access token not found"));
     }
 
     public int getSearchTTL() {

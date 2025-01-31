@@ -21,7 +21,8 @@ import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.converter.FileToText;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.persist.LocalStorage;
@@ -144,7 +145,7 @@ public class DirectoryScan implements Tool<Void> {
         parsedArgs.setInputs(arguments, prompt, context);
 
         if (StringUtils.isBlank(parsedArgs.getDirectory())) {
-            throw new FailedTool("You must provide a directory to scan");
+            throw new InternalFailure("You must provide a directory to scan");
         }
 
         return Try
@@ -188,9 +189,9 @@ public class DirectoryScan implements Tool<Void> {
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new FailedTool("No files found for " + parsedArgs.getDirectory() + debugArgs)),
+                                throwable -> new InternalFailure("No files found for " + parsedArgs.getDirectory() + debugArgs)),
                         API.Case(API.$(),
-                                throwable -> new FailedTool("Failed to get file contents: " + throwable.getMessage() + "\n" + debugArgs)))
+                                throwable -> new ExternalFailure("Failed to get file contents: " + throwable.getMessage() + "\n" + debugArgs)))
                 .get();
     }
 

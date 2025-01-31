@@ -15,7 +15,8 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptionhandling.ExceptionHandler;
+import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
@@ -92,6 +93,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     @Inject
     private Arguments parsedArgs;
 
+    @Inject
+    private ExceptionHandler exceptionHandler;
+
     @Override
     public String getName() {
         return MultiSlackZenGoogle.class.getSimpleName();
@@ -125,7 +129,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final EntityDirectory entityDirectory = Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
-                .getOrElseThrow(ex -> new FailedTool("Failed to download or parse the entity directory", ex));
+                .getOrElseThrow(ex -> new ExternalFailure("Failed to download or parse the entity directory", ex));
 
         final List<RagDocumentContext<Void>> ragContext = entityDirectory.getEntities()
                 .stream()
@@ -168,7 +172,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(), ex -> new FailedTool(getName() + " failed to call Ollama", ex)))
+                        API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }
 
@@ -274,7 +278,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(SlackChannel.SLACK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt, args))
-                        .onFailure(Throwable::printStackTrace)
+                        .onFailure(exceptionHandler::getExceptionMessage)
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -295,7 +299,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(context, prompt, args))
-                .onFailure(Throwable::printStackTrace)
+                .onFailure(exceptionHandler::getExceptionMessage)
                 // If anything fails, get an empty list
                 .getOrElse(List::of)
                 // Post-process the rag context
@@ -311,7 +315,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
                         new ToolArgs(GoogleDocs.GOOGLE_DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(context, prompt, args))
-                        .onFailure(Throwable::printStackTrace)
+                        .onFailure(exceptionHandler::getExceptionMessage)
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -326,7 +330,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + days, true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context, prompt, args))
-                        .onFailure(Throwable::printStackTrace)
+                        .onFailure(exceptionHandler::getExceptionMessage)
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -342,7 +346,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
                         new ToolArgs(PlanHat.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> planHat.getContext(context, prompt, args))
-                        .onFailure(Throwable::printStackTrace)
+                        .onFailure(exceptionHandler::getExceptionMessage)
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name

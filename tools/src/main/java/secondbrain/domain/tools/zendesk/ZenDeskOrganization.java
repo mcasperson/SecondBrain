@@ -20,7 +20,8 @@ import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeArgument;
@@ -213,9 +214,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new FailedTool("No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'" + debugArgs)),
+                                throwable -> new InternalFailure("No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'" + debugArgs)),
                         API.Case(API.$(),
-                                throwable -> new FailedTool("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
+                                throwable -> new ExternalFailure("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
                 .get();
     }
 
@@ -597,7 +598,7 @@ class Arguments {
                 .recoverWith(e -> Try.of(() -> zenDeskAccessToken.get()));
 
         if (token.isFailure() || StringUtils.isBlank(token.get())) {
-            throw new FailedTool("Failed to get Zendesk access token");
+            throw new InternalFailure("Failed to get Zendesk access token");
         }
 
         return token.get();
@@ -608,7 +609,7 @@ class Arguments {
                 .recoverWith(e -> Try.of(() -> zenDeskUrl.get()));
 
         if (url.isFailure() || StringUtils.isBlank(url.get())) {
-            throw new FailedTool("Failed to get Zendesk URL");
+            throw new InternalFailure("Failed to get Zendesk URL");
         }
 
         return url.get();
@@ -621,7 +622,7 @@ class Arguments {
                 .recoverWith(e -> Try.of(() -> zenDeskUser.get()));
 
         if (user.isFailure() || StringUtils.isBlank(user.get())) {
-            throw new FailedTool("Failed to get Zendesk User");
+            throw new InternalFailure("Failed to get Zendesk User");
         }
 
         return user.get();

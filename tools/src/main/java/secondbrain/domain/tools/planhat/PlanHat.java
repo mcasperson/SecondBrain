@@ -20,7 +20,7 @@ import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.converter.HtmlToText;
 import secondbrain.domain.date.DateParser;
-import secondbrain.domain.exceptions.FailedTool;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -117,7 +117,7 @@ public class PlanHat implements Tool<Conversation> {
         parsedArgs.setInputs(arguments, prompt, context);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
-            throw new FailedTool("You must provide a company ID to query");
+            throw new InternalFailure("You must provide a company ID to query");
         }
 
         final List<Conversation> conversations = Try.withResources(ClientBuilder::newClient)
@@ -147,7 +147,7 @@ public class PlanHat implements Tool<Conversation> {
         parsedArgs.setInputs(arguments, prompt, context);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
-            throw new FailedTool("You must provide a company to query");
+            throw new InternalFailure("You must provide a company to query");
         }
 
         final Try<RagMultiDocumentContext<Conversation>> result = Try.of(() -> contextList)
@@ -166,7 +166,7 @@ public class PlanHat implements Tool<Conversation> {
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(API.Case(API.$(), ex -> new FailedTool(getName() + " failed to call Ollama", ex)))
+        return result.mapFailure(API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }
 
