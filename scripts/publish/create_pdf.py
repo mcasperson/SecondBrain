@@ -1,9 +1,8 @@
 import argparse
+import markdown2
 import os
 import re
 from datetime import datetime, timedelta
-
-import markdown2
 from fpdf.enums import XPos, YPos
 from fpdf.fpdf import FPDF
 
@@ -92,10 +91,22 @@ def convert_md_to_pdf(directory, output_pdf):
     <p>Because it is AI generated, mistakes may occur. Please verify the information before taking any action.</p>
     """)
 
+    company_prefix = 'COMPANY '
+    topic_prefix = 'TOPIC '
     contents = []
+
+    # Find the topics in the first loop
     for filename in sorted(os.listdir(directory)):
-        if filename.endswith('.md'):
-            title = os.path.splitext(filename)[0]  # Get file name without extension
+        if filename.startswith(topic_prefix) and filename.endswith('.md'):
+            # Get file name without extension or the prefix
+            title = (os.path.splitext(filename)[0])[len(topic_prefix):]
+            contents.append({'title': title, 'filename': filename, 'link': pdf.add_link()})
+
+    # Find the companies in the second loop
+    for filename in sorted(os.listdir(directory)):
+        if filename.startswith(company_prefix) and filename.endswith('.md'):
+            # Get file name without extension or the prefix
+            title = (os.path.splitext(filename)[0])[len(company_prefix):]
             contents.append({'title': title, 'filename': filename, 'link': pdf.add_link()})
 
     # Move the Executive Summary to the top
