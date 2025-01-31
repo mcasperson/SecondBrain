@@ -53,6 +53,14 @@ import static com.google.common.base.Predicates.instanceOf;
 public class DirectoryScan implements Tool<Void> {
     public static final String DIRECTORYSCAN_DISABLELINKS_ARG = "disableLinks";
     public static final String DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG = "summarizeIndividualFiles";
+    public static final String DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW = "keywordWindow";
+    public static final String DIRECTORYSCAN_SUMMARIZE_KEYWORDS = "keywords";
+    public static final String DIRECTORYSCAN_EXCLUDE_FILES = "excludeFiles";
+    public static final String DIRECTORYSCAN_FILE_CONTENT_WINDOW = "fileContextWindow";
+    public static final String DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT = "individualDocumentPrompt";
+    public static final String DIRECTORYSCAN_FILE_CUSTOM_MODEL = "fileCustomModel";
+    public static final String DIRECTORYSCAN_MAX_FILES = "maxfiles";
+    public static final String DIRECTORYSCAN_DIRECTORY = "directory";
 
     private static final String INSTRUCTIONS = """
             You are given a question and the answer to the question from many individual files.
@@ -405,7 +413,7 @@ class Arguments {
                 directory::get,
                 arguments,
                 context,
-                "directory",
+                DirectoryScan.DIRECTORYSCAN_DIRECTORY,
                 "directoryscan_directory",
                 "");
     }
@@ -415,7 +423,7 @@ class Arguments {
                 maxfiles::get,
                 arguments,
                 context,
-                "maxfiles",
+                DirectoryScan.DIRECTORYSCAN_MAX_FILES,
                 "directoryscan_maxfiles",
                 "-1");
 
@@ -427,7 +435,7 @@ class Arguments {
                 filemodel::get,
                 arguments,
                 context,
-                "fileCustomModel",
+                DirectoryScan.DIRECTORYSCAN_FILE_CUSTOM_MODEL,
                 "directoryscan_file_custom_model",
                 filemodel.orElse(modelConfig.getCalculatedModel(context)));
     }
@@ -437,7 +445,7 @@ class Arguments {
                 documentPrompt::get,
                 arguments,
                 context,
-                "individualDocumentPrompt",
+                DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
                 "directoryscan_individual_document_prompt",
                 prompt);
     }
@@ -448,7 +456,7 @@ class Arguments {
                 fileContextWindow::get,
                 arguments,
                 context,
-                "fileContextWindow",
+                DirectoryScan.DIRECTORYSCAN_FILE_CONTENT_WINDOW,
                 "directoryscan_file_content_window",
                 Constants.DEFAULT_CONTENT_WINDOW + "");
 
@@ -461,7 +469,7 @@ class Arguments {
                                 exclude::get,
                                 arguments,
                                 context,
-                                "excludeFiles",
+                                DirectoryScan.DIRECTORYSCAN_EXCLUDE_FILES,
                                 "directoryscan_exclude_files",
                                 "")
                         .split(","))
@@ -470,26 +478,27 @@ class Arguments {
     }
 
     public List<String> getKeywords() {
-        return Try.of(keywords::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "keywords", ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("directoryscan_keywords"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> "")
-                .map(k -> List.of(k.split(",")))
-                .get();
+        return Arrays.stream(argsAccessor.getArgument(
+                                keywords::get,
+                                arguments,
+                                context,
+                                DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
+                                "directoryscan_keywords",
+                                "")
+                        .split(","))
+                .map(StringUtils::trim)
+                .toList();
     }
 
     public int getKeywordWindow() {
-        final String stringValue = Try.of(keywordWindow::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "keywordWindow", ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("directoryscan_window"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "")
-                .get();
+
+        final String stringValue = argsAccessor.getArgument(
+                keywordWindow::get,
+                arguments,
+                context,
+                DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW,
+                "directoryscan_summarize_keyword_window",
+                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
         return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
     }
