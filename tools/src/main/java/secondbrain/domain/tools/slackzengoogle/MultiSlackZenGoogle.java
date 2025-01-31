@@ -269,9 +269,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(SlackChannel.SLACK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString()),
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id),
-                        new ToolArgs(SlackChannel.DAYS_ARG, "" + days)))
+                        new ToolArgs(SlackChannel.DAYS_ARG, "" + days),
+                        new ToolArgs(SlackChannel.SLACK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString())))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(
                                 context,
@@ -295,9 +295,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .of(() -> CollectionUtils.collate(entity.getSalesforce(), entity.getPlanHat()))
                 // Get a list of arguments using the keywords
                 .map(ids -> List.of(
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString()),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, String.join(",", ids)),
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + days)))
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + days),
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString())))
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(
                         context,
@@ -318,9 +318,12 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(GoogleDocs.GOOGLE_DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString()),
-                        new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id)))
-                .flatMap(args -> Try.of(() -> googleDocs.getContext(context, prompt + "\nDocument ID is " + args.getFirst().argValue(), args))
+                        new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id),
+                        new ToolArgs(GoogleDocs.GOOGLE_DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString())))
+                .flatMap(args -> Try.of(() -> googleDocs.getContext(context,
+                                prompt +
+                                        "\nDocument ID is " + args.getFirst().argValue(),
+                                args))
                         .onFailure(Throwable::printStackTrace)
                         .getOrElse(List::of)
                         .stream())
@@ -332,9 +335,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString()),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id),
-                        new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + days)))
+                        new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + days),
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString())))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context,
                                 prompt
                                         + "\nOrganization is " + args.getFirst().argValue()
