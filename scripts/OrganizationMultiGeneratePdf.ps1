@@ -205,7 +205,8 @@ foreach ($entity in $database.entities)
         Set-Content -Path "$subDir/$entityName.md"  -Value $result.StdOut
     }
 
-    for ($topic in $topics.topics) {
+    foreach ($topic in $topics.topics)
+    {
         mkdir "$subDir/$( $topic.name )"
         $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.minTimeBasedContext=4`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=true`" `"-Dsb.multislackzengoogle.days=$days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"$( $topic.prompt )`""
 
