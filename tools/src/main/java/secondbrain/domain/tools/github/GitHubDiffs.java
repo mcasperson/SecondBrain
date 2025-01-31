@@ -381,7 +381,7 @@ class Arguments {
                 context,
                 "summarizeIndividualDiffs",
                 "github_summarize_individual_diffs",
-                "");
+                "").value();
 
         return Boolean.parseBoolean(stringValue);
     }
@@ -393,7 +393,7 @@ class Arguments {
                 context,
                 "days",
                 "github_days",
-                DEFAULT_DURATION);
+                DEFAULT_DURATION).value();
 
         return Try.of(() -> stringValue)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
@@ -408,7 +408,7 @@ class Arguments {
                 context,
                 "maxDiffs",
                 "github_max_diffs",
-                "0");
+                "0").value();
 
         return Try.of(() -> stringValue)
                 .map(Integer::parseInt)
@@ -424,7 +424,7 @@ class Arguments {
                 context,
                 "since",
                 "github_since",
-                ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays()).format(FORMATTER));
+                ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays()).format(FORMATTER)).value();
     }
 
     public String getEndDate() {
@@ -434,7 +434,7 @@ class Arguments {
                 context,
                 "until",
                 "github_until",
-                ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER));
+                ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER)).value();
     }
 
     public String getOwner() {
@@ -444,7 +444,7 @@ class Arguments {
                 context,
                 "owner",
                 "github_owner",
-                DEFAULT_OWNER);
+                DEFAULT_OWNER).value();
     }
 
     public String getRepo() {
@@ -454,7 +454,7 @@ class Arguments {
                 context,
                 "repo",
                 "github_repo",
-                DEFAULT_REPO);
+                DEFAULT_REPO).value();
     }
 
     public String getSha() {
@@ -464,7 +464,7 @@ class Arguments {
                 context,
                 "sha",
                 "github_sha",
-                "");
+                "").value();
     }
 
     public String getBranch() {
@@ -474,7 +474,7 @@ class Arguments {
                 context,
                 "branch",
                 "github_branch",
-                DEFAULT_BRANCH);
+                DEFAULT_BRANCH).value();
     }
 
     public String getToken() {
@@ -492,7 +492,7 @@ class Arguments {
                 context,
                 "diffModel",
                 "github_diff_custom_model",
-                modelConfig.getCalculatedModel(context));
+                modelConfig.getCalculatedModel(context)).value();
     }
 
     @Nullable
@@ -503,7 +503,7 @@ class Arguments {
                 context,
                 "diffContextWindow",
                 "github_diff_context_window",
-                Constants.DEFAULT_CONTENT_WINDOW + "");
+                Constants.DEFAULT_CONTENT_WINDOW + "").value();
 
         return Try.of(() -> stringValue)
                 .map(Integer::parseInt)

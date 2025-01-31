@@ -11,6 +11,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
@@ -408,7 +409,7 @@ class Arguments {
                 context,
                 DirectoryScan.DIRECTORYSCAN_DIRECTORY,
                 "directoryscan_directory",
-                "");
+                "").value();
     }
 
     public int getMaxFiles() {
@@ -418,7 +419,7 @@ class Arguments {
                 context,
                 DirectoryScan.DIRECTORYSCAN_MAX_FILES,
                 "directoryscan_maxfiles",
-                "-1");
+                "-1").value();
 
         return NumberUtils.toInt(stringValue, -1);
     }
@@ -430,7 +431,7 @@ class Arguments {
                 context,
                 DirectoryScan.DIRECTORYSCAN_FILE_CUSTOM_MODEL,
                 "directoryscan_file_custom_model",
-                filemodel.orElse(modelConfig.getCalculatedModel(context)));
+                filemodel.orElse(modelConfig.getCalculatedModel(context))).value();
     }
 
     public String getIndividualDocumentPrompt() {
@@ -440,7 +441,7 @@ class Arguments {
                 context,
                 DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
                 "directoryscan_individual_document_prompt",
-                prompt);
+                prompt).value();
     }
 
     @Nullable
@@ -451,7 +452,7 @@ class Arguments {
                 context,
                 DirectoryScan.DIRECTORYSCAN_FILE_CONTENT_WINDOW,
                 "directoryscan_file_content_window",
-                Constants.DEFAULT_CONTENT_WINDOW + "");
+                Constants.DEFAULT_CONTENT_WINDOW + "").value();
 
         return NumberUtils.toInt(stringValue, Constants.DEFAULT_CONTENT_WINDOW);
     }
@@ -459,22 +460,28 @@ class Arguments {
     @Nullable
     public List<String> getExcluded() {
         return argsAccessor.getArgumentList(
-                exclude::get,
-                arguments,
-                context,
-                DirectoryScan.DIRECTORYSCAN_EXCLUDE_FILES,
-                "directoryscan_exclude_files",
-                "");
+                        exclude::get,
+                        arguments,
+                        context,
+                        DirectoryScan.DIRECTORYSCAN_EXCLUDE_FILES,
+                        "directoryscan_exclude_files",
+                        "")
+                .stream()
+                .map(Argument::value)
+                .toList();
     }
 
     public List<String> getKeywords() {
         return argsAccessor.getArgumentList(
-                keywords::get,
-                arguments,
-                context,
-                DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
-                "directoryscan_keywords",
-                "");
+                        keywords::get,
+                        arguments,
+                        context,
+                        DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
+                        "directoryscan_keywords",
+                        "")
+                .stream()
+                .map(Argument::value)
+                .toList();
     }
 
     public int getKeywordWindow() {
@@ -485,7 +492,7 @@ class Arguments {
                 context,
                 DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW,
                 "directoryscan_summarize_keyword_window",
-                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "").value();
 
         return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
     }
@@ -497,7 +504,7 @@ class Arguments {
                 context,
                 DirectoryScan.DIRECTORYSCAN_DISABLELINKS_ARG,
                 "directoryscan_disable_links",
-                "false");
+                "false").value();
 
         return BooleanUtils.toBoolean(stringValue);
     }
@@ -509,7 +516,7 @@ class Arguments {
                 context,
                 DirectoryScan.DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG,
                 "directoryscan_summarize_individual_files",
-                "true");
+                "true").value();
 
         return BooleanUtils.toBoolean(stringValue);
     }

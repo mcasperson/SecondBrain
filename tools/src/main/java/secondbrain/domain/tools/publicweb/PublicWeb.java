@@ -10,6 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -206,26 +207,24 @@ class Arguments {
     }
 
     public String getUrl() {
-        return Try.of(url::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, PublicWeb.PUBLICWEB_URL_ARG, ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("publicweb_url"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> "")
-                .get();
+        return argsAccessor.getArgument(
+                url::get,
+                arguments,
+                context,
+                PublicWeb.PUBLICWEB_URL_ARG,
+                "publicweb_url",
+                "").value();
     }
 
     public boolean getDisableLinks() {
-        final String stringValue = Try.of(disableLinks::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, PublicWeb.PUBLICWEB_DISABLELINKS_ARG, ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("publicweb_disable_links"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> "")
-                .get();
+        final Argument argument = argsAccessor.getArgument(
+                disableLinks::get,
+                arguments,
+                context,
+                PublicWeb.PUBLICWEB_DISABLELINKS_ARG,
+                "publicweb_disable_links",
+                "");
 
-        return BooleanUtils.toBoolean(stringValue);
+        return BooleanUtils.toBoolean(argument.value());
     }
 }

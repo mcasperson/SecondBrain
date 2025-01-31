@@ -9,6 +9,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
@@ -230,27 +231,27 @@ class Arguments {
     }
 
     public List<String> getKeywords() {
-        return Try.of(uploadKeywords::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "keywords", ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("upload_keywords"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> "")
-                .map(k -> List.of(k.split(",")))
-                .get();
+        return argsAccessor.getArgumentList(
+                        uploadKeywords::get,
+                        arguments,
+                        context,
+                        "keywords",
+                        "upload_keywords",
+                        Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "")
+                .stream()
+                .map(Argument::value)
+                .toList();
     }
 
     public int getKeywordWindow() {
-        final String stringValue = Try.of(keywordWindow::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, "keywordWindow", ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("upload_keyword_window"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "")
-                .get();
+        final Argument argument = argsAccessor.getArgument(
+                keywordWindow::get,
+                arguments,
+                context,
+                "keywordWindow",
+                "upload_keyword_window",
+                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-        return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
     }
 }

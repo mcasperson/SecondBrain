@@ -18,7 +18,7 @@ public interface ArgsAccessor {
      * @param defaultValue The default value to return if the argument is not found
      * @return The argument, or the default value if the argument was not found
      */
-    String getArgument(
+    Argument getArgument(
             List<ToolArgs> arguments,
             String argName,
             String defaultValue);
@@ -31,7 +31,7 @@ public interface ArgsAccessor {
      * @param defaultValue The default value to return if the argument is not found
      * @return The argument, or the default value if the argument was not found
      */
-    String getArgument(
+    Argument getArgument(
             ArgsAccessorSystemProperty systemProperty,
             List<ToolArgs> arguments,
             Map<String, String> context,
@@ -47,7 +47,7 @@ public interface ArgsAccessor {
      * @param defaultValue The default value to return if the argument is not found
      * @return The argument, or the default value if the argument was not found
      */
-    List<String> getArgumentList(
+    List<Argument> getArgumentList(
             ArgsAccessorSystemProperty systemProperty,
             List<ToolArgs> arguments,
             Map<String, String> context,
@@ -65,7 +65,7 @@ public interface ArgsAccessor {
      * @param defaultValue The default value to return if the argument is not found
      * @return The argument, or the default value if the argument was not found
      */
-    String getArgument(
+    Argument getArgument(
             List<ToolArgs> arguments,
             List<SanitizeArgument> sanitizers,
             String prompt,

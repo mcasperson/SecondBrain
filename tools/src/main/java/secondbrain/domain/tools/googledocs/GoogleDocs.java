@@ -20,6 +20,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
@@ -353,17 +354,20 @@ class Arguments {
                 context,
                 GoogleDocs.GOOGLE_DOC_ID_ARG,
                 "google_document_id",
-                "");
+                "").value();
     }
 
     public List<String> getKeywords() {
         return argsAccessor.getArgumentList(
-                googleKeywords::get,
-                arguments,
-                context,
-                GoogleDocs.GOOGLE_KEYWORD_ARG,
-                "google_keywords",
-                "");
+                        googleKeywords::get,
+                        arguments,
+                        context,
+                        GoogleDocs.GOOGLE_KEYWORD_ARG,
+                        "google_keywords",
+                        "")
+                .stream()
+                .map(Argument::value)
+                .toList();
     }
 
 
@@ -372,7 +376,7 @@ class Arguments {
     }
 
     public boolean getDisableLinks() {
-        final String stringValue = argsAccessor.getArgument(
+        final Argument argument = argsAccessor.getArgument(
                 disableLinks::get,
                 arguments,
                 context,
@@ -380,6 +384,6 @@ class Arguments {
                 "google_disable_links",
                 "false");
 
-        return BooleanUtils.toBoolean(stringValue);
+        return BooleanUtils.toBoolean(argument.value());
     }
 }

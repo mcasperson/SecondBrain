@@ -22,58 +22,61 @@ public class ArgsAccessorSimple implements ArgsAccessor {
     private ValidateString validateString;
 
     @Override
-    public String getArgument(
+    public Argument getArgument(
             final List<ToolArgs> arguments,
             final String argName,
             final String defaultValue) {
         return arguments.stream()
                 .filter(arg -> arg.argName().equals(argName))
-                .findFirst().map(ToolArgs::argValue)
-                .orElse(defaultValue);
+                .findFirst()
+                .map(ToolArgs::toArgument)
+                .orElse(new Argument(defaultValue, true));
     }
 
     @Override
-    public String getArgument(final ArgsAccessorSystemProperty systemProperty,
-                              final List<ToolArgs> arguments,
-                              final Map<String, String> context,
-                              final String argName,
-                              final String contextName,
-                              final String defaultValue) {
+    public Argument getArgument(final ArgsAccessorSystemProperty systemProperty,
+                                final List<ToolArgs> arguments,
+                                final Map<String, String> context,
+                                final String argName,
+                                final String contextName,
+                                final String defaultValue) {
         // start with system properties
-        return Try.of(systemProperty::getValue)
-                .mapTry(validateString::throwIfEmpty)
+        return Try.of(() -> new Argument(systemProperty.getValue(), true))
+                .mapTry(v -> validateString.throwIfEmpty(v, Argument::value))
                 // then try the context
-                .recover(e -> context.get(contextName))
-                .mapTry(validateString::throwIfEmpty)
+                .recover(e -> new Argument(context.get(contextName), true))
+                .mapTry(v -> validateString.throwIfEmpty(v, Argument::value))
                 // then get the user supplied argument
                 .recover(e -> getArgument(arguments, argName, defaultValue))
-                .mapTry(validateString::throwIfEmpty)
+                .mapTry(v -> validateString.throwIfEmpty(v, Argument::value))
                 // fallback to the default
-                .recover(e -> defaultValue)
+                .recover(e -> new Argument(defaultValue, true))
                 .get();
     }
 
     @Override
-    public List<String> getArgumentList(
+    public List<Argument> getArgumentList(
             final ArgsAccessorSystemProperty systemProperty,
             final List<ToolArgs> arguments,
             final Map<String, String> context,
             final String argName,
             final String contextName,
             final String defaultValue) {
-        return Arrays.stream(getArgument(systemProperty, arguments, context, argName, contextName, defaultValue).split(","))
+        final Argument argument = getArgument(systemProperty, arguments, context, argName, contextName, defaultValue);
+        return Arrays.stream(argument.value().split(","))
                 .map(String::trim)
+                .map(v -> new Argument(v, argument.trusted()))
                 .toList();
     }
 
     @Override
-    public String getArgument(List<ToolArgs> arguments, List<SanitizeArgument> sanitizers, String prompt, String argName, String defaultValue) {
-        final String arg = getArgument(arguments, argName, defaultValue);
-        final String sanitized = sanitizers.stream()
-                .reduce(arg, (s, sanitizer) -> sanitizer.sanitize(s, prompt), (s1, s2) -> s2);
+    public Argument getArgument(List<ToolArgs> arguments, List<SanitizeArgument> sanitizers, String prompt, String argName, String defaultValue) {
+        final Argument arg = getArgument(arguments, argName, defaultValue);
+        final Argument sanitized = sanitizers.stream()
+                .reduce(arg, (s, sanitizer) -> s.replaceValue(sanitizer.sanitize(s.value(), prompt)), (s1, s2) -> s2);
 
-        if (StringUtils.isBlank(sanitized)) {
-            return defaultValue;
+        if (StringUtils.isBlank(sanitized.value())) {
+            return new Argument(defaultValue, true);
         }
 
         return sanitized;

@@ -14,6 +14,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
@@ -450,7 +451,7 @@ class Arguments {
     }
 
     public String getRawOrganization() {
-        final String stringValue = argsAccessor.getArgument(
+        final Argument argument = argsAccessor.getArgument(
                 zenDeskOrganization::get,
                 arguments,
                 context,
@@ -458,9 +459,13 @@ class Arguments {
                 "zendesk_organization",
                 "");
 
+        if (argument.trusted()) {
+            return argument.value();
+        }
+
         return validateInputs.getCommaSeparatedList(
                 prompt,
-                stringValue);
+                argument.value());
     }
 
     public String getOrganization() {
@@ -473,7 +478,7 @@ class Arguments {
     }
 
     public List<String> getExcludedOrganization() {
-        final String stringValue = argsAccessor.getArgument(
+        final Argument argument = argsAccessor.getArgument(
                 zenExcludedOrgs::get,
                 arguments,
                 context,
@@ -481,9 +486,11 @@ class Arguments {
                 "zendesk_excludeorganization",
                 "");
 
-        final List<String> excludedOrganization = Arrays.stream(validateInputs.getCommaSeparatedList(
-                        prompt,
-                        stringValue).split(","))
+        final String stringValue = argument.trusted()
+                ? argument.value()
+                : validateInputs.getCommaSeparatedList(prompt, argument.value());
+
+        final List<String> excludedOrganization = Arrays.stream(stringValue.split(","))
                 .map(String::trim)
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.toList());
@@ -500,7 +507,7 @@ class Arguments {
                 context,
                 ZenDeskOrganization.RECIPIENT_ARG,
                 "zendesk_recipient",
-                "");
+                "").value();
     }
 
     public String getRecipient() {
@@ -519,7 +526,7 @@ class Arguments {
                 context,
                 ZenDeskOrganization.EXCLUDE_SUBMITTERS_ARG,
                 "zendesk_excludesubmitters",
-                "");
+                "").value();
 
         return Arrays.stream(stringValue.split(","))
                 .map(String::trim)
@@ -534,7 +541,7 @@ class Arguments {
                 context,
                 ZenDeskOrganization.HOURS_ARG,
                 "zendesk_hours",
-                "0");
+                "0").value();
 
         return Try.of(() -> Integer.parseInt(stringValue))
                 .recover(throwable -> 0)
@@ -549,7 +556,7 @@ class Arguments {
                 context,
                 ZenDeskOrganization.DAYS_ARG,
                 "zendesk_days",
-                "0");
+                "0").value();
 
         return Try.of(() -> Integer.parseInt(stringValue))
                 .recover(throwable -> 0)
@@ -572,7 +579,7 @@ class Arguments {
                 context,
                 ZenDeskOrganization.NUM_COMMENTS_ARG,
                 "zendesk_numcomments",
-                MAX_TICKETS + "");
+                MAX_TICKETS + "").value();
 
         return Try.of(() -> Integer.parseInt(stringValue))
                 .recover(throwable -> MAX_TICKETS)
@@ -660,7 +667,7 @@ class Arguments {
                 context,
                 ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG,
                 "zendesk_disable_links",
-                "false");
+                "false").value();
 
         return BooleanUtils.toBoolean(stringValue);
     }

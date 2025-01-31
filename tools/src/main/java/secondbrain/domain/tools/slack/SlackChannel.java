@@ -14,6 +14,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -327,11 +328,12 @@ class Arguments {
                         SlackChannel.SLACK_CHANEL_ARG,
                         "slack_channel",
                         "")
+                .value()
                 .replaceFirst("^#", "");
     }
 
     public int getDays() {
-        final String stringValue = argsAccessor.getArgument(
+        final Argument argument = argsAccessor.getArgument(
                 days::get,
                 arguments,
                 context,
@@ -339,7 +341,7 @@ class Arguments {
                 "slack_days",
                 "30");
 
-        return Try.of(() -> stringValue)
+        return Try.of(argument::value)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
                 .get();
     }
@@ -353,7 +355,7 @@ class Arguments {
     }
 
     public int getSearchTTL() {
-        final String stringValue = argsAccessor.getArgument(
+        final Argument argument = argsAccessor.getArgument(
                 historyttl::get,
                 arguments,
                 context,
@@ -361,13 +363,13 @@ class Arguments {
                 "slack_historyttl",
                 DEFAULT_TTL);
 
-        return Try.of(() -> stringValue)
+        return Try.of(argument::value)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
                 .get();
     }
 
     public boolean getDisableLinks() {
-        final String stringValue = argsAccessor.getArgument(
+        final Argument argument = argsAccessor.getArgument(
                 disableLinks::get,
                 arguments,
                 context,
@@ -375,6 +377,6 @@ class Arguments {
                 "slack_disable_links",
                 "false");
 
-        return BooleanUtils.toBoolean(stringValue);
+        return BooleanUtils.toBoolean(argument.value());
     }
 }

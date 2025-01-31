@@ -12,6 +12,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -39,6 +40,7 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class PlanHat implements Tool<Conversation> {
     public static final String DAYS_ARG = "days";
+    public static final String SEARCHTTL_ARG = "searchTtl";
     public static final String COMPANY_ID_ARGS = "companyId";
     public static final String DISABLE_LINKS_ARG = "disableLinks";
 
@@ -248,27 +250,25 @@ class Arguments {
     }
 
     public String getCompany() {
-        return Try.of(company::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, PlanHat.COMPANY_ID_ARGS, ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("planhat_company"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> "")
-                .get();
+        return argsAccessor.getArgument(
+                company::get,
+                arguments,
+                context,
+                PlanHat.COMPANY_ID_ARGS,
+                "planhat_company",
+                "").value();
     }
 
     public int getDays() {
-        final String stringValue = Try.of(from::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> argsAccessor.getArgument(arguments, PlanHat.DAYS_ARG, ""))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("planhat_days"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> "")
-                .get();
+        final Argument argument = argsAccessor.getArgument(
+                from::get,
+                arguments,
+                context,
+                PlanHat.DAYS_ARG,
+                "planhat_days",
+                "");
 
-        return NumberUtils.toInt(stringValue, 1);
+        return NumberUtils.toInt(argument.value(), 1);
     }
 
 
@@ -282,21 +282,21 @@ class Arguments {
     }
 
     public int getSearchTTL() {
-        final String stringValue = argsAccessor.getArgument(
-                searchTtl::get,
+        final Argument argument = argsAccessor.getArgument(
+                from::get,
                 arguments,
                 context,
-                "searchTtl",
+                PlanHat.SEARCHTTL_ARG,
                 "planhat_searchttl",
                 DEFAULT_TTL);
 
-        return Try.of(() -> stringValue)
+        return Try.of(argument::value)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
                 .get();
     }
 
     public boolean getDisableLinks() {
-        final String stringValue = argsAccessor.getArgument(
+        final Argument argument = argsAccessor.getArgument(
                 disableLinks::get,
                 arguments,
                 context,
@@ -304,6 +304,6 @@ class Arguments {
                 "planhat_disablelinks",
                 "false");
 
-        return BooleanUtils.toBoolean(stringValue);
+        return BooleanUtils.toBoolean(argument.value());
     }
 }

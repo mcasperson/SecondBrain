@@ -14,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -250,12 +251,15 @@ class SlackSearchArguments {
 
     public Set<String> getKeywords() {
         final List<String> keywordslist = argsAccessor.getArgumentList(
-                keywords::get,
-                arguments,
-                context,
-                SlackSearch.SLACK_SEARCH_KEYWORDS_ARG,
-                "slack_keywords",
-                "");
+                        keywords::get,
+                        arguments,
+                        context,
+                        SlackSearch.SLACK_SEARCH_KEYWORDS_ARG,
+                        "slack_keywords",
+                        "")
+                .stream()
+                .map(Argument::value)
+                .toList();
 
         final List<String> keywordsGenerated = getGenerateKeywords() ? keywordExtractor.getKeywords(prompt) : List.of();
 
@@ -272,7 +276,7 @@ class SlackSearchArguments {
                 context,
                 "generateKeywords",
                 "slack_generatekeywords",
-                "false");
+                "false").value();
 
         return BooleanUtils.toBoolean(stringValue);
     }
@@ -292,7 +296,7 @@ class SlackSearchArguments {
                 context,
                 SlackSearch.SLACK_SEARCH_DAYS_ARG,
                 "slack_days",
-                "");
+                "").value();
 
         return Try.of(() -> stringValue)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
@@ -310,7 +314,7 @@ class SlackSearchArguments {
                 context,
                 "searchTtl",
                 "slack_searchttl",
-                DEFAULT_TTL);
+                DEFAULT_TTL).value();
 
         return Try.of(() -> stringValue)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
@@ -324,7 +328,7 @@ class SlackSearchArguments {
                 context,
                 "ignoreChannels",
                 "slack_ignorechannels",
-                "");
+                "").value();
 
         return Arrays.stream(stringValue.split(","))
                 .filter(StringUtils::isNotBlank)
@@ -340,7 +344,7 @@ class SlackSearchArguments {
                 context,
                 SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG,
                 "slack_disable_links",
-                "false");
+                "false").value();
 
         return BooleanUtils.toBoolean(stringValue);
     }

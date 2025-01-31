@@ -104,8 +104,8 @@ public class SlackZenGoogle implements Tool<Void> {
         parsedArgs.setInputs(arguments, prompt, context);
 
         final List<ToolArgs> planHatArguments = List.of(
-                new ToolArgs("companyId", parsedArgs.getPlanHatCompany()),
-                new ToolArgs("days", parsedArgs.getSlackDays())
+                new ToolArgs("companyId", parsedArgs.getPlanHatCompany(), true),
+                new ToolArgs("days", parsedArgs.getSlackDays(), true)
         );
 
         final List<RagDocumentContext<Void>> planHatContext = StringUtils.isBlank(parsedArgs.getPlanHatCompany())
@@ -118,8 +118,8 @@ public class SlackZenGoogle implements Tool<Void> {
                 .toList();
 
         final List<ToolArgs> slackArguments = List.of(
-                new ToolArgs("days", parsedArgs.getSlackDays()),
-                new ToolArgs("slackChannel", parsedArgs.getSlackChannel())
+                new ToolArgs("days", parsedArgs.getSlackDays(), true),
+                new ToolArgs("slackChannel", parsedArgs.getSlackChannel(), true)
         );
 
         final List<RagDocumentContext<Void>> slackContext = StringUtils.isBlank(parsedArgs.getSlackChannel())
@@ -129,7 +129,7 @@ public class SlackZenGoogle implements Tool<Void> {
                 .get();
 
         final List<ToolArgs> googleArguments = List.of(
-                new ToolArgs("googleDocumentId", parsedArgs.getGoogleDocumentId())
+                new ToolArgs("googleDocumentId", parsedArgs.getGoogleDocumentId(), true)
         );
 
         final List<RagDocumentContext<Void>> googleContext = StringUtils.isBlank(parsedArgs.getGoogleDocumentId())
@@ -139,8 +139,8 @@ public class SlackZenGoogle implements Tool<Void> {
                 .get();
 
         final List<ToolArgs> zenArguments = List.of(
-                new ToolArgs("zenDeskOrganization", parsedArgs.getGoogleDocumentId()),
-                new ToolArgs("days", parsedArgs.getSlackDays())
+                new ToolArgs("zenDeskOrganization", parsedArgs.getGoogleDocumentId(), true),
+                new ToolArgs("days", parsedArgs.getSlackDays(), true)
         );
 
         final List<RagDocumentContext<Void>> zenContext = StringUtils.isBlank(parsedArgs.getZenDeskOrganization())
@@ -265,7 +265,7 @@ class SlackZenGoogleArguments {
                 context,
                 "slackChannel",
                 "slack_channel",
-                "");
+                "").value();
     }
 
     public int getMinSlackOrZen() {
@@ -275,7 +275,7 @@ class SlackZenGoogleArguments {
                 context,
                 "slackZenGoogleMinTimeBasedContext",
                 "slackzengoogle_mintimebasedcontext",
-                "1");
+                "1").value();
 
         return NumberUtils.toInt(stringValue, 1);
     }
@@ -287,7 +287,7 @@ class SlackZenGoogleArguments {
                 context,
                 "days",
                 "slack_days",
-                "");
+                "").value();
     }
 
     public String getGoogleDocumentId() {
@@ -297,7 +297,7 @@ class SlackZenGoogleArguments {
                 context,
                 "googleDocumentId",
                 "google_document_id",
-                "");
+                "").value();
     }
 
     public String getZenDeskOrganization() {
@@ -307,7 +307,7 @@ class SlackZenGoogleArguments {
                 context,
                 "zenDeskOrganization",
                 "zendesk_organization",
-                "");
+                "").value();
     }
 
     public String getPlanHatCompany() {
@@ -317,6 +317,6 @@ class SlackZenGoogleArguments {
                 context,
                 "planHatCompanyId",
                 "planhat_companyid",
-                "");
+                "").value();
     }
 }
