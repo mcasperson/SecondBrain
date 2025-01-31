@@ -194,6 +194,7 @@ public class H2LocalStorage implements LocalStorage {
                                                 promptHash,
                                                 ttlSeconds,
                                                 jsonDeserializer.serialize(r))))
+                                .onFailure(Throwable::printStackTrace)
                                 .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                                 .get())
                 .onFailure(Throwable::printStackTrace)
