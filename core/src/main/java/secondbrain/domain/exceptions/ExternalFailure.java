@@ -1,7 +1,8 @@
 package secondbrain.domain.exceptions;
 
 /**
- * Represents a failure from an external source
+ * Represents a failure from an external source. This is like a 500 response code in HTTP.
+ * It means if you make the same call with the same data you might be successful.
  */
 public class ExternalFailure extends RuntimeException {
     public ExternalFailure() {

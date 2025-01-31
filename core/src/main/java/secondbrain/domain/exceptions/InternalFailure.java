@@ -1,7 +1,8 @@
 package secondbrain.domain.exceptions;
 
 /**
- * Represents a failure from an internal source
+ * Represents a failure from an internal source. This is like a 400 response code in HTTP.
+ * It means that if you make the same call with the same data you'll get the same result.
  */
 public class InternalFailure extends RuntimeException {
     public InternalFailure() {
