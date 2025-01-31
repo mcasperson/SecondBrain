@@ -35,7 +35,6 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @ApplicationScoped
 public class SlackSearch implements Tool<MatchedItem> {
@@ -249,7 +248,7 @@ class SlackSearchArguments {
     }
 
     public Set<String> getKeywords() {
-        final String stringValue = argsAccessor.getArgument(
+        final List<String> keywordslist = argsAccessor.getArgumentList(
                 keywords::get,
                 arguments,
                 context,
@@ -257,14 +256,10 @@ class SlackSearchArguments {
                 "slack_keywords",
                 "");
 
-        final List<String> keywords = Stream.of(stringValue.split(","))
-                .map(String::trim)
-                .toList();
-
         final List<String> keywordsGenerated = getGenerateKeywords() ? keywordExtractor.getKeywords(prompt) : List.of();
 
-        final HashSet<String> retValue = new HashSet<>(keywords);
-        retValue.addAll(keywords);
+        final HashSet<String> retValue = new HashSet<>();
+        retValue.addAll(keywordslist);
         retValue.addAll(keywordsGenerated);
         return retValue;
     }
