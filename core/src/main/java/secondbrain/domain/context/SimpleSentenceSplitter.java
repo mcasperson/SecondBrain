@@ -3,6 +3,7 @@ package secondbrain.domain.context;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -26,6 +27,9 @@ public class SimpleSentenceSplitter implements SentenceSplitter {
                 .map(sentence -> sentence.replaceFirst("^• ", ""))
                 .map(sentence -> sentence.replaceFirst("^◦ ", ""))
                 .map(sentence -> sentence.replaceFirst("^- ", ""))
+                // We can get all sorts of markup in the sentences. This regex strips it out.
+                .map(sentence -> sentence.replaceAll("[^A-Za-z0-9.\\-_?!@#$%^&*,;:\\\\/]", " "))
+                .map(sentence -> String.join(" ", Arrays.stream(sentence.split("\\s+")).toList()))
                 // Train again to remove any leading or trailing whitespace
                 .map(String::trim)
                 .toList();

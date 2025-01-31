@@ -37,8 +37,6 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         return individualContexts.stream()
                 .map(RagDocumentContext::link)
                 .filter(Objects::nonNull)
-                .map(link -> link.replaceAll("[^A-Za-z0-9.\\-_?!@#$%^&*,;:\\\\/]", " "))
-                .map(link -> String.join(" ", Arrays.stream(link.split("\\s+")).toList()))
                 .toList();
     }
 
