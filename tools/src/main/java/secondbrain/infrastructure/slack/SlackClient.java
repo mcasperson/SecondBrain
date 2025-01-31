@@ -4,7 +4,6 @@ import com.slack.api.methods.AsyncMethodsClient;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.methods.response.search.SearchAllResponse;
-import com.slack.api.methods.response.team.TeamInfoResponse;
 import com.slack.api.model.ConversationType;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -14,12 +13,13 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tools.slack.ChannelDetails;
 import secondbrain.domain.validate.ValidateString;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 @ApplicationScoped
 public class SlackClient {
 
-    private static final Map<String, TeamInfoResponse> TEAM_CACHE = new HashMap<>();
     @Inject
     private ValidateString validateString;
     @Inject
@@ -36,8 +36,7 @@ public class SlackClient {
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
          */
-        final TeamInfoResponse team = teamFromApi(client, accessToken);
-        final String hash = DigestUtils.sha256Hex(team.getTeam().getId() + channelId + oldest);
+        final String hash = DigestUtils.sha256Hex(channelId + oldest);
 
         return localStorage.getOrPutObject(
                 SlackClient.class.getSimpleName(),
@@ -71,8 +70,7 @@ public class SlackClient {
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
          */
-        final TeamInfoResponse team = teamFromApi(client, accessToken);
-        final String hash = DigestUtils.sha256Hex(team.getTeam().getId() + String.join(" ", keywords));
+        final String hash = DigestUtils.sha256Hex(String.join(" ", keywords));
 
         return localStorage.getOrPutObject(
                 SlackClient.class.getSimpleName(),
@@ -94,21 +92,6 @@ public class SlackClient {
                 .get();
     }
 
-    private TeamInfoResponse teamFromApi(
-            final AsyncMethodsClient client,
-            final String accessToken) {
-
-        if (TEAM_CACHE.containsKey(accessToken)) {
-            return TEAM_CACHE.get(accessToken);
-        }
-
-        return Try.of(() -> client.teamInfo(r -> r.token(accessToken))
-                        .get())
-                .onFailure(Throwable::printStackTrace)
-                .onSuccess(team -> TEAM_CACHE.put(accessToken, team))
-                .get();
-    }
-
     public ChannelDetails findChannelId(
             final AsyncMethodsClient client,
             final String accessToken,
@@ -118,8 +101,7 @@ public class SlackClient {
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
          */
-        final TeamInfoResponse team = teamFromApi(client, accessToken);
-        final String hash = DigestUtils.sha256Hex(team.getTeam().getId() + channel);
+        final String hash = DigestUtils.sha256Hex(channel);
 
         // get the result from the cache
         return localStorage.getOrPutObject(

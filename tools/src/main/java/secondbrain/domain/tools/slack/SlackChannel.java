@@ -337,7 +337,7 @@ class Arguments {
                 context,
                 SlackChannel.DAYS_ARG,
                 "slack_days",
-                "");
+                "30");
 
         return Try.of(() -> stringValue)
                 .map(i -> Math.max(0, Integer.parseInt(i)))
