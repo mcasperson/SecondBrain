@@ -179,6 +179,10 @@ public class H2LocalStorage implements LocalStorage {
                         })
                         .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                         .getOrNull())
+                /*
+                    Exceptions are swallowed here because caching is just a best effort. But
+                    we still need to know if something went wrong.
+                 */
                 .onFailure(ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
                 // If we can't open the database for some reason, just generate the value
                 .recover(ex -> generateValue.generate())
@@ -216,6 +220,10 @@ public class H2LocalStorage implements LocalStorage {
                                 .onFailure(ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
                                 .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                                 .get())
+                /*
+                    Exceptions are swallowed here because caching is just a best effort. But
+                    we still need to know if something went wrong.
+                 */
                 .onFailure(ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
                 // If we can't open the database for some reason, just generate the value
                 .recover(ex -> generateValue.generate())
