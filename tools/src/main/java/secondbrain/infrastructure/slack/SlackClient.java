@@ -57,6 +57,7 @@ public class SlackClient {
                         .token(accessToken)
                         .channel(channelId)
                         .oldest(oldest)).get())
+                .onFailure(Throwable::printStackTrace)
                 .get();
     }
 
@@ -89,6 +90,7 @@ public class SlackClient {
         return Try.of(() -> client.searchAll(r -> r.token(accessToken)
                                 .query(String.join(" ", keywords)))
                         .get())
+                .onFailure(Throwable::printStackTrace)
                 .get();
     }
 
@@ -102,6 +104,7 @@ public class SlackClient {
 
         return Try.of(() -> client.teamInfo(r -> r.token(accessToken))
                         .get())
+                .onFailure(Throwable::printStackTrace)
                 .onSuccess(team -> TEAM_CACHE.put(accessToken, team))
                 .get();
     }
@@ -134,11 +137,12 @@ public class SlackClient {
             final String cursor) {
 
         final Try<ConversationsListResponse> response = Try.of(() -> client.conversationsList(r -> r
-                .token(accessToken)
-                .limit(1000)
-                .types(List.of(ConversationType.PUBLIC_CHANNEL))
-                .excludeArchived(true)
-                .cursor(cursor)).get());
+                        .token(accessToken)
+                        .limit(1000)
+                        .types(List.of(ConversationType.PUBLIC_CHANNEL))
+                        .excludeArchived(true)
+                        .cursor(cursor)).get())
+                .onFailure(Throwable::printStackTrace);
 
         return response
                 // try to get the channel
