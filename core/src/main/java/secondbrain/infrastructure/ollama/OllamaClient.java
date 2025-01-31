@@ -75,7 +75,10 @@ public class OllamaClient {
         return body.prompt().updateDocument(response.response());
     }
 
-    public <T> RagMultiDocumentContext<T> callOllama(final RagMultiDocumentContext<T> ragDoc, final String model, @Nullable final Integer contextWindow) {
+    public <T> RagMultiDocumentContext<T> callOllama(
+            final RagMultiDocumentContext<T> ragDoc,
+            final String model,
+            @Nullable final Integer contextWindow) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> callOllama(
                         client,

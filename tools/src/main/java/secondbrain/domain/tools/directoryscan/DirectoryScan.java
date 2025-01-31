@@ -4,7 +4,6 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -31,8 +30,6 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyOptions;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -324,21 +321,17 @@ public class DirectoryScan implements Tool<Void> {
      * Use the LLM to answer the prompt based on the contents of the file.
      */
     private String getFileSummary(final String contents, final Arguments parsedArgs) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.callOllama(
-                        client,
-                        new OllamaGenerateBody(
-                                parsedArgs.getFileCustomModel(),
-                                promptBuilderSelector.getPromptBuilder(parsedArgs.getFileCustomModel()).buildFinalPrompt(
-                                        FILE_INSTRUCTIONS,
-                                        promptBuilderSelector.getPromptBuilder(
-                                                parsedArgs.getFileCustomModel()).buildContextPrompt(
-                                                getContextLabel(), contents),
-                                        parsedArgs.getIndividualDocumentPrompt()),
-                                false,
-                                new OllamaGenerateBodyOptions(parsedArgs.getFileContextWindow()))))
-                .get()
-                .response();
+        return ollamaClient.callOllamaWithCache(
+                new RagMultiDocumentContext<>(promptBuilderSelector.getPromptBuilder(parsedArgs.getFileCustomModel()).buildFinalPrompt(
+                        FILE_INSTRUCTIONS,
+                        promptBuilderSelector.getPromptBuilder(
+                                parsedArgs.getFileCustomModel()).buildContextPrompt(
+                                getContextLabel(), contents),
+                        parsedArgs.getIndividualDocumentPrompt())),
+                parsedArgs.getFileCustomModel(),
+                getName(),
+                parsedArgs.getFileContextWindow()
+        ).combinedDocument();
     }
 }
 

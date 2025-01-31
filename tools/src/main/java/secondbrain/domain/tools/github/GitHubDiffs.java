@@ -29,8 +29,6 @@ import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.GitHubCommitAndDiff;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyOptions;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -253,19 +251,15 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
      * final summary of all diffs to the changes in individual diffs.
      */
     private String getDiffSummary(final String diff, final Arguments parsedArgs) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.callOllama(
-                        client,
-                        new OllamaGenerateBody(
-                                parsedArgs.getDiffCustomModel(),
-                                promptBuilderSelector.getPromptBuilder(parsedArgs.getDiffCustomModel()).buildFinalPrompt(
-                                        DIFF_INSTRUCTIONS,
-                                        promptBuilderSelector.getPromptBuilder(parsedArgs.getDiffCustomModel()).buildContextPrompt("Git Diff", diff),
-                                        "Provide a one paragraph summary of the changes in the Git Diff."),
-                                false,
-                                new OllamaGenerateBodyOptions(parsedArgs.getDiffContextWindow()))))
-                .get()
-                .response();
+        return ollamaClient.callOllamaWithCache(
+                new RagMultiDocumentContext<>(promptBuilderSelector.getPromptBuilder(parsedArgs.getDiffCustomModel()).buildFinalPrompt(
+                        DIFF_INSTRUCTIONS,
+                        promptBuilderSelector.getPromptBuilder(parsedArgs.getDiffCustomModel()).buildContextPrompt("Git Diff", diff),
+                        "Provide a one paragraph summary of the changes in the Git Diff.")),
+                parsedArgs.getDiffCustomModel(),
+                getName(),
+                parsedArgs.getDiffContextWindow()
+        ).combinedDocument();
     }
 
     private List<GitHubCommitAndDiff> getCommits(

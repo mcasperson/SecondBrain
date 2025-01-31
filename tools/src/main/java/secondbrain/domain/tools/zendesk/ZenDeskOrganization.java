@@ -30,8 +30,6 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaGenerateBodyOptions;
 import secondbrain.infrastructure.zendesk.*;
 
 import java.time.OffsetDateTime;
@@ -298,16 +296,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .getPromptBuilder(modelConfig.getCalculatedModel(context))
                 .buildFinalPrompt("You are a helpful agent", ticketContext, "Summarise the ticket in one paragraph");
 
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> ollamaClient.callOllama(
-                                client,
-                                new OllamaGenerateBody(
-                                        modelConfig.getCalculatedModel(context),
-                                        prompt,
-                                        false,
-                                        new OllamaGenerateBodyOptions(modelConfig.getCalculatedContextWindow())))
-                        .response())
-                .get();
+        return ollamaClient.callOllamaWithCache(
+                new RagMultiDocumentContext<>(prompt),
+                modelConfig.getCalculatedModel(context),
+                getName(),
+                modelConfig.getCalculatedContextWindow()
+        ).combinedDocument();
     }
 
     private List<RagDocumentContext<ZenDeskResultsResponse>> ticketToComments(final List<ZenDeskResultsResponse> tickets,
