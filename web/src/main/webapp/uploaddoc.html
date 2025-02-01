@@ -215,6 +215,7 @@
     }
 
     function savePrompt(prompt) {
+        prompt = prompt.split("\n").map(l => l.trim()).join(" ");
         let savedPrompts = JSON.parse(localStorage.getItem('savedPrompts')) || [];
         if (savedPrompts.length >= 5) {
             savedPrompts.shift();
