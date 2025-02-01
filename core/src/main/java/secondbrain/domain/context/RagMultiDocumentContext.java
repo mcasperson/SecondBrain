@@ -90,7 +90,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         final String result = annotations
                 .stream()
                 // Use each of the annotations to update the document inline with the annotation index and then append the annotation
-                .reduce(combinedDocument(),
+                .reduce(Objects.requireNonNullElse(combinedDocument(), ""),
                         (acc, entry) ->
                                 // update the document with the annotation index
                                 acc.replaceAll(
