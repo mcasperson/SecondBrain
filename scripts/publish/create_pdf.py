@@ -95,6 +95,9 @@ def convert_md_to_pdf(directory, output_pdf):
     topic_prefix = 'TOPIC '
     contents = []
 
+    # Move the Executive Summary to the top
+    contents.append({'title': 'Executive Summary', 'filename': os.path.join(directory, 'Executive Summary.md'), 'link': pdf.add_link()})
+
     # Find the topics in the first loop
     for filename in sorted(os.listdir(directory)):
         if filename.startswith(topic_prefix) and filename.endswith('.md'):
@@ -108,11 +111,6 @@ def convert_md_to_pdf(directory, output_pdf):
             # Get file name without extension or the prefix
             title = (os.path.splitext(filename)[0])[len(company_prefix):]
             contents.append({'title': title, 'filename': filename, 'link': pdf.add_link()})
-
-    # Move the Executive Summary to the top
-    executive_summary = next((content for content in contents if content['title'] == 'Executive Summary'), None)
-    if executive_summary:
-        contents = [executive_summary] + list(filter(lambda content: content['title'] != 'Executive Summary', contents))
 
     # Add Table of Contents
     pdf.add_page()
