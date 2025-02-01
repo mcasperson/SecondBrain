@@ -65,6 +65,7 @@ public class ArgsAccessorSimple implements ArgsAccessor {
         final Argument argument = getArgument(systemProperty, arguments, context, argName, contextName, defaultValue);
         return Arrays.stream(argument.value().split(","))
                 .map(String::trim)
+                .filter(StringUtils::isNotBlank)
                 .map(v -> new Argument(v, argument.trusted()))
                 .toList();
     }
