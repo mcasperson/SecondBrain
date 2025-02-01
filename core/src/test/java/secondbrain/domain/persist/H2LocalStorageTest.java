@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.json.JsonDeserializerJackson;
+import secondbrain.domain.logger.Loggers;
 
 import java.util.Map;
 import java.util.UUID;
@@ -21,6 +22,7 @@ import java.util.UUID;
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(H2LocalStorage.class)
+@AddBeanClasses(Loggers.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
 public class H2LocalStorageTest {
 
