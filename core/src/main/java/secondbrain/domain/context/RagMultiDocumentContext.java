@@ -25,6 +25,9 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         this(combinedDocument, individualContexts, null);
     }
 
+    public String getCombinedDocument() {
+        return Objects.requireNonNullElse(combinedDocument, "");
+    }
 
     public List<String> getIds() {
         return individualContexts.stream().map(RagDocumentContext::id).toList();
@@ -90,12 +93,12 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         final String result = annotations
                 .stream()
                 // Use each of the annotations to update the document inline with the annotation index and then append the annotation
-                .reduce(Objects.requireNonNullElse(combinedDocument(), ""),
+                .reduce(getCombinedDocument(),
                         (acc, entry) ->
                                 // update the document with the annotation index
                                 acc.replaceAll(
-                                        Pattern.quote(entry.originalContext()),
-                                        Matcher.quoteReplacement(entry.originalContext() + " [" + (lookups.indexOf(entry.toRagSentence()) + 1) + "]")),
+                                        Pattern.quote(entry.getOriginalContext()),
+                                        Matcher.quoteReplacement(entry.getOriginalContext() + " [" + (lookups.indexOf(entry.toRagSentence()) + 1) + "]")),
                         (acc1, acc2) -> acc1 + acc2)
                 .trim()
                 + getReferences(lookups);

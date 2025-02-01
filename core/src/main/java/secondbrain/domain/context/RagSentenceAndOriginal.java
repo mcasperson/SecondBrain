@@ -1,5 +1,7 @@
 package secondbrain.domain.context;
 
+import java.util.Objects;
+
 /**
  * This record matches a sentence in the generated output to the RAG context. Unlike RagMatchedStringContext,
  * how closely the context matched the input is no longer relevant.
@@ -10,6 +12,10 @@ package secondbrain.domain.context;
  */
 public record RagSentenceAndOriginal(String originalContext, String context, String id) {
     public RagSentence toRagSentence() {
-        return new RagSentence(context, id);
+        return new RagSentence(getOriginalContext(), id);
+    }
+
+    public String getOriginalContext() {
+        return Objects.requireNonNull(originalContext, "");
     }
 }
