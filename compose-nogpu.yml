@@ -44,13 +44,13 @@ services:
     # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
     # Test that the GPU is available from Docker by running
     # docker run --rm -it --gpus=all nvcr.io/nvidia/k8s/cuda-sample:nbody nbody -gpu -benchmark
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [ gpu ]
+#    deploy:
+#      resources:
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: all
+#              capabilities: [ gpu ]
 volumes:
   ollama:
   cache:
