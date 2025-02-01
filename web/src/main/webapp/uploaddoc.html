@@ -229,6 +229,7 @@
         const savedPromptsList = document.getElementById('savedPromptsList');
         savedPromptsList.innerHTML = '';
         savedPrompts.forEach((prompt, index) => {
+            prompt = prompt.split("\n").map(l => l.trim()).join(" ");
             const listItem = document.createElement('li');
             const link = document.createElement('a');
             link.href = '#';
