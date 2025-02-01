@@ -158,7 +158,7 @@ $model = "phi4"
 # Consider using K/V cache quanisation to support larger context windows with the following env vars:
 # OLLAMA_KV_CACHE_TYPE="q8_0"
 # OLLAMA_FLASH_ATTENTION=1
-$contextWindow = "32768"
+$contextWindow = "49152"
 $days = "30"
 
 # First step is to process all the entities to generate a high level summary
