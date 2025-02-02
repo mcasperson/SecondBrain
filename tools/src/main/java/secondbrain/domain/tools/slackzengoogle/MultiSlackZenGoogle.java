@@ -107,6 +107,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private Logger log;
+    @Inject
+    private Logger logger;
 
     @Override
     public String getName() {
@@ -284,6 +286,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         if (entity.disabled()) {
             return List.of();
         }
+
+        logger.info("Processing " + entity.name());
 
         final List<RagDocumentContext<Void>> slackContext = entity.getSlack()
                 .stream()
