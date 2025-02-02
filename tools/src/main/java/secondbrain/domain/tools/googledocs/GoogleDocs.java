@@ -160,7 +160,7 @@ public class GoogleDocs implements Tool<Void> {
             throw new InternalFailure("Failed to get Google access token: " + token.getCause().getMessage());
         }
 
-        return Try.of(GoogleNetHttpTransport::newTrustedTransport)
+        final Try<List<RagDocumentContext<Void>>> result = Try.of(GoogleNetHttpTransport::newTrustedTransport)
                 .map(transport -> new Docs.Builder(transport, JSON_FACTORY, token.get())
                         .setApplicationName(APPLICATION_NAME)
                         .build())
@@ -170,7 +170,14 @@ public class GoogleDocs implements Tool<Void> {
                         document, parsedArgs.getKeywords(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
                 .map(validateString::throwIfEmpty)
                 .map(document -> getDocumentContext(document, parsedArgs.getDocumentId()))
-                .map(List::of)
+                .map(List::of);
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Google document is empty", throwable)),
+                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Google API", ex)))
                 .get();
     }
 
