@@ -166,7 +166,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
             query.add("organization:" + parsedArgs.getOrganization());
         }
 
-        return Try.withResources(ClientBuilder::newClient)
+        final Try<List<RagDocumentContext<ZenDeskResultsResponse>>> result = Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, parsedArgs.getUrl(), String.join(" ", query)))
                         // Filter out any tickets based on the submitter and assignee
                         .map(response -> filterResponse(response, true, parsedArgs.getExcludedSubmitters(), parsedArgs.getExcludedOrganization(), parsedArgs.getRecipient()))
@@ -183,7 +183,14 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                             one a small number of tickets.
                          */
                         .map(tickets -> summariseTickets(tickets, context))
-                        .get())
+                        .get());
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The ZenDesk ticket is empty", throwable)),
+                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call ZenDesk API", ex)))
                 .get();
 
     }
