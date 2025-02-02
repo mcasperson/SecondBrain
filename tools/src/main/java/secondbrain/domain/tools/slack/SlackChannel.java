@@ -10,20 +10,24 @@ import io.vavr.Tuple;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
@@ -49,6 +53,8 @@ public class SlackChannel implements Tool<Void> {
     public static final String SLACK_CHANEL_ARG = "slackChannel";
     public static final String DAYS_ARG = "days";
     public static final String SLACK_DISABLELINKS_ARG = "disableLinks";
+    public static final String SLACK_KEYWORD_ARG = "keywords";
+    public static final String SLACK_KEYWORD_WINDOW_ARG = "keywordWindow";
 
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final String INSTRUCTIONS = """
@@ -83,6 +89,12 @@ public class SlackChannel implements Tool<Void> {
     @Inject
     private SlackClient slackClient;
 
+    @Inject
+    private ValidateString validateString;
+
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
     @Override
     public String getName() {
         return SlackChannel.class.getSimpleName();
@@ -97,6 +109,8 @@ public class SlackChannel implements Tool<Void> {
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments(SLACK_CHANEL_ARG, "The Slack channel to read", "general"),
+                new ToolArguments(SLACK_KEYWORD_ARG, "The keywords to limit the Slack messages to", ""),
+                new ToolArguments(SLACK_KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
                 new ToolArguments(DAYS_ARG, "The number of days worth of messages to return", "7")
         );
     }
@@ -126,14 +140,19 @@ public class SlackChannel implements Tool<Void> {
         final ChannelDetails channelDetails = Try.of(() -> slackClient.findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel()))
                 .getOrElseThrow(() -> new InternalFailure("Channel not found"));
 
-        final String messages = Try.of(() -> slackClient.conversationHistory(
+        final Try<String> messagesTry = Try.of(() -> slackClient.conversationHistory(
                         client,
                         parsedArgs.getAccessToken(),
                         channelDetails.channelId(),
                         oldest,
                         parsedArgs.getSearchTTL()))
                 .map(this::conversationsToText)
+                .map(document -> documentTrimmer.trimDocument(document, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
+                .map(validateString::throwIfEmpty);
+
+        final String messages = messagesTry
                 .mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The document was empty")),
                         API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex),
                         API.Case(API.$(), ex -> new InternalFailure("Failed to get messages", ex))
                 )
@@ -180,6 +199,7 @@ public class SlackChannel implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("No slack messages found")),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> throwable),
                         API.Case(API.$(), ex -> new ExternalFailure("Unexpected error", ex)))
@@ -304,7 +324,12 @@ class Arguments {
     private Optional<String> disableLinks;
 
     @Inject
-    private ValidateString validateString;
+    @ConfigProperty(name = "sb.slack.keywords")
+    private Optional<String> keywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.keywordwindow")
+    private Optional<String> keywordWindow;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -382,5 +407,30 @@ class Arguments {
                 "false");
 
         return BooleanUtils.toBoolean(argument.value());
+    }
+
+    public List<String> getKeywords() {
+        return argsAccessor.getArgumentList(
+                        keywords::get,
+                        arguments,
+                        context,
+                        SlackChannel.SLACK_KEYWORD_ARG,
+                        "slack_keywords",
+                        "")
+                .stream()
+                .map(Argument::value)
+                .toList();
+    }
+
+    public int getKeywordWindow() {
+        final Argument argument = argsAccessor.getArgument(
+                keywordWindow::get,
+                arguments,
+                context,
+                SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
+                "slack_keyword_window",
+                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+        return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
     }
 }

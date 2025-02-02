@@ -28,6 +28,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
@@ -94,6 +95,9 @@ public class GoogleDocs implements Tool<Void> {
 
     @Inject
     private PromptBuilderSelector promptBuilderSelector;
+
+    @Inject
+    private ValidateString validateString;
 
     @Override
     public String getName() {
@@ -164,6 +168,7 @@ public class GoogleDocs implements Tool<Void> {
                 .map(this::getDocumentText)
                 .map(document -> documentTrimmer.trimDocument(
                         document, parsedArgs.getKeywords(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
+                .map(validateString::throwIfEmpty)
                 .map(document -> getDocumentContext(document, parsedArgs.getDocumentId()))
                 .map(List::of)
                 .get();
@@ -193,6 +198,7 @@ public class GoogleDocs implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The document is empty", throwable)),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
@@ -333,9 +339,6 @@ class Arguments {
     private String prompt;
 
     private Map<String, String> context;
-
-    @Inject
-    private ValidateString validateString;
 
     @Inject
     @ConfigProperty(name = "sb.google.doc")

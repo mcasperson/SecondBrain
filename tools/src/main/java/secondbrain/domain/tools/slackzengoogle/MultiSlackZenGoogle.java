@@ -29,7 +29,6 @@ import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
-import secondbrain.domain.validate.ValidateString;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
@@ -57,6 +56,10 @@ import static com.google.common.base.Predicates.instanceOf;
 public class MultiSlackZenGoogle implements Tool<Void> {
 
     public static final String MULTI_SLACK_ZEN_GOOGLE_DISABLELINKS = "disableLinks";
+    public static final String MULTI_SLACK_ZEN_KEYWORD_ARG = "keywords";
+    public static final String MULTI_SLACK_ZEN_URL_ARG = "url";
+    public static final String MULTI_SLACK_ZEN_DAYS_ARG = "days";
+    public static final String MULTI_SLACK_ZEN_ENTITY_NAME_ARG = "entityName";
 
     private static final String INSTRUCTIONS = """
             You are helpful agent.
@@ -121,9 +124,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return ImmutableList.of(
-                new ToolArguments("url", "The entity directory URL", ""),
-                new ToolArguments("entityName", "The optional name of the entity to query", ""),
-                new ToolArguments("days", "The number of days to query", ""));
+                new ToolArguments(MULTI_SLACK_ZEN_URL_ARG, "The entity directory URL", ""),
+                new ToolArguments(MULTI_SLACK_ZEN_KEYWORD_ARG, "The keywords to limit the child context to", ""),
+                new ToolArguments(MULTI_SLACK_ZEN_KEYWORD_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(MULTI_SLACK_ZEN_ENTITY_NAME_ARG, "The optional name of the entity to query", ""),
+                new ToolArguments(MULTI_SLACK_ZEN_DAYS_ARG, "The number of days to query", ""));
     }
 
     @Override
@@ -282,6 +287,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
+                        new ToolArgs(SlackChannel.SLACK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(SlackChannel.DAYS_ARG, "" + days, true),
                         new ToolArgs(SlackChannel.SLACK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
@@ -303,7 +309,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .of(() -> CollectionUtils.collate(entity.getSalesforce(), entity.getPlanHat()))
                 // Get a list of arguments using the keywords
                 .map(ids -> List.of(
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, String.join(",", ids), true),
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + days, true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 // Search for the keywords
@@ -323,6 +329,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
                         new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
+                        new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(GoogleDocs.GOOGLE_DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(context, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
@@ -338,6 +345,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
                         new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + days, true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context, prompt, args))
@@ -355,6 +363,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
                         new ToolArgs(PlanHat.DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true),
+                        new ToolArgs(PlanHat.PLANHAT_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
                         new ToolArgs(PlanHat.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> planHat.getContext(context, prompt, args))
@@ -459,7 +468,8 @@ class Arguments {
     private Optional<String> disableLinks;
 
     @Inject
-    private ValidateString validateString;
+    @ConfigProperty(name = "sb.slackzengoogle.keywords")
+    private Optional<String> keywords;
 
     private List<ToolArgs> arguments;
 
@@ -478,7 +488,7 @@ class Arguments {
                 url::get,
                 arguments,
                 context,
-                "url",
+                MultiSlackZenGoogle.MULTI_SLACK_ZEN_URL_ARG,
                 "multislackzengoogle_url",
                 "").value();
     }
@@ -488,7 +498,7 @@ class Arguments {
                 days::get,
                 arguments,
                 context,
-                "days",
+                MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
                 "multislackzengoogle_days",
                 "0").value();
 
@@ -503,8 +513,8 @@ class Arguments {
                 entity::get,
                 arguments,
                 context,
-                "entityName",
-                "multislackzengoogle_entityname",
+                MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
+                "multislackzengoogle_entity_name",
                 "").value();
     }
 
@@ -514,7 +524,7 @@ class Arguments {
                 arguments,
                 context,
                 "multislackzengoogleMinTimeBasedContext",
-                "multislackzengoogle_mintimebasedcontext",
+                "multislackzengoogle_min_time_based_context",
                 "1").value();
 
         return NumberUtils.toInt(stringValue, 1);
@@ -526,9 +536,20 @@ class Arguments {
                 arguments,
                 context,
                 MultiSlackZenGoogle.MULTI_SLACK_ZEN_GOOGLE_DISABLELINKS,
-                "multislackzengoogle_disablelinks",
+                "multislackzengoogle_disable_links",
                 "false").value();
 
         return BooleanUtils.toBoolean(stringValue);
+    }
+
+    public String getKeywords() {
+        return argsAccessor.getArgument(
+                        keywords::get,
+                        arguments,
+                        context,
+                        MultiSlackZenGoogle.MULTI_SLACK_ZEN_KEYWORD_ARG,
+                        "multislackzengoogle_keywords",
+                        "")
+                .value();
     }
 }

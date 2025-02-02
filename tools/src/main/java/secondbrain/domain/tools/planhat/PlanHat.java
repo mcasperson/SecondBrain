@@ -14,13 +14,16 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.converter.HtmlToText;
 import secondbrain.domain.date.DateParser;
+import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -45,6 +48,8 @@ public class PlanHat implements Tool<Conversation> {
     public static final String SEARCHTTL_ARG = "searchTtl";
     public static final String COMPANY_ID_ARGS = "companyId";
     public static final String DISABLE_LINKS_ARG = "disableLinks";
+    public static final String PLANHAT_KEYWORD_ARG = "keywords";
+    public static final String PLANHAT_KEYWORD_WINDOW_ARG = "keywordWindow";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -87,6 +92,12 @@ public class PlanHat implements Tool<Conversation> {
     @Inject
     private DateParser dateParser;
 
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
+    @Inject
+    private ValidateString validateString;
+
     @Override
     public String getName() {
         return PlanHat.class.getSimpleName();
@@ -104,14 +115,11 @@ public class PlanHat implements Tool<Conversation> {
 
     @Override
     public List<ToolArguments> getArguments() {
-        return ImmutableList.of(new ToolArguments(
-                        COMPANY_ID_ARGS,
-                        "The company ID to query",
-                        ""),
-                new ToolArguments(
-                        DAYS_ARG,
-                        "The number of days to query",
-                        ""));
+        return ImmutableList.of(
+                new ToolArguments(COMPANY_ID_ARGS, "The company ID to query", ""),
+                new ToolArguments(PLANHAT_KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(DAYS_ARG, "The number of days to query", ""),
+                new ToolArguments(PLANHAT_KEYWORD_ARG, "The keywords to restrict the activities to", ""));
     }
 
     @Override
@@ -136,8 +144,13 @@ public class PlanHat implements Tool<Conversation> {
                 .filter(conversation -> !"ticket".equals(conversation.type()))
                 .map(conversation -> conversation.updateDescriptionAndSnippet(
                         htmlToText.getText(conversation.description()),
-                        htmlToText.getText(conversation.snippet())
-                ))
+                        htmlToText.getText(conversation.snippet()))
+                )
+                .map(conversation -> conversation.updateDescriptionAndSnippet(
+                        documentTrimmer.trimDocument(conversation.description(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()),
+                        documentTrimmer.trimDocument(conversation.snippet(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
+                )
+                .filter(conversation -> !validateString.isEmpty(conversation, Conversation::getContent))
                 .map(this::getDocumentContext)
                 .collect(Collectors.toList());
     }
@@ -169,6 +182,7 @@ public class PlanHat implements Tool<Conversation> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The PlanHat activities is empty", throwable)),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
@@ -241,6 +255,14 @@ class Arguments {
     @Inject
     private ArgsAccessor argsAccessor;
 
+    @Inject
+    @ConfigProperty(name = "sb.planhat.keywords")
+    private Optional<String> keywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.keywordwindow")
+    private Optional<String> keywordWindow;
+
     private List<ToolArgs> arguments;
 
     private String prompt;
@@ -287,7 +309,7 @@ class Arguments {
 
     public int getSearchTTL() {
         final Argument argument = argsAccessor.getArgument(
-                from::get,
+                searchTtl::get,
                 arguments,
                 context,
                 PlanHat.SEARCHTTL_ARG,
@@ -309,5 +331,30 @@ class Arguments {
                 "false");
 
         return BooleanUtils.toBoolean(argument.value());
+    }
+
+    public List<String> getKeywords() {
+        return argsAccessor.getArgumentList(
+                        keywords::get,
+                        arguments,
+                        context,
+                        PlanHat.PLANHAT_KEYWORD_ARG,
+                        "planhat_keywords",
+                        "")
+                .stream()
+                .map(Argument::value)
+                .toList();
+    }
+
+    public int getKeywordWindow() {
+        final Argument argument = argsAccessor.getArgument(
+                keywordWindow::get,
+                arguments,
+                context,
+                PlanHat.PLANHAT_KEYWORD_WINDOW_ARG,
+                "upload_keyword_window",
+                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+        return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
     }
 }

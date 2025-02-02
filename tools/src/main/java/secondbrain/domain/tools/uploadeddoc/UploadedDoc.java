@@ -17,6 +17,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.converter.FileToText;
+import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
@@ -42,6 +43,8 @@ import static com.google.common.base.Predicates.instanceOf;
  */
 @ApplicationScoped
 public class UploadedDoc implements Tool<Void> {
+    public static final String UPLOADED_DOC_KEYWORD_ARG = "keywords";
+    public static final String UPLOADED_DOC_KEYWORD_WINDOW_ARG = "keywordWindow";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -78,6 +81,9 @@ public class UploadedDoc implements Tool<Void> {
     @Inject
     private DocumentTrimmer documentTrimmer;
 
+    @Inject
+    private ValidateString validateString;
+
     @Override
     public String getName() {
         return UploadedDoc.class.getSimpleName();
@@ -91,7 +97,8 @@ public class UploadedDoc implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("keywords", "An optional list of keywords used to trim the document", "")
+                new ToolArguments(UPLOADED_DOC_KEYWORD_ARG, "An optional list of keywords used to trim the document", ""),
+                new ToolArguments(UPLOADED_DOC_KEYWORD_WINDOW_ARG, "The window size around any matching keywords", "")
         );
     }
 
@@ -137,6 +144,7 @@ public class UploadedDoc implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The document was empty")),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
@@ -166,6 +174,7 @@ public class UploadedDoc implements Tool<Void> {
                         contents,
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))
+                .map(validateString::throwIfEmpty)
                 .map(this::getTrimmedDocumentContext)
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
@@ -211,9 +220,6 @@ class Arguments {
     private Optional<String> keywordWindow;
 
     @Inject
-    private ValidateString validateString;
-
-    @Inject
     private ArgsAccessor argsAccessor;
 
     public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
@@ -240,9 +246,9 @@ class Arguments {
                         uploadKeywords::get,
                         arguments,
                         context,
-                        "keywords",
+                        UploadedDoc.UPLOADED_DOC_KEYWORD_ARG,
                         "upload_keywords",
-                        Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "")
+                        "")
                 .stream()
                 .map(Argument::value)
                 .toList();
@@ -253,7 +259,7 @@ class Arguments {
                 keywordWindow::get,
                 arguments,
                 context,
-                "keywordWindow",
+                UploadedDoc.UPLOADED_DOC_KEYWORD_WINDOW_ARG,
                 "upload_keyword_window",
                 Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 

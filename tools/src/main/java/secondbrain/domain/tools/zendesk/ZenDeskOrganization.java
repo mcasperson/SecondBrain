@@ -11,17 +11,20 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeArgument;
@@ -54,6 +57,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     public static final String NUM_COMMENTS_ARG = "numComments";
     public static final String DAYS_ARG = "days";
     public static final String HOURS_ARG = "hours";
+    public static final String ZENDESK_KEYWORD_ARG = "keywords";
+    public static final String ZENDESK_KEYWORD_WINDOW_ARG = "keywordWindow";
 
 
     private static final int MAX_TICKETS = 100;
@@ -88,9 +93,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     private SanitizeDocument removeSpacing;
 
     @Inject
-    private ValidateString validateString;
-
-    @Inject
     private OllamaClient ollamaClient;
 
     @Inject
@@ -111,6 +113,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     @Inject
     private PromptBuilderSelector promptBuilderSelector;
 
+    @Inject
+    private ValidateString validateString;
+
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
     @Override
     public String getName() {
         return ZenDeskOrganization.class.getSimpleName();
@@ -125,6 +133,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     public List<ToolArguments> getArguments() {
         return List.of(new ToolArguments(ZENDESK_ORGANIZATION_ARG, "An optional name of the organization", ""),
                 new ToolArguments(EXCLUDE_ORGANIZATION_ARG, "An optional comma separated list of organizations to exclude", ""),
+                new ToolArguments(ZENDESK_KEYWORD_ARG, "The keywords to limit the emails to", ""),
+                new ToolArguments(ZENDESK_KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
                 new ToolArguments(EXCLUDE_SUBMITTERS_ARG, "An optional comma separated list of submitters to exclude", ""),
                 new ToolArguments(RECIPIENT_ARG, "An optional recipient email address that tickets must be sent to", ""),
                 new ToolArguments(NUM_COMMENTS_ARG, "The optional number of comments to include in the context", "1"),
@@ -164,6 +174,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                         .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
                         .map(response -> ticketToComments(response, client, authHeader, parsedArgs.getNumComments()))
+                        .map(this::trimTickets)
                         /*
                             Take the raw ticket comments and summarize them with individual calls to the LLM.
                             The individual ticket summaries are then combined into a single context.
@@ -283,6 +294,17 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     private List<RagDocumentContext<ZenDeskResultsResponse>> summariseTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets, final Map<String, String> context) {
         return tickets.stream()
                 .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), context)))
+                .collect(Collectors.toList());
+    }
+
+    private List<RagDocumentContext<ZenDeskResultsResponse>> trimTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets) {
+        return tickets.stream()
+                .map(ticket -> ticket.updateDocument(
+                        documentTrimmer.trimDocument(
+                                ticket.document(),
+                                parsedArgs.getKeywords(),
+                                parsedArgs.getKeywordWindow())))
+                .filter(ticket -> validateString.isNotEmpty(ticket.document()))
                 .collect(Collectors.toList());
     }
 
@@ -414,6 +436,14 @@ class Arguments {
     @Inject
     @ConfigProperty(name = "sb.zendesk.disablelinks")
     private Optional<String> disableLinks;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.keywords")
+    private Optional<String> keywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.upload.keywordwindow")
+    private Optional<String> keywordWindow;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -671,5 +701,30 @@ class Arguments {
                 "false").value();
 
         return BooleanUtils.toBoolean(stringValue);
+    }
+
+    public List<String> getKeywords() {
+        return argsAccessor.getArgumentList(
+                        keywords::get,
+                        arguments,
+                        context,
+                        ZenDeskOrganization.ZENDESK_KEYWORD_ARG,
+                        "zendesk_keywords",
+                        "")
+                .stream()
+                .map(Argument::value)
+                .toList();
+    }
+
+    public int getKeywordWindow() {
+        final Argument argument = argsAccessor.getArgument(
+                keywordWindow::get,
+                arguments,
+                context,
+                ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG,
+                "zendesk_keyword_window",
+                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+        return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
     }
 }

@@ -25,4 +25,24 @@ public class ValidateStringBlank implements ValidateString {
         }
         return source;
     }
+
+    @Override
+    public boolean isEmpty(String value) {
+        return StringUtils.isBlank(value);
+    }
+
+    @Override
+    public boolean isNotEmpty(String value) {
+        return !isEmpty(value);
+    }
+
+    @Override
+    public <T> boolean isEmpty(T source, Function<T, String> getContext) {
+        return StringUtils.isBlank(getContext.apply(source));
+    }
+
+    @Override
+    public <T> boolean isNotEmpty(T source, Function<T, String> getContext) {
+        return !isEmpty(source, getContext);
+    }
 }

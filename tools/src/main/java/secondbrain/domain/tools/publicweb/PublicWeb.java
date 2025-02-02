@@ -5,6 +5,7 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -12,12 +13,15 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
+import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
@@ -41,6 +45,8 @@ public class PublicWeb implements Tool<Void> {
 
     public static final String PUBLICWEB_URL_ARG = "url";
     public static final String PUBLICWEB_DISABLELINKS_ARG = "disableLinks";
+    public static final String PUBLICWEB_KEYWORD_ARG = "keywords";
+    public static final String PUBLICWEB_KEYWORD_WINDOW_ARG = "keywordWindow";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -74,6 +80,9 @@ public class PublicWeb implements Tool<Void> {
     private ValidateString validateString;
 
     @Inject
+    private DocumentTrimmer documentTrimmer;
+
+    @Inject
     private Arguments parsedArgs;
 
     @Override
@@ -89,9 +98,14 @@ public class PublicWeb implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return ImmutableList.of(new ToolArguments(
-                PUBLICWEB_URL_ARG,
-                "The URL of the document to download",
-                ""));
+                        PUBLICWEB_URL_ARG,
+                        "The URL of the document to download",
+                        ""),
+                new ToolArguments(PUBLICWEB_KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(
+                        PUBLICWEB_KEYWORD_ARG,
+                        "The keywords to limit the document to",
+                        ""));
     }
 
     @Override
@@ -111,8 +125,14 @@ public class PublicWeb implements Tool<Void> {
         }
 
         return Try.of(() -> fileReader.read(parsedArgs.getUrl()))
+                .map(content -> documentTrimmer.trimDocument(
+                        content,
+                        parsedArgs.getKeywords(),
+                        parsedArgs.getKeywordWindow()))
+                .map(validateString::throwIfEmpty)
                 .map(this::getDocumentContext)
                 .map(List::of)
+                .recover(ex -> List.of())
                 .get();
     }
 
@@ -147,6 +167,7 @@ public class PublicWeb implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The document was empty")),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
@@ -200,7 +221,12 @@ class Arguments {
     private Optional<String> disableLinks;
 
     @Inject
-    private ValidateString validateString;
+    @ConfigProperty(name = "sb.publicweb.keywords")
+    private Optional<String> keywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.publicweb.keywordwindow")
+    private Optional<String> keywordWindow;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -231,5 +257,30 @@ class Arguments {
                 "");
 
         return BooleanUtils.toBoolean(argument.value());
+    }
+
+    public List<String> getKeywords() {
+        return argsAccessor.getArgumentList(
+                        keywords::get,
+                        arguments,
+                        context,
+                        PublicWeb.PUBLICWEB_KEYWORD_ARG,
+                        "publicweb_keywords",
+                        "")
+                .stream()
+                .map(Argument::value)
+                .toList();
+    }
+
+    public int getKeywordWindow() {
+        final Argument argument = argsAccessor.getArgument(
+                keywordWindow::get,
+                arguments,
+                context,
+                PublicWeb.PUBLICWEB_KEYWORD_WINDOW_ARG,
+                "publicweb_keyword_window",
+                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+        return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
     }
 }
