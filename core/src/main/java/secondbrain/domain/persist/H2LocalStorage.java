@@ -9,7 +9,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.CacheMiss;
-import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.nio.file.Paths;
@@ -21,8 +21,6 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.logging.Logger;
-
-import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class H2LocalStorage implements LocalStorage {
@@ -98,7 +96,7 @@ public class H2LocalStorage implements LocalStorage {
                         AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
                 .mapTry(PreparedStatement::executeUpdate)
                 .mapFailure(
-                        API.Case(API.$(), ex -> new ExternalFailure("Failed to delete old records", ex))
+                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to delete old records", ex))
                 )
                 .isSuccess();
     }
@@ -117,8 +115,7 @@ public class H2LocalStorage implements LocalStorage {
                         .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                         .getOrNull())
                 .mapFailure(
-                        API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex),
-                        API.Case(API.$(), ex -> new ExternalFailure("Failed to delete old records", ex))
+                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to delete old records", ex))
                 )
                 .getOrNull();
     }
@@ -150,7 +147,7 @@ public class H2LocalStorage implements LocalStorage {
                     return null;
                 })
                 .mapFailure(
-                        API.Case(API.$(), ex -> new ExternalFailure("Failed to get record", ex))
+                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to get record", ex))
                 )
                 .onSuccess(value -> deleteExpired(connection))
                 .getOrNull();
@@ -184,10 +181,11 @@ public class H2LocalStorage implements LocalStorage {
                     Exceptions are swallowed here because caching is just a best effort. But
                     we still need to know if something went wrong.
                  */
-                .onFailure(ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
-                // If we can't open the database for some reason, just generate the value
-                .recover(ex -> generateValue.generate())
-                .getOrNull();
+                .onFailure(LocalStorageFailure.class, ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
+                // If there was an error with the local storage, bypass it and generate the value
+                .recover(LocalStorageFailure.class, ex -> generateValue.generate())
+                // For all other errors, we return the value or rethrow the exception
+                .get();
     }
 
     @Override
@@ -225,10 +223,11 @@ public class H2LocalStorage implements LocalStorage {
                     Exceptions are swallowed here because caching is just a best effort. But
                     we still need to know if something went wrong.
                  */
-                .onFailure(ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
-                // If we can't open the database for some reason, just generate the value
-                .recover(ex -> generateValue.generate())
-                .getOrNull();
+                .onFailure(LocalStorageFailure.class, ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
+                // If there was an error with the local storage, bypass it and generate the value
+                .recover(LocalStorageFailure.class, ex -> generateValue.generate())
+                // For all other errors, we return the value or rethrow the exception
+                .get();
     }
 
     @Override
@@ -248,8 +247,7 @@ public class H2LocalStorage implements LocalStorage {
                         .run(() -> putString(connection, tool, source, promptHash, ttlSeconds, response))
                         .andFinallyTry(() -> connection.createStatement().execute("SHUTDOWN"))
                         .mapFailure(
-                                API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex),
-                                API.Case(API.$(), ex -> new ExternalFailure("Failed to add records for tool " + tool, ex))
+                                API.Case(API.$(), ex -> new LocalStorageFailure("Failed to add records for tool " + tool, ex))
                         ))
                 .get();
     }
@@ -278,7 +276,7 @@ public class H2LocalStorage implements LocalStorage {
                     return preparedStatement;
                 })
                 .mapFailure(
-                        API.Case(API.$(), ex -> new ExternalFailure("Failed to create record for tool " + tool, ex))
+                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
                 )
                 .get();
     }
