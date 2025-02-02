@@ -12,6 +12,7 @@ import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tools.slack.ChannelDetails;
 import secondbrain.domain.validate.ValidateString;
@@ -131,7 +132,7 @@ public class SlackClient {
                         .cursor(cursor)).get())
                 .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsList", ex)));
 
-        return response
+        final Try<ChannelDetails> results = response
                 // try to get the channel
                 .map(r -> getChannelId(r, channel))
                 // this fails if nothing was returned
@@ -142,8 +143,12 @@ public class SlackClient {
                         accessToken,
                         channel,
                         // the cursor must be a non-empty string to do a recursive call
-                        validateString.throwIfEmpty(response.get().getResponseMetadata().getNextCursor())))
-                .mapFailure(API.Case(API.$(instanceOf(EmptyString.class)), ex -> new ExternalFailure("Slack channel API reached the end of the results", ex)))
+                        validateString.throwIfEmpty(response.get().getResponseMetadata().getNextCursor())));
+
+        return results
+                .mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)),
+                                ex -> new InternalFailure("Slack channel API reached the end of the results. Failed to find channel " + channel, ex)))
                 .get();
     }
 
