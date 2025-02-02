@@ -12,6 +12,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -145,7 +146,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> ragContext = entityDirectory.getEntities()
                 .stream()
-                .filter(entity -> StringUtils.isBlank(parsedArgs.getEntityName()) || entity.name().equalsIgnoreCase(parsedArgs.getEntityName()))
+                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.name().toLowerCase()))
                 .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.getDays()).stream())
                 .toList();
 
@@ -508,14 +509,18 @@ class Arguments {
                 .get();
     }
 
-    public String getEntityName() {
-        return argsAccessor.getArgument(
-                entity::get,
-                arguments,
-                context,
-                MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
-                "multislackzengoogle_entity_name",
-                "").value();
+    public List<String> getEntityName() {
+        return argsAccessor.getArgumentList(
+                        entity::get,
+                        arguments,
+                        context,
+                        MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
+                        "multislackzengoogle_entity_name",
+                        "")
+                .stream()
+                .map(Argument::value)
+                .map(String::toLowerCase)
+                .toList();
     }
 
     public int getMinTimeBasedContext() {
