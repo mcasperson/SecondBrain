@@ -153,7 +153,7 @@ public class SlackChannel implements Tool<Void> {
 
         final String messages = messagesTry
                 .mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The document was empty")),
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Slack channel had no matching messages")),
                         API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex),
                         API.Case(API.$(), ex -> new InternalFailure("Failed to get messages", ex))
                 )
