@@ -10,6 +10,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
+import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tools.slack.ChannelDetails;
@@ -18,6 +19,8 @@ import secondbrain.domain.validate.ValidateString;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import static io.vavr.Predicates.instanceOf;
 
 @ApplicationScoped
 public class SlackClient {
@@ -140,6 +143,7 @@ public class SlackClient {
                         channel,
                         // the cursor must be a non-empty string to do a recursive call
                         validateString.throwIfEmpty(response.get().getResponseMetadata().getNextCursor())))
+                .mapFailure(API.Case(API.$(instanceOf(EmptyString.class)), ex -> new ExternalFailure("Slack channel API reached the end of the results", ex)))
                 .get();
     }
 
