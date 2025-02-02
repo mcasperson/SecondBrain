@@ -19,9 +19,11 @@ public class GitHubClient {
 
     @Retry
     public List<GitHubCommitResponse> getCommitsInRange(final Client client, final String owner, final String repo, final String sha, final String until, final String since, final String authorization) {
-        return Try.withResources(() -> client.target("https://api.github.com/repos/"
-                                + URLEncoder.encode(owner, StandardCharsets.UTF_8) + "/"
-                                + URLEncoder.encode(repo, StandardCharsets.UTF_8) + "/commits")
+        final String target = "https://api.github.com/repos/"
+                + URLEncoder.encode(owner, StandardCharsets.UTF_8) + "/"
+                + URLEncoder.encode(repo, StandardCharsets.UTF_8) + "/commits";
+
+        return Try.withResources(() -> client.target(target)
                         .queryParam("sha", sha)
                         .queryParam("until", until)
                         .queryParam("since", since)
@@ -29,7 +31,7 @@ public class GitHubClient {
                         .header("Authorization", authorization)
                         .header("Accept", MediaType.APPLICATION_JSON)
                         .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> List.of(r.readEntity(GitHubCommitResponse[].class)))
                         .get())
                 .get();
@@ -37,15 +39,17 @@ public class GitHubClient {
 
     @Retry
     public GitHubCommitResponse getCommit(final Client client, final String owner, final String repo, final String sha, final String authorization) {
-        return Try.withResources(() -> client.target("https://api.github.com/repos/"
-                                + URLEncoder.encode(owner, StandardCharsets.UTF_8) + "/"
-                                + URLEncoder.encode(repo, StandardCharsets.UTF_8) + "/commits/"
-                                + URLEncoder.encode(sha, StandardCharsets.UTF_8))
+        final String target = "https://api.github.com/repos/"
+                + URLEncoder.encode(owner, StandardCharsets.UTF_8) + "/"
+                + URLEncoder.encode(repo, StandardCharsets.UTF_8) + "/commits/"
+                + URLEncoder.encode(sha, StandardCharsets.UTF_8);
+
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", MediaType.APPLICATION_JSON)
                         .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(GitHubCommitResponse.class))
                         .get())
                 .get();
@@ -62,15 +66,17 @@ public class GitHubClient {
 
     @Retry
     public String getDiff(final Client client, final String owner, final String repo, final String sha, final String authorization) {
-        return Try.withResources(() -> client.target("https://api.github.com/repos/"
-                                + URLEncoder.encode(owner, StandardCharsets.UTF_8) + "/"
-                                + URLEncoder.encode(repo, StandardCharsets.UTF_8)
-                                + "/commits/" + URLEncoder.encode(sha, StandardCharsets.UTF_8))
+        final String target = "https://api.github.com/repos/"
+                + URLEncoder.encode(owner, StandardCharsets.UTF_8) + "/"
+                + URLEncoder.encode(repo, StandardCharsets.UTF_8)
+                + "/commits/" + URLEncoder.encode(sha, StandardCharsets.UTF_8);
+
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/vnd.github.v3.diff")
                         .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(String.class))
                         .get())
                 .get();

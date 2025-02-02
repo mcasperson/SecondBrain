@@ -12,6 +12,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
@@ -158,7 +159,7 @@ public class SlackChannel implements Tool<Void> {
                 )
                 .get();
 
-        if (messages.length() < MINIMUM_MESSAGE_LENGTH) {
+        if (StringUtils.length(messages) < MINIMUM_MESSAGE_LENGTH) {
             throw new InternalFailure("Not enough messages found in channel " + parsedArgs.getChannel()
                     + System.lineSeparator() + System.lineSeparator()
                     + "* [Slack Channel](https://app.slack.com/client/" + channelDetails.teamId() + "/" + channelDetails.channelId() + ")");

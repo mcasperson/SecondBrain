@@ -1,6 +1,7 @@
 package secondbrain.domain.limit;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.commons.lang.StringUtils;
 import secondbrain.domain.context.IndividualContext;
 
 import java.util.List;
@@ -19,7 +20,7 @@ public class ListLimiterAtomicCutOff implements ListLimiter {
         int length = 0;
 
         for (int i = 0; i < list.size(); i++) {
-            length += list.get(i).length();
+            length += StringUtils.length(list.get(i));
             if (length > limit) {
                 return list.subList(0, i);
             }
@@ -37,7 +38,7 @@ public class ListLimiterAtomicCutOff implements ListLimiter {
         int length = 0;
 
         for (int i = 0; i < list.size(); i++) {
-            length += getContext.apply(list.get(i)).length();
+            length += StringUtils.length(getContext.apply(list.get(i)));
             if (length > limit) {
                 return list.subList(0, i);
             }
@@ -57,7 +58,7 @@ public class ListLimiterAtomicCutOff implements ListLimiter {
         int length = 0;
 
         for (int i = 0; i < list.size(); i++) {
-            length += list.get(i).context().length();
+            length += StringUtils.length(list.get(i).context());
             if (length > limit) {
                 return list.subList(0, i);
             }

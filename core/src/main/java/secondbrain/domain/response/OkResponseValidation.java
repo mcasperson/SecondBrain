@@ -9,14 +9,15 @@ import secondbrain.domain.exceptions.MissingResponse;
 @ApplicationScoped
 public class OkResponseValidation implements ResponseValidation {
     @Override
-    public Response validate(final Response response) {
+    public Response validate(final Response response, final String uri) {
         if (response.getStatus() == 404) {
             throw new MissingResponse("Expected status code 200, but got 404");
         }
 
         if (response.getStatus() != 200) {
             throw new InvalidResponse("Expected status code 200, but got "
-                    + response.getStatus(),
+                    + response.getStatus()
+                    + " from URI " + uri,
                     Try.of(() -> response.readEntity(String.class)).getOrElse(""),
                     response.getStatus());
         }

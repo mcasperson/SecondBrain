@@ -60,7 +60,9 @@ public class ZenDeskClient {
             throw new IllegalArgumentException("Query is required");
         }
 
-        return Try.withResources(() -> client.target(url + "/api/v2/search.json")
+        final String target = url + "/api/v2/search.json";
+
+        return Try.withResources(() -> client.target(target)
                         .queryParam("query", query)
                         .queryParam("sort_by", "created_at")
                         .queryParam("sort_order", "desc")
@@ -69,7 +71,7 @@ public class ZenDeskClient {
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
                         .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskResponse.class))
                         // Recurse if there is a next page and we have not gone too far
                         .map(r -> ListUtils.union(
@@ -96,12 +98,14 @@ public class ZenDeskClient {
             throw new IllegalArgumentException("Ticket ID is required");
         }
 
-        return Try.withResources(() -> client.target(url + "/api/v2/tickets/" + id + ".json")
+        final String target = url + "/api/v2/tickets/" + id + ".json";
+
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
                         .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskTicketResponse.class))
                         .get())
                 .get();
@@ -122,12 +126,14 @@ public class ZenDeskClient {
             throw new IllegalArgumentException("Ticket ID is required");
         }
 
-        return Try.withResources(() -> client.target(url + "/api/v2/tickets/" + ticketId + "/comments")
+        final String target = url + "/api/v2/tickets/" + ticketId + "/comments";
+
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
                         .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskCommentsResponse.class))
                         .get())
                 .get();
@@ -148,12 +154,14 @@ public class ZenDeskClient {
             throw new IllegalArgumentException("Organization ID is required");
         }
 
-        return Try.withResources(() -> client.target(url + "/api/v2/organizations/" + orgId)
+        final String target = url + "/api/v2/organizations/" + orgId;
+
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
                         .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskOrganizationResponse.class))
                         .get())
                 .get();
@@ -192,12 +200,14 @@ public class ZenDeskClient {
             throw new IllegalArgumentException("User ID is required");
         }
 
-        return Try.withResources(() -> client.target(url + "/api/v2/users/" + userId)
+        final String target = url + "/api/v2/users/" + userId;
+
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
                         .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskUserResponse.class))
                         .get())
                 .get();

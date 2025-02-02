@@ -43,12 +43,14 @@ public class OllamaClient {
         logger.info("Called with model: " + body.model());
         logger.info("Called with context window: " + Optional.ofNullable(body.options()).map(OllamaGenerateBodyOptions::num_ctx).map(Object::toString).orElse("null"));
 
+        final String target = uri + "/api/generate";
+
         return Try.withResources(() -> client.target(uri + "/api/generate")
                         .request()
                         .header("Content-Type", "application/json")
                         .header("Accept", "application/json")
                         .post(Entity.entity(body.sanitizedCopy(), MediaType.APPLICATION_JSON)))
-                .of(response -> of(() -> responseValidation.validate(response))
+                .of(response -> of(() -> responseValidation.validate(response, target))
                         .recover(InvalidResponse.class, e -> {
                             throw new FailedOllama("OllamaClient failed to call Ollama:\n"
                                     + e.getCode() + "\n"

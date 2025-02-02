@@ -23,7 +23,7 @@ public class UrlReadingStrategy implements FileReadingStrategy {
                 if (response.getStatus() == 302 || response.getStatus() == 301) {
                     newUrl = response.getHeaderString("Location");
                 } else {
-                    return responseValidation.validate(response).readEntity(String.class);
+                    return responseValidation.validate(response, newUrl).readEntity(String.class);
                 }
             }
             count++;

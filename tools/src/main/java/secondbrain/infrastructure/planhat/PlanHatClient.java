@@ -29,24 +29,29 @@ public class PlanHatClient {
             final String company,
             final String token,
             final int ttlSeconds) {
-        return List.of(localStorage.getOrPutObject(
+        final Conversation[] conversations = localStorage.getOrPutObject(
                 PlanHatClient.class.getSimpleName(),
                 "PlanHatAPIConversations",
                 company,
                 ttlSeconds,
                 Conversation[].class,
-                () -> getConversationsApi(client, company, token)));
+                () -> getConversationsApi(client, company, token));
+
+        return conversations == null
+                ? List.of()
+                : List.of(conversations);
     }
 
     @Retry
     private Conversation[] getConversationsApi(final Client client, final String company, final String token) {
-        return Try.withResources(() -> client.target(url + "/conversations")
+        final String target = url + "/conversations";
+        return Try.withResources(() -> client.target(target)
                         .queryParam("cId", company)
                         .request()
                         .header("Authorization", "Bearer " + token)
                         .header("Accept", MediaType.APPLICATION_JSON)
                         .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(Conversation[].class))
                         .get())
                 .get();
