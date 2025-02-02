@@ -62,6 +62,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_URL_ARG = "url";
     public static final String MULTI_SLACK_ZEN_DAYS_ARG = "days";
     public static final String MULTI_SLACK_ZEN_ENTITY_NAME_ARG = "entityName";
+    public static final String MULTI_SLACK_ZEN_MAX_ENTITIES_ARG = "maxEntities";
 
     private static final String INSTRUCTIONS = """
             You are helpful agent.
@@ -132,6 +133,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 new ToolArguments(MULTI_SLACK_ZEN_KEYWORD_ARG, "The keywords to limit the child context to", ""),
                 new ToolArguments(MULTI_SLACK_ZEN_KEYWORD_ARG, "The window size around any matching keywords", ""),
                 new ToolArguments(MULTI_SLACK_ZEN_ENTITY_NAME_ARG, "The optional name of the entity to query", ""),
+                new ToolArguments(MULTI_SLACK_ZEN_MAX_ENTITIES_ARG, "The optional maximum number of entities to process", "0"),
                 new ToolArguments(MULTI_SLACK_ZEN_DAYS_ARG, "The number of days to query", ""));
     }
 
@@ -150,6 +152,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> ragContext = entityDirectory.getEntities()
                 .stream()
                 .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.name().toLowerCase()))
+                .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
                 .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.getDays()).stream())
                 .toList();
 
@@ -463,6 +466,10 @@ class Arguments {
     private Optional<String> entity;
 
     @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.maxentities")
+    private Optional<String> maxEntities;
+
+    @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.days")
     private Optional<String> days;
 
@@ -527,6 +534,21 @@ class Arguments {
                 .map(Argument::value)
                 .map(String::toLowerCase)
                 .toList();
+    }
+
+    public int getMaxEntities() {
+        final String stringValue = argsAccessor.getArgument(
+                maxEntities::get,
+                arguments,
+                context,
+                MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
+                "multislackzengoogle_max_entities",
+                "0").value();
+
+        return Try.of(() -> Integer.parseInt(stringValue))
+                .recover(throwable -> 0)
+                .map(i -> Math.max(0, i))
+                .get();
     }
 
     public int getMinTimeBasedContext() {
