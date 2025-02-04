@@ -205,29 +205,29 @@ foreach ($entity in $database.entities)
         Set-Content -Path "$subDir/COMPANY $entityName.md"  -Value $result.StdOut
     }
 
-    foreach ($topic in $topics.topics)
-    {
-        mkdir "$subDir/$( $topic.name )"
-        $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.slackzengoogle.disablelinks=true`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.minTimeBasedContext=4`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"$( $topic.prompt )`""
-
-        echo $result.StdOut
-        echo $result.StdErr
-
-        Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) $entityName $( $topic.name )`n"
-        if ($result.ExitCode -ne 0)
-        {
-            Add-Content -Path /tmp/pdfgenerate.log -Value "Failed to process $entityName for topic $( $topic.name )"
-        }
-        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
-        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
-
-        if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
-        {
-            Set-Content -Path "$subDir/$( $topic.name )/$entityName.md"  -Value $result.StdOut
-        }
-    }
-
     $index++
+}
+
+foreach ($topic in $topics.topics)
+{
+    mkdir "$subDir/$( $topic.name )"
+    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.slackzengoogle.disablelinks=false`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.keywords=$( $topic.keywords )`" `"-Dsb.slackzengoogle.minTimeBasedContext=4`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$days`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"$( $topic.prompt )`""
+
+    echo $result.StdOut
+    echo $result.StdErr
+
+    Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) $( $topic.name )`n"
+    if ($result.ExitCode -ne 0)
+    {
+        Add-Content -Path /tmp/pdfgenerate.log -Value "Failed to process topic $( $topic.name )"
+    }
+    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
+    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
+
+    if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
+    {
+        Set-Content -Path "$subDir/TOPIC $( $topic.name )"  -Value $result.StdOut
+    }
 }
 
 # Step 2
@@ -256,18 +256,6 @@ foreach ($file in $files)
 
     $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=PublicWeb`" `"-Dsb.publicweb.disablelinks=true`" `"-Dsb.publicweb.url=$( $file.FullName )`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize the document as a single paragraph. Write the company name as a level 2 markdown header and then write the summary as plain text. You will be penalized for inlucding links or references. You will be penalized for outputing tokens lke '<|end|>'. You will be penalized for including number in square brackets, like [1], in the output.`""
     Add-Content -Path "$subDir/Executive Summary.md" -Value "$( $result.StdOut )`n`n"
-    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
-    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
-}
-
-# Step 3
-# Generate a topic summary
-
-foreach ($topic in $topics.topics)
-{
-    Remove-Item "$subDir/TOPIC $( $topic.name ).md"
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=DirectoryScan`" `"-Dsb.directoryscan.summarizeindividualfiles=false`"  `"-Dsb.directoryscan.disablelinks=true`" `"-Dsb.directoryscan.directory=$subDir/$( $topic.name )`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"$( $topic.executiveSummaryPrompt )`""
-    Set-Content -Path "$subDir/TOPIC $( $topic.name ).md" -Value "$( $result.StdOut )`n`n"
     Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
     Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
 }
