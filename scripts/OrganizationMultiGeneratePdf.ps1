@@ -192,7 +192,7 @@ foreach ($entity in $database.entities)
     #echo "Slack StdErr"
     #echo $result.StdErr
 
-    Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) $entityName`n"
+    Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Entity: $entityName`n"
     if ($result.ExitCode -ne 0)
     {
         Add-Content -Path /tmp/pdfgenerate.log -Value "Failed to process $entityName"
@@ -215,7 +215,7 @@ foreach ($topic in $topics.topics)
     echo $result.StdOut
     echo $result.StdErr
 
-    Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) $( $topic.name )`n"
+    Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Topic: $( $topic.name )`n"
     if ($result.ExitCode -ne 0)
     {
         Add-Content -Path /tmp/pdfgenerate.log -Value "Failed to process topic $( $topic.name )"
