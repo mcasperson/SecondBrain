@@ -225,7 +225,7 @@ foreach ($topic in $topics.topics)
 
     if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
     {
-        Set-Content -Path "$subDir/TOPIC $( $topic.name )".md  -Value $result.StdOut
+        Set-Content -Path "$subDir/TOPIC $( $topic.name ).md"  -Value $result.StdOut
     }
 }
 
