@@ -9,6 +9,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -16,6 +17,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
@@ -26,6 +28,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.keyword.KeywordExtractor;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -44,7 +47,8 @@ import static com.google.common.base.Predicates.instanceOf;
 @ApplicationScoped
 public class SlackSearch implements Tool<MatchedItem> {
     public static final String SLACK_SEARCH_DAYS_ARG = "days";
-    public static final String SLACK_SEARCH_KEYWORDS_ARG = "keywords";
+    public static final String SLACK_SEARCH_KEYWORDS_ARG = "searchKeywords";
+    public static final String SLACK_SEARCH_FILTER_KEYWORDS_ARG = "keywords";
     public static final String SLACK_SEARCH_DISABLELINKS_ARG = "disableLinks";
 
     private static final String INSTRUCTIONS = """
@@ -69,6 +73,12 @@ public class SlackSearch implements Tool<MatchedItem> {
 
     @Inject
     private SentenceVectorizer sentenceVectorizer;
+
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
+    @Inject
+    private ValidateString validateString;
 
     @Inject
     @Identifier("unix")
@@ -109,7 +119,7 @@ public class SlackSearch implements Tool<MatchedItem> {
         final SearchAllResponse searchResult = Try.of(() -> slackClient.search(
                         Slack.getInstance().methodsAsync(),
                         parsedArgs.getAccessToken(),
-                        parsedArgs.getKeywords(),
+                        parsedArgs.getSearchKeywords(),
                         parsedArgs.getSearchTTL()))
                 .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not search messages", ex)))
                 .get();
@@ -127,6 +137,12 @@ public class SlackSearch implements Tool<MatchedItem> {
                         .stream()
                         .noneMatch(matchedItem.getChannel().getName()::equalsIgnoreCase))
                 .map(this::getDocumentContext)
+                .map(ragDoc -> ragDoc.updateDocument(
+                        documentTrimmer.trimDocument(
+                                ragDoc.document(),
+                                parsedArgs.getFilterKeywords(),
+                                parsedArgs.getKeywordWindow())))
+                .filter(ragDoc -> validateString.isNotEmpty(ragDoc.document()))
                 .toList();
 
     }
@@ -218,8 +234,16 @@ class SlackSearchArguments {
     private Optional<String> slackAccessToken;
 
     @Inject
-    @ConfigProperty(name = "sb.slack.keywords")
+    @ConfigProperty(name = "sb.slack.searchkeywords")
+    private Optional<String> searchKeywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.filterkeywords")
     private Optional<String> keywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.keywordwindow")
+    private Optional<String> keywordWindow;
 
     @Inject
     @ConfigProperty(name = "sb.slack.ignorechannels")
@@ -256,13 +280,13 @@ class SlackSearchArguments {
         this.context = context;
     }
 
-    public Set<String> getKeywords() {
+    public Set<String> getSearchKeywords() {
         final List<String> keywordslist = argsAccessor.getArgumentList(
-                        keywords::get,
+                        searchKeywords::get,
                         arguments,
                         context,
                         SlackSearch.SLACK_SEARCH_KEYWORDS_ARG,
-                        "slack_keywords",
+                        "slack_search_keywords",
                         "")
                 .stream()
                 .map(Argument::value)
@@ -274,6 +298,19 @@ class SlackSearchArguments {
         retValue.addAll(keywordslist);
         retValue.addAll(keywordsGenerated);
         return retValue;
+    }
+
+    public List<String> getFilterKeywords() {
+        return argsAccessor.getArgumentList(
+                        keywords::get,
+                        arguments,
+                        context,
+                        SlackChannel.SLACK_KEYWORD_ARG,
+                        "slack_keywords",
+                        "")
+                .stream()
+                .map(Argument::value)
+                .toList();
     }
 
     public boolean getGenerateKeywords() {
@@ -354,5 +391,17 @@ class SlackSearchArguments {
                 "false").value();
 
         return BooleanUtils.toBoolean(stringValue);
+    }
+
+    public int getKeywordWindow() {
+        final Argument argument = argsAccessor.getArgument(
+                keywordWindow::get,
+                arguments,
+                context,
+                SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
+                "slack_keyword_window",
+                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+        return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
     }
 }
