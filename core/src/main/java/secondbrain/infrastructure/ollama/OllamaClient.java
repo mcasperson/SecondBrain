@@ -37,7 +37,10 @@ public class OllamaClient {
     @Inject
     private LocalStorage localStorage;
 
-    public OllamaResponse callOllama(final Client client, final OllamaGenerateBody body) {
+    /**
+     * Call Ollama with the given body. This method is thread-safe, and only allows one call at a time.
+     */
+    public synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body) {
         logger.info(body.prompt());
         logger.info("Calling: " + uri);
         logger.info("Called with model: " + body.model());

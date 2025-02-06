@@ -150,7 +150,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .getOrElseThrow(ex -> new ExternalFailure("Failed to download or parse the entity directory", ex));
 
         final List<RagDocumentContext<Void>> ragContext = entityDirectory.getEntities()
-                .stream()
+                .parallelStream()
                 .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.name().toLowerCase()))
                 .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
                 .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.getDays()).stream())
