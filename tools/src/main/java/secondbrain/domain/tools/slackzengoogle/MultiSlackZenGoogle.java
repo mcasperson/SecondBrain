@@ -317,7 +317,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> slackKeywordSearch = Try
                 // Combine all the keywords we are going to search for
                 .of(() -> CollectionUtils.collate(entity.getSalesforce(), entity.getPlanHat()))
-                .filter(list -> !list.isEmpty())
                 // Get a list of arguments using the keywords
                 .map(ids -> List.of(
                         new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, String.join(",", ids), true),
