@@ -116,6 +116,11 @@ public class SlackSearch implements Tool<MatchedItem> {
 
         parsedArgs.setInputs(arguments, prompt, context);
 
+        // If there is nothing to search for, return an empty list
+        if (CollectionUtils.isEmpty(parsedArgs.getSearchKeywords())) {
+            return List.of();
+        }
+
         final SearchAllResponse searchResult = Try.of(() -> slackClient.search(
                         Slack.getInstance().methodsAsync(),
                         parsedArgs.getAccessToken(),
