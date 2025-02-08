@@ -65,10 +65,11 @@ public class H2LocalStorage implements LocalStorage {
     private void cleanConnection() {
         if (this.connection != null) {
             Try.run(() -> this.connection.createStatement().execute("SHUTDOWN"))
-                    .onFailure(ex -> logger.info(exceptionHandler.getExceptionMessage(ex)));
+                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
             Try.run(this.connection::close)
-                    .onFailure(ex -> logger.info(exceptionHandler.getExceptionMessage(ex)));
+                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
+                    .andFinally(() -> this.connection = null);
 
         }
     }
@@ -187,7 +188,7 @@ public class H2LocalStorage implements LocalStorage {
                     Exceptions are swallowed here because caching is just a best effort. But
                     we still need to know if something went wrong.
                  */
-                .onFailure(LocalStorageFailure.class, ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 // If there was an error with the local storage, bypass it and generate the value
                 .recover(LocalStorageFailure.class, ex -> generateValue.generate())
                 // For all other errors, we return the value or rethrow the exception
@@ -219,12 +220,11 @@ public class H2LocalStorage implements LocalStorage {
                                 promptHash,
                                 ttlSeconds,
                                 jsonDeserializer.serialize(r))))
-                .onFailure(ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
                 /*
                     Exceptions are swallowed here because caching is just a best effort. But
                     we still need to know if something went wrong.
                  */
-                .onFailure(LocalStorageFailure.class, ex -> logger.info(exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 // If there was an error with the local storage, bypass it and generate the value
                 .recover(LocalStorageFailure.class, ex -> generateValue.generate())
                 // For all other errors, we return the value or rethrow the exception
