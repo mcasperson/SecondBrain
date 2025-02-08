@@ -246,7 +246,7 @@ public class GoogleDocs implements Tool<Void> {
     }
 
     private String idToLink(final String documentId) {
-        return "[Document](https://docs.google.com/document/d/" + documentId + ")";
+        return "[Document " + documentId + "](https://docs.google.com/document/d/" + documentId + ")";
     }
 
     @SuppressWarnings("JavaUtilDate")

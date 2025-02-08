@@ -1,16 +1,11 @@
 package secondbrain.domain.exceptions;
 
+/**
+ * Represents an error returned from an HTTP request
+ */
 public class InvalidResponse extends RuntimeException {
     private String body;
     private int code;
-
-    public String getBody() {
-        return body;
-    }
-
-    public int getCode() {
-        return code;
-    }
 
     public InvalidResponse() {
         super();
@@ -32,5 +27,13 @@ public class InvalidResponse extends RuntimeException {
 
     public InvalidResponse(final Throwable cause) {
         super(cause);
+    }
+
+    public String getBody() {
+        return body;
+    }
+
+    public int getCode() {
+        return code;
     }
 }

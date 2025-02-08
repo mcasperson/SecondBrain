@@ -1,5 +1,8 @@
 package secondbrain.domain.exceptions;
 
+/**
+ * Represents an error due to insufficient content for a prompt
+ */
 public class InsufficientContext extends RuntimeException {
     public InsufficientContext() {
         super();

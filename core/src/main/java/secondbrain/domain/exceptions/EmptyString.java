@@ -1,5 +1,8 @@
 package secondbrain.domain.exceptions;
 
+/**
+ * Represents a validation error for an empty string
+ */
 public class EmptyString extends RuntimeException {
     public EmptyString() {
         super();

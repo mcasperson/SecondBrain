@@ -1,5 +1,8 @@
 package secondbrain.domain.exceptions;
 
+/**
+ * Represents an error during object serialization
+ */
 public class SerializationFailed extends RuntimeException {
     public SerializationFailed() {
         super();
