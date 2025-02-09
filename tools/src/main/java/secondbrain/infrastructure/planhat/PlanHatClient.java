@@ -7,6 +7,8 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import secondbrain.domain.concurrency.SemaphoreLender;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 
@@ -14,6 +16,8 @@ import java.util.List;
 
 @ApplicationScoped
 public class PlanHatClient {
+    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
+
     @Inject
     private ResponseValidation responseValidation;
 
@@ -45,13 +49,13 @@ public class PlanHatClient {
     @Retry
     private Conversation[] getConversationsApi(final Client client, final String company, final String token) {
         final String target = url + "/conversations";
-        return Try.withResources(() -> client.target(target)
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
                         .queryParam("cId", company)
                         .request()
                         .header("Authorization", "Bearer " + token)
                         .header("Accept", MediaType.APPLICATION_JSON)
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .get()))
+                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> r.readEntity(Conversation[].class))
                         .get())
                 .get();

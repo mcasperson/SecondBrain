@@ -6,6 +6,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import secondbrain.domain.concurrency.SemaphoreLender;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.response.ResponseValidation;
 
 import java.net.URLEncoder;
@@ -14,6 +16,8 @@ import java.util.List;
 
 @ApplicationScoped
 public class GitHubClient {
+    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
+
     @Inject
     private ResponseValidation responseValidation;
 
@@ -23,15 +27,15 @@ public class GitHubClient {
                 + URLEncoder.encode(owner, StandardCharsets.UTF_8) + "/"
                 + URLEncoder.encode(repo, StandardCharsets.UTF_8) + "/commits";
 
-        return Try.withResources(() -> client.target(target)
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
                         .queryParam("sha", sha)
                         .queryParam("until", until)
                         .queryParam("since", since)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", MediaType.APPLICATION_JSON)
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .get()))
+                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> List.of(r.readEntity(GitHubCommitResponse[].class)))
                         .get())
                 .get();
@@ -44,12 +48,12 @@ public class GitHubClient {
                 + URLEncoder.encode(repo, StandardCharsets.UTF_8) + "/commits/"
                 + URLEncoder.encode(sha, StandardCharsets.UTF_8);
 
-        return Try.withResources(() -> client.target(target)
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", MediaType.APPLICATION_JSON)
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .get()))
+                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> r.readEntity(GitHubCommitResponse.class))
                         .get())
                 .get();
@@ -71,12 +75,12 @@ public class GitHubClient {
                 + URLEncoder.encode(repo, StandardCharsets.UTF_8)
                 + "/commits/" + URLEncoder.encode(sha, StandardCharsets.UTF_8);
 
-        return Try.withResources(() -> client.target(target)
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/vnd.github.v3.diff")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .get()))
+                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> r.readEntity(String.class))
                         .get())
                 .get();

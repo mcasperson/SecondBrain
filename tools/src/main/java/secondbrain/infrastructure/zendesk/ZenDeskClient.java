@@ -7,6 +7,8 @@ import jakarta.ws.rs.client.Client;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import secondbrain.domain.concurrency.SemaphoreLender;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 
@@ -14,6 +16,9 @@ import java.util.List;
 
 @ApplicationScoped
 public class ZenDeskClient {
+
+    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
+
     /*
         Don't recurse forever, because LLMs can't deal with large results anyway.
      */
@@ -62,7 +67,7 @@ public class ZenDeskClient {
 
         final String target = url + "/api/v2/search.json";
 
-        return Try.withResources(() -> client.target(target)
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
                         .queryParam("query", query)
                         .queryParam("sort_by", "created_at")
                         .queryParam("sort_order", "desc")
@@ -70,8 +75,8 @@ public class ZenDeskClient {
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .get()))
+                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> r.readEntity(ZenDeskResponse.class))
                         // Recurse if there is a next page and we have not gone too far
                         .map(r -> ListUtils.union(
@@ -100,12 +105,12 @@ public class ZenDeskClient {
 
         final String target = url + "/api/v2/tickets/" + id + ".json";
 
-        return Try.withResources(() -> client.target(target)
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .get()))
+                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> r.readEntity(ZenDeskTicketResponse.class))
                         .get())
                 .get();
@@ -128,12 +133,12 @@ public class ZenDeskClient {
 
         final String target = url + "/api/v2/tickets/" + ticketId + "/comments";
 
-        return Try.withResources(() -> client.target(target)
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .get()))
+                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> r.readEntity(ZenDeskCommentsResponse.class))
                         .get())
                 .get();
@@ -156,12 +161,12 @@ public class ZenDeskClient {
 
         final String target = url + "/api/v2/organizations/" + orgId;
 
-        return Try.withResources(() -> client.target(target)
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .get()))
+                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> r.readEntity(ZenDeskOrganizationResponse.class))
                         .get())
                 .get();
@@ -202,12 +207,12 @@ public class ZenDeskClient {
 
         final String target = url + "/api/v2/users/" + userId;
 
-        return Try.withResources(() -> client.target(target)
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .get()))
+                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> r.readEntity(ZenDeskUserResponse.class))
                         .get())
                 .get();

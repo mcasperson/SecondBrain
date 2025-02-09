@@ -10,6 +10,8 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
+import secondbrain.domain.concurrency.SemaphoreLender;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
@@ -25,6 +27,8 @@ import static io.vavr.Predicates.instanceOf;
 
 @ApplicationScoped
 public class SlackClient {
+
+    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
 
     @Inject
     private ValidateString validateString;
@@ -58,11 +62,14 @@ public class SlackClient {
             final String accessToken,
             final String channelId,
             final String oldest) {
-        return Try.of(() -> client.conversationsHistory(r -> r
-                        .token(accessToken)
-                        .channel(channelId)
-                        .oldest(oldest)).get())
-                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsHistory", ex)))
+        return Try.withResources(SEMAPHORE_LENDER::lend)
+                .of(sem ->
+                        Try.of(() -> client.conversationsHistory(r -> r
+                                        .token(accessToken)
+                                        .channel(channelId)
+                                        .oldest(oldest)).get())
+                                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsHistory", ex)))
+                                .get())
                 .get();
     }
 
@@ -91,10 +98,13 @@ public class SlackClient {
             final AsyncMethodsClient client,
             final String accessToken,
             final Set<String> keywords) {
-        return Try.of(() -> client.searchAll(r -> r.token(accessToken)
-                                .query(String.join(" ", keywords)))
-                        .get())
-                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call searchAll", ex)))
+        return Try.withResources(SEMAPHORE_LENDER::lend)
+                .of(sem ->
+                        Try.of(() -> client.searchAll(r -> r.token(accessToken)
+                                                .query(String.join(" ", keywords)))
+                                        .get())
+                                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call searchAll", ex)))
+                                .get())
                 .get();
     }
 
@@ -124,13 +134,15 @@ public class SlackClient {
             final String channel,
             final String cursor) {
 
-        final Try<ConversationsListResponse> response = Try.of(() -> client.conversationsList(r -> r
-                        .token(accessToken)
-                        .limit(1000)
-                        .types(List.of(ConversationType.PUBLIC_CHANNEL))
-                        .excludeArchived(true)
-                        .cursor(cursor)).get())
-                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsList", ex)));
+        final Try<ConversationsListResponse> response = Try.withResources(SEMAPHORE_LENDER::lend)
+                .of(sem -> Try.of(() -> client.conversationsList(r -> r
+                                .token(accessToken)
+                                .limit(1000)
+                                .types(List.of(ConversationType.PUBLIC_CHANNEL))
+                                .excludeArchived(true)
+                                .cursor(cursor)).get())
+                        .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsList", ex))))
+                .get();
 
         final Try<ChannelDetails> results = response
                 // try to get the channel
