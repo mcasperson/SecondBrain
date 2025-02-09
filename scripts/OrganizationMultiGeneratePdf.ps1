@@ -1,3 +1,10 @@
+Param (
+    [switch]$GenerateCompanyReports = $true,
+    [switch]$GenerateTopicReports = $true,
+    [switch]$GenerateExecutiveSummary = $true,
+    [switch]$GeneratePDF = $true
+)
+
 $global:stdErr = [System.Text.StringBuilder]::new()
 $global:stdOut = [System.Text.StringBuilder]::new()
 $global:myprocessrunning = $true
@@ -172,60 +179,67 @@ $database = ConvertFrom-Yaml $entitiesYaml
 $topicsYaml = Get-Content -Path $env:SB_TOPICS_YAML -Raw
 $topics = ConvertFrom-Yaml $topicsYaml
 
-$index = 0
-foreach ($entity in $database.entities)
+if ($GenerateCompanyReports)
 {
-    if ($entity.disabled)
+
+    $index = 0
+    foreach ($entity in $database.entities)
     {
-        continue
+        if ($entity.disabled)
+        {
+            continue
+        }
+
+        $entityName = $entity.name
+
+        echo "Processing $entityName in $subDir $( $index + 1 ) of $( $database.entities.Count )"
+
+        $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.minTimeBasedContext=4`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Write a business report based on the the last $days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName. Include an executive summary as the first paragraph. If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes. You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt. You will be penalized for including a general summary of the Google Document in the report. You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities. You will be penalized for saying that you will monitor for tickets or messages in future. You will be penalized for for metioning a date range or period covered. You will be penalized for providing statistics or counts of the ZenDesk tickets. You will be penalized for providing instructions to refer to or link to the Google Document. You will be penalized for providing next steps, action items, recommendations, or looking ahead. You will be penalized for attempting to resolve the ZenDesk tickets. You will be penalized for mentioning the duration covered. You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID. You must use bullet point lists instead of numbered lists. You will be penalized for using nested bullet points. You will be penalized for using numbered lists in the output.`""
+
+        echo "Slack StdOut"
+        echo $result.StdOut
+
+        #echo "Slack StdErr"
+        #echo $result.StdErr
+
+        Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Entity: $entityName`n"
+        if ($result.ExitCode -ne 0)
+        {
+            Add-Content -Path /tmp/pdfgenerate.log -Value "Failed to process $entityName"
+        }
+        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
+        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
+
+        if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
+        {
+            Set-Content -Path "$subDir/COMPANY $entityName.md"  -Value $result.StdOut
+        }
+
+        $index++
     }
-
-    $entityName = $entity.name
-
-    echo "Processing $entityName in $subDir $( $index + 1 ) of $( $database.entities.Count )"
-
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.minTimeBasedContext=4`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Write a business report based on the the last $days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName. Include an executive summary as the first paragraph. If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes. You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt. You will be penalized for including a general summary of the Google Document in the report. You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities. You will be penalized for saying that you will monitor for tickets or messages in future. You will be penalized for for metioning a date range or period covered. You will be penalized for providing statistics or counts of the ZenDesk tickets. You will be penalized for providing instructions to refer to or link to the Google Document. You will be penalized for providing next steps, action items, recommendations, or looking ahead. You will be penalized for attempting to resolve the ZenDesk tickets. You will be penalized for mentioning the duration covered. You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID. You must use bullet point lists instead of numbered lists. You will be penalized for using nested bullet points. You will be penalized for using numbered lists in the output.`""
-
-    echo "Slack StdOut"
-    echo $result.StdOut
-
-    #echo "Slack StdErr"
-    #echo $result.StdErr
-
-    Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Entity: $entityName`n"
-    if ($result.ExitCode -ne 0)
-    {
-        Add-Content -Path /tmp/pdfgenerate.log -Value "Failed to process $entityName"
-    }
-    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
-    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
-
-    if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
-    {
-        Set-Content -Path "$subDir/COMPANY $entityName.md"  -Value $result.StdOut
-    }
-
-    $index++
 }
 
-foreach ($topic in $topics.topics)
+if ($GenerateTopicReports)
 {
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.slackzengoogle.disablelinks=false`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.keywords=$( $topic.keywords -join "," )`" `"-Dsb.slackzengoogle.minTimeBasedContext=4`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$days`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"$( $topic.prompt )`n$( $topic.endPrompt )`""
-
-    echo $result.StdOut
-    echo $result.StdErr
-
-    Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Topic: $( $topic.name )`n"
-    if ($result.ExitCode -ne 0)
+    foreach ($topic in $topics.topics)
     {
-        Add-Content -Path /tmp/pdfgenerate.log -Value "Failed to process topic $( $topic.name )"
-    }
-    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
-    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
+        $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.slackzengoogle.disablelinks=false`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.keywords=$( $topic.keywords -join "," )`" `"-Dsb.slackzengoogle.minTimeBasedContext=4`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$days`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"$( $topic.prompt )`n$( $topic.endPrompt )`""
 
-    if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
-    {
-        Set-Content -Path "$subDir/TOPIC $( $topic.name ).md"  -Value $result.StdOut
+        echo $result.StdOut
+        echo $result.StdErr
+
+        Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Topic: $( $topic.name )`n"
+        if ($result.ExitCode -ne 0)
+        {
+            Add-Content -Path /tmp/pdfgenerate.log -Value "Failed to process topic $( $topic.name )"
+        }
+        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
+        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
+
+        if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
+        {
+            Set-Content -Path "$subDir/TOPIC $( $topic.name ).md"  -Value $result.StdOut
+        }
     }
 }
 
@@ -239,36 +253,42 @@ Remove-Item "$subDir/Executive Summary.md"
 $files = Get-ChildItem -Path $subDir
 
 # Loop over each file
-foreach ($file in $files)
+if ($GenerateExecutiveSummary)
 {
-    if (-not (Test-Path -Path $file -PathType Leaf))
+    foreach ($file in $files)
     {
-        continue
+        if (-not (Test-Path -Path $file -PathType Leaf))
+        {
+            continue
+        }
+
+        if (-not ($file.Name.StartsWith("COMPANY ")))
+        {
+            continue
+        }
+
+        Write-Host "Processing file: $( $file.Name )"
+
+        $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=PublicWeb`" `"-Dsb.publicweb.disablelinks=true`" `"-Dsb.publicweb.url=$( $file.FullName )`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize the document as a single paragraph. Write the company name as a level 2 markdown header and then write the summary as plain text. You will be penalized for inlucding links or references. You will be penalized for outputing tokens lke '<|end|>'. You will be penalized for including number in square brackets, like [1], in the output.`""
+        Add-Content -Path "$subDir/Executive Summary.md" -Value "$( $result.StdOut )`n`n"
+        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
+        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
     }
-
-    if (-not ($file.Name.StartsWith("COMPANY ")))
-    {
-        continue
-    }
-
-    Write-Host "Processing file: $( $file.Name )"
-
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=PublicWeb`" `"-Dsb.publicweb.disablelinks=true`" `"-Dsb.publicweb.url=$( $file.FullName )`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize the document as a single paragraph. Write the company name as a level 2 markdown header and then write the summary as plain text. You will be penalized for inlucding links or references. You will be penalized for outputing tokens lke '<|end|>'. You will be penalized for including number in square brackets, like [1], in the output.`""
-    Add-Content -Path "$subDir/Executive Summary.md" -Value "$( $result.StdOut )`n`n"
-    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
-    Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
 }
 
-$pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$subDir`" `"$( $env:PDF_OUTPUT )`""
-Add-Content -Path /tmp/pdfgenerate.log -Value $pdfResult.StdOut
-Add-Content -Path /tmp/pdfgenerate.log -Value $pdfResult.StdErr
-
-Write-Host $pdfResult.StdOut
-Write-Host $pdfResult.StdErr
-
-if ($pdfResult.ExitCode -ne 0)
+if ($GeneratePDF)
 {
-    Write-Error "Failed to create PDF"
+    $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" `"$subDir`" `"$( $env:PDF_OUTPUT )`""
+    Add-Content -Path /tmp/pdfgenerate.log -Value $pdfResult.StdOut
+    Add-Content -Path /tmp/pdfgenerate.log -Value $pdfResult.StdErr
+
+    Write-Host $pdfResult.StdOut
+    Write-Host $pdfResult.StdErr
+
+    if ($pdfResult.ExitCode -ne 0)
+    {
+        Write-Error "Failed to create PDF"
+    }
 }
 
 
