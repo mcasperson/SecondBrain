@@ -12,10 +12,18 @@ public class SemaphoreLender {
         semaphore = new Semaphore(permits);
     }
 
+    /**
+     * Lend a permit from the semaphore. Use this when you have no other closable resource to manage
+     * in a try-with-resources block.
+     */
     public SemaphorePermit lend() throws InterruptedException {
         return new SemaphorePermit(semaphore);
     }
 
+    /**
+     * Lend a permit from the semaphore that wraps another closable resource. Use this when you have a
+     * closable resource to manage in a try-with-resources block that must block on the semaphore.
+     */
     public <T extends AutoCloseable> SemaphorePermitWrapper<T> lend(final T wrapped) throws InterruptedException {
         return new SemaphorePermitWrapper<>(semaphore, wrapped);
     }
