@@ -10,7 +10,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
-import secondbrain.domain.exceptions.CacheMiss;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
@@ -83,7 +82,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     private float getCacheHitsPercentage() {
-        return totalReads > 0 ? (float)totalCacheHits / totalReads * 100 : 0;
+        return totalReads > 0 ? (float) totalCacheHits / totalReads * 100 : 0;
     }
 
     private String getDatabasePath() {
@@ -187,12 +186,7 @@ public class H2LocalStorage implements LocalStorage {
         return Try
                 .of(() -> getString(tool, source, promptHash))
                 // a cache miss means the string is empty, so we throw an exception
-                .map(result -> {
-                    if (StringUtils.isBlank(result)) {
-                        throw new RuntimeException("Cache miss");
-                    }
-                    return result;
-                })
+                .filter(StringUtils::isNotBlank)
                 // recover from a cache miss by generating the value and saving it
                 .recover(result -> {
                     final String value = generateValue.generate();
@@ -219,12 +213,7 @@ public class H2LocalStorage implements LocalStorage {
     public <T> T getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
         return Try.of(() -> getString(tool, source, promptHash))
                 // a cache miss means the string is empty, so we throw an exception
-                .map(result -> {
-                    if (StringUtils.isBlank(result)) {
-                        throw new CacheMiss();
-                    }
-                    return result;
-                })
+                .filter(StringUtils::isNotBlank)
                 // a cache hit means we deserialize the result
                 .mapTry(r -> jsonDeserializer.deserialize(r, clazz))
                 // a cache miss means we call the API and then save the result in the cache
