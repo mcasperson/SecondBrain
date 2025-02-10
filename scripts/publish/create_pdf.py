@@ -96,7 +96,8 @@ def convert_md_to_pdf(directory, output_pdf):
     contents = []
 
     # Move the Executive Summary to the top
-    contents.append({'title': 'Executive Summary', 'filename': os.path.join(directory, 'Executive Summary.md'), 'link': pdf.add_link()})
+    if os.path.exists(os.path.join(directory, 'Executive Summary.md')):
+        contents.append({'title': 'Executive Summary', 'filename': os.path.join(directory, 'Executive Summary.md'), 'link': pdf.add_link()})
 
     # Find the topics in the first loop
     for filename in sorted(os.listdir(directory)):
