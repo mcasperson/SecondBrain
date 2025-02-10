@@ -41,6 +41,8 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         return individualContexts.stream()
                 .map(RagDocumentContext::link)
                 .filter(Objects::nonNull)
+                .collect(Collectors.toSet())
+                .stream()
                 .toList();
     }
 
