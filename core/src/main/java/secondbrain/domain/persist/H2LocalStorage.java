@@ -78,8 +78,12 @@ public class H2LocalStorage implements LocalStorage {
         }
 
         if (totalReads > 0) {
-            logger.info("Cache hits percentage: " + (totalCacheHits / totalReads * 100) + "%");
+            logger.info("Cache hits percentage: " + getCacheHitsPercentage() + "%");
         }
+    }
+
+    private float getCacheHitsPercentage() {
+        return totalReads > 0 ? (float)totalCacheHits / totalReads * 100 : 0;
     }
 
     private String getDatabasePath() {
