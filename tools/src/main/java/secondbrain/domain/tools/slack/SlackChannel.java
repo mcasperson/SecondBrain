@@ -129,7 +129,14 @@ public class SlackChannel implements Tool<Void> {
 
         parsedArgs.setInputs(arguments, prompt, context);
 
+        /*
+            Get the oldest date to search from, starting from the starr of the current day.
+            This improves the cache if we have to rerun the tool multiple times in a day, as the
+            oldest date will be the same.
+        */
         final String oldest = Long.valueOf(LocalDateTime.now(ZoneId.systemDefault())
+                        .toLocalDate()
+                        .atStartOfDay()
                         .minusDays(parsedArgs.getDays())
                         .atZone(ZoneId.systemDefault())
                         .toEpochSecond())
