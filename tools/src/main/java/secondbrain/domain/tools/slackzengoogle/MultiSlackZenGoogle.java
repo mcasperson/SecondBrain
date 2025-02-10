@@ -69,6 +69,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             You are given the contents of a multiple Slack channels, Google Documents, and the help desk tickets from ZenDesk.
             You must answer the prompt based on the information provided.
             """;
+    @Inject
+    private ArgsAccessor argsAccessor;
 
     @Inject
     private ModelConfig modelConfig;
@@ -143,7 +145,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(argsAccessor, arguments, prompt, context);
 
         final EntityDirectory entityDirectory = Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
@@ -460,36 +462,62 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
 @ApplicationScoped
 class MultiSlackZenGoogleConfig {
-    @Inject
-    private ArgsAccessor argsAccessor;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.url")
-    private Optional<String> url;
+    private Optional<String> configUrl;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.entity")
-    private Optional<String> entity;
+    private Optional<String> configEntity;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.maxentities")
-    private Optional<String> maxEntities;
+    private Optional<String> configMaxEntities;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.days")
-    private Optional<String> days;
+    private Optional<String> configDays;
 
     @Inject
     @ConfigProperty(name = "sb.slackzengoogle.minTimeBasedContext")
-    private Optional<String> slackZenGoogleMinTimeBasedContext;
+    private Optional<String> configSlackZenGoogleMinTimeBasedContext;
 
     @Inject
     @ConfigProperty(name = "sb.slackzengoogle.disablelinks")
-    private Optional<String> disableLinks;
+    private Optional<String> configDisableLinks;
 
     @Inject
     @ConfigProperty(name = "sb.slackzengoogle.keywords")
-    private Optional<String> keywords;
+    private Optional<String> configKeywords;
+
+    public Optional<String> getConfigUrl() {
+        return configUrl;
+    }
+
+    public Optional<String> getConfigEntity() {
+        return configEntity;
+    }
+
+    public Optional<String> getConfigMaxEntities() {
+        return configMaxEntities;
+    }
+
+    public Optional<String> getConfigDays() {
+        return configDays;
+    }
+
+    public Optional<String> getConfigSlackZenGoogleMinTimeBasedContext() {
+        return configSlackZenGoogleMinTimeBasedContext;
+    }
+
+    public Optional<String> getConfigDisableLinks() {
+        return configDisableLinks;
+    }
+
+    public Optional<String> getConfigKeywords() {
+        return configKeywords;
+    }
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -498,15 +526,18 @@ class MultiSlackZenGoogleConfig {
 
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        private final ArgsAccessor argsAccessor;
+
+        public LocalArguments(final ArgsAccessor argsAccessor, final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+            this.argsAccessor = argsAccessor;
         }
 
         public String getUrl() {
             return argsAccessor.getArgument(
-                    url::get,
+                    getConfigUrl()::get,
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_URL_ARG,
@@ -516,7 +547,7 @@ class MultiSlackZenGoogleConfig {
 
         public int getDays() {
             final String stringValue = argsAccessor.getArgument(
-                    days::get,
+                    getConfigDays()::get,
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
@@ -531,7 +562,7 @@ class MultiSlackZenGoogleConfig {
 
         public List<String> getEntityName() {
             return argsAccessor.getArgumentList(
-                            entity::get,
+                            getConfigEntity()::get,
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
@@ -545,7 +576,7 @@ class MultiSlackZenGoogleConfig {
 
         public int getMaxEntities() {
             final String stringValue = argsAccessor.getArgument(
-                    maxEntities::get,
+                    getConfigMaxEntities()::get,
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
@@ -560,7 +591,7 @@ class MultiSlackZenGoogleConfig {
 
         public int getMinTimeBasedContext() {
             final String stringValue = argsAccessor.getArgument(
-                    slackZenGoogleMinTimeBasedContext::get,
+                    getConfigSlackZenGoogleMinTimeBasedContext()::get,
                     arguments,
                     context,
                     "multislackzengoogleMinTimeBasedContext",
@@ -572,7 +603,7 @@ class MultiSlackZenGoogleConfig {
 
         public Boolean getDisableLinks() {
             final String stringValue = argsAccessor.getArgument(
-                    disableLinks::get,
+                    getConfigDisableLinks()::get,
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_GOOGLE_DISABLELINKS,
@@ -584,7 +615,7 @@ class MultiSlackZenGoogleConfig {
 
         public String getKeywords() {
             return argsAccessor.getArgument(
-                            keywords::get,
+                            getConfigKeywords()::get,
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_KEYWORD_ARG,
