@@ -40,6 +40,7 @@ import secondbrain.infrastructure.zendesk.*;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -666,8 +667,13 @@ class Arguments {
     }
 
     public String getStartDate() {
+        // Truncating to hours or days means the cache has a higher chance of being hit.
+        final TemporalUnit truncatedTo = getHours() == 0
+                ? ChronoUnit.DAYS
+                : ChronoUnit.HOURS;
+
         return OffsetDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(ChronoUnit.SECONDS)
+                .truncatedTo(truncatedTo)
                 // Assume one day if nothing was specified
                 .minusDays(getDays() + getHours() == 0 ? 1 : getDays())
                 .minusHours(getHours())
