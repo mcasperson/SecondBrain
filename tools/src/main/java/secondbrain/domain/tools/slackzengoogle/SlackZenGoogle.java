@@ -229,27 +229,55 @@ class SlackZenGoogleConfig {
 
     @Inject
     @ConfigProperty(name = "sb.slack.channel")
-    private Optional<String> slackChannel;
+    private Optional<String> configSlackChannel;
 
     @Inject
     @ConfigProperty(name = "sb.slack.days")
-    private Optional<String> slackDays;
+    private Optional<String> configSlackDays;
 
     @Inject
     @ConfigProperty(name = "sb.google.doc")
-    private Optional<String> googleDoc;
+    private Optional<String> configGoogleDoc;
 
     @Inject
     @ConfigProperty(name = "sb.slackzengoogle.minTimeBasedContext")
-    private Optional<String> slackZenGoogleMinTimeBasedContext;
+    private Optional<String> configSlackZenGoogleMinTimeBasedContext;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.organization")
-    private Optional<String> zenDeskOrganization;
+    private Optional<String> configZenDeskOrganization;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.company")
-    private Optional<String> planHatCompany;
+    private Optional<String> configPlanHatCompany;
+
+    public ArgsAccessor getArgsAccessor() {
+        return argsAccessor;
+    }
+
+    public Optional<String> getConfigSlackChannel() {
+        return configSlackChannel;
+    }
+
+    public Optional<String> getConfigSlackDays() {
+        return configSlackDays;
+    }
+
+    public Optional<String> getConfigGoogleDoc() {
+        return configGoogleDoc;
+    }
+
+    public Optional<String> getConfigSlackZenGoogleMinTimeBasedContext() {
+        return configSlackZenGoogleMinTimeBasedContext;
+    }
+
+    public Optional<String> getConfigZenDeskOrganization() {
+        return configZenDeskOrganization;
+    }
+
+    public Optional<String> getConfigPlanHatCompany() {
+        return configPlanHatCompany;
+    }
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -266,8 +294,8 @@ class SlackZenGoogleConfig {
 
 
         public String getSlackChannel() {
-            return argsAccessor.getArgument(
-                    slackChannel::get,
+            return getArgsAccessor().getArgument(
+                    getConfigSlackChannel()::get,
                     arguments,
                     context,
                     "slackChannel",
@@ -276,8 +304,8 @@ class SlackZenGoogleConfig {
         }
 
         public int getMinSlackOrZen() {
-            final String stringValue = argsAccessor.getArgument(
-                    slackZenGoogleMinTimeBasedContext::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigSlackZenGoogleMinTimeBasedContext()::get,
                     arguments,
                     context,
                     "slackZenGoogleMinTimeBasedContext",
@@ -288,8 +316,8 @@ class SlackZenGoogleConfig {
         }
 
         public String getSlackDays() {
-            return argsAccessor.getArgument(
-                    slackDays::get,
+            return getArgsAccessor().getArgument(
+                    getConfigSlackDays()::get,
                     arguments,
                     context,
                     "days",
@@ -298,8 +326,8 @@ class SlackZenGoogleConfig {
         }
 
         public String getGoogleDocumentId() {
-            return argsAccessor.getArgument(
-                    googleDoc::get,
+            return getArgsAccessor().getArgument(
+                    getConfigGoogleDoc()::get,
                     arguments,
                     context,
                     "googleDocumentId",
@@ -308,8 +336,8 @@ class SlackZenGoogleConfig {
         }
 
         public String getZenDeskOrganization() {
-            return argsAccessor.getArgument(
-                    zenDeskOrganization::get,
+            return getArgsAccessor().getArgument(
+                    getConfigZenDeskOrganization()::get,
                     arguments,
                     context,
                     "zenDeskOrganization",
@@ -318,8 +346,8 @@ class SlackZenGoogleConfig {
         }
 
         public String getPlanHatCompany() {
-            return argsAccessor.getArgument(
-                    planHatCompany::get,
+            return getArgsAccessor().getArgument(
+                    getConfigPlanHatCompany()::get,
                     arguments,
                     context,
                     "planHatCompanyId",

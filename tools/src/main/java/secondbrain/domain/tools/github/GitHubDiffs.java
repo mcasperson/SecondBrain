@@ -310,51 +310,51 @@ class GitHubDiffConfig {
 
     @Inject
     @ConfigProperty(name = "sb.ollama.gitdiffmodel")
-    private Optional<String> diffModel;
+    private Optional<String> configDiffModel;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.diffcontextwindow")
-    private Optional<String> diffContextWindow;
+    private Optional<String> configDiffContextWindow;
 
     @Inject
     @ConfigProperty(name = "sb.github.accesstoken")
-    private Optional<String> githubAccessToken;
+    private Optional<String> configGithubAccessToken;
 
     @Inject
     @ConfigProperty(name = "sb.github.owner")
-    private Optional<String> githubOwner;
+    private Optional<String> configGithubOwner;
 
     @Inject
     @ConfigProperty(name = "sb.github.repo")
-    private Optional<String> githubRepo;
+    private Optional<String> configGithubRepo;
 
     @Inject
     @ConfigProperty(name = "sb.github.sha")
-    private Optional<String> githubSha;
+    private Optional<String> configGithubSha;
 
     @Inject
     @ConfigProperty(name = "sb.github.days")
-    private Optional<String> githubDays;
+    private Optional<String> configGithubDays;
 
     @Inject
     @ConfigProperty(name = "sb.github.maxdiffs")
-    private Optional<String> githubMaxDiffs;
+    private Optional<String> configGithubMaxDiffs;
 
     @Inject
     @ConfigProperty(name = "sb.github.since")
-    private Optional<String> githubSince;
+    private Optional<String> configGithubSince;
 
     @Inject
     @ConfigProperty(name = "sb.github.until")
-    private Optional<String> githubUntil;
+    private Optional<String> configGithubUntil;
 
     @Inject
     @ConfigProperty(name = "sb.github.branch")
-    private Optional<String> githubBranch;
+    private Optional<String> configGithubBranch;
 
     @Inject
     @ConfigProperty(name = "sb.github.summarizeindividualdiffs")
-    private Optional<String> summarizeIndividualDiffs;
+    private Optional<String> configSummarizeIndividualDiffs;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -367,6 +367,70 @@ class GitHubDiffConfig {
 
     @Inject
     private ModelConfig modelConfig;
+
+    public Optional<String> getConfigDiffModel() {
+        return configDiffModel;
+    }
+
+    public Optional<String> getConfigDiffContextWindow() {
+        return configDiffContextWindow;
+    }
+
+    public Optional<String> getConfigGithubAccessToken() {
+        return configGithubAccessToken;
+    }
+
+    public Optional<String> getConfigGithubOwner() {
+        return configGithubOwner;
+    }
+
+    public Optional<String> getConfigGithubRepo() {
+        return configGithubRepo;
+    }
+
+    public Optional<String> getConfigGithubSha() {
+        return configGithubSha;
+    }
+
+    public Optional<String> getConfigGithubDays() {
+        return configGithubDays;
+    }
+
+    public Optional<String> getConfigGithubMaxDiffs() {
+        return configGithubMaxDiffs;
+    }
+
+    public Optional<String> getConfigGithubSince() {
+        return configGithubSince;
+    }
+
+    public Optional<String> getConfigGithubUntil() {
+        return configGithubUntil;
+    }
+
+    public Optional<String> getConfigGithubBranch() {
+        return configGithubBranch;
+    }
+
+    public Optional<String> getConfigSummarizeIndividualDiffs() {
+        return configSummarizeIndividualDiffs;
+    }
+
+    public ArgsAccessor getArgsAccessor() {
+        return argsAccessor;
+    }
+
+    public Encryptor getTextEncryptor() {
+        return textEncryptor;
+    }
+
+    public ValidateString getValidateString() {
+        return validateString;
+    }
+
+    public ModelConfig getModelConfig() {
+        return modelConfig;
+    }
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -382,8 +446,8 @@ class GitHubDiffConfig {
         }
 
         public boolean getSummarizeIndividualDiffs() {
-            final String stringValue = argsAccessor.getArgument(
-                    summarizeIndividualDiffs::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigSummarizeIndividualDiffs()::get,
                     arguments,
                     context,
                     "summarizeIndividualDiffs",
@@ -394,8 +458,8 @@ class GitHubDiffConfig {
         }
 
         public int getDays() {
-            final String stringValue = argsAccessor.getArgument(
-                    githubDays::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigGithubDays()::get,
                     arguments,
                     context,
                     "days",
@@ -409,8 +473,8 @@ class GitHubDiffConfig {
         }
 
         public int getMaxDiffs() {
-            final String stringValue = argsAccessor.getArgument(
-                    githubMaxDiffs::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigGithubMaxDiffs()::get,
                     arguments,
                     context,
                     "maxDiffs",
@@ -425,8 +489,8 @@ class GitHubDiffConfig {
         }
 
         public String getStartDate() {
-            return argsAccessor.getArgument(
-                    githubSince::get,
+            return getArgsAccessor().getArgument(
+                    getConfigGithubSince()::get,
                     arguments,
                     context,
                     "since",
@@ -435,8 +499,8 @@ class GitHubDiffConfig {
         }
 
         public String getEndDate() {
-            return argsAccessor.getArgument(
-                    githubUntil::get,
+            return getArgsAccessor().getArgument(
+                    getConfigGithubUntil()::get,
                     arguments,
                     context,
                     "until",
@@ -445,8 +509,8 @@ class GitHubDiffConfig {
         }
 
         public String getOwner() {
-            return argsAccessor.getArgument(
-                    githubOwner::get,
+            return getArgsAccessor().getArgument(
+                    getConfigGithubOwner()::get,
                     arguments,
                     context,
                     "owner",
@@ -455,8 +519,8 @@ class GitHubDiffConfig {
         }
 
         public String getRepo() {
-            return argsAccessor.getArgument(
-                    githubRepo::get,
+            return getArgsAccessor().getArgument(
+                    getConfigGithubRepo()::get,
                     arguments,
                     context,
                     "repo",
@@ -465,8 +529,8 @@ class GitHubDiffConfig {
         }
 
         public String getSha() {
-            return argsAccessor.getArgument(
-                    githubSha::get,
+            return getArgsAccessor().getArgument(
+                    getConfigGithubSha()::get,
                     arguments,
                     context,
                     "sha",
@@ -475,8 +539,8 @@ class GitHubDiffConfig {
         }
 
         public String getBranch() {
-            return argsAccessor.getArgument(
-                    githubBranch::get,
+            return getArgsAccessor().getArgument(
+                    getConfigGithubBranch()::get,
                     arguments,
                     context,
                     "branch",
@@ -485,27 +549,27 @@ class GitHubDiffConfig {
         }
 
         public String getToken() {
-            return Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
+            return Try.of(() -> getTextEncryptor().decrypt(context.get("github_access_token")))
                     .recover(e -> context.get("github_access_token"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recoverWith(e -> Try.of(githubAccessToken::get))
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recoverWith(e -> Try.of(getConfigGithubAccessToken()::get))
                     .getOrElseThrow(ex -> new InternalFailure("Failed to get GitHub access token", ex));
         }
 
         public String getDiffCustomModel() {
-            return argsAccessor.getArgument(
-                    diffModel::get,
+            return getArgsAccessor().getArgument(
+                    getConfigDiffModel()::get,
                     arguments,
                     context,
                     "diffModel",
                     "github_diff_custom_model",
-                    modelConfig.getCalculatedModel(context)).value();
+                    getModelConfig().getCalculatedModel(context)).value();
         }
 
         @Nullable
         public Integer getDiffContextWindow() {
-            final String stringValue = argsAccessor.getArgument(
-                    diffContextWindow::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigDiffContextWindow()::get,
                     arguments,
                     context,
                     "diffContextWindow",

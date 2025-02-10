@@ -236,42 +236,87 @@ class SlackSearchConfig {
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
-    private Optional<String> slackAccessToken;
+    private Optional<String> configSlackAccessToken;
 
     @Inject
     @ConfigProperty(name = "sb.slack.searchkeywords")
-    private Optional<String> searchKeywords;
+    private Optional<String> configSearchKeywords;
 
     @Inject
     @ConfigProperty(name = "sb.slack.filterkeywords")
-    private Optional<String> keywords;
+    private Optional<String> configKeywords;
 
     @Inject
     @ConfigProperty(name = "sb.slack.keywordwindow")
-    private Optional<String> keywordWindow;
+    private Optional<String> configKeywordWindow;
 
     @Inject
     @ConfigProperty(name = "sb.slack.ignorechannels")
-    private Optional<String> ignoreChannels;
+    private Optional<String> configIgnoreChannels;
 
     @Inject
     @ConfigProperty(name = "sb.slack.genetarekeywords")
-    private Optional<String> generateKeywords;
+    private Optional<String> configGenerateKeywords;
 
     @Inject
     @ConfigProperty(name = "sb.slack.days")
-    private Optional<String> days;
+    private Optional<String> configDays;
 
     @Inject
     @ConfigProperty(name = "sb.slack.searchttl")
-    private Optional<String> searchTtl;
+    private Optional<String> configSearchTtl;
 
     @Inject
     @ConfigProperty(name = "sb.slack.disablelinks")
-    private Optional<String> disableLinks;
+    private Optional<String> configDisableLinks;
 
-    @Inject
-    private ValidateString validateString;
+    public ArgsAccessor getArgsAccessor() {
+        return argsAccessor;
+    }
+
+    public Encryptor getTextEncryptor() {
+        return textEncryptor;
+    }
+
+    public KeywordExtractor getKeywordExtractor() {
+        return keywordExtractor;
+    }
+
+    public Optional<String> getConfigSlackAccessToken() {
+        return configSlackAccessToken;
+    }
+
+    public Optional<String> getConfigSearchKeywords() {
+        return configSearchKeywords;
+    }
+
+    public Optional<String> getConfigKeywords() {
+        return configKeywords;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
+    }
+
+    public Optional<String> getConfigIgnoreChannels() {
+        return configIgnoreChannels;
+    }
+
+    public Optional<String> getConfigGenerateKeywords() {
+        return configGenerateKeywords;
+    }
+
+    public Optional<String> getConfigDays() {
+        return configDays;
+    }
+
+    public Optional<String> getConfigSearchTtl() {
+        return configSearchTtl;
+    }
+
+    public Optional<String> getConfigDisableLinks() {
+        return configDisableLinks;
+    }
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -287,8 +332,8 @@ class SlackSearchConfig {
         }
 
         public Set<String> getSearchKeywords() {
-            final List<String> keywordslist = argsAccessor.getArgumentList(
-                            searchKeywords::get,
+            final List<String> keywordslist = getArgsAccessor().getArgumentList(
+                            getConfigSearchKeywords()::get,
                             arguments,
                             context,
                             SlackSearch.SLACK_SEARCH_KEYWORDS_ARG,
@@ -298,7 +343,7 @@ class SlackSearchConfig {
                     .map(Argument::value)
                     .toList();
 
-            final List<String> keywordsGenerated = getGenerateKeywords() ? keywordExtractor.getKeywords(prompt) : List.of();
+            final List<String> keywordsGenerated = getGenerateKeywords() ? getKeywordExtractor().getKeywords(prompt) : List.of();
 
             final HashSet<String> retValue = new HashSet<>();
             retValue.addAll(keywordslist);
@@ -307,8 +352,8 @@ class SlackSearchConfig {
         }
 
         public List<String> getFilterKeywords() {
-            return argsAccessor.getArgumentList(
-                            keywords::get,
+            return getArgsAccessor().getArgumentList(
+                            getConfigKeywords()::get,
                             arguments,
                             context,
                             SlackChannel.SLACK_KEYWORD_ARG,
@@ -320,8 +365,8 @@ class SlackSearchConfig {
         }
 
         public boolean getGenerateKeywords() {
-            final String stringValue = argsAccessor.getArgument(
-                    generateKeywords::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigGenerateKeywords()::get,
                     arguments,
                     context,
                     "generateKeywords",
@@ -332,16 +377,16 @@ class SlackSearchConfig {
         }
 
         public String getAccessToken() {
-            return Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
+            return Try.of(() -> getTextEncryptor().decrypt(context.get("slack_access_token")))
                     .recover(e -> context.get("slack_access_token"))
                     .mapTry(Objects::requireNonNull)
-                    .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
+                    .recoverWith(e -> Try.of(() -> getConfigSlackAccessToken().get()))
                     .getOrElseThrow(() -> new InternalFailure("Slack access token not found"));
         }
 
         public int getDays() {
-            final String stringValue = argsAccessor.getArgument(
-                    days::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigDays()::get,
                     arguments,
                     context,
                     SlackSearch.SLACK_SEARCH_DAYS_ARG,
@@ -358,8 +403,8 @@ class SlackSearchConfig {
         }
 
         public int getSearchTTL() {
-            final String stringValue = argsAccessor.getArgument(
-                    searchTtl::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigSearchTtl()::get,
                     arguments,
                     context,
                     "searchTtl",
@@ -372,8 +417,8 @@ class SlackSearchConfig {
         }
 
         public List<String> getIgnoreChannels() {
-            final String stringValue = argsAccessor.getArgument(
-                    ignoreChannels::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigIgnoreChannels()::get,
                     arguments,
                     context,
                     "ignoreChannels",
@@ -388,8 +433,8 @@ class SlackSearchConfig {
         }
 
         public boolean getDisableLinks() {
-            final String stringValue = argsAccessor.getArgument(
-                    disableLinks::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigDisableLinks()::get,
                     arguments,
                     context,
                     SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG,
@@ -400,8 +445,8 @@ class SlackSearchConfig {
         }
 
         public int getKeywordWindow() {
-            final Argument argument = argsAccessor.getArgument(
-                    keywordWindow::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
                     arguments,
                     context,
                     SlackChannel.SLACK_KEYWORD_WINDOW_ARG,

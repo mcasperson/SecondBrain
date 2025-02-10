@@ -73,6 +73,9 @@ public class GoogleDocs implements Tool<Void> {
             """;
 
     @Inject
+    private ArgsAccessor argsAccessor;
+
+    @Inject
     private ModelConfig modelConfig;
 
     @Inject
@@ -128,7 +131,7 @@ public class GoogleDocs implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(argsAccessor, arguments, prompt, context);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
@@ -334,45 +337,55 @@ public class GoogleDocs implements Tool<Void> {
 class GoogleDocsConfig {
     @Inject
     @ConfigProperty(name = "sb.google.serviceaccountjson")
-    private Optional<String> googleServiceAccountJson;
+    private Optional<String> configGoogleServiceAccountJson;
 
     @Inject
     @ConfigProperty(name = "sb.google.disablelinks")
-    private Optional<String> disableLinks;
+    private Optional<String> configDisableLinks;
 
     @Inject
     @ConfigProperty(name = "sb.google.doc")
-    private Optional<String> googleDoc;
+    private Optional<String> configGoogleDoc;
 
     @Inject
     @ConfigProperty(name = "sb.google.keywords")
-    private Optional<String> googleKeywords;
+    private Optional<String> configGoogleKeywords;
 
-    @Inject
-    private ArgsAccessor argsAccessor;
+    public Optional<String> getConfigGoogleServiceAccountJson() {
+        return configGoogleServiceAccountJson;
+    }
+
+    public Optional<String> getConfigDisableLinks() {
+        return configDisableLinks;
+    }
+
+    public Optional<String> getConfigGoogleDoc() {
+        return configGoogleDoc;
+    }
+
+    public Optional<String> getConfigGoogleKeywords() {
+        return configGoogleKeywords;
+    }
 
     public class LocalArguments {
-        private List<ToolArgs> arguments;
+        private final List<ToolArgs> arguments;
 
-        private String prompt;
+        private final String prompt;
 
-        private Map<String, String> context;
+        private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        private final ArgsAccessor argsAccessor;
+
+        public LocalArguments(final ArgsAccessor argsAccessor, final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
-        }
-
-        public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-            this.arguments = arguments;
-            this.prompt = prompt;
-            this.context = context;
+            this.argsAccessor = argsAccessor;
         }
 
         public String getDocumentId() {
             return argsAccessor.getArgument(
-                    googleDoc::get,
+                    getConfigGoogleDoc()::get,
                     arguments,
                     context,
                     GoogleDocs.GOOGLE_DOC_ID_ARG,
@@ -382,7 +395,7 @@ class GoogleDocsConfig {
 
         public List<String> getKeywords() {
             return argsAccessor.getArgumentList(
-                            googleKeywords::get,
+                            getConfigGoogleKeywords()::get,
                             arguments,
                             context,
                             GoogleDocs.GOOGLE_KEYWORD_ARG,
@@ -394,12 +407,12 @@ class GoogleDocsConfig {
         }
 
         public String getGoogleServiceAccountJson() {
-            return googleServiceAccountJson.get();
+            return getConfigGoogleServiceAccountJson().get();
         }
 
         public boolean getDisableLinks() {
             final Argument argument = argsAccessor.getArgument(
-                    disableLinks::get,
+                    getConfigDisableLinks()::get,
                     arguments,
                     context,
                     GoogleDocs.GOOGLE_DISABLE_LINKS_ARG,

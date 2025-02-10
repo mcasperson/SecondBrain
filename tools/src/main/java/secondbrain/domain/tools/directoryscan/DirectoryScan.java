@@ -347,43 +347,43 @@ public class DirectoryScan implements Tool<Void> {
 class DirectoryScanConfig {
     @Inject
     @ConfigProperty(name = "sb.ollama.filemodel")
-    private Optional<String> filemodel;
+    private Optional<String> configFileModel;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.filewindow")
-    private Optional<String> fileContextWindow;
+    private Optional<String> configFileContextWindow;
 
     @Inject
     @ConfigProperty(name = "sb.directoryscan.directory")
-    private Optional<String> directory;
+    private Optional<String> configDirectory;
 
     @Inject
     @ConfigProperty(name = "sb.directoryscan.maxfiles")
-    private Optional<String> maxfiles;
+    private Optional<String> configMaxfiles;
 
     @Inject
     @ConfigProperty(name = "sb.directoryscan.exclude")
-    private Optional<String> exclude;
+    private Optional<String> configExclude;
 
     @Inject
     @ConfigProperty(name = "sb.directoryscan.individualdocumentprompt")
-    private Optional<String> documentPrompt;
+    private Optional<String> configDocumentPrompt;
 
     @Inject
     @ConfigProperty(name = "sb.directoryscan.keywords")
-    private Optional<String> keywords;
+    private Optional<String> configKeywords;
 
     @Inject
     @ConfigProperty(name = "sb.directoryscan.keywordwindow")
-    private Optional<String> keywordWindow;
+    private Optional<String> configKeywordWindow;
 
     @Inject
     @ConfigProperty(name = "sb.directoryscan.disablelinks")
-    private Optional<String> disableLinks;
+    private Optional<String> configDisableLinks;
 
     @Inject
     @ConfigProperty(name = "sb.directoryscan.summarizeindividualfiles")
-    private Optional<String> summarizeIndividualFiles;
+    private Optional<String> configSummarizeIndividualFiles;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -393,6 +393,58 @@ class DirectoryScanConfig {
 
     @Inject
     private ValidateString validateString;
+
+    public Optional<String> getConfigFileModel() {
+        return configFileModel;
+    }
+
+    public Optional<String> getConfigFileContextWindow() {
+        return configFileContextWindow;
+    }
+
+    public Optional<String> getConfigDirectory() {
+        return configDirectory;
+    }
+
+    public Optional<String> getConfigMaxfiles() {
+        return configMaxfiles;
+    }
+
+    public Optional<String> getConfigExclude() {
+        return configExclude;
+    }
+
+    public Optional<String> getConfigDocumentPrompt() {
+        return configDocumentPrompt;
+    }
+
+    public Optional<String> getConfigKeywords() {
+        return configKeywords;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
+    }
+
+    public Optional<String> getConfigDisableLinks() {
+        return configDisableLinks;
+    }
+
+    public Optional<String> getConfigSummarizeIndividualFiles() {
+        return configSummarizeIndividualFiles;
+    }
+
+    public ArgsAccessor getArgsAccessor() {
+        return argsAccessor;
+    }
+
+    public ModelConfig getModelConfig() {
+        return modelConfig;
+    }
+
+    public ValidateString getValidateString() {
+        return validateString;
+    }
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -408,8 +460,8 @@ class DirectoryScanConfig {
         }
 
         public String getDirectory() {
-            return argsAccessor.getArgument(
-                    directory::get,
+            return getArgsAccessor().getArgument(
+                    getConfigDirectory()::get,
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_DIRECTORY,
@@ -418,8 +470,8 @@ class DirectoryScanConfig {
         }
 
         public int getMaxFiles() {
-            final String stringValue = argsAccessor.getArgument(
-                    maxfiles::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigMaxfiles()::get,
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_MAX_FILES,
@@ -430,18 +482,18 @@ class DirectoryScanConfig {
         }
 
         public String getFileCustomModel() {
-            return argsAccessor.getArgument(
-                    filemodel::get,
+            return getArgsAccessor().getArgument(
+                    getConfigFileModel()::get,
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_FILE_CUSTOM_MODEL,
                     "directoryscan_file_custom_model",
-                    filemodel.orElse(modelConfig.getCalculatedModel(context))).value();
+                    getConfigFileModel().orElse(getModelConfig().getCalculatedModel(context))).value();
         }
 
         public String getIndividualDocumentPrompt() {
-            return argsAccessor.getArgument(
-                    documentPrompt::get,
+            return getArgsAccessor().getArgument(
+                    getConfigDocumentPrompt()::get,
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
@@ -451,8 +503,8 @@ class DirectoryScanConfig {
 
         @Nullable
         public Integer getFileContextWindow() {
-            final String stringValue = argsAccessor.getArgument(
-                    fileContextWindow::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigFileContextWindow()::get,
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_FILE_CONTENT_WINDOW,
@@ -464,8 +516,8 @@ class DirectoryScanConfig {
 
         @Nullable
         public List<String> getExcluded() {
-            return argsAccessor.getArgumentList(
-                            exclude::get,
+            return getArgsAccessor().getArgumentList(
+                            getConfigExclude()::get,
                             arguments,
                             context,
                             DirectoryScan.DIRECTORYSCAN_EXCLUDE_FILES,
@@ -477,8 +529,8 @@ class DirectoryScanConfig {
         }
 
         public List<String> getKeywords() {
-            return argsAccessor.getArgumentList(
-                            keywords::get,
+            return getArgsAccessor().getArgumentList(
+                            getConfigKeywords()::get,
                             arguments,
                             context,
                             DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
@@ -491,8 +543,8 @@ class DirectoryScanConfig {
 
         public int getKeywordWindow() {
 
-            final String stringValue = argsAccessor.getArgument(
-                    keywordWindow::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW,
@@ -503,8 +555,8 @@ class DirectoryScanConfig {
         }
 
         public boolean getDisableLinks() {
-            final String stringValue = argsAccessor.getArgument(
-                    disableLinks::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigDisableLinks()::get,
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_DISABLELINKS_ARG,
@@ -515,8 +567,8 @@ class DirectoryScanConfig {
         }
 
         public boolean getSummarizeIndividualFiles() {
-            final String stringValue = argsAccessor.getArgument(
-                    summarizeIndividualFiles::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigSummarizeIndividualFiles()::get,
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG,

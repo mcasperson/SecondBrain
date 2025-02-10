@@ -319,37 +319,73 @@ class SlackChannelConfig {
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
-    private Optional<String> slackAccessToken;
+    private Optional<String> configSlackAccessToken;
 
     @Inject
     @ConfigProperty(name = "sb.slack.channel")
-    private Optional<String> channel;
+    private Optional<String> configChannel;
 
     @Inject
     @ConfigProperty(name = "sb.slack.days")
-    private Optional<String> days;
+    private Optional<String> configDays;
 
     @Inject
     @ConfigProperty(name = "sb.slack.historytto")
-    private Optional<String> historyttl;
+    private Optional<String> configHistoryttl;
 
     @Inject
     @ConfigProperty(name = "sb.slack.disablelinks")
-    private Optional<String> disableLinks;
+    private Optional<String> configDisableLinks;
 
     @Inject
     @ConfigProperty(name = "sb.slack.keywords")
-    private Optional<String> keywords;
+    private Optional<String> configKeywords;
 
     @Inject
     @ConfigProperty(name = "sb.slack.keywordwindow")
-    private Optional<String> keywordWindow;
+    private Optional<String> configKeywordWindow;
 
     @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
     private Encryptor textEncryptor;
+
+    public Optional<String> getConfigSlackAccessToken() {
+        return configSlackAccessToken;
+    }
+
+    public Optional<String> getConfigChannel() {
+        return configChannel;
+    }
+
+    public Optional<String> getConfigDays() {
+        return configDays;
+    }
+
+    public Optional<String> getConfigHistoryttl() {
+        return configHistoryttl;
+    }
+
+    public Optional<String> getConfigDisableLinks() {
+        return configDisableLinks;
+    }
+
+    public Optional<String> getConfigKeywords() {
+        return configKeywords;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
+    }
+
+    public ArgsAccessor getArgsAccessor() {
+        return argsAccessor;
+    }
+
+    public Encryptor getTextEncryptor() {
+        return textEncryptor;
+    }
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -365,8 +401,8 @@ class SlackChannelConfig {
         }
 
         public String getChannel() {
-            return argsAccessor.getArgument(
-                            channel::get,
+            return getArgsAccessor().getArgument(
+                            getConfigChannel()::get,
                             arguments,
                             context,
                             SlackChannel.SLACK_CHANEL_ARG,
@@ -377,8 +413,8 @@ class SlackChannelConfig {
         }
 
         public int getDays() {
-            final Argument argument = argsAccessor.getArgument(
-                    days::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigDays()::get,
                     arguments,
                     context,
                     SlackChannel.DAYS_ARG,
@@ -391,16 +427,16 @@ class SlackChannelConfig {
         }
 
         public String getAccessToken() {
-            return Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
+            return Try.of(() -> getTextEncryptor().decrypt(context.get("slack_access_token")))
                     .recover(e -> context.get("slack_access_token"))
                     .mapTry(Objects::requireNonNull)
-                    .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
+                    .recoverWith(e -> Try.of(() -> getConfigSlackAccessToken().get()))
                     .getOrElseThrow(() -> new InternalFailure("Slack access token not found"));
         }
 
         public int getSearchTTL() {
-            final Argument argument = argsAccessor.getArgument(
-                    historyttl::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigHistoryttl()::get,
                     arguments,
                     context,
                     "historyTtl",
@@ -413,8 +449,8 @@ class SlackChannelConfig {
         }
 
         public boolean getDisableLinks() {
-            final Argument argument = argsAccessor.getArgument(
-                    disableLinks::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigDisableLinks()::get,
                     arguments,
                     context,
                     SlackChannel.SLACK_DISABLELINKS_ARG,
@@ -425,8 +461,8 @@ class SlackChannelConfig {
         }
 
         public List<String> getKeywords() {
-            return argsAccessor.getArgumentList(
-                            keywords::get,
+            return getArgsAccessor().getArgumentList(
+                            getConfigKeywords()::get,
                             arguments,
                             context,
                             SlackChannel.SLACK_KEYWORD_ARG,
@@ -438,8 +474,8 @@ class SlackChannelConfig {
         }
 
         public int getKeywordWindow() {
-            final Argument argument = argsAccessor.getArgument(
-                    keywordWindow::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
                     arguments,
                     context,
                     SlackChannel.SLACK_KEYWORD_WINDOW_ARG,

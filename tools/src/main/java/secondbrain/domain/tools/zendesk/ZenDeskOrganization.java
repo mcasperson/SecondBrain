@@ -404,55 +404,55 @@ class ZenDeskConfig {
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
-    private Optional<String> zenDeskAccessToken;
+    private Optional<String> configZenDeskAccessToken;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.user")
-    private Optional<String> zenDeskUser;
+    private Optional<String> configZenDeskUser;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.url")
-    private Optional<String> zenDeskUrl;
+    private Optional<String> configZenDeskUrl;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.excludedorgs")
-    private Optional<String> zenExcludedOrgs;
+    private Optional<String> configZenExcludedOrgs;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.recipient")
-    private Optional<String> zenDeskRecipient;
+    private Optional<String> configZenDeskRecipient;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.organization")
-    private Optional<String> zenDeskOrganization;
+    private Optional<String> configZenDeskOrganization;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.days")
-    private Optional<String> zenDeskDays;
+    private Optional<String> configZenDeskDays;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.hours")
-    private Optional<String> zenDeskHours;
+    private Optional<String> configZenDeskHours;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.numcomments")
-    private Optional<String> zenDeskNumComments;
+    private Optional<String> configZenDeskNumComments;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.excludedsubmitters")
-    private Optional<String> zenDeskExcludedSubmitters;
+    private Optional<String> configZenDeskExcludedSubmitters;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.disablelinks")
-    private Optional<String> disableLinks;
+    private Optional<String> configDisableLinks;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.keywords")
-    private Optional<String> keywords;
+    private Optional<String> configKeywords;
 
     @Inject
     @ConfigProperty(name = "sb.upload.keywordwindow")
-    private Optional<String> keywordWindow;
+    private Optional<String> configKeywordWindow;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -474,6 +474,82 @@ class ZenDeskConfig {
     @Identifier("sanitizeOrganization")
     private SanitizeArgument sanitizeOrganization;
 
+    public Optional<String> getConfigZenDeskAccessToken() {
+        return configZenDeskAccessToken;
+    }
+
+    public Optional<String> getConfigZenDeskUser() {
+        return configZenDeskUser;
+    }
+
+    public Optional<String> getConfigZenDeskUrl() {
+        return configZenDeskUrl;
+    }
+
+    public Optional<String> getConfigZenExcludedOrgs() {
+        return configZenExcludedOrgs;
+    }
+
+    public Optional<String> getConfigZenDeskRecipient() {
+        return configZenDeskRecipient;
+    }
+
+    public Optional<String> getConfigZenDeskOrganization() {
+        return configZenDeskOrganization;
+    }
+
+    public Optional<String> getConfigZenDeskDays() {
+        return configZenDeskDays;
+    }
+
+    public Optional<String> getConfigZenDeskHours() {
+        return configZenDeskHours;
+    }
+
+    public Optional<String> getConfigZenDeskNumComments() {
+        return configZenDeskNumComments;
+    }
+
+    public Optional<String> getConfigZenDeskExcludedSubmitters() {
+        return configZenDeskExcludedSubmitters;
+    }
+
+    public Optional<String> getConfigDisableLinks() {
+        return configDisableLinks;
+    }
+
+    public Optional<String> getConfigKeywords() {
+        return configKeywords;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
+    }
+
+    public ArgsAccessor getArgsAccessor() {
+        return argsAccessor;
+    }
+
+    public ValidateInputs getValidateInputs() {
+        return validateInputs;
+    }
+
+    public Encryptor getTextEncryptor() {
+        return textEncryptor;
+    }
+
+    public ValidateString getValidateString() {
+        return validateString;
+    }
+
+    public SanitizeArgument getSanitizeEmail() {
+        return sanitizeEmail;
+    }
+
+    public SanitizeArgument getSanitizeOrganization() {
+        return sanitizeOrganization;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -488,12 +564,12 @@ class ZenDeskConfig {
         }
 
         public String getZenDeskUrl() {
-            return zenDeskUrl.get();
+            return getConfigZenDeskUrl().get();
         }
 
         public String getRawOrganization() {
-            final Argument argument = argsAccessor.getArgument(
-                    zenDeskOrganization::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigZenDeskOrganization()::get,
                     arguments,
                     context,
                     ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG,
@@ -504,23 +580,23 @@ class ZenDeskConfig {
                 return argument.value();
             }
 
-            return validateInputs.getCommaSeparatedList(
+            return getValidateInputs().getCommaSeparatedList(
                     prompt,
                     argument.value());
         }
 
         public String getOrganization() {
             // Organization is just a name or number. If organization is an email address, it was mixed up for the receipt.
-            if (EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(getRawOrganization(), prompt)) && StringUtils.isBlank(getRecipient())) {
+            if (EmailValidator.getInstance().isValid(getSanitizeEmail().sanitize(getRawOrganization(), prompt)) && StringUtils.isBlank(getRecipient())) {
                 return "";
             }
 
-            return sanitizeOrganization.sanitize(getRawOrganization(), prompt);
+            return getSanitizeOrganization().sanitize(getRawOrganization(), prompt);
         }
 
         public List<String> getExcludedOrganization() {
-            final Argument argument = argsAccessor.getArgument(
-                    zenExcludedOrgs::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigZenExcludedOrgs()::get,
                     arguments,
                     context,
                     ZenDeskOrganization.EXCLUDE_ORGANIZATION_ARG,
@@ -529,21 +605,21 @@ class ZenDeskConfig {
 
             final String stringValue = argument.trusted()
                     ? argument.value()
-                    : validateInputs.getCommaSeparatedList(prompt, argument.value());
+                    : getValidateInputs().getCommaSeparatedList(prompt, argument.value());
 
             final List<String> excludedOrganization = Arrays.stream(stringValue.split(","))
                     .map(String::trim)
                     .filter(StringUtils::isNotBlank)
                     .collect(Collectors.toList());
 
-            excludedOrganization.addAll(Arrays.stream(zenExcludedOrgs.orElse("").split(",")).toList());
+            excludedOrganization.addAll(Arrays.stream(getConfigZenExcludedOrgs().orElse("").split(",")).toList());
 
             return excludedOrganization;
         }
 
         public String getRawRecipient() {
-            return argsAccessor.getArgument(
-                    zenDeskRecipient::get,
+            return getArgsAccessor().getArgument(
+                    getConfigZenDeskRecipient()::get,
                     arguments,
                     context,
                     ZenDeskOrganization.RECIPIENT_ARG,
@@ -553,16 +629,16 @@ class ZenDeskConfig {
 
         public String getRecipient() {
             // Organization is just a name or number. If organization is an email address, it was mixed up for the receipt.
-            if (EmailValidator.getInstance().isValid(sanitizeEmail.sanitize(getRawOrganization(), prompt)) && StringUtils.isBlank(getRawRecipient())) {
-                return sanitizeEmail.sanitize(getRawOrganization(), prompt);
+            if (EmailValidator.getInstance().isValid(getSanitizeEmail().sanitize(getRawOrganization(), prompt)) && StringUtils.isBlank(getRawRecipient())) {
+                return getSanitizeEmail().sanitize(getRawOrganization(), prompt);
             }
 
-            return sanitizeEmail.sanitize(getRawRecipient(), prompt);
+            return getSanitizeEmail().sanitize(getRawRecipient(), prompt);
         }
 
         public List<String> getExcludedSubmitters() {
-            final String stringValue = argsAccessor.getArgument(
-                    zenDeskExcludedSubmitters::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigZenDeskExcludedSubmitters()::get,
                     arguments,
                     context,
                     ZenDeskOrganization.EXCLUDE_SUBMITTERS_ARG,
@@ -576,8 +652,8 @@ class ZenDeskConfig {
         }
 
         public int getRawHours() {
-            final String stringValue = argsAccessor.getArgument(
-                    zenDeskHours::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigZenDeskHours()::get,
                     arguments,
                     context,
                     ZenDeskOrganization.HOURS_ARG,
@@ -591,8 +667,8 @@ class ZenDeskConfig {
         }
 
         public int getRawDays() {
-            final String stringValue = argsAccessor.getArgument(
-                    zenDeskDays::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigZenDeskDays()::get,
                     arguments,
                     context,
                     ZenDeskOrganization.DAYS_ARG,
@@ -614,8 +690,8 @@ class ZenDeskConfig {
         }
 
         public int getNumComments() {
-            final String stringValue = argsAccessor.getArgument(
-                    zenDeskNumComments::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigZenDeskNumComments()::get,
                     arguments,
                     context,
                     ZenDeskOrganization.NUM_COMMENTS_ARG,
@@ -632,10 +708,10 @@ class ZenDeskConfig {
         public String getToken() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
-            final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_access_token")))
+            final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_access_token")))
                     .recover(e -> context.get("zendesk_access_token"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recoverWith(e -> Try.of(() -> zenDeskAccessToken.get()));
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recoverWith(e -> Try.of(() -> getConfigZenDeskAccessToken().get()));
 
             if (token.isFailure() || StringUtils.isBlank(token.get())) {
                 throw new InternalFailure("Failed to get Zendesk access token");
@@ -645,8 +721,8 @@ class ZenDeskConfig {
         }
 
         public String getUrl() {
-            final Try<String> url = getContext("zendesk_url", context, textEncryptor)
-                    .recoverWith(e -> Try.of(() -> zenDeskUrl.get()));
+            final Try<String> url = getContext("zendesk_url", context, getTextEncryptor())
+                    .recoverWith(e -> Try.of(() -> getConfigZenDeskUrl().get()));
 
             if (url.isFailure() || StringUtils.isBlank(url.get())) {
                 throw new InternalFailure("Failed to get Zendesk URL");
@@ -656,10 +732,10 @@ class ZenDeskConfig {
         }
 
         public String getUser() {
-            final Try<String> user = Try.of(() -> textEncryptor.decrypt(context.get("zendesk_user")))
+            final Try<String> user = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_user")))
                     .recover(e -> context.get("zendesk_user"))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recoverWith(e -> Try.of(() -> zenDeskUser.get()));
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recoverWith(e -> Try.of(() -> getConfigZenDeskUser().get()));
 
             if (user.isFailure() || StringUtils.isBlank(user.get())) {
                 throw new InternalFailure("Failed to get Zendesk User");
@@ -707,8 +783,8 @@ class ZenDeskConfig {
         }
 
         public boolean getDisableLinks() {
-            final String stringValue = argsAccessor.getArgument(
-                    disableLinks::get,
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigDisableLinks()::get,
                     arguments,
                     context,
                     ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG,
@@ -719,8 +795,8 @@ class ZenDeskConfig {
         }
 
         public List<String> getKeywords() {
-            return argsAccessor.getArgumentList(
-                            keywords::get,
+            return getArgsAccessor().getArgumentList(
+                            getConfigKeywords()::get,
                             arguments,
                             context,
                             ZenDeskOrganization.ZENDESK_KEYWORD_ARG,
@@ -732,8 +808,8 @@ class ZenDeskConfig {
         }
 
         public int getKeywordWindow() {
-            final Argument argument = argsAccessor.getArgument(
-                    keywordWindow::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
                     arguments,
                     context,
                     ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG,

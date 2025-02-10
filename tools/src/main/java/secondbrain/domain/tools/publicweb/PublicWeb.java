@@ -209,22 +209,42 @@ class PublicWebConfig {
 
     @Inject
     @ConfigProperty(name = "sb.publicweb.url")
-    private Optional<String> url;
+    private Optional<String> configUrl;
 
     @Inject
     @ConfigProperty(name = "sb.publicweb.disablelinks")
-    private Optional<String> disableLinks;
+    private Optional<String> configDisableLinks;
 
     @Inject
     @ConfigProperty(name = "sb.publicweb.keywords")
-    private Optional<String> keywords;
+    private Optional<String> configKeywords;
 
     @Inject
     @ConfigProperty(name = "sb.publicweb.keywordwindow")
-    private Optional<String> keywordWindow;
+    private Optional<String> configKeywordWindow;
 
     @Inject
     private ArgsAccessor argsAccessor;
+
+    public Optional<String> getConfigUrl() {
+        return configUrl;
+    }
+
+    public Optional<String> getConfigDisableLinks() {
+        return configDisableLinks;
+    }
+
+    public Optional<String> getConfigKeywords() {
+        return configKeywords;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
+    }
+
+    public ArgsAccessor getArgsAccessor() {
+        return argsAccessor;
+    }
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -240,8 +260,8 @@ class PublicWebConfig {
         }
 
         public String getUrl() {
-            return argsAccessor.getArgument(
-                    url::get,
+            return getArgsAccessor().getArgument(
+                    getConfigUrl()::get,
                     arguments,
                     context,
                     PublicWeb.PUBLICWEB_URL_ARG,
@@ -250,8 +270,8 @@ class PublicWebConfig {
         }
 
         public boolean getDisableLinks() {
-            final Argument argument = argsAccessor.getArgument(
-                    disableLinks::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigDisableLinks()::get,
                     arguments,
                     context,
                     PublicWeb.PUBLICWEB_DISABLELINKS_ARG,
@@ -262,8 +282,8 @@ class PublicWebConfig {
         }
 
         public List<String> getKeywords() {
-            return argsAccessor.getArgumentList(
-                            keywords::get,
+            return getArgsAccessor().getArgumentList(
+                            getConfigKeywords()::get,
                             arguments,
                             context,
                             PublicWeb.PUBLICWEB_KEYWORD_ARG,
@@ -275,8 +295,8 @@ class PublicWebConfig {
         }
 
         public int getKeywordWindow() {
-            final Argument argument = argsAccessor.getArgument(
-                    keywordWindow::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
                     arguments,
                     context,
                     PublicWeb.PUBLICWEB_KEYWORD_WINDOW_ARG,

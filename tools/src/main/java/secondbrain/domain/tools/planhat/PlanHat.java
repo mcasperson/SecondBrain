@@ -231,23 +231,23 @@ class PlanHatConfig {
 
     @Inject
     @ConfigProperty(name = "sb.planhat.company")
-    private Optional<String> company;
+    private Optional<String> configCompany;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.days")
-    private Optional<String> from;
+    private Optional<String> configFrom;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.accesstoken")
-    private Optional<String> token;
+    private Optional<String> configToken;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.searchttl")
-    private Optional<String> searchTtl;
+    private Optional<String> configSearchTtl;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.disablelinks")
-    private Optional<String> disableLinks;
+    private Optional<String> configDisableLinks;
 
     @Inject
     private ValidateString validateString;
@@ -257,11 +257,47 @@ class PlanHatConfig {
 
     @Inject
     @ConfigProperty(name = "sb.planhat.keywords")
-    private Optional<String> keywords;
+    private Optional<String> configKeywords;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.keywordwindow")
-    private Optional<String> keywordWindow;
+    private Optional<String> configKeywordWindow;
+
+    public Optional<String> getConfigCompany() {
+        return configCompany;
+    }
+
+    public Optional<String> getConfigFrom() {
+        return configFrom;
+    }
+
+    public Optional<String> getConfigToken() {
+        return configToken;
+    }
+
+    public Optional<String> getConfigSearchTtl() {
+        return configSearchTtl;
+    }
+
+    public Optional<String> getConfigDisableLinks() {
+        return configDisableLinks;
+    }
+
+    public ValidateString getValidateString() {
+        return validateString;
+    }
+
+    public ArgsAccessor getArgsAccessor() {
+        return argsAccessor;
+    }
+
+    public Optional<String> getConfigKeywords() {
+        return configKeywords;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
+    }
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -277,8 +313,8 @@ class PlanHatConfig {
         }
 
         public String getCompany() {
-            return argsAccessor.getArgument(
-                    company::get,
+            return getArgsAccessor().getArgument(
+                    getConfigCompany()::get,
                     arguments,
                     context,
                     PlanHat.COMPANY_ID_ARGS,
@@ -287,8 +323,8 @@ class PlanHatConfig {
         }
 
         public int getDays() {
-            final Argument argument = argsAccessor.getArgument(
-                    from::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigFrom()::get,
                     arguments,
                     context,
                     PlanHat.DAYS_ARG,
@@ -300,17 +336,17 @@ class PlanHatConfig {
 
 
         public String getToken() {
-            return Try.of(token::get)
-                    .mapTry(validateString::throwIfEmpty)
+            return Try.of(getConfigToken()::get)
+                    .mapTry(getValidateString()::throwIfEmpty)
                     .recover(e -> context.get("planhat_token"))
-                    .mapTry(validateString::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfEmpty)
                     .recover(e -> "")
                     .get();
         }
 
         public int getSearchTTL() {
-            final Argument argument = argsAccessor.getArgument(
-                    searchTtl::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigSearchTtl()::get,
                     arguments,
                     context,
                     PlanHat.SEARCHTTL_ARG,
@@ -323,8 +359,8 @@ class PlanHatConfig {
         }
 
         public boolean getDisableLinks() {
-            final Argument argument = argsAccessor.getArgument(
-                    disableLinks::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigDisableLinks()::get,
                     arguments,
                     context,
                     PlanHat.DISABLE_LINKS_ARG,
@@ -335,8 +371,8 @@ class PlanHatConfig {
         }
 
         public List<String> getKeywords() {
-            return argsAccessor.getArgumentList(
-                            keywords::get,
+            return getArgsAccessor().getArgumentList(
+                            getConfigKeywords()::get,
                             arguments,
                             context,
                             PlanHat.PLANHAT_KEYWORD_ARG,
@@ -348,8 +384,8 @@ class PlanHatConfig {
         }
 
         public int getKeywordWindow() {
-            final Argument argument = argsAccessor.getArgument(
-                    keywordWindow::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
                     arguments,
                     context,
                     PlanHat.PLANHAT_KEYWORD_WINDOW_ARG,

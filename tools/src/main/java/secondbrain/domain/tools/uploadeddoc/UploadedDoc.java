@@ -207,14 +207,26 @@ public class UploadedDoc implements Tool<Void> {
 class UploadDocConfig {
     @Inject
     @ConfigProperty(name = "sb.upload.keywords")
-    private Optional<String> uploadKeywords;
+    private Optional<String> configUploadKeywords;
 
     @Inject
     @ConfigProperty(name = "sb.upload.keywordwindow")
-    private Optional<String> keywordWindow;
+    private Optional<String> configKeywordWindow;
 
     @Inject
     private ArgsAccessor argsAccessor;
+
+    public Optional<String> getConfigUploadKeywords() {
+        return configUploadKeywords;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
+    }
+
+    public ArgsAccessor getArgsAccessor() {
+        return argsAccessor;
+    }
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -243,8 +255,8 @@ class UploadDocConfig {
         }
 
         public List<String> getKeywords() {
-            return argsAccessor.getArgumentList(
-                            uploadKeywords::get,
+            return getArgsAccessor().getArgumentList(
+                            getConfigUploadKeywords()::get,
                             arguments,
                             context,
                             UploadedDoc.UPLOADED_DOC_KEYWORD_ARG,
@@ -256,8 +268,8 @@ class UploadDocConfig {
         }
 
         public int getKeywordWindow() {
-            final Argument argument = argsAccessor.getArgument(
-                    keywordWindow::get,
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
                     arguments,
                     context,
                     UploadedDoc.UPLOADED_DOC_KEYWORD_WINDOW_ARG,
