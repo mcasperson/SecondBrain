@@ -8,7 +8,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.exceptions.LocalStorageFailure;
@@ -130,7 +129,6 @@ public class H2LocalStorage implements LocalStorage {
                 .isSuccess();
     }
 
-    @Retry
     @Override
     synchronized public String getString(final String tool, final String source, final String promptHash) {
         if (isDisabled() || isWriteOnly()) {
@@ -232,7 +230,6 @@ public class H2LocalStorage implements LocalStorage {
         return getOrPutObject(tool, source, promptHash, 0, clazz, generateValue);
     }
 
-    @Retry
     @Override
     synchronized public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
         if (isDisabled() || isReadOnly()) {
