@@ -147,8 +147,8 @@ public class PlanHat implements Tool<Conversation> {
                         htmlToText.getText(conversation.snippet()))
                 )
                 .map(conversation -> conversation.updateDescriptionAndSnippet(
-                        documentTrimmer.trimDocument(conversation.description(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()),
-                        documentTrimmer.trimDocument(conversation.snippet(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
+                        documentTrimmer.trimDocumentToKeywords(conversation.description(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()),
+                        documentTrimmer.trimDocumentToKeywords(conversation.snippet(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
                 )
                 .filter(conversation -> !validateString.isEmpty(conversation, Conversation::getContent))
                 .map(this::getDocumentContext)

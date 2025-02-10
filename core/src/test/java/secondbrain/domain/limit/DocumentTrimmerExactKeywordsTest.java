@@ -10,13 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class DocumentTrimmerExactKeywordsTest {
 
     @Test
-    void testTrimDocument() {
+    void testTrimDocumentToKeywords() {
         DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
         String document = "This is a test document. It contains several keywords. This is another sentence with keywords.";
         List<String> keywords = List.of("test", "keywords");
 
         String expected = "is a test document. eral keywords. This with keywords.";
-        String result = sectioner.trimDocument(document, keywords, 20);
+        String result = sectioner.trimDocumentToKeywords(document, keywords, 20);
 
         assertEquals(expected, result);
     }
@@ -28,42 +28,42 @@ class DocumentTrimmerExactKeywordsTest {
         List<String> keywords = List.of("test", "keywords");
 
         String expected = "is a test keywords docume eral test keywords. This with keywords.";
-        String result = sectioner.trimDocument(document, keywords, 20);
+        String result = sectioner.trimDocumentToKeywords(document, keywords, 20);
 
         assertEquals(expected, result);
     }
 
     @Test
-    void testTrimDocumentWithNoKeywords() {
+    void testTrimDocumentToKeywordsWithNoKeywords() {
         DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
         String document = "This is a test document. It contains several keywords. This is another sentence with keywords.";
         List<String> keywords = List.of();
 
-        String result = sectioner.trimDocument(document, keywords, 20);
+        String result = sectioner.trimDocumentToKeywords(document, keywords, 20);
 
         assertEquals(document, result);
     }
 
     @Test
-    void testTrimDocumentWithNullDocument() {
+    void testTrimDocumentWithNullDocumentToKeywords() {
         DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
         String document = null;
         List<String> keywords = List.of("test", "keywords");
 
         String expected = "";
-        String result = sectioner.trimDocument(document, keywords, 20);
+        String result = sectioner.trimDocumentToKeywords(document, keywords, 20);
 
         assertEquals(expected, result);
     }
 
     @Test
-    void testTrimDocumentWithEmptyDocument() {
+    void testTrimDocumentWithEmptyDocumentToKeywords() {
         DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
         String document = "";
         List<String> keywords = List.of("test", "keywords");
 
         String expected = "";
-        String result = sectioner.trimDocument(document, keywords, 20);
+        String result = sectioner.trimDocumentToKeywords(document, keywords, 20);
 
         assertEquals(expected, result);
     }

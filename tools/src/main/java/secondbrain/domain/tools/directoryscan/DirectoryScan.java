@@ -245,7 +245,7 @@ public class DirectoryScan implements Tool<Void> {
              The combined answers are then used to answer the prompt again.
          */
         final String contents = Arrays.stream(fileToText.convert(file).split("\n"))
-                .map(rawContents -> documentTrimmer.trimDocument(
+                .map(rawContents -> documentTrimmer.trimDocumentToKeywords(
                         rawContents,
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))
@@ -286,7 +286,7 @@ public class DirectoryScan implements Tool<Void> {
              The combined answers are then used to answer the prompt again.
          */
         final String contents = Arrays.stream(fileToText.convert(file).split("\n"))
-                .map(rawContents -> documentTrimmer.trimDocument(
+                .map(rawContents -> documentTrimmer.trimDocumentToKeywords(
                         rawContents,
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))

@@ -170,7 +170,7 @@ public class UploadedDoc implements Tool<Void> {
 
         final String contents = fileToText.convert(tempFile.getAbsolutePath());
 
-        return Try.of(() -> documentTrimmer.trimDocument(
+        return Try.of(() -> documentTrimmer.trimDocumentToKeywords(
                         contents,
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))

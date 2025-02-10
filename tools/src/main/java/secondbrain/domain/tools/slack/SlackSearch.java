@@ -143,7 +143,7 @@ public class SlackSearch implements Tool<MatchedItem> {
                         .noneMatch(matchedItem.getChannel().getName()::equalsIgnoreCase))
                 .map(this::getDocumentContext)
                 .map(ragDoc -> ragDoc.updateDocument(
-                        documentTrimmer.trimDocument(
+                        documentTrimmer.trimDocumentToKeywords(
                                 ragDoc.document(),
                                 parsedArgs.getFilterKeywords(),
                                 parsedArgs.getKeywordWindow())))

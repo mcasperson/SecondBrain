@@ -14,7 +14,7 @@ import java.util.*;
 public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
 
     @Override
-    public String trimDocument(final String document, final List<String> keywords, final int sectionLength) {
+    public String trimDocumentToKeywords(final String document, final List<String> keywords, final int sectionLength) {
         if (document == null || document.isEmpty()) {
             return "";
         }

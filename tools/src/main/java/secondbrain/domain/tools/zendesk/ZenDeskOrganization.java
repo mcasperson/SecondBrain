@@ -307,7 +307,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     private List<RagDocumentContext<ZenDeskResultsResponse>> trimTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets) {
         return tickets.stream()
                 .map(ticket -> ticket.updateDocument(
-                        documentTrimmer.trimDocument(
+                        documentTrimmer.trimDocumentToKeywords(
                                 ticket.document(),
                                 parsedArgs.getKeywords(),
                                 parsedArgs.getKeywordWindow())))

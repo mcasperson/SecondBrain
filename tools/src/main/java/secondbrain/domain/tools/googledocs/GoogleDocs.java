@@ -166,7 +166,7 @@ public class GoogleDocs implements Tool<Void> {
                         .build())
                 .mapTry(service -> service.documents().get(parsedArgs.getDocumentId()).execute())
                 .map(this::getDocumentText)
-                .map(document -> documentTrimmer.trimDocument(
+                .map(document -> documentTrimmer.trimDocumentToKeywords(
                         document, parsedArgs.getKeywords(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
                 .map(validateString::throwIfEmpty)
                 .map(document -> getDocumentContext(document, parsedArgs.getDocumentId()))

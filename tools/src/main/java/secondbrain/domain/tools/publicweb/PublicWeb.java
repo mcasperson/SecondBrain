@@ -125,7 +125,7 @@ public class PublicWeb implements Tool<Void> {
         }
 
         return Try.of(() -> fileReader.read(parsedArgs.getUrl()))
-                .map(content -> documentTrimmer.trimDocument(
+                .map(content -> documentTrimmer.trimDocumentToKeywords(
                         content,
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))

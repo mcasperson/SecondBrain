@@ -145,7 +145,10 @@ public class SlackChannel implements Tool<Void> {
         // you can get this instance via ctx.client() in a Bolt app
         final AsyncMethodsClient client = Slack.getInstance().methodsAsync();
 
-        final ChannelDetails channelDetails = Try.of(() -> slackClient.findChannelId(client, parsedArgs.getAccessToken(), parsedArgs.getChannel()))
+        final ChannelDetails channelDetails = Try.of(() -> slackClient.findChannelId(
+                        client,
+                        parsedArgs.getAccessToken(),
+                        parsedArgs.getChannel()))
                 .getOrElseThrow(() -> new InternalFailure("Channel not found"));
 
         final Try<String> messagesTry = Try.of(() -> slackClient.conversationHistory(
@@ -155,7 +158,10 @@ public class SlackChannel implements Tool<Void> {
                         oldest,
                         parsedArgs.getSearchTTL()))
                 .map(this::conversationsToText)
-                .map(document -> documentTrimmer.trimDocument(document, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
+                .map(document -> documentTrimmer.trimDocumentToKeywords(
+                        document,
+                        parsedArgs.getKeywords(),
+                        parsedArgs.getKeywordWindow()))
                 .map(validateString::throwIfEmpty);
 
         final String messages = messagesTry
