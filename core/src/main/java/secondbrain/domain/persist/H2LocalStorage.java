@@ -22,41 +22,33 @@ import java.sql.Timestamp;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 @ApplicationScoped
 public class H2LocalStorage implements LocalStorage {
 
+    private final AtomicInteger totalReads = new AtomicInteger();
+    private final AtomicInteger totalCacheHits = new AtomicInteger();
     @Inject
     @ConfigProperty(name = "sb.cache.disable")
     private Optional<String> disable;
-
     @Inject
     @ConfigProperty(name = "sb.cache.readonly")
     private Optional<String> readOnly;
-
     @Inject
     @ConfigProperty(name = "sb.cache.writeonly")
     private Optional<String> writeOnly;
-
     @Inject
     @ConfigProperty(name = "sb.cache.path")
     private Optional<String> path;
-
     @Inject
     private JsonDeserializer jsonDeserializer;
-
     @Inject
     private ExceptionHandler exceptionHandler;
-
     @Inject
     private Logger logger;
-
     private Connection connection;
-
-    private int totalReads = 0;
-
-    private int totalCacheHits = 0;
 
     @PostConstruct
     private void getConnection() {
@@ -76,13 +68,13 @@ public class H2LocalStorage implements LocalStorage {
 
         }
 
-        if (totalReads > 0) {
+        if (totalReads.get() > 0) {
             logger.info("Cache hits percentage: " + getCacheHitsPercentage() + "%");
         }
     }
 
     private float getCacheHitsPercentage() {
-        return totalReads > 0 ? (float) totalCacheHits / totalReads * 100 : 0;
+        return totalReads.get() > 0 ? totalCacheHits.floatValue() / totalReads.get() * 100 : 0;
     }
 
     private String getDatabasePath() {
@@ -145,7 +137,7 @@ public class H2LocalStorage implements LocalStorage {
             return null;
         }
 
-        ++totalReads;
+        totalReads.incrementAndGet();
 
         final Try<String> result = Try
                 .of(() -> connection.prepareStatement("""
@@ -163,7 +155,7 @@ public class H2LocalStorage implements LocalStorage {
                 .mapTry(PreparedStatement::executeQuery)
                 .mapTry(resultSet -> {
                     if (resultSet.next()) {
-                        ++totalCacheHits;
+                        totalCacheHits.incrementAndGet();
                         return resultSet.getString(1);
                     }
                     return null;
