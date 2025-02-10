@@ -1,7 +1,7 @@
 package secondbrain.domain.limit;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.tika.utils.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
 
@@ -111,7 +111,10 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
             final List<Integer> positions = new ArrayList<>();
             int position = lowerCaseDocument.indexOf(keyword.toLowerCase());
             while (position != -1) {
-                positions.add(position);
+                // Keywords must be whole words. Otherwise keywords like "eks" match things like "weeks".
+                if (isWholeWord(document, keyword, position)) {
+                    positions.add(position);
+                }
                 position = lowerCaseDocument.indexOf(keyword.toLowerCase(), position + 1);
             }
 
@@ -120,6 +123,14 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
             }
         }
         return keywordPositions;
+    }
+
+    public boolean isWholeWord(final String document, final String keyword, final int position) {
+        if (!(position <= 0 || !StringUtils.isAlphanumeric(document.substring(position - 1, position)))) {
+            return false;
+        }
+
+        return position + keyword.length() >= document.length() || !StringUtils.isAlphanumeric(document.substring(position + keyword.length(), position + keyword.length() + 1));
     }
 }
 

@@ -152,7 +152,7 @@ public class PlanHat implements Tool<Conversation> {
                 )
                 .filter(conversation -> !validateString.isEmpty(conversation, Conversation::getContent))
                 .map(conversation -> getDocumentContext(conversation, parsedArgs))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override

@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 class DocumentTrimmerExactKeywordsTest {
 
@@ -148,5 +148,28 @@ class DocumentTrimmerExactKeywordsTest {
         List<Section> result = sectioner.mergeSections(sections);
 
         assertEquals(expected, result);
+    }
+
+    @Test
+    void testIsWholeWord() {
+        DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
+
+        String document = "This is a test document with keywords.";
+        String keyword = "test";
+
+        // Test when the keyword is a whole word
+        assertTrue(sectioner.isWholeWord(document, keyword, document.indexOf(keyword)));
+
+        // Test when the keyword is part of another word
+        assertFalse(sectioner.isWholeWord(document, "tes", document.indexOf("tes")));
+
+        // Test when the keyword is at the start of the document
+        assertTrue(sectioner.isWholeWord(document, "This", document.indexOf("This")));
+
+        // Test when the keyword is at the end of the document
+        assertTrue(sectioner.isWholeWord(document, "keywords", document.indexOf("keywords")));
+
+        // Test when the keyword is not a whole word at the end of the document
+        assertFalse(sectioner.isWholeWord(document, "keyword", document.indexOf("keyword")));
     }
 }
