@@ -56,7 +56,7 @@ class PDF(FPDF):
         self.ln()
 
 
-def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to):
+def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_page):
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -67,7 +67,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to):
     pdf.add_font('Roboto', 'BI', os.path.join(script_dir, 'fonts/roboto/Roboto-BoldItalic.ttf'))
 
     pdf.add_page()
-    pdf.image(os.path.join(script_dir, 'logo.jpg'), x=0, y=0, w=pdf.w, h=pdf.h)
+    pdf.image(os.path.join(script_dir, cover_page), x=0, y=0, w=pdf.w, h=pdf.h)
     pdf.frontage_title('AI of Sauron')
     pdf.frontage_subtitle(title)
 
@@ -146,6 +146,7 @@ if __name__ == "__main__":
     parser.add_argument('--title', type=str, help='The PDF title.')
     parser.add_argument('--date_from', type=str, help='The start of the date range.')
     parser.add_argument('--date_to', type=str, help='The end of the date range.')
+    parser.add_argument('--cover_page', type=str, help='The cover page image.')
 
     args = parser.parse_args()
-    convert_md_to_pdf(args.directory, args.pdf, args.title, args.date_from, args.date_to)
+    convert_md_to_pdf(args.directory, args.pdf, args.title, args.date_from, args.date_to, args.cover_page)
