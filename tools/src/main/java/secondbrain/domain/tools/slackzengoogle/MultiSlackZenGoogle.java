@@ -309,6 +309,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
                 .toList();
 
         /*
@@ -334,6 +335,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // Post-process the rag context
                 .stream()
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
@@ -352,6 +354,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
                 .toList();
 
         final List<RagDocumentContext<Void>> zenContext = entity.getZenDesk()
@@ -370,6 +373,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
@@ -389,6 +393,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 

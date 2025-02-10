@@ -5,6 +5,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.limit.TrimResult;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.PriorityQueue;
 
 import static java.util.Comparator.comparing;
@@ -19,25 +20,37 @@ import static java.util.Comparator.comparing;
  * When multiple documents make up the context passed to an LLM, the RagMultiDocumentContext
  * class is used to capture many RagDocumentContext instances.
  *
- * @param document  The document
- * @param sentences The individual context strings that make up the documents
- * @param id        The ID of the document
- * @param meta      The metadata associated with the document
- * @param link      The link to the document
+ * @param contextLabel   The label of the context when it is presented to the LLM
+ * @param document       The document
+ * @param sentences      The individual context strings that make up the documents
+ * @param id             The ID of the document
+ * @param meta           The metadata associated with the document
+ * @param link           The link to the document
+ * @param keywordMatches The keywords that were matched in the document
+ * @param group          The group that the document belongs to
  */
 public record RagDocumentContext<T>(String contextLabel, String document, List<RagStringContext> sentences, String id,
-                                    @Nullable T meta, @Nullable String link, @Nullable List<String> keywordMatches) {
+                                    @Nullable T meta, @Nullable String link, @Nullable List<String> keywordMatches,
+                                    @Nullable String group) {
 
-    public RagDocumentContext(String contextLabel, final String document, final List<RagStringContext> sentences, String id) {
-        this(contextLabel, document, sentences, id, null, null, null);
+    public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T meta, final @Nullable String link, final @Nullable List<String> keywordMatches) {
+        this(contextLabel, document, sentences, id, meta, link, keywordMatches, null);
     }
 
-    public RagDocumentContext(String contextLabel, final String document, final List<RagStringContext> sentences, String id, @Nullable T meta, @Nullable String link) {
-        this(contextLabel, document, sentences, id, meta, link, null);
+    public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id) {
+        this(contextLabel, document, sentences, id, null, null, null, null);
     }
 
-    public RagDocumentContext(String contextLabel, final String document, final List<RagStringContext> sentences) {
-        this(contextLabel, document, sentences, "", null, null, null);
+    public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T meta, final @Nullable String link) {
+        this(contextLabel, document, sentences, id, meta, link, null, null);
+    }
+
+    public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences) {
+        this(contextLabel, document, sentences, "", null, null, null, null);
+    }
+
+    public String getGroup() {
+        return Objects.requireNonNullElse(group, "");
     }
 
     /**
@@ -50,19 +63,23 @@ public record RagDocumentContext<T>(String contextLabel, String document, List<R
      * @return A new copy of this object with the new document
      */
     public RagDocumentContext<T> updateDocument(final String document) {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link, keywordMatches);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link, keywordMatches, group);
     }
 
     public RagDocumentContext<T> updateDocument(final TrimResult trimResult) {
-        return new RagDocumentContext<>(contextLabel, trimResult.document(), sentences, id, meta, link, trimResult.keywordMatches());
+        return new RagDocumentContext<>(contextLabel, trimResult.document(), sentences, id, meta, link, trimResult.keywordMatches(), group);
+    }
+
+    public RagDocumentContext<T> updateGroup(final String group) {
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link, keywordMatches, group);
     }
 
     public RagDocumentContext<T> updateContextLabel(final String contextLabel) {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link, keywordMatches);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link, keywordMatches, group);
     }
 
     public RagDocumentContext<T> updateLink(final String link) {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link, keywordMatches);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link, keywordMatches, group);
     }
 
     /**
@@ -71,7 +88,7 @@ public record RagDocumentContext<T>(String contextLabel, String document, List<R
      * type to work with.
      */
     public RagDocumentContext<Void> getRagDocumentContextVoid() {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, null, link, keywordMatches);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, null, link, keywordMatches, group);
     }
 
     /**
