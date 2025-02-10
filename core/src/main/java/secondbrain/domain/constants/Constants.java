@@ -1,7 +1,7 @@
 package secondbrain.domain.constants;
 
 public class Constants {
-    public static final int DEFAULT_SEMAPHORE_COUNT = 10;
+    public static final int DEFAULT_SEMAPHORE_COUNT = 5;
 
     /**
      * The default content window size. Increasing this value increases the memory

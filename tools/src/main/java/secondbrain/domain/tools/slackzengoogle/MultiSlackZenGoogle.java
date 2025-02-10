@@ -303,7 +303,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(ex -> log.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> log.info("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -326,7 +327,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(context, prompt, args))
                 // We continue on even if one tool fails, so log and swallow the exception
-                .onFailure(ex -> log.warning("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(InternalFailure.class, ex -> log.info("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(ExternalFailure.class, ex -> log.warning("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                 // If anything fails, get an empty list
                 .getOrElse(List::of)
                 // Post-process the rag context
@@ -344,7 +346,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(GoogleDocs.GOOGLE_DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(context, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(ex -> log.warning("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> log.info("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -361,7 +364,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(context, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(ex -> log.warning("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> log.info("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -379,7 +383,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(PlanHat.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> planHat.getContext(context, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(ex -> log.warning("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> log.info("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name

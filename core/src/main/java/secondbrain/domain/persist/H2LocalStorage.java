@@ -55,6 +55,10 @@ public class H2LocalStorage implements LocalStorage {
 
     private Connection connection;
 
+    private int totalReads = 0;
+
+    private int totalCacheHits = 0;
+
     @PostConstruct
     private void getConnection() {
         this.connection = Try.of(() -> DriverManager.getConnection(getConnectionString()))
@@ -72,6 +76,14 @@ public class H2LocalStorage implements LocalStorage {
                     .andFinally(() -> this.connection = null);
 
         }
+
+        if (totalReads > 0) {
+            logger.info("Cache hits percentage: " + getCacheHitsPercentage() + "%");
+        }
+    }
+
+    private float getCacheHitsPercentage() {
+        return totalReads > 0 ? (float)totalCacheHits / totalReads * 100 : 0;
     }
 
     private String getDatabasePath() {
@@ -134,6 +146,8 @@ public class H2LocalStorage implements LocalStorage {
             return null;
         }
 
+        ++totalReads;
+
         final Try<String> result = Try
                 .of(() -> connection.prepareStatement("""
                         SELECT response FROM local_storage
@@ -150,6 +164,7 @@ public class H2LocalStorage implements LocalStorage {
                 .mapTry(PreparedStatement::executeQuery)
                 .mapTry(resultSet -> {
                     if (resultSet.next()) {
+                        ++totalCacheHits;
                         return resultSet.getString(1);
                     }
                     return null;
