@@ -252,15 +252,15 @@ if ($GenerateTopicReports)
 # Step 2
 # Generate an executive summary for the companies
 
-# Delete the executie summary file
-Remove-Item "$subDir/Executive Summary.md"
-
-# Get all files in the directory
-$files = Get-ChildItem -Path $subDir
-
 # Loop over each file
 if ($GenerateExecutiveSummary)
 {
+    # Delete the executie summary file
+    Remove-Item "$subDir/Executive Summary.md"
+
+    # Get all files in the directory
+    $files = Get-ChildItem -Path $subDir
+
     foreach ($file in $files)
     {
         if (-not (Test-Path -Path $file -PathType Leaf))
