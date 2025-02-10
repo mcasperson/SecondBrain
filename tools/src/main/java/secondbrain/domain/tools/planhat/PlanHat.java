@@ -11,6 +11,7 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
@@ -148,8 +149,8 @@ public class PlanHat implements Tool<Conversation> {
                         htmlToText.getText(conversation.description()),
                         htmlToText.getText(conversation.snippet()))
                 )
-                .filter(conversation -> !validateString.isEmpty(conversation, Conversation::getContent))
                 .map(conversation -> getDocumentContext(conversation, parsedArgs))
+                .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
                 .toList();
     }
 
@@ -186,11 +187,7 @@ public class PlanHat implements Tool<Conversation> {
                 .get();
     }
 
-    private RagDocumentContext<Conversation> getDocumentContext(final Conversation conversation, final PlanHatConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), conversation.getContent(), List.of());
-        }
-
+    private Pair<Conversation, List<String>> trimConversation(final Conversation conversation, final PlanHatConfig.LocalArguments parsedArgs) {
         final TrimResult description = documentTrimmer.trimDocumentToKeywords(conversation.description(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
         final TrimResult snippet = documentTrimmer.trimDocumentToKeywords(conversation.snippet(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
         final Conversation trimmedConversation = conversation.updateDescriptionAndSnippet(description.document(), snippet.document());
@@ -199,17 +196,27 @@ public class PlanHat implements Tool<Conversation> {
                 .distinct()
                 .toList();
 
-        return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversation.getContent(), 10))
+        return Pair.of(trimmedConversation, keywords);
+    }
+
+    private RagDocumentContext<Conversation> getDocumentContext(final Conversation conversation, final PlanHatConfig.LocalArguments parsedArgs) {
+        final Pair<Conversation, List<String>> trimmedConversationResult = trimConversation(conversation, parsedArgs);
+
+        if (parsedArgs.getDisableLinks()) {
+            return new RagDocumentContext<>(getContextLabel(), trimmedConversationResult.getLeft().getContent(), List.of(), null, null, null, trimmedConversationResult.getRight());
+        }
+
+        return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.getLeft().getContent(), 10))
                 .map(sentences -> new RagDocumentContext<Conversation>(
-                        getContextLabel() + " " + trimmedConversation.date(),
-                        trimmedConversation.getContent(),
+                        getContextLabel() + " " + trimmedConversationResult.getLeft().date(),
+                        trimmedConversationResult.getLeft().getContent(),
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList()),
-                        trimmedConversation.id(),
-                        trimmedConversation,
-                        "[PlanHat " + trimmedConversation.id() + "](" + trimmedConversation.getPublicUrl(url) + ")",
-                        keywords))
+                        trimmedConversationResult.getLeft().id(),
+                        trimmedConversationResult.getLeft(),
+                        "[PlanHat " + trimmedConversationResult.getLeft().id() + "](" + trimmedConversationResult.getLeft().getPublicUrl(url) + ")",
+                        trimmedConversationResult.getRight()))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }
