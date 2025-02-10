@@ -4,7 +4,8 @@ Param (
     [switch]$GenerateExecutiveSummary = $true,
     [switch]$GeneratePDF = $true,
     [string]$Days = "7",
-    [string]$PdfTitle = "Weekly Customer Digest"
+    [string]$PdfTitle = "Weekly Customer Digest",
+    [string]$PdfFile = $( $env:PDF_OUTPUT )
 )
 
 $global:stdErr = [System.Text.StringBuilder]::new()
@@ -282,7 +283,7 @@ if ($GenerateExecutiveSummary)
 
 if ($GeneratePDF)
 {
-    $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" --directory `"$subDir`" --pdf `"$( $env:PDF_OUTPUT )`" --title `"'$PdfTitle'`" --date_from `"$sevenDaysAgo`" --date_to `"$now`""
+    $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" --directory `"$subDir`" --pdf `"$PdfFile`" --title `"'$PdfTitle'`" --date_from `"$sevenDaysAgo`" --date_to `"$now`""
     Add-Content -Path /tmp/pdfgenerate.log -Value $pdfResult.StdOut
     Add-Content -Path /tmp/pdfgenerate.log -Value $pdfResult.StdErr
 
