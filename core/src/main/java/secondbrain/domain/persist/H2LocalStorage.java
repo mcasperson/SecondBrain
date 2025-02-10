@@ -111,7 +111,7 @@ public class H2LocalStorage implements LocalStorage {
         return writeOnly != null && writeOnly.isPresent() && Boolean.parseBoolean(writeOnly.get());
     }
 
-    private boolean deleteExpired(final Connection connection) {
+    synchronized private boolean deleteExpired(final Connection connection) {
         if (isDisabled()) {
             return false;
         }
@@ -132,7 +132,7 @@ public class H2LocalStorage implements LocalStorage {
 
     @Retry
     @Override
-    public String getString(final String tool, final String source, final String promptHash) {
+    synchronized public String getString(final String tool, final String source, final String promptHash) {
         if (isDisabled() || isWriteOnly()) {
             return null;
         }
@@ -234,7 +234,7 @@ public class H2LocalStorage implements LocalStorage {
 
     @Retry
     @Override
-    public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
+    synchronized public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
         if (isDisabled() || isReadOnly()) {
             return;
         }
