@@ -1,8 +1,7 @@
 import argparse
+import markdown2
 import os
 import re
-
-import markdown2
 from fpdf.enums import XPos, YPos
 from fpdf.fpdf import FPDF
 
@@ -80,6 +79,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     <p>Welcome to the AI of Sauron {title}.</p>
     <p>This document is an AI generated summary the interactions between Octopus and our customers.</p>
     <p>Because it is AI generated, mistakes may occur. Please verify the information before taking any action.</p>
+    <p>Note that keyword lists may include a number of false positives as documents like CDJs include boilerplate sample text that mentions things like Kubernetes even if the company does not use those technologies.</p>
     """)
 
     company_prefix = 'COMPANY '
@@ -88,7 +88,8 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
 
     # Move the Executive Summary to the top
     if os.path.exists(os.path.join(directory, 'Executive Summary.md')):
-        contents.append({'title': 'Executive Summary', 'filename': os.path.join(directory, 'Executive Summary.md'), 'link': pdf.add_link()})
+        contents.append({'title': 'Executive Summary', 'filename': os.path.join(directory, 'Executive Summary.md'),
+                         'link': pdf.add_link()})
 
     # Find the topics in the first loop
     for filename in sorted(os.listdir(directory)):
