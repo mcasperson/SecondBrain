@@ -21,6 +21,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -174,7 +175,7 @@ public class UploadedDoc implements Tool<Void> {
                         contents,
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))
-                .map(validateString::throwIfEmpty)
+                .map(trimDocument -> validateString.throwIfEmpty(trimDocument, TrimResult::document))
                 .map(this::getTrimmedDocumentContext)
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
@@ -182,17 +183,19 @@ public class UploadedDoc implements Tool<Void> {
                 .get();
     }
 
-    private RagDocumentContext<Void> getTrimmedDocumentContext(final String document) {
-        return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
+    private RagDocumentContext<Void> getTrimmedDocumentContext(final TrimResult trimResult) {
+        return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
-                        document,
+                        trimResult.document(),
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
-                                .collect(Collectors.toList())))
+                                .collect(Collectors.toList()),
+                        null,
+                        null,
+                        null,
+                        trimResult.keywordMatches()))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(getContextLabel(), document, List.of()))
                 .get();
     }
 

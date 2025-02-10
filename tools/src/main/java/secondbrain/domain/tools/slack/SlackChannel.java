@@ -29,6 +29,7 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
@@ -151,7 +152,7 @@ public class SlackChannel implements Tool<Void> {
                         parsedArgs.getChannel()))
                 .getOrElseThrow(() -> new InternalFailure("Channel not found"));
 
-        final Try<String> messagesTry = Try.of(() -> slackClient.conversationHistory(
+        final Try<TrimResult> messagesTry = Try.of(() -> slackClient.conversationHistory(
                         client,
                         parsedArgs.getAccessToken(),
                         channelDetails.channelId(),
@@ -162,9 +163,9 @@ public class SlackChannel implements Tool<Void> {
                         document,
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))
-                .map(validateString::throwIfEmpty);
+                .map(trimResult -> validateString.throwIfEmpty(trimResult, TrimResult::document));
 
-        final String messages = messagesTry
+        final TrimResult messages = messagesTry
                 .mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Slack channel had no matching messages")),
                         API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex),
@@ -172,13 +173,14 @@ public class SlackChannel implements Tool<Void> {
                 )
                 .get();
 
-        if (StringUtils.length(messages) < MINIMUM_MESSAGE_LENGTH) {
+        if (StringUtils.length(messages.document()) < MINIMUM_MESSAGE_LENGTH) {
             throw new InternalFailure("Not enough messages found in channel " + parsedArgs.getChannel()
                     + System.lineSeparator() + System.lineSeparator()
                     + "* [Slack Channel](https://app.slack.com/client/" + channelDetails.teamId() + "/" + channelDetails.channelId() + ")");
         }
 
-        final String messagesWithUsersReplaced = replaceIds(client, parsedArgs.getAccessToken(), messages)
+        final TrimResult messagesWithUsersReplaced = replaceIds(client, parsedArgs.getAccessToken(), messages.document())
+                .map(messages::replaceDocument)
                 .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
 
         return List.of(getDocumentContext(messagesWithUsersReplaced, channelDetails, parsedArgs));
@@ -220,26 +222,25 @@ public class SlackChannel implements Tool<Void> {
                 .get();
     }
 
-    private RagDocumentContext<Void> getDocumentContext(final String document, final ChannelDetails channelDetails, final SlackChannelConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final ChannelDetails channelDetails, final SlackChannelConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), document, List.of());
+            return new RagDocumentContext<>(getContextLabel(), trimResult.document(), List.of());
         }
 
-        return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
+        return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 // Strip out any URLs from the sentences
                 .map(sentences -> sentences.stream().map(sentence -> removeMarkdnUrls.sanitize(sentence)).toList())
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
-                        document,
+                        trimResult.document(),
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList()),
                         channelDetails.channelName(),
                         null,
-                        matchToUrl(channelDetails)))
+                        matchToUrl(channelDetails),
+                        trimResult.keywordMatches()))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<Void>(getContextLabel(), document, List.of()))
                 .get();
     }
 

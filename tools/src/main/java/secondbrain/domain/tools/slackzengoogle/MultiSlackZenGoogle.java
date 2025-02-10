@@ -69,8 +69,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             You are given the contents of a multiple Slack channels, Google Documents, and the help desk tickets from ZenDesk.
             You must answer the prompt based on the information provided.
             """;
-    @Inject
-    private ArgsAccessor argsAccessor;
 
     @Inject
     private ModelConfig modelConfig;
@@ -145,7 +143,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(argsAccessor, arguments, prompt, context);
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         final EntityDirectory entityDirectory = Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
@@ -464,6 +462,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 class MultiSlackZenGoogleConfig {
 
     @Inject
+    private ArgsAccessor argsAccessor;
+
+    @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.url")
     private Optional<String> configUrl;
 
@@ -519,6 +520,10 @@ class MultiSlackZenGoogleConfig {
         return configKeywords;
     }
 
+    public ArgsAccessor getArgsAccessor() {
+        return argsAccessor;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -526,17 +531,14 @@ class MultiSlackZenGoogleConfig {
 
         private final Map<String, String> context;
 
-        private final ArgsAccessor argsAccessor;
-
-        public LocalArguments(final ArgsAccessor argsAccessor, final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
-            this.argsAccessor = argsAccessor;
         }
 
         public String getUrl() {
-            return argsAccessor.getArgument(
+            return getArgsAccessor().getArgument(
                     getConfigUrl()::get,
                     arguments,
                     context,
@@ -546,7 +548,7 @@ class MultiSlackZenGoogleConfig {
         }
 
         public int getDays() {
-            final String stringValue = argsAccessor.getArgument(
+            final String stringValue = getArgsAccessor().getArgument(
                     getConfigDays()::get,
                     arguments,
                     context,
@@ -561,7 +563,7 @@ class MultiSlackZenGoogleConfig {
         }
 
         public List<String> getEntityName() {
-            return argsAccessor.getArgumentList(
+            return getArgsAccessor().getArgumentList(
                             getConfigEntity()::get,
                             arguments,
                             context,
@@ -575,7 +577,7 @@ class MultiSlackZenGoogleConfig {
         }
 
         public int getMaxEntities() {
-            final String stringValue = argsAccessor.getArgument(
+            final String stringValue = getArgsAccessor().getArgument(
                     getConfigMaxEntities()::get,
                     arguments,
                     context,
@@ -590,7 +592,7 @@ class MultiSlackZenGoogleConfig {
         }
 
         public int getMinTimeBasedContext() {
-            final String stringValue = argsAccessor.getArgument(
+            final String stringValue = getArgsAccessor().getArgument(
                     getConfigSlackZenGoogleMinTimeBasedContext()::get,
                     arguments,
                     context,
@@ -602,7 +604,7 @@ class MultiSlackZenGoogleConfig {
         }
 
         public Boolean getDisableLinks() {
-            final String stringValue = argsAccessor.getArgument(
+            final String stringValue = getArgsAccessor().getArgument(
                     getConfigDisableLinks()::get,
                     arguments,
                     context,
@@ -614,7 +616,7 @@ class MultiSlackZenGoogleConfig {
         }
 
         public String getKeywords() {
-            return argsAccessor.getArgument(
+            return getArgsAccessor().getArgument(
                             getConfigKeywords()::get,
                             arguments,
                             context,

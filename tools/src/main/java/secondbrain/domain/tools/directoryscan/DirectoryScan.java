@@ -25,6 +25,7 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
+import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
@@ -37,7 +38,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -246,33 +250,30 @@ public class DirectoryScan implements Tool<Void> {
              Each individual file is converted to text and used to answer the prompt.
              The combined answers are then used to answer the prompt again.
          */
-        final String contents = Arrays.stream(fileToText.convert(file).split("\n"))
-                .map(rawContents -> documentTrimmer.trimDocumentToKeywords(
-                        rawContents,
-                        parsedArgs.getKeywords(),
-                        parsedArgs.getKeywordWindow()))
-                .map(StringUtils::trim)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.joining("\n"));
+        final TrimResult trimResult = documentTrimmer.trimDocumentToKeywords(
+                fileToText.convert(file),
+                parsedArgs.getKeywords(),
+                parsedArgs.getKeywordWindow());
 
-        if (StringUtils.isBlank(contents)) {
+        if (validateString.isEmpty(trimResult.document())) {
             return null;
         }
 
         if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), contents, List.of());
+            return new RagDocumentContext<>(getContextLabel(), trimResult.document(), List.of(), null, null, null, trimResult.keywordMatches());
         }
 
         return new RagDocumentContext<>(
                 getContextLabel(),
-                contents,
-                sentenceSplitter.splitDocument(contents, 10)
+                trimResult.document(),
+                sentenceSplitter.splitDocument(trimResult.document(), 10)
                         .stream()
                         .map(sentenceVectorizer::vectorize)
                         .toList(),
                 file,
                 null,
-                "[" + file + "](file://" + file + ")");
+                "[" + file + "](file://" + file + ")",
+                trimResult.keywordMatches());
     }
 
     /**
@@ -287,24 +288,20 @@ public class DirectoryScan implements Tool<Void> {
              Each individual file is converted to text and used to answer the prompt.
              The combined answers are then used to answer the prompt again.
          */
-        final String contents = Arrays.stream(fileToText.convert(file).split("\n"))
-                .map(rawContents -> documentTrimmer.trimDocumentToKeywords(
-                        rawContents,
-                        parsedArgs.getKeywords(),
-                        parsedArgs.getKeywordWindow()))
-                .map(StringUtils::trim)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.joining("\n"));
+        final TrimResult trimResult = documentTrimmer.trimDocumentToKeywords(
+                fileToText.convert(file),
+                parsedArgs.getKeywords(),
+                parsedArgs.getKeywordWindow());
 
-        if (StringUtils.isBlank(contents)) {
+        if (validateString.isEmpty(trimResult.document())) {
             return null;
         }
 
         final String summary = localStorage.getOrPutString(
                 this.getName(),
                 "File",
-                DigestUtils.sha256Hex(parsedArgs.getIndividualDocumentPrompt() + contents),
-                () -> getFileSummaryLlm(contents, parsedArgs));
+                DigestUtils.sha256Hex(parsedArgs.getIndividualDocumentPrompt() + trimResult.document()),
+                () -> getFileSummaryLlm(trimResult.document(), parsedArgs));
 
         if (parsedArgs.getDisableLinks()) {
             return new RagDocumentContext<>(getContextLabel(), summary, List.of());
@@ -319,7 +316,8 @@ public class DirectoryScan implements Tool<Void> {
                         .toList(),
                 file,
                 null,
-                "[" + file + "](file://" + file + ")");
+                "[" + file + "](file://" + file + ")",
+                trimResult.keywordMatches());
     }
 
     /**

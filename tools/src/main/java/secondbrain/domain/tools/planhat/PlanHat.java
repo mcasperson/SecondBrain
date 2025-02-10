@@ -6,6 +6,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -24,6 +25,7 @@ import secondbrain.domain.date.DateParser;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -146,10 +148,6 @@ public class PlanHat implements Tool<Conversation> {
                         htmlToText.getText(conversation.description()),
                         htmlToText.getText(conversation.snippet()))
                 )
-                .map(conversation -> conversation.updateDescriptionAndSnippet(
-                        documentTrimmer.trimDocumentToKeywords(conversation.description(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()),
-                        documentTrimmer.trimDocumentToKeywords(conversation.snippet(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
-                )
                 .filter(conversation -> !validateString.isEmpty(conversation, Conversation::getContent))
                 .map(conversation -> getDocumentContext(conversation, parsedArgs))
                 .toList();
@@ -193,22 +191,26 @@ public class PlanHat implements Tool<Conversation> {
             return new RagDocumentContext<>(getContextLabel(), conversation.getContent(), List.of());
         }
 
-        return Try.of(() -> sentenceSplitter.splitDocument(conversation.getContent(), 10))
+        final TrimResult description = documentTrimmer.trimDocumentToKeywords(conversation.description(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
+        final TrimResult snippet = documentTrimmer.trimDocumentToKeywords(conversation.snippet(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
+        final Conversation trimmedConversation = conversation.updateDescriptionAndSnippet(description.document(), snippet.document());
+        final List<String> keywords = CollectionUtils.union(description.keywordMatches(), snippet.keywordMatches())
+                .stream()
+                .distinct()
+                .toList();
+
+        return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversation.getContent(), 10))
                 .map(sentences -> new RagDocumentContext<Conversation>(
-                        getContextLabel() + " " + conversation.date(),
-                        conversation.getContent(),
+                        getContextLabel() + " " + trimmedConversation.date(),
+                        trimmedConversation.getContent(),
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList()),
-                        conversation.id(),
-                        conversation,
-                        "[PlanHat " + conversation.id() + "](" + conversation.getPublicUrl(url) + ")"))
+                        trimmedConversation.id(),
+                        trimmedConversation,
+                        "[PlanHat " + trimmedConversation.id() + "](" + trimmedConversation.getPublicUrl(url) + ")",
+                        keywords))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(
-                        getContextLabel(),
-                        conversation.getContent() + " " + conversation.date(),
-                        List.of()))
                 .get();
     }
 

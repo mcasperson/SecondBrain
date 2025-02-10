@@ -189,7 +189,7 @@ public class SlackSearch implements Tool<MatchedItem> {
         }
 
         return Try.of(() -> sentenceSplitter.splitDocument(meta.getText(), 10))
-                .map(sentences -> new RagDocumentContext<MatchedItem>(
+                .map(sentences -> new RagDocumentContext<>(
                         getContextLabel(),
                         meta.getText(),
                         sentences.stream()

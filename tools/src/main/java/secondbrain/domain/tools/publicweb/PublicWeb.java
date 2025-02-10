@@ -22,6 +22,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
@@ -129,7 +130,7 @@ public class PublicWeb implements Tool<Void> {
                         content,
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))
-                .map(validateString::throwIfEmpty)
+                .map(trimResult -> validateString.throwIfEmpty(trimResult, TrimResult::document))
                 .map(document -> getDocumentContext(document, parsedArgs))
                 .map(List::of)
                 .recover(ex -> List.of())
@@ -185,21 +186,23 @@ public class PublicWeb implements Tool<Void> {
                 context);
     }
 
-    private RagDocumentContext<Void> getDocumentContext(final String document, final PublicWebConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final PublicWebConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), document, List.of());
+            return new RagDocumentContext<>(getContextLabel(), trimResult.document(), List.of(), null, null, null, trimResult.keywordMatches());
         }
 
-        return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
+        return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
-                        document,
+                        trimResult.document(),
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
-                                .collect(Collectors.toList())))
+                                .collect(Collectors.toList()),
+                        null,
+                        null,
+                        null,
+                        trimResult.keywordMatches()))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(getContextLabel(), document, List.of()))
                 .get();
     }
 }

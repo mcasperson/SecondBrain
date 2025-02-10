@@ -14,14 +14,14 @@ import java.util.*;
 public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
 
     @Override
-    public String trimDocumentToKeywords(final String document, final List<String> keywords, final int sectionLength) {
+    public TrimResult trimDocumentToKeywords(final String document, final List<String> keywords, final int sectionLength) {
         if (document == null || document.isEmpty()) {
-            return "";
+            return new TrimResult();
         }
 
         // Empty keywords or a non-positive section length will return the entire document
         if (keywords.isEmpty() || sectionLength <= 0) {
-            return document;
+            return new TrimResult(document, List.of());
         }
 
         final List<Section> keywordPositions = getAllKeywordPositions(document, keywords)
@@ -32,14 +32,22 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
         final List<Section> mergedSections = mergeSections(keywordPositions);
 
         if (mergedSections.isEmpty()) {
-            return "";
+            return new TrimResult();
         }
 
-        return String.join(" ",
+        final String trimmedDocument = String.join(" ",
                 mergedSections
                         .stream()
                         .map(section -> document.substring(section.start(), section.end()).trim())
                         .toList());
+
+        final List<String> keywordMatches = mergedSections
+                .stream()
+                .flatMap(section -> section.keyword().stream())
+                .distinct()
+                .toList();
+
+        return new TrimResult(trimmedDocument, keywordMatches);
     }
 
     /**

@@ -41,8 +41,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         return individualContexts.stream()
                 .map(RagDocumentContext::link)
                 .filter(Objects::nonNull)
-                .collect(Collectors.toSet())
-                .stream()
+                .distinct()
                 .toList();
     }
 
@@ -136,8 +135,8 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         return annotations
                 .stream()
                 .map(RagSentenceAndOriginal::toRagSentence)
-                .collect(Collectors.toSet())
-                .stream().toList();
+                .distinct()
+                .toList();
     }
 
     public Set<RagSentenceAndOriginal> getAnnotations(final float minSimilarity,

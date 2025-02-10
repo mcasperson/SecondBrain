@@ -3,6 +3,7 @@ package secondbrain.domain.handler;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -14,7 +15,6 @@ import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -160,9 +160,10 @@ public class PromptHandlerOllama implements PromptHandler {
 
         return System.lineSeparator() + System.lineSeparator() +
                 "Links:" + System.lineSeparator() +
-                document.getLinks()
+                document.individualContexts()
                         .stream()
-                        .filter(Objects::nonNull)
+                        .map(ragDoc -> ragDoc.link() + (CollectionUtils.isEmpty(ragDoc.keywordMatches()) ? "" : " (Keywords: " + String.join(", ", ragDoc.keywordMatches()) + ")"))
+                        .filter(StringUtils::isNotBlank)
                         .map(link -> "* " + link)
                         .reduce("", (a, b) -> a + System.lineSeparator() + b);
     }

@@ -32,6 +32,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -171,8 +172,8 @@ public class GoogleDocs implements Tool<Void> {
                 .map(this::getDocumentText)
                 .map(document -> documentTrimmer.trimDocumentToKeywords(
                         document, parsedArgs.getKeywords(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
-                .map(validateString::throwIfEmpty)
-                .map(document -> getDocumentContext(document, parsedArgs))
+                .map(trimResult -> validateString.throwIfEmpty(trimResult, TrimResult::document))
+                .map(trimResult -> getDocumentContext(trimResult, parsedArgs))
                 .map(List::of);
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
@@ -225,30 +226,23 @@ public class GoogleDocs implements Tool<Void> {
     }
 
 
-    private RagDocumentContext<Void> getDocumentContext(final String document, final GoogleDocsConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final GoogleDocsConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), document, List.of());
+            return new RagDocumentContext<>(getContextLabel(), trimResult.document(), List.of());
         }
 
-        return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
+        return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
-                        document,
+                        trimResult.document(),
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList()),
                         parsedArgs.getDocumentId(),
                         null,
-                        idToLink(parsedArgs.getDocumentId())))
+                        idToLink(parsedArgs.getDocumentId()),
+                        trimResult.keywordMatches()))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(
-                        getContextLabel(),
-                        document,
-                        List.of(),
-                        parsedArgs.getDocumentId(),
-                        null,
-                        idToLink(parsedArgs.getDocumentId())))
                 .get();
     }
 

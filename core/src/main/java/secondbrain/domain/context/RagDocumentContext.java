@@ -2,6 +2,7 @@ package secondbrain.domain.context;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.limit.TrimResult;
 
 import java.util.List;
 import java.util.PriorityQueue;
@@ -25,14 +26,18 @@ import static java.util.Comparator.comparing;
  * @param link      The link to the document
  */
 public record RagDocumentContext<T>(String contextLabel, String document, List<RagStringContext> sentences, String id,
-                                    @Nullable T meta, @Nullable String link) {
+                                    @Nullable T meta, @Nullable String link, @Nullable List<String> keywordMatches) {
 
     public RagDocumentContext(String contextLabel, final String document, final List<RagStringContext> sentences, String id) {
-        this(contextLabel, document, sentences, id, null, null);
+        this(contextLabel, document, sentences, id, null, null, null);
+    }
+
+    public RagDocumentContext(String contextLabel, final String document, final List<RagStringContext> sentences, String id, @Nullable T meta, @Nullable String link) {
+        this(contextLabel, document, sentences, id, meta, link, null);
     }
 
     public RagDocumentContext(String contextLabel, final String document, final List<RagStringContext> sentences) {
-        this(contextLabel, document, sentences, "", null, null);
+        this(contextLabel, document, sentences, "", null, null, null);
     }
 
     /**
@@ -45,15 +50,19 @@ public record RagDocumentContext<T>(String contextLabel, String document, List<R
      * @return A new copy of this object with the new document
      */
     public RagDocumentContext<T> updateDocument(final String document) {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link, keywordMatches);
+    }
+
+    public RagDocumentContext<T> updateDocument(final TrimResult trimResult) {
+        return new RagDocumentContext<>(contextLabel, trimResult.document(), sentences, id, meta, link, trimResult.keywordMatches());
     }
 
     public RagDocumentContext<T> updateContextLabel(final String contextLabel) {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link, keywordMatches);
     }
 
     public RagDocumentContext<T> updateLink(final String link) {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link, keywordMatches);
     }
 
     /**
@@ -62,7 +71,7 @@ public record RagDocumentContext<T>(String contextLabel, String document, List<R
      * type to work with.
      */
     public RagDocumentContext<Void> getRagDocumentContextVoid() {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, null, link);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, null, link, keywordMatches);
     }
 
     /**

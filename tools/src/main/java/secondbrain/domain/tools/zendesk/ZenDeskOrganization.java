@@ -362,7 +362,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         }
 
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
-                .map(sentences -> new RagDocumentContext<ZenDeskResultsResponse>(
+                .map(sentences -> new RagDocumentContext<>(
                         getContextLabel(),
                         document,
                         sentences.stream()
@@ -372,14 +372,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                         meta,
                         ticketToLink(parsedArgs.getZenDeskUrl(), meta, authHeader)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(
-                        getContextLabel(),
-                        document,
-                        List.of(),
-                        id,
-                        meta,
-                        ticketToLink(parsedArgs.getZenDeskUrl(), meta, authHeader)))
                 .get();
     }
 
