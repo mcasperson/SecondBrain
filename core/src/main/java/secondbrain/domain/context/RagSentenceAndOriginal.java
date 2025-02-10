@@ -18,4 +18,8 @@ public record RagSentenceAndOriginal(String originalContext, String context, Str
     public String getOriginalContext() {
         return Objects.requireNonNull(originalContext, "");
     }
+
+    public String getContext() {
+        return Objects.requireNonNull(context, "");
+    }
 }

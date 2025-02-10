@@ -97,7 +97,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                         (acc, entry) ->
                                 // update the document with the annotation index
                                 acc.replaceAll(
-                                        Pattern.quote(entry.getOriginalContext()),
+                                        Pattern.quote(entry.getContext()),
                                         Matcher.quoteReplacement(entry.getOriginalContext() + " [" + (lookups.indexOf(entry.toRagSentence()) + 1) + "]")),
                         (acc1, acc2) -> acc1 + acc2)
                 .trim()
