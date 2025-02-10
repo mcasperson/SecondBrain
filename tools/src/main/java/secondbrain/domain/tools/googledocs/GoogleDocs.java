@@ -175,7 +175,7 @@ public class GoogleDocs implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Google document is empty", throwable)),
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Google document " + parsedArgs.getDocumentId() + " is empty or had no keyword matches", throwable)),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Google API", ex)))
                 .get();
