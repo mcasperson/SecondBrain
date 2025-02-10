@@ -73,7 +73,7 @@ public class UploadedDoc implements Tool<Void> {
     private OllamaClient ollamaClient;
 
     @Inject
-    private Arguments parsedArgs;
+    private UploadDocConfig config;
 
     @Inject
     private FileToText fileToText;
@@ -112,13 +112,13 @@ public class UploadedDoc implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        parsedArgs.setInputs(arguments, prompt, context);
+        final UploadDocConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         if (parsedArgs.getDocument().length == 0) {
             throw new InternalFailure("No document found in context");
         }
 
-        return List.of(getDocumentContext(parsedArgs.getDocument()));
+        return List.of(getDocumentContext(parsedArgs));
     }
 
     @Override
@@ -162,11 +162,11 @@ public class UploadedDoc implements Tool<Void> {
                 context);
     }
 
-    private RagDocumentContext<Void> getDocumentContext(final byte[] document) {
-        final File tempFile = createTempFile();
+    private RagDocumentContext<Void> getDocumentContext(final UploadDocConfig.LocalArguments parsedArgs) {
+        final File tempFile = createTempFile(parsedArgs);
 
         Try.withResources(() -> new FileOutputStream(tempFile))
-                .of(writer -> Try.run(() -> writer.write(document)));
+                .of(writer -> Try.run(() -> writer.write(parsedArgs.getDocument())));
 
         final String contents = fileToText.convert(tempFile.getAbsolutePath());
 
@@ -196,7 +196,7 @@ public class UploadedDoc implements Tool<Void> {
                 .get();
     }
 
-    private File createTempFile() {
+    private File createTempFile(final UploadDocConfig.LocalArguments parsedArgs) {
         return Try.of(() -> File.createTempFile("tempFile", "." + FilenameUtils.getFileExtension(parsedArgs.getFileName())))
                 .peek(File::deleteOnExit)
                 .get();
@@ -204,13 +204,7 @@ public class UploadedDoc implements Tool<Void> {
 }
 
 @ApplicationScoped
-class Arguments {
-    private List<ToolArgs> arguments;
-
-    private String prompt;
-
-    private Map<String, String> context;
-
+class UploadDocConfig {
     @Inject
     @ConfigProperty(name = "sb.upload.keywords")
     private Optional<String> uploadKeywords;
@@ -222,47 +216,55 @@ class Arguments {
     @Inject
     private ArgsAccessor argsAccessor;
 
-    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-        this.arguments = arguments;
-        this.prompt = prompt;
-        this.context = context;
-    }
+    public class LocalArguments {
+        private final List<ToolArgs> arguments;
 
-    public byte[] getDocument() {
-        return Try.of(() -> context.get("document"))
-                .map(document -> Base64.getDecoder().decode(document))
-                .recover(throwable -> new byte[0])
-                .get();
-    }
+        private final String prompt;
 
-    public String getFileName() {
-        return Try.of(() -> context.get("filename"))
-                .recover(throwable -> "")
-                .get();
-    }
+        private final Map<String, String> context;
 
-    public List<String> getKeywords() {
-        return argsAccessor.getArgumentList(
-                        uploadKeywords::get,
-                        arguments,
-                        context,
-                        UploadedDoc.UPLOADED_DOC_KEYWORD_ARG,
-                        "upload_keywords",
-                        "")
-                .stream()
-                .map(Argument::value)
-                .toList();
-    }
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+            this.arguments = arguments;
+            this.prompt = prompt;
+            this.context = context;
+        }
 
-    public int getKeywordWindow() {
-        final Argument argument = argsAccessor.getArgument(
-                keywordWindow::get,
-                arguments,
-                context,
-                UploadedDoc.UPLOADED_DOC_KEYWORD_WINDOW_ARG,
-                "upload_keyword_window",
-                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+        public byte[] getDocument() {
+            return Try.of(() -> context.get("document"))
+                    .map(document -> Base64.getDecoder().decode(document))
+                    .recover(throwable -> new byte[0])
+                    .get();
+        }
 
-        return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        public String getFileName() {
+            return Try.of(() -> context.get("filename"))
+                    .recover(throwable -> "")
+                    .get();
+        }
+
+        public List<String> getKeywords() {
+            return argsAccessor.getArgumentList(
+                            uploadKeywords::get,
+                            arguments,
+                            context,
+                            UploadedDoc.UPLOADED_DOC_KEYWORD_ARG,
+                            "upload_keywords",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
+
+        public int getKeywordWindow() {
+            final Argument argument = argsAccessor.getArgument(
+                    keywordWindow::get,
+                    arguments,
+                    context,
+                    UploadedDoc.UPLOADED_DOC_KEYWORD_WINDOW_ARG,
+                    "upload_keyword_window",
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
     }
 }

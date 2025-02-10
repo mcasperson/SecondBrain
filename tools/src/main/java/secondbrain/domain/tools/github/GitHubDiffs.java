@@ -72,7 +72,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     @Inject
     private ModelConfig modelConfig;
     @Inject
-    private Arguments parsedArgs;
+    private GitHubDiffConfig config;
     @Inject
     private DebugToolArgs debugToolArgs;
     @Inject
@@ -130,7 +130,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        parsedArgs.setInputs(arguments, prompt, context);
+        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         final String authHeader = "Bearer " + parsedArgs.getToken();
 
@@ -143,7 +143,8 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                                             .of(() -> List.of(parsedArgs.getSha().split(",")))
                                             .map(commits -> gitHubClient.getCommits(client, parsedArgs.getOwner(), parsedArgs.getRepo(), commits, authHeader))
                                             .get())
-                            .get());
+                            .get(),
+                    parsedArgs);
         }
 
         // Otherwise, we are interested in a range of commits
@@ -160,7 +161,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                         commitsResponse,
                         0,
                         parsedArgs.getMaxDiffs() > 0 ? parsedArgs.getMaxDiffs() : commitsResponse.size()))
-                .map(this::convertCommitsToDiffSummaries)
+                .map(commits -> convertCommitsToDiffSummaries(commits, parsedArgs))
                 .get();
     }
 
@@ -171,6 +172,8 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
             final List<ToolArgs> arguments) {
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
+
+        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         final Try<RagMultiDocumentContext<GitHubCommitAndDiff>> result = Try
                 .of(() -> getContext(context, prompt, arguments))
@@ -214,11 +217,12 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     }
 
     private List<RagDocumentContext<GitHubCommitAndDiff>> convertCommitsToDiffSummaries(
-            final List<GitHubCommitAndDiff> commitsResponse) {
+            final List<GitHubCommitAndDiff> commitsResponse,
+            final GitHubDiffConfig.LocalArguments parsedArgs) {
 
         return commitsResponse
                 .stream()
-                .map(this::getCommitSummary)
+                .map(commit -> getCommitSummary(commit, parsedArgs))
                 .toList();
     }
 
@@ -227,7 +231,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
      * or hallucinate a bunch of random release notes. Instead, each diff is summarised individually and then combined
      * into a single document to be summarised again.
      */
-    private RagDocumentContext<GitHubCommitAndDiff> getCommitSummary(final GitHubCommitAndDiff commit) {
+    private RagDocumentContext<GitHubCommitAndDiff> getCommitSummary(final GitHubCommitAndDiff commit, final GitHubDiffConfig.LocalArguments parsedArgs) {
         /*
              We can optionally summarize each commit as a way of reducing the context size of
              when there are a lot of large diffs.
@@ -252,7 +256,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
      * Use the LLM to generate a plain text summary of the diff. This summary will be used to link the
      * final summary of all diffs to the changes in individual diffs.
      */
-    private String getDiffSummary(final String diff, final Arguments parsedArgs) {
+    private String getDiffSummary(final String diff, final GitHubDiffConfig.LocalArguments parsedArgs) {
         return ollamaClient.callOllamaWithCache(
                 new RagMultiDocumentContext<>(promptBuilderSelector.getPromptBuilder(parsedArgs.getDiffCustomModel()).buildFinalPrompt(
                         DIFF_INSTRUCTIONS,
@@ -297,7 +301,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
  * Exposes the arguments for the GitHubDiffs tool.
  */
 @ApplicationScoped
-class Arguments {
+class GitHubDiffConfig {
     private static final String DEFAULT_OWNER = "mcasperson";
     private static final String DEFAULT_REPO = "SecondBrain";
     private static final String DEFAULT_BRANCH = "main";
@@ -364,153 +368,155 @@ class Arguments {
     @Inject
     private ModelConfig modelConfig;
 
-    private List<ToolArgs> arguments;
+    public class LocalArguments {
+        private final List<ToolArgs> arguments;
 
-    private String prompt;
+        private final String prompt;
 
-    private Map<String, String> context;
+        private final Map<String, String> context;
 
-    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-        this.arguments = arguments;
-        this.prompt = prompt;
-        this.context = context;
-    }
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+            this.arguments = arguments;
+            this.prompt = prompt;
+            this.context = context;
+        }
 
-    public boolean getSummarizeIndividualDiffs() {
-        final String stringValue = argsAccessor.getArgument(
-                summarizeIndividualDiffs::get,
-                arguments,
-                context,
-                "summarizeIndividualDiffs",
-                "github_summarize_individual_diffs",
-                "").value();
+        public boolean getSummarizeIndividualDiffs() {
+            final String stringValue = argsAccessor.getArgument(
+                    summarizeIndividualDiffs::get,
+                    arguments,
+                    context,
+                    "summarizeIndividualDiffs",
+                    "github_summarize_individual_diffs",
+                    "").value();
 
-        return Boolean.parseBoolean(stringValue);
-    }
+            return Boolean.parseBoolean(stringValue);
+        }
 
-    public int getDays() {
-        final String stringValue = argsAccessor.getArgument(
-                githubDays::get,
-                arguments,
-                context,
-                "days",
-                "github_days",
-                DEFAULT_DURATION).value();
+        public int getDays() {
+            final String stringValue = argsAccessor.getArgument(
+                    githubDays::get,
+                    arguments,
+                    context,
+                    "days",
+                    "github_days",
+                    DEFAULT_DURATION).value();
 
-        return Try.of(() -> stringValue)
-                .map(i -> Math.max(0, Integer.parseInt(i)))
-                .map(i -> i == 0 ? Integer.parseInt(DEFAULT_DURATION) : i)
-                .get();
-    }
+            return Try.of(() -> stringValue)
+                    .map(i -> Math.max(0, Integer.parseInt(i)))
+                    .map(i -> i == 0 ? Integer.parseInt(DEFAULT_DURATION) : i)
+                    .get();
+        }
 
-    public int getMaxDiffs() {
-        final String stringValue = argsAccessor.getArgument(
-                githubMaxDiffs::get,
-                arguments,
-                context,
-                "maxDiffs",
-                "github_max_diffs",
-                "0").value();
+        public int getMaxDiffs() {
+            final String stringValue = argsAccessor.getArgument(
+                    githubMaxDiffs::get,
+                    arguments,
+                    context,
+                    "maxDiffs",
+                    "github_max_diffs",
+                    "0").value();
 
-        return Try.of(() -> stringValue)
-                .map(Integer::parseInt)
-                .recover(throwable -> 0)
-                .map(i -> Math.max(0, i))
-                .get();
-    }
+            return Try.of(() -> stringValue)
+                    .map(Integer::parseInt)
+                    .recover(throwable -> 0)
+                    .map(i -> Math.max(0, i))
+                    .get();
+        }
 
-    public String getStartDate() {
-        return argsAccessor.getArgument(
-                githubSince::get,
-                arguments,
-                context,
-                "since",
-                "github_since",
-                ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays()).format(FORMATTER)).value();
-    }
+        public String getStartDate() {
+            return argsAccessor.getArgument(
+                    githubSince::get,
+                    arguments,
+                    context,
+                    "since",
+                    "github_since",
+                    ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays()).format(FORMATTER)).value();
+        }
 
-    public String getEndDate() {
-        return argsAccessor.getArgument(
-                githubUntil::get,
-                arguments,
-                context,
-                "until",
-                "github_until",
-                ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER)).value();
-    }
+        public String getEndDate() {
+            return argsAccessor.getArgument(
+                    githubUntil::get,
+                    arguments,
+                    context,
+                    "until",
+                    "github_until",
+                    ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER)).value();
+        }
 
-    public String getOwner() {
-        return argsAccessor.getArgument(
-                githubOwner::get,
-                arguments,
-                context,
-                "owner",
-                "github_owner",
-                DEFAULT_OWNER).value();
-    }
+        public String getOwner() {
+            return argsAccessor.getArgument(
+                    githubOwner::get,
+                    arguments,
+                    context,
+                    "owner",
+                    "github_owner",
+                    DEFAULT_OWNER).value();
+        }
 
-    public String getRepo() {
-        return argsAccessor.getArgument(
-                githubRepo::get,
-                arguments,
-                context,
-                "repo",
-                "github_repo",
-                DEFAULT_REPO).value();
-    }
+        public String getRepo() {
+            return argsAccessor.getArgument(
+                    githubRepo::get,
+                    arguments,
+                    context,
+                    "repo",
+                    "github_repo",
+                    DEFAULT_REPO).value();
+        }
 
-    public String getSha() {
-        return argsAccessor.getArgument(
-                githubSha::get,
-                arguments,
-                context,
-                "sha",
-                "github_sha",
-                "").value();
-    }
+        public String getSha() {
+            return argsAccessor.getArgument(
+                    githubSha::get,
+                    arguments,
+                    context,
+                    "sha",
+                    "github_sha",
+                    "").value();
+        }
 
-    public String getBranch() {
-        return argsAccessor.getArgument(
-                githubBranch::get,
-                arguments,
-                context,
-                "branch",
-                "github_branch",
-                DEFAULT_BRANCH).value();
-    }
+        public String getBranch() {
+            return argsAccessor.getArgument(
+                    githubBranch::get,
+                    arguments,
+                    context,
+                    "branch",
+                    "github_branch",
+                    DEFAULT_BRANCH).value();
+        }
 
-    public String getToken() {
-        return Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
-                .recover(e -> context.get("github_access_token"))
-                .mapTry(validateString::throwIfEmpty)
-                .recoverWith(e -> Try.of(githubAccessToken::get))
-                .getOrElseThrow(ex -> new InternalFailure("Failed to get GitHub access token", ex));
-    }
+        public String getToken() {
+            return Try.of(() -> textEncryptor.decrypt(context.get("github_access_token")))
+                    .recover(e -> context.get("github_access_token"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recoverWith(e -> Try.of(githubAccessToken::get))
+                    .getOrElseThrow(ex -> new InternalFailure("Failed to get GitHub access token", ex));
+        }
 
-    public String getDiffCustomModel() {
-        return argsAccessor.getArgument(
-                diffModel::get,
-                arguments,
-                context,
-                "diffModel",
-                "github_diff_custom_model",
-                modelConfig.getCalculatedModel(context)).value();
-    }
+        public String getDiffCustomModel() {
+            return argsAccessor.getArgument(
+                    diffModel::get,
+                    arguments,
+                    context,
+                    "diffModel",
+                    "github_diff_custom_model",
+                    modelConfig.getCalculatedModel(context)).value();
+        }
 
-    @Nullable
-    public Integer getDiffContextWindow() {
-        final String stringValue = argsAccessor.getArgument(
-                diffContextWindow::get,
-                arguments,
-                context,
-                "diffContextWindow",
-                "github_diff_context_window",
-                Constants.DEFAULT_CONTENT_WINDOW + "").value();
+        @Nullable
+        public Integer getDiffContextWindow() {
+            final String stringValue = argsAccessor.getArgument(
+                    diffContextWindow::get,
+                    arguments,
+                    context,
+                    "diffContextWindow",
+                    "github_diff_context_window",
+                    Constants.DEFAULT_CONTENT_WINDOW + "").value();
 
-        return Try.of(() -> stringValue)
-                .map(Integer::parseInt)
-                .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
-                .get();
+            return Try.of(() -> stringValue)
+                    .map(Integer::parseInt)
+                    .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
+                    .get();
+        }
     }
 }
 

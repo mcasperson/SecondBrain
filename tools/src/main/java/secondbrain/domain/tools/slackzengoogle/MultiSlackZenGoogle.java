@@ -101,7 +101,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private FileReader fileReader;
 
     @Inject
-    private Arguments parsedArgs;
+    private MultiSlackZenGoogleConfig config;
 
     @Inject
     private ExceptionHandler exceptionHandler;
@@ -143,7 +143,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        parsedArgs.setInputs(arguments, prompt, context);
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         final EntityDirectory entityDirectory = Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
@@ -153,10 +153,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .parallelStream()
                 .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.name().toLowerCase()))
                 .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
-                .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.getDays()).stream())
+                .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.getDays(), parsedArgs).stream())
                 .toList();
 
-        return validateSufficientContext(ragContext);
+        return validateSufficientContext(ragContext, parsedArgs);
     }
 
     @Override
@@ -205,7 +205,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 + getAdditionalZenDeskInstructions(multiRagDoc.individualContexts());
     }
 
-    private List<RagDocumentContext<Void>> validateSufficientContext(final List<RagDocumentContext<Void>> ragContext) {
+    private List<RagDocumentContext<Void>> validateSufficientContext(final List<RagDocumentContext<Void>> ragContext, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
         if (slackContextCount(ragContext)
                 + zenDeskContextCount(ragContext)
                 + planhatContextCount(ragContext)
@@ -285,7 +285,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
      * Try and get all the downstream context. Note that this tool is a long-running operation that attempts to access a lot
      * of data. We silently fail for any downstream context that could not be retrieved rather than fail the entire operation.
      */
-    private List<RagDocumentContext<Void>> getEntityContext(final Entity entity, final Map<String, String> context, final String prompt, final int days) {
+    private List<RagDocumentContext<Void>> getEntityContext(final Entity entity, final Map<String, String> context, final String prompt, final int days, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
         if (entity.disabled()) {
             return List.of();
         }
@@ -459,7 +459,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 }
 
 @ApplicationScoped
-class Arguments {
+class MultiSlackZenGoogleConfig {
     @Inject
     private ArgsAccessor argsAccessor;
 
@@ -491,104 +491,106 @@ class Arguments {
     @ConfigProperty(name = "sb.slackzengoogle.keywords")
     private Optional<String> keywords;
 
-    private List<ToolArgs> arguments;
+    public class LocalArguments {
+        private final List<ToolArgs> arguments;
 
-    private String prompt;
+        private final String prompt;
 
-    private Map<String, String> context;
+        private final Map<String, String> context;
 
-    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-        this.arguments = arguments;
-        this.prompt = prompt;
-        this.context = context;
-    }
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+            this.arguments = arguments;
+            this.prompt = prompt;
+            this.context = context;
+        }
 
-    public String getUrl() {
-        return argsAccessor.getArgument(
-                url::get,
-                arguments,
-                context,
-                MultiSlackZenGoogle.MULTI_SLACK_ZEN_URL_ARG,
-                "multislackzengoogle_url",
-                "").value();
-    }
+        public String getUrl() {
+            return argsAccessor.getArgument(
+                    url::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_URL_ARG,
+                    "multislackzengoogle_url",
+                    "").value();
+        }
 
-    public int getDays() {
-        final String stringValue = argsAccessor.getArgument(
-                days::get,
-                arguments,
-                context,
-                MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
-                "multislackzengoogle_days",
-                "0").value();
+        public int getDays() {
+            final String stringValue = argsAccessor.getArgument(
+                    days::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
+                    "multislackzengoogle_days",
+                    "0").value();
 
-        return Try.of(() -> Integer.parseInt(stringValue))
-                .recover(throwable -> 0)
-                .map(i -> Math.max(0, i))
-                .get();
-    }
+            return Try.of(() -> Integer.parseInt(stringValue))
+                    .recover(throwable -> 0)
+                    .map(i -> Math.max(0, i))
+                    .get();
+        }
 
-    public List<String> getEntityName() {
-        return argsAccessor.getArgumentList(
-                        entity::get,
-                        arguments,
-                        context,
-                        MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
-                        "multislackzengoogle_entity_name",
-                        "")
-                .stream()
-                .map(Argument::value)
-                .map(String::toLowerCase)
-                .toList();
-    }
+        public List<String> getEntityName() {
+            return argsAccessor.getArgumentList(
+                            entity::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
+                            "multislackzengoogle_entity_name",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .map(String::toLowerCase)
+                    .toList();
+        }
 
-    public int getMaxEntities() {
-        final String stringValue = argsAccessor.getArgument(
-                maxEntities::get,
-                arguments,
-                context,
-                MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
-                "multislackzengoogle_max_entities",
-                "0").value();
+        public int getMaxEntities() {
+            final String stringValue = argsAccessor.getArgument(
+                    maxEntities::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
+                    "multislackzengoogle_max_entities",
+                    "0").value();
 
-        return Try.of(() -> Integer.parseInt(stringValue))
-                .recover(throwable -> 0)
-                .map(i -> Math.max(0, i))
-                .get();
-    }
+            return Try.of(() -> Integer.parseInt(stringValue))
+                    .recover(throwable -> 0)
+                    .map(i -> Math.max(0, i))
+                    .get();
+        }
 
-    public int getMinTimeBasedContext() {
-        final String stringValue = argsAccessor.getArgument(
-                slackZenGoogleMinTimeBasedContext::get,
-                arguments,
-                context,
-                "multislackzengoogleMinTimeBasedContext",
-                "multislackzengoogle_min_time_based_context",
-                "1").value();
+        public int getMinTimeBasedContext() {
+            final String stringValue = argsAccessor.getArgument(
+                    slackZenGoogleMinTimeBasedContext::get,
+                    arguments,
+                    context,
+                    "multislackzengoogleMinTimeBasedContext",
+                    "multislackzengoogle_min_time_based_context",
+                    "1").value();
 
-        return NumberUtils.toInt(stringValue, 1);
-    }
+            return NumberUtils.toInt(stringValue, 1);
+        }
 
-    public Boolean getDisableLinks() {
-        final String stringValue = argsAccessor.getArgument(
-                disableLinks::get,
-                arguments,
-                context,
-                MultiSlackZenGoogle.MULTI_SLACK_ZEN_GOOGLE_DISABLELINKS,
-                "multislackzengoogle_disable_links",
-                "false").value();
+        public Boolean getDisableLinks() {
+            final String stringValue = argsAccessor.getArgument(
+                    disableLinks::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_GOOGLE_DISABLELINKS,
+                    "multislackzengoogle_disable_links",
+                    "false").value();
 
-        return BooleanUtils.toBoolean(stringValue);
-    }
+            return BooleanUtils.toBoolean(stringValue);
+        }
 
-    public String getKeywords() {
-        return argsAccessor.getArgument(
-                        keywords::get,
-                        arguments,
-                        context,
-                        MultiSlackZenGoogle.MULTI_SLACK_ZEN_KEYWORD_ARG,
-                        "multislackzengoogle_keywords",
-                        "")
-                .value();
+        public String getKeywords() {
+            return argsAccessor.getArgument(
+                            keywords::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_KEYWORD_ARG,
+                            "multislackzengoogle_keywords",
+                            "")
+                    .value();
+        }
     }
 }

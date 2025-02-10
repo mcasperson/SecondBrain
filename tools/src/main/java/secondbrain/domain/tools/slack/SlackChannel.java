@@ -69,7 +69,7 @@ public class SlackChannel implements Tool<Void> {
     private ModelConfig modelConfig;
 
     @Inject
-    private Arguments parsedArgs;
+    private SlackChannelConfig config;
 
     @Inject
     @Identifier("removeMarkdnUrls")
@@ -127,7 +127,7 @@ public class SlackChannel implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        parsedArgs.setInputs(arguments, prompt, context);
+        final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         /*
             Get the oldest date to search from, starting from the starr of the current day.
@@ -181,7 +181,7 @@ public class SlackChannel implements Tool<Void> {
         final String messagesWithUsersReplaced = replaceIds(client, parsedArgs.getAccessToken(), messages)
                 .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
 
-        return List.of(getDocumentContext(messagesWithUsersReplaced, channelDetails));
+        return List.of(getDocumentContext(messagesWithUsersReplaced, channelDetails, parsedArgs));
     }
 
     @Override
@@ -190,7 +190,7 @@ public class SlackChannel implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        parsedArgs.setInputs(arguments, prompt, context);
+        final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(
@@ -220,7 +220,7 @@ public class SlackChannel implements Tool<Void> {
                 .get();
     }
 
-    private RagDocumentContext<Void> getDocumentContext(final String document, final ChannelDetails channelDetails) {
+    private RagDocumentContext<Void> getDocumentContext(final String document, final ChannelDetails channelDetails, final SlackChannelConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getDisableLinks()) {
             return new RagDocumentContext<>(getContextLabel(), document, List.of());
         }
@@ -314,7 +314,7 @@ public class SlackChannel implements Tool<Void> {
 }
 
 @ApplicationScoped
-class Arguments {
+class SlackChannelConfig {
     private static final String DEFAULT_TTL = "3600";
 
     @Inject
@@ -351,100 +351,102 @@ class Arguments {
     @Inject
     private Encryptor textEncryptor;
 
-    private List<ToolArgs> arguments;
+    public class LocalArguments {
+        private final List<ToolArgs> arguments;
 
-    private String prompt;
+        private final String prompt;
 
-    private Map<String, String> context;
+        private final Map<String, String> context;
 
-    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-        this.arguments = arguments;
-        this.prompt = prompt;
-        this.context = context;
-    }
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+            this.arguments = arguments;
+            this.prompt = prompt;
+            this.context = context;
+        }
 
-    public String getChannel() {
-        return argsAccessor.getArgument(
-                        channel::get,
-                        arguments,
-                        context,
-                        SlackChannel.SLACK_CHANEL_ARG,
-                        "slack_channel",
-                        "")
-                .value()
-                .replaceFirst("^#", "");
-    }
+        public String getChannel() {
+            return argsAccessor.getArgument(
+                            channel::get,
+                            arguments,
+                            context,
+                            SlackChannel.SLACK_CHANEL_ARG,
+                            "slack_channel",
+                            "")
+                    .value()
+                    .replaceFirst("^#", "");
+        }
 
-    public int getDays() {
-        final Argument argument = argsAccessor.getArgument(
-                days::get,
-                arguments,
-                context,
-                SlackChannel.DAYS_ARG,
-                "slack_days",
-                "30");
+        public int getDays() {
+            final Argument argument = argsAccessor.getArgument(
+                    days::get,
+                    arguments,
+                    context,
+                    SlackChannel.DAYS_ARG,
+                    "slack_days",
+                    "30");
 
-        return Try.of(argument::value)
-                .map(i -> Math.max(0, Integer.parseInt(i)))
-                .get();
-    }
+            return Try.of(argument::value)
+                    .map(i -> Math.max(0, Integer.parseInt(i)))
+                    .get();
+        }
 
-    public String getAccessToken() {
-        return Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
-                .recover(e -> context.get("slack_access_token"))
-                .mapTry(Objects::requireNonNull)
-                .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
-                .getOrElseThrow(() -> new InternalFailure("Slack access token not found"));
-    }
+        public String getAccessToken() {
+            return Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
+                    .recover(e -> context.get("slack_access_token"))
+                    .mapTry(Objects::requireNonNull)
+                    .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
+                    .getOrElseThrow(() -> new InternalFailure("Slack access token not found"));
+        }
 
-    public int getSearchTTL() {
-        final Argument argument = argsAccessor.getArgument(
-                historyttl::get,
-                arguments,
-                context,
-                "historyTtl",
-                "slack_historyttl",
-                DEFAULT_TTL);
+        public int getSearchTTL() {
+            final Argument argument = argsAccessor.getArgument(
+                    historyttl::get,
+                    arguments,
+                    context,
+                    "historyTtl",
+                    "slack_historyttl",
+                    DEFAULT_TTL);
 
-        return Try.of(argument::value)
-                .map(i -> Math.max(0, Integer.parseInt(i)))
-                .get();
-    }
+            return Try.of(argument::value)
+                    .map(i -> Math.max(0, Integer.parseInt(i)))
+                    .get();
+        }
 
-    public boolean getDisableLinks() {
-        final Argument argument = argsAccessor.getArgument(
-                disableLinks::get,
-                arguments,
-                context,
-                SlackChannel.SLACK_DISABLELINKS_ARG,
-                "slack_disable_links",
-                "false");
+        public boolean getDisableLinks() {
+            final Argument argument = argsAccessor.getArgument(
+                    disableLinks::get,
+                    arguments,
+                    context,
+                    SlackChannel.SLACK_DISABLELINKS_ARG,
+                    "slack_disable_links",
+                    "false");
 
-        return BooleanUtils.toBoolean(argument.value());
-    }
+            return BooleanUtils.toBoolean(argument.value());
+        }
 
-    public List<String> getKeywords() {
-        return argsAccessor.getArgumentList(
-                        keywords::get,
-                        arguments,
-                        context,
-                        SlackChannel.SLACK_KEYWORD_ARG,
-                        "slack_keywords",
-                        "")
-                .stream()
-                .map(Argument::value)
-                .toList();
-    }
+        public List<String> getKeywords() {
+            return argsAccessor.getArgumentList(
+                            keywords::get,
+                            arguments,
+                            context,
+                            SlackChannel.SLACK_KEYWORD_ARG,
+                            "slack_keywords",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
 
-    public int getKeywordWindow() {
-        final Argument argument = argsAccessor.getArgument(
-                keywordWindow::get,
-                arguments,
-                context,
-                SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
-                "slack_keyword_window",
-                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+        public int getKeywordWindow() {
+            final Argument argument = argsAccessor.getArgument(
+                    keywordWindow::get,
+                    arguments,
+                    context,
+                    SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
+                    "slack_keyword_window",
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-        return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
     }
 }

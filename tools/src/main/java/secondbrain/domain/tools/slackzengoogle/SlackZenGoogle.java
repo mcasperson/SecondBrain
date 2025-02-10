@@ -73,7 +73,7 @@ public class SlackZenGoogle implements Tool<Void> {
     private PromptBuilderSelector promptBuilderSelector;
 
     @Inject
-    private SlackZenGoogleArguments parsedArgs;
+    private SlackZenGoogleConfig config;
 
     @Override
     public String getName() {
@@ -105,7 +105,7 @@ public class SlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        parsedArgs.setInputs(arguments, prompt, context);
+        final SlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         final List<ToolArgs> planHatArguments = List.of(
                 new ToolArgs("companyId", parsedArgs.getPlanHatCompany(), true),
@@ -223,7 +223,7 @@ public class SlackZenGoogle implements Tool<Void> {
 }
 
 @ApplicationScoped
-class SlackZenGoogleArguments {
+class SlackZenGoogleConfig {
     @Inject
     private ArgsAccessor argsAccessor;
 
@@ -251,77 +251,80 @@ class SlackZenGoogleArguments {
     @ConfigProperty(name = "sb.planhat.company")
     private Optional<String> planHatCompany;
 
-    private List<ToolArgs> arguments;
+    public class LocalArguments {
+        private final List<ToolArgs> arguments;
 
-    private String prompt;
+        private final String prompt;
 
-    private Map<String, String> context;
+        private final Map<String, String> context;
 
-    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-        this.arguments = arguments;
-        this.prompt = prompt;
-        this.context = context;
-    }
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+            this.arguments = arguments;
+            this.prompt = prompt;
+            this.context = context;
+        }
 
-    public String getSlackChannel() {
-        return argsAccessor.getArgument(
-                slackChannel::get,
-                arguments,
-                context,
-                "slackChannel",
-                "slack_channel",
-                "").value();
-    }
 
-    public int getMinSlackOrZen() {
-        final String stringValue = argsAccessor.getArgument(
-                slackZenGoogleMinTimeBasedContext::get,
-                arguments,
-                context,
-                "slackZenGoogleMinTimeBasedContext",
-                "slackzengoogle_mintimebasedcontext",
-                "1").value();
+        public String getSlackChannel() {
+            return argsAccessor.getArgument(
+                    slackChannel::get,
+                    arguments,
+                    context,
+                    "slackChannel",
+                    "slack_channel",
+                    "").value();
+        }
 
-        return NumberUtils.toInt(stringValue, 1);
-    }
+        public int getMinSlackOrZen() {
+            final String stringValue = argsAccessor.getArgument(
+                    slackZenGoogleMinTimeBasedContext::get,
+                    arguments,
+                    context,
+                    "slackZenGoogleMinTimeBasedContext",
+                    "slackzengoogle_mintimebasedcontext",
+                    "1").value();
 
-    public String getSlackDays() {
-        return argsAccessor.getArgument(
-                slackDays::get,
-                arguments,
-                context,
-                "days",
-                "slack_days",
-                "").value();
-    }
+            return NumberUtils.toInt(stringValue, 1);
+        }
 
-    public String getGoogleDocumentId() {
-        return argsAccessor.getArgument(
-                googleDoc::get,
-                arguments,
-                context,
-                "googleDocumentId",
-                "google_document_id",
-                "").value();
-    }
+        public String getSlackDays() {
+            return argsAccessor.getArgument(
+                    slackDays::get,
+                    arguments,
+                    context,
+                    "days",
+                    "slack_days",
+                    "").value();
+        }
 
-    public String getZenDeskOrganization() {
-        return argsAccessor.getArgument(
-                zenDeskOrganization::get,
-                arguments,
-                context,
-                "zenDeskOrganization",
-                "zendesk_organization",
-                "").value();
-    }
+        public String getGoogleDocumentId() {
+            return argsAccessor.getArgument(
+                    googleDoc::get,
+                    arguments,
+                    context,
+                    "googleDocumentId",
+                    "google_document_id",
+                    "").value();
+        }
 
-    public String getPlanHatCompany() {
-        return argsAccessor.getArgument(
-                planHatCompany::get,
-                arguments,
-                context,
-                "planHatCompanyId",
-                "planhat_companyid",
-                "").value();
+        public String getZenDeskOrganization() {
+            return argsAccessor.getArgument(
+                    zenDeskOrganization::get,
+                    arguments,
+                    context,
+                    "zenDeskOrganization",
+                    "zendesk_organization",
+                    "").value();
+        }
+
+        public String getPlanHatCompany() {
+            return argsAccessor.getArgument(
+                    planHatCompany::get,
+                    arguments,
+                    context,
+                    "planHatCompanyId",
+                    "planhat_companyid",
+                    "").value();
+        }
     }
 }

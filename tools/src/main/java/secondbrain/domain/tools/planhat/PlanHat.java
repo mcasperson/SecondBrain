@@ -66,7 +66,7 @@ public class PlanHat implements Tool<Conversation> {
     private String url;
 
     @Inject
-    private Arguments parsedArgs;
+    private PlanHatConfig config;
 
     @Inject
     private PlanHatClient planHatClient;
@@ -124,7 +124,7 @@ public class PlanHat implements Tool<Conversation> {
 
     @Override
     public List<RagDocumentContext<Conversation>> getContext(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
-        parsedArgs.setInputs(arguments, prompt, context);
+        final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
             throw new InternalFailure("You must provide a company ID to query");
@@ -151,7 +151,7 @@ public class PlanHat implements Tool<Conversation> {
                         documentTrimmer.trimDocumentToKeywords(conversation.snippet(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
                 )
                 .filter(conversation -> !validateString.isEmpty(conversation, Conversation::getContent))
-                .map(this::getDocumentContext)
+                .map(conversation -> getDocumentContext(conversation, parsedArgs))
                 .collect(Collectors.toList());
     }
 
@@ -159,7 +159,7 @@ public class PlanHat implements Tool<Conversation> {
     public RagMultiDocumentContext<Conversation> call(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
         final List<RagDocumentContext<Conversation>> contextList = getContext(context, prompt, arguments);
 
-        parsedArgs.setInputs(arguments, prompt, context);
+        final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
             throw new InternalFailure("You must provide a company to query");
@@ -188,7 +188,7 @@ public class PlanHat implements Tool<Conversation> {
                 .get();
     }
 
-    private RagDocumentContext<Conversation> getDocumentContext(final Conversation conversation) {
+    private RagDocumentContext<Conversation> getDocumentContext(final Conversation conversation, final PlanHatConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getDisableLinks()) {
             return new RagDocumentContext<>(getContextLabel(), conversation.getContent(), List.of());
         }
@@ -226,7 +226,7 @@ public class PlanHat implements Tool<Conversation> {
 }
 
 @ApplicationScoped
-class Arguments {
+class PlanHatConfig {
     private static final String DEFAULT_TTL = "3600";
 
     @Inject
@@ -263,98 +263,100 @@ class Arguments {
     @ConfigProperty(name = "sb.planhat.keywordwindow")
     private Optional<String> keywordWindow;
 
-    private List<ToolArgs> arguments;
+    public class LocalArguments {
+        private final List<ToolArgs> arguments;
 
-    private String prompt;
+        private final String prompt;
 
-    private Map<String, String> context;
+        private final Map<String, String> context;
 
-    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-        this.arguments = arguments;
-        this.prompt = prompt;
-        this.context = context;
-    }
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+            this.arguments = arguments;
+            this.prompt = prompt;
+            this.context = context;
+        }
 
-    public String getCompany() {
-        return argsAccessor.getArgument(
-                company::get,
-                arguments,
-                context,
-                PlanHat.COMPANY_ID_ARGS,
-                "planhat_company",
-                "").value();
-    }
+        public String getCompany() {
+            return argsAccessor.getArgument(
+                    company::get,
+                    arguments,
+                    context,
+                    PlanHat.COMPANY_ID_ARGS,
+                    "planhat_company",
+                    "").value();
+        }
 
-    public int getDays() {
-        final Argument argument = argsAccessor.getArgument(
-                from::get,
-                arguments,
-                context,
-                PlanHat.DAYS_ARG,
-                "planhat_days",
-                "");
+        public int getDays() {
+            final Argument argument = argsAccessor.getArgument(
+                    from::get,
+                    arguments,
+                    context,
+                    PlanHat.DAYS_ARG,
+                    "planhat_days",
+                    "");
 
-        return NumberUtils.toInt(argument.value(), 1);
-    }
+            return NumberUtils.toInt(argument.value(), 1);
+        }
 
 
-    public String getToken() {
-        return Try.of(token::get)
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> context.get("planhat_token"))
-                .mapTry(validateString::throwIfEmpty)
-                .recover(e -> "")
-                .get();
-    }
+        public String getToken() {
+            return Try.of(token::get)
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> context.get("planhat_token"))
+                    .mapTry(validateString::throwIfEmpty)
+                    .recover(e -> "")
+                    .get();
+        }
 
-    public int getSearchTTL() {
-        final Argument argument = argsAccessor.getArgument(
-                searchTtl::get,
-                arguments,
-                context,
-                PlanHat.SEARCHTTL_ARG,
-                "planhat_searchttl",
-                DEFAULT_TTL);
+        public int getSearchTTL() {
+            final Argument argument = argsAccessor.getArgument(
+                    searchTtl::get,
+                    arguments,
+                    context,
+                    PlanHat.SEARCHTTL_ARG,
+                    "planhat_searchttl",
+                    DEFAULT_TTL);
 
-        return Try.of(argument::value)
-                .map(i -> Math.max(0, Integer.parseInt(i)))
-                .get();
-    }
+            return Try.of(argument::value)
+                    .map(i -> Math.max(0, Integer.parseInt(i)))
+                    .get();
+        }
 
-    public boolean getDisableLinks() {
-        final Argument argument = argsAccessor.getArgument(
-                disableLinks::get,
-                arguments,
-                context,
-                PlanHat.DISABLE_LINKS_ARG,
-                "planhat_disablelinks",
-                "false");
+        public boolean getDisableLinks() {
+            final Argument argument = argsAccessor.getArgument(
+                    disableLinks::get,
+                    arguments,
+                    context,
+                    PlanHat.DISABLE_LINKS_ARG,
+                    "planhat_disablelinks",
+                    "false");
 
-        return BooleanUtils.toBoolean(argument.value());
-    }
+            return BooleanUtils.toBoolean(argument.value());
+        }
 
-    public List<String> getKeywords() {
-        return argsAccessor.getArgumentList(
-                        keywords::get,
-                        arguments,
-                        context,
-                        PlanHat.PLANHAT_KEYWORD_ARG,
-                        "planhat_keywords",
-                        "")
-                .stream()
-                .map(Argument::value)
-                .toList();
-    }
+        public List<String> getKeywords() {
+            return argsAccessor.getArgumentList(
+                            keywords::get,
+                            arguments,
+                            context,
+                            PlanHat.PLANHAT_KEYWORD_ARG,
+                            "planhat_keywords",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
 
-    public int getKeywordWindow() {
-        final Argument argument = argsAccessor.getArgument(
-                keywordWindow::get,
-                arguments,
-                context,
-                PlanHat.PLANHAT_KEYWORD_WINDOW_ARG,
-                "upload_keyword_window",
-                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+        public int getKeywordWindow() {
+            final Argument argument = argsAccessor.getArgument(
+                    keywordWindow::get,
+                    arguments,
+                    context,
+                    PlanHat.PLANHAT_KEYWORD_WINDOW_ARG,
+                    "upload_keyword_window",
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-        return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
     }
 }

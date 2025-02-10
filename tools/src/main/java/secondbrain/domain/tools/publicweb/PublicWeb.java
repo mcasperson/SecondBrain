@@ -83,7 +83,7 @@ public class PublicWeb implements Tool<Void> {
     private DocumentTrimmer documentTrimmer;
 
     @Inject
-    private Arguments parsedArgs;
+    private PublicWebConfig config;
 
     @Override
     public String getName() {
@@ -118,7 +118,7 @@ public class PublicWeb implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
-        parsedArgs.setInputs(arguments, prompt, context);
+        final PublicWebConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         if (StringUtils.isBlank(parsedArgs.getUrl())) {
             throw new InternalFailure("You must provide a URL to download");
@@ -130,7 +130,7 @@ public class PublicWeb implements Tool<Void> {
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))
                 .map(validateString::throwIfEmpty)
-                .map(this::getDocumentContext)
+                .map(document -> getDocumentContext(document, parsedArgs))
                 .map(List::of)
                 .recover(ex -> List.of())
                 .get();
@@ -144,7 +144,7 @@ public class PublicWeb implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
 
-        parsedArgs.setInputs(arguments, prompt, context);
+        final PublicWebConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         if (StringUtils.isBlank(parsedArgs.getUrl())) {
             throw new InternalFailure("You must provide a URL to download");
@@ -185,7 +185,7 @@ public class PublicWeb implements Tool<Void> {
                 context);
     }
 
-    private RagDocumentContext<Void> getDocumentContext(final String document) {
+    private RagDocumentContext<Void> getDocumentContext(final String document, final PublicWebConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getDisableLinks()) {
             return new RagDocumentContext<>(getContextLabel(), document, List.of());
         }
@@ -205,12 +205,7 @@ public class PublicWeb implements Tool<Void> {
 }
 
 @ApplicationScoped
-class Arguments {
-    private List<ToolArgs> arguments;
-
-    private String prompt;
-
-    private Map<String, String> context;
+class PublicWebConfig {
 
     @Inject
     @ConfigProperty(name = "sb.publicweb.url")
@@ -231,56 +226,64 @@ class Arguments {
     @Inject
     private ArgsAccessor argsAccessor;
 
-    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-        this.arguments = arguments;
-        this.prompt = prompt;
-        this.context = context;
-    }
+    public class LocalArguments {
+        private final List<ToolArgs> arguments;
 
-    public String getUrl() {
-        return argsAccessor.getArgument(
-                url::get,
-                arguments,
-                context,
-                PublicWeb.PUBLICWEB_URL_ARG,
-                "publicweb_url",
-                "").value();
-    }
+        private final String prompt;
 
-    public boolean getDisableLinks() {
-        final Argument argument = argsAccessor.getArgument(
-                disableLinks::get,
-                arguments,
-                context,
-                PublicWeb.PUBLICWEB_DISABLELINKS_ARG,
-                "publicweb_disable_links",
-                "");
+        private final Map<String, String> context;
 
-        return BooleanUtils.toBoolean(argument.value());
-    }
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+            this.arguments = arguments;
+            this.prompt = prompt;
+            this.context = context;
+        }
 
-    public List<String> getKeywords() {
-        return argsAccessor.getArgumentList(
-                        keywords::get,
-                        arguments,
-                        context,
-                        PublicWeb.PUBLICWEB_KEYWORD_ARG,
-                        "publicweb_keywords",
-                        "")
-                .stream()
-                .map(Argument::value)
-                .toList();
-    }
+        public String getUrl() {
+            return argsAccessor.getArgument(
+                    url::get,
+                    arguments,
+                    context,
+                    PublicWeb.PUBLICWEB_URL_ARG,
+                    "publicweb_url",
+                    "").value();
+        }
 
-    public int getKeywordWindow() {
-        final Argument argument = argsAccessor.getArgument(
-                keywordWindow::get,
-                arguments,
-                context,
-                PublicWeb.PUBLICWEB_KEYWORD_WINDOW_ARG,
-                "publicweb_keyword_window",
-                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+        public boolean getDisableLinks() {
+            final Argument argument = argsAccessor.getArgument(
+                    disableLinks::get,
+                    arguments,
+                    context,
+                    PublicWeb.PUBLICWEB_DISABLELINKS_ARG,
+                    "publicweb_disable_links",
+                    "");
 
-        return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return BooleanUtils.toBoolean(argument.value());
+        }
+
+        public List<String> getKeywords() {
+            return argsAccessor.getArgumentList(
+                            keywords::get,
+                            arguments,
+                            context,
+                            PublicWeb.PUBLICWEB_KEYWORD_ARG,
+                            "publicweb_keywords",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
+
+        public int getKeywordWindow() {
+            final Argument argument = argsAccessor.getArgument(
+                    keywordWindow::get,
+                    arguments,
+                    context,
+                    PublicWeb.PUBLICWEB_KEYWORD_WINDOW_ARG,
+                    "publicweb_keyword_window",
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
     }
 }

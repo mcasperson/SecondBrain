@@ -60,7 +60,7 @@ public class SlackSearch implements Tool<MatchedItem> {
     private ModelConfig modelConfig;
 
     @Inject
-    private SlackSearchArguments parsedArgs;
+    private SlackSearchConfig config;
 
     @Inject
     private OllamaClient ollamaClient;
@@ -114,7 +114,7 @@ public class SlackSearch implements Tool<MatchedItem> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        parsedArgs.setInputs(arguments, prompt, context);
+        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         // If there is nothing to search for, return an empty list
         if (CollectionUtils.isEmpty(parsedArgs.getSearchKeywords())) {
@@ -141,7 +141,7 @@ public class SlackSearch implements Tool<MatchedItem> {
                 .filter(matchedItem -> parsedArgs.getIgnoreChannels()
                         .stream()
                         .noneMatch(matchedItem.getChannel().getName()::equalsIgnoreCase))
-                .map(this::getDocumentContext)
+                .map(matchedItem -> getDocumentContext(matchedItem, parsedArgs))
                 .map(ragDoc -> ragDoc.updateDocument(
                         documentTrimmer.trimDocumentToKeywords(
                                 ragDoc.document(),
@@ -183,7 +183,7 @@ public class SlackSearch implements Tool<MatchedItem> {
 
     }
 
-    private RagDocumentContext<MatchedItem> getDocumentContext(final MatchedItem meta) {
+    private RagDocumentContext<MatchedItem> getDocumentContext(final MatchedItem meta, final SlackSearchConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getDisableLinks()) {
             return new RagDocumentContext<>(getContextLabel(), meta.getText(), List.of());
         }
@@ -222,7 +222,7 @@ public class SlackSearch implements Tool<MatchedItem> {
 }
 
 @ApplicationScoped
-class SlackSearchArguments {
+class SlackSearchConfig {
     private static final String DEFAULT_TTL = "3600";
 
     @Inject
@@ -273,140 +273,142 @@ class SlackSearchArguments {
     @Inject
     private ValidateString validateString;
 
-    private List<ToolArgs> arguments;
+    public class LocalArguments {
+        private final List<ToolArgs> arguments;
 
-    private String prompt;
+        private final String prompt;
 
-    private Map<String, String> context;
+        private final Map<String, String> context;
 
-    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-        this.arguments = arguments;
-        this.prompt = prompt;
-        this.context = context;
-    }
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+            this.arguments = arguments;
+            this.prompt = prompt;
+            this.context = context;
+        }
 
-    public Set<String> getSearchKeywords() {
-        final List<String> keywordslist = argsAccessor.getArgumentList(
-                        searchKeywords::get,
-                        arguments,
-                        context,
-                        SlackSearch.SLACK_SEARCH_KEYWORDS_ARG,
-                        "slack_search_keywords",
-                        "")
-                .stream()
-                .map(Argument::value)
-                .toList();
+        public Set<String> getSearchKeywords() {
+            final List<String> keywordslist = argsAccessor.getArgumentList(
+                            searchKeywords::get,
+                            arguments,
+                            context,
+                            SlackSearch.SLACK_SEARCH_KEYWORDS_ARG,
+                            "slack_search_keywords",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
 
-        final List<String> keywordsGenerated = getGenerateKeywords() ? keywordExtractor.getKeywords(prompt) : List.of();
+            final List<String> keywordsGenerated = getGenerateKeywords() ? keywordExtractor.getKeywords(prompt) : List.of();
 
-        final HashSet<String> retValue = new HashSet<>();
-        retValue.addAll(keywordslist);
-        retValue.addAll(keywordsGenerated);
-        return retValue;
-    }
+            final HashSet<String> retValue = new HashSet<>();
+            retValue.addAll(keywordslist);
+            retValue.addAll(keywordsGenerated);
+            return retValue;
+        }
 
-    public List<String> getFilterKeywords() {
-        return argsAccessor.getArgumentList(
-                        keywords::get,
-                        arguments,
-                        context,
-                        SlackChannel.SLACK_KEYWORD_ARG,
-                        "slack_keywords",
-                        "")
-                .stream()
-                .map(Argument::value)
-                .toList();
-    }
+        public List<String> getFilterKeywords() {
+            return argsAccessor.getArgumentList(
+                            keywords::get,
+                            arguments,
+                            context,
+                            SlackChannel.SLACK_KEYWORD_ARG,
+                            "slack_keywords",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
 
-    public boolean getGenerateKeywords() {
-        final String stringValue = argsAccessor.getArgument(
-                generateKeywords::get,
-                arguments,
-                context,
-                "generateKeywords",
-                "slack_generatekeywords",
-                "false").value();
+        public boolean getGenerateKeywords() {
+            final String stringValue = argsAccessor.getArgument(
+                    generateKeywords::get,
+                    arguments,
+                    context,
+                    "generateKeywords",
+                    "slack_generatekeywords",
+                    "false").value();
 
-        return BooleanUtils.toBoolean(stringValue);
-    }
+            return BooleanUtils.toBoolean(stringValue);
+        }
 
-    public String getAccessToken() {
-        return Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
-                .recover(e -> context.get("slack_access_token"))
-                .mapTry(Objects::requireNonNull)
-                .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
-                .getOrElseThrow(() -> new InternalFailure("Slack access token not found"));
-    }
+        public String getAccessToken() {
+            return Try.of(() -> textEncryptor.decrypt(context.get("slack_access_token")))
+                    .recover(e -> context.get("slack_access_token"))
+                    .mapTry(Objects::requireNonNull)
+                    .recoverWith(e -> Try.of(() -> slackAccessToken.get()))
+                    .getOrElseThrow(() -> new InternalFailure("Slack access token not found"));
+        }
 
-    public int getDays() {
-        final String stringValue = argsAccessor.getArgument(
-                days::get,
-                arguments,
-                context,
-                SlackSearch.SLACK_SEARCH_DAYS_ARG,
-                "slack_days",
-                "").value();
+        public int getDays() {
+            final String stringValue = argsAccessor.getArgument(
+                    days::get,
+                    arguments,
+                    context,
+                    SlackSearch.SLACK_SEARCH_DAYS_ARG,
+                    "slack_days",
+                    "").value();
 
-        return Try.of(() -> stringValue)
-                .map(i -> Math.max(0, Integer.parseInt(i)))
-                .get();
-    }
+            return Try.of(() -> stringValue)
+                    .map(i -> Math.max(0, Integer.parseInt(i)))
+                    .get();
+        }
 
-    public ZonedDateTime getFromDate() {
-        return ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays());
-    }
+        public ZonedDateTime getFromDate() {
+            return ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays());
+        }
 
-    public int getSearchTTL() {
-        final String stringValue = argsAccessor.getArgument(
-                searchTtl::get,
-                arguments,
-                context,
-                "searchTtl",
-                "slack_searchttl",
-                DEFAULT_TTL).value();
+        public int getSearchTTL() {
+            final String stringValue = argsAccessor.getArgument(
+                    searchTtl::get,
+                    arguments,
+                    context,
+                    "searchTtl",
+                    "slack_searchttl",
+                    DEFAULT_TTL).value();
 
-        return Try.of(() -> stringValue)
-                .map(i -> Math.max(0, Integer.parseInt(i)))
-                .get();
-    }
+            return Try.of(() -> stringValue)
+                    .map(i -> Math.max(0, Integer.parseInt(i)))
+                    .get();
+        }
 
-    public List<String> getIgnoreChannels() {
-        final String stringValue = argsAccessor.getArgument(
-                ignoreChannels::get,
-                arguments,
-                context,
-                "ignoreChannels",
-                "slack_ignorechannels",
-                "").value();
+        public List<String> getIgnoreChannels() {
+            final String stringValue = argsAccessor.getArgument(
+                    ignoreChannels::get,
+                    arguments,
+                    context,
+                    "ignoreChannels",
+                    "slack_ignorechannels",
+                    "").value();
 
-        return Arrays.stream(stringValue.split(","))
-                .filter(StringUtils::isNotBlank)
-                .map(StringUtils::trim)
-                .map(channel -> channel.replaceFirst("^#", ""))
-                .toList();
-    }
+            return Arrays.stream(stringValue.split(","))
+                    .filter(StringUtils::isNotBlank)
+                    .map(StringUtils::trim)
+                    .map(channel -> channel.replaceFirst("^#", ""))
+                    .toList();
+        }
 
-    public boolean getDisableLinks() {
-        final String stringValue = argsAccessor.getArgument(
-                disableLinks::get,
-                arguments,
-                context,
-                SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG,
-                "slack_disable_links",
-                "false").value();
+        public boolean getDisableLinks() {
+            final String stringValue = argsAccessor.getArgument(
+                    disableLinks::get,
+                    arguments,
+                    context,
+                    SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG,
+                    "slack_disable_links",
+                    "false").value();
 
-        return BooleanUtils.toBoolean(stringValue);
-    }
+            return BooleanUtils.toBoolean(stringValue);
+        }
 
-    public int getKeywordWindow() {
-        final Argument argument = argsAccessor.getArgument(
-                keywordWindow::get,
-                arguments,
-                context,
-                SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
-                "slack_keyword_window",
-                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+        public int getKeywordWindow() {
+            final Argument argument = argsAccessor.getArgument(
+                    keywordWindow::get,
+                    arguments,
+                    context,
+                    SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
+                    "slack_keyword_window",
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-        return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
     }
 }

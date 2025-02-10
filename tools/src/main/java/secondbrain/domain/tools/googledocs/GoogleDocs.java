@@ -76,7 +76,7 @@ public class GoogleDocs implements Tool<Void> {
     private ModelConfig modelConfig;
 
     @Inject
-    private Arguments parsedArgs;
+    private GoogleDocsConfig config;
 
     @Inject
     private DocumentTrimmer documentTrimmer;
@@ -128,7 +128,7 @@ public class GoogleDocs implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        parsedArgs.setInputs(arguments, prompt, context);
+        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
@@ -169,7 +169,7 @@ public class GoogleDocs implements Tool<Void> {
                 .map(document -> documentTrimmer.trimDocumentToKeywords(
                         document, parsedArgs.getKeywords(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH))
                 .map(validateString::throwIfEmpty)
-                .map(document -> getDocumentContext(document, parsedArgs.getDocumentId()))
+                .map(document -> getDocumentContext(document, parsedArgs))
                 .map(List::of);
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
@@ -183,8 +183,6 @@ public class GoogleDocs implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
-        parsedArgs.setInputs(arguments, prompt, context);
-
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
@@ -224,7 +222,7 @@ public class GoogleDocs implements Tool<Void> {
     }
 
 
-    private RagDocumentContext<Void> getDocumentContext(final String document, final String documentId) {
+    private RagDocumentContext<Void> getDocumentContext(final String document, final GoogleDocsConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getDisableLinks()) {
             return new RagDocumentContext<>(getContextLabel(), document, List.of());
         }
@@ -236,12 +234,18 @@ public class GoogleDocs implements Tool<Void> {
                         sentences.stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .collect(Collectors.toList()),
-                        documentId,
+                        parsedArgs.getDocumentId(),
                         null,
-                        idToLink(documentId)))
+                        idToLink(parsedArgs.getDocumentId())))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(getContextLabel(), document, List.of(), documentId, null, idToLink(documentId)))
+                .recover(e -> new RagDocumentContext<>(
+                        getContextLabel(),
+                        document,
+                        List.of(),
+                        parsedArgs.getDocumentId(),
+                        null,
+                        idToLink(parsedArgs.getDocumentId())))
                 .get();
     }
 
@@ -324,12 +328,10 @@ public class GoogleDocs implements Tool<Void> {
     private String textRunToString(final TextRun textRun) {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
     }
-
-
 }
 
 @ApplicationScoped
-class Arguments {
+class GoogleDocsConfig {
     @Inject
     @ConfigProperty(name = "sb.google.serviceaccountjson")
     private Optional<String> googleServiceAccountJson;
@@ -339,15 +341,6 @@ class Arguments {
     private Optional<String> disableLinks;
 
     @Inject
-    private ArgsAccessor argsAccessor;
-
-    private List<ToolArgs> arguments;
-
-    private String prompt;
-
-    private Map<String, String> context;
-
-    @Inject
     @ConfigProperty(name = "sb.google.doc")
     private Optional<String> googleDoc;
 
@@ -355,49 +348,65 @@ class Arguments {
     @ConfigProperty(name = "sb.google.keywords")
     private Optional<String> googleKeywords;
 
-    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-        this.arguments = arguments;
-        this.prompt = prompt;
-        this.context = context;
-    }
+    @Inject
+    private ArgsAccessor argsAccessor;
 
-    public String getDocumentId() {
-        return argsAccessor.getArgument(
-                googleDoc::get,
-                arguments,
-                context,
-                GoogleDocs.GOOGLE_DOC_ID_ARG,
-                "google_document_id",
-                "").value();
-    }
+    public class LocalArguments {
+        private List<ToolArgs> arguments;
 
-    public List<String> getKeywords() {
-        return argsAccessor.getArgumentList(
-                        googleKeywords::get,
-                        arguments,
-                        context,
-                        GoogleDocs.GOOGLE_KEYWORD_ARG,
-                        "google_keywords",
-                        "")
-                .stream()
-                .map(Argument::value)
-                .toList();
-    }
+        private String prompt;
 
+        private Map<String, String> context;
 
-    public String getGoogleServiceAccountJson() {
-        return googleServiceAccountJson.get();
-    }
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+            this.arguments = arguments;
+            this.prompt = prompt;
+            this.context = context;
+        }
 
-    public boolean getDisableLinks() {
-        final Argument argument = argsAccessor.getArgument(
-                disableLinks::get,
-                arguments,
-                context,
-                GoogleDocs.GOOGLE_DISABLE_LINKS_ARG,
-                "google_disable_links",
-                "false");
+        public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+            this.arguments = arguments;
+            this.prompt = prompt;
+            this.context = context;
+        }
 
-        return BooleanUtils.toBoolean(argument.value());
+        public String getDocumentId() {
+            return argsAccessor.getArgument(
+                    googleDoc::get,
+                    arguments,
+                    context,
+                    GoogleDocs.GOOGLE_DOC_ID_ARG,
+                    "google_document_id",
+                    "").value();
+        }
+
+        public List<String> getKeywords() {
+            return argsAccessor.getArgumentList(
+                            googleKeywords::get,
+                            arguments,
+                            context,
+                            GoogleDocs.GOOGLE_KEYWORD_ARG,
+                            "google_keywords",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
+
+        public String getGoogleServiceAccountJson() {
+            return googleServiceAccountJson.get();
+        }
+
+        public boolean getDisableLinks() {
+            final Argument argument = argsAccessor.getArgument(
+                    disableLinks::get,
+                    arguments,
+                    context,
+                    GoogleDocs.GOOGLE_DISABLE_LINKS_ARG,
+                    "google_disable_links",
+                    "false");
+
+            return BooleanUtils.toBoolean(argument.value());
+        }
     }
 }

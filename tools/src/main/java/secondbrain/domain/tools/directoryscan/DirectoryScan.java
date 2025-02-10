@@ -87,7 +87,7 @@ public class DirectoryScan implements Tool<Void> {
     @Inject
     private ModelConfig modelConfig;
     @Inject
-    private Arguments parsedArgs;
+    private DirectoryScanConfig config;
     @Inject
     private DebugToolArgs debugToolArgs;
     @Inject
@@ -142,15 +142,15 @@ public class DirectoryScan implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        parsedArgs.setInputs(arguments, prompt, context);
+        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         if (StringUtils.isBlank(parsedArgs.getDirectory())) {
             throw new InternalFailure("You must provide a directory to scan");
         }
 
         return Try
-                .of(() -> getFiles(parsedArgs.getDirectory()))
-                .map(this::convertFilesToSummaries)
+                .of(() -> getFiles(parsedArgs))
+                .map(files -> convertFilesToSummaries(files, parsedArgs))
                 .get();
     }
 
@@ -159,6 +159,8 @@ public class DirectoryScan implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final List<ToolArgs> arguments) {
+
+        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
@@ -196,8 +198,8 @@ public class DirectoryScan implements Tool<Void> {
                 .get();
     }
 
-    public List<String> getFiles(final String directory) throws IOException {
-        try (final Stream<Path> paths = Files.walk(Paths.get(directory))) {
+    public List<String> getFiles(final DirectoryScanConfig.LocalArguments parsedArgs) throws IOException {
+        try (final Stream<Path> paths = Files.walk(Paths.get(parsedArgs.getDirectory()))) {
             return paths
                     .filter(Files::isRegularFile)
                     .filter(path -> parsedArgs.getExcluded() == null || !parsedArgs.getExcluded().contains(path.getFileName().toString()))
@@ -220,24 +222,24 @@ public class DirectoryScan implements Tool<Void> {
                 debug);
     }
 
-    private List<RagDocumentContext<Void>> convertFilesToSummaries(final List<String> files) {
+    private List<RagDocumentContext<Void>> convertFilesToSummaries(final List<String> files, final DirectoryScanConfig.LocalArguments parsedArgs) {
         return files
                 .stream()
                 .limit(parsedArgs.getMaxFiles() == -1 ? Long.MAX_VALUE : parsedArgs.getMaxFiles())
-                .map(this::getFileContext)
+                .map(file -> getFileContext(file, parsedArgs))
                 .filter(Objects::nonNull)
                 .toList();
     }
 
-    private RagDocumentContext<Void> getFileContext(final String file) {
+    private RagDocumentContext<Void> getFileContext(final String file, final DirectoryScanConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getSummarizeIndividualFiles()) {
-            return getFileSummary(file);
+            return getFileSummary(file, parsedArgs);
         }
 
-        return getRawFile(file);
+        return getRawFile(file, parsedArgs);
     }
 
-    private RagDocumentContext<Void> getRawFile(final String file) {
+    private RagDocumentContext<Void> getRawFile(final String file, final DirectoryScanConfig.LocalArguments parsedArgs) {
         logger.info("DirectoryScan processing file: " + file);
 
         /*
@@ -278,7 +280,7 @@ public class DirectoryScan implements Tool<Void> {
      * or hallucinate a bunch of random release notes. Instead, each diff is summarised individually and then combined
      * into a single document to be summarised again.
      */
-    private RagDocumentContext<Void> getFileSummary(final String file) {
+    private RagDocumentContext<Void> getFileSummary(final String file, final DirectoryScanConfig.LocalArguments parsedArgs) {
         logger.info("DirectoryScan processing file: " + file);
 
         /*
@@ -302,7 +304,7 @@ public class DirectoryScan implements Tool<Void> {
                 this.getName(),
                 "File",
                 DigestUtils.sha256Hex(parsedArgs.getIndividualDocumentPrompt() + contents),
-                () -> getFileSummary(contents, parsedArgs));
+                () -> getFileSummaryLlm(contents, parsedArgs));
 
         if (parsedArgs.getDisableLinks()) {
             return new RagDocumentContext<>(getContextLabel(), summary, List.of());
@@ -323,7 +325,7 @@ public class DirectoryScan implements Tool<Void> {
     /**
      * Use the LLM to answer the prompt based on the contents of the file.
      */
-    private String getFileSummary(final String contents, final Arguments parsedArgs) {
+    private String getFileSummaryLlm(final String contents, final DirectoryScanConfig.LocalArguments parsedArgs) {
         return ollamaClient.callOllamaWithCache(
                 new RagMultiDocumentContext<>(promptBuilderSelector.getPromptBuilder(parsedArgs.getFileCustomModel()).buildFinalPrompt(
                         FILE_INSTRUCTIONS,
@@ -342,7 +344,7 @@ public class DirectoryScan implements Tool<Void> {
  * Exposes the arguments for the DirectoryScan tool.
  */
 @ApplicationScoped
-class Arguments {
+class DirectoryScanConfig {
     @Inject
     @ConfigProperty(name = "sb.ollama.filemodel")
     private Optional<String> filemodel;
@@ -392,135 +394,137 @@ class Arguments {
     @Inject
     private ValidateString validateString;
 
-    private List<ToolArgs> arguments;
+    public class LocalArguments {
+        private final List<ToolArgs> arguments;
 
-    private String prompt;
+        private final String prompt;
 
-    private Map<String, String> context;
+        private final Map<String, String> context;
 
-    public void setInputs(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-        this.arguments = arguments;
-        this.prompt = prompt;
-        this.context = context;
-    }
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+            this.arguments = arguments;
+            this.prompt = prompt;
+            this.context = context;
+        }
 
-    public String getDirectory() {
-        return argsAccessor.getArgument(
-                directory::get,
-                arguments,
-                context,
-                DirectoryScan.DIRECTORYSCAN_DIRECTORY,
-                "directoryscan_directory",
-                "").value();
-    }
+        public String getDirectory() {
+            return argsAccessor.getArgument(
+                    directory::get,
+                    arguments,
+                    context,
+                    DirectoryScan.DIRECTORYSCAN_DIRECTORY,
+                    "directoryscan_directory",
+                    "").value();
+        }
 
-    public int getMaxFiles() {
-        final String stringValue = argsAccessor.getArgument(
-                maxfiles::get,
-                arguments,
-                context,
-                DirectoryScan.DIRECTORYSCAN_MAX_FILES,
-                "directoryscan_maxfiles",
-                "-1").value();
+        public int getMaxFiles() {
+            final String stringValue = argsAccessor.getArgument(
+                    maxfiles::get,
+                    arguments,
+                    context,
+                    DirectoryScan.DIRECTORYSCAN_MAX_FILES,
+                    "directoryscan_maxfiles",
+                    "-1").value();
 
-        return NumberUtils.toInt(stringValue, -1);
-    }
+            return NumberUtils.toInt(stringValue, -1);
+        }
 
-    public String getFileCustomModel() {
-        return argsAccessor.getArgument(
-                filemodel::get,
-                arguments,
-                context,
-                DirectoryScan.DIRECTORYSCAN_FILE_CUSTOM_MODEL,
-                "directoryscan_file_custom_model",
-                filemodel.orElse(modelConfig.getCalculatedModel(context))).value();
-    }
+        public String getFileCustomModel() {
+            return argsAccessor.getArgument(
+                    filemodel::get,
+                    arguments,
+                    context,
+                    DirectoryScan.DIRECTORYSCAN_FILE_CUSTOM_MODEL,
+                    "directoryscan_file_custom_model",
+                    filemodel.orElse(modelConfig.getCalculatedModel(context))).value();
+        }
 
-    public String getIndividualDocumentPrompt() {
-        return argsAccessor.getArgument(
-                documentPrompt::get,
-                arguments,
-                context,
-                DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
-                "directoryscan_individual_document_prompt",
-                prompt).value();
-    }
+        public String getIndividualDocumentPrompt() {
+            return argsAccessor.getArgument(
+                    documentPrompt::get,
+                    arguments,
+                    context,
+                    DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
+                    "directoryscan_individual_document_prompt",
+                    prompt).value();
+        }
 
-    @Nullable
-    public Integer getFileContextWindow() {
-        final String stringValue = argsAccessor.getArgument(
-                fileContextWindow::get,
-                arguments,
-                context,
-                DirectoryScan.DIRECTORYSCAN_FILE_CONTENT_WINDOW,
-                "directoryscan_file_content_window",
-                Constants.DEFAULT_CONTENT_WINDOW + "").value();
+        @Nullable
+        public Integer getFileContextWindow() {
+            final String stringValue = argsAccessor.getArgument(
+                    fileContextWindow::get,
+                    arguments,
+                    context,
+                    DirectoryScan.DIRECTORYSCAN_FILE_CONTENT_WINDOW,
+                    "directoryscan_file_content_window",
+                    Constants.DEFAULT_CONTENT_WINDOW + "").value();
 
-        return NumberUtils.toInt(stringValue, Constants.DEFAULT_CONTENT_WINDOW);
-    }
+            return NumberUtils.toInt(stringValue, Constants.DEFAULT_CONTENT_WINDOW);
+        }
 
-    @Nullable
-    public List<String> getExcluded() {
-        return argsAccessor.getArgumentList(
-                        exclude::get,
-                        arguments,
-                        context,
-                        DirectoryScan.DIRECTORYSCAN_EXCLUDE_FILES,
-                        "directoryscan_exclude_files",
-                        "")
-                .stream()
-                .map(Argument::value)
-                .toList();
-    }
+        @Nullable
+        public List<String> getExcluded() {
+            return argsAccessor.getArgumentList(
+                            exclude::get,
+                            arguments,
+                            context,
+                            DirectoryScan.DIRECTORYSCAN_EXCLUDE_FILES,
+                            "directoryscan_exclude_files",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
 
-    public List<String> getKeywords() {
-        return argsAccessor.getArgumentList(
-                        keywords::get,
-                        arguments,
-                        context,
-                        DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
-                        "directoryscan_keywords",
-                        "")
-                .stream()
-                .map(Argument::value)
-                .toList();
-    }
+        public List<String> getKeywords() {
+            return argsAccessor.getArgumentList(
+                            keywords::get,
+                            arguments,
+                            context,
+                            DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
+                            "directoryscan_keywords",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
 
-    public int getKeywordWindow() {
+        public int getKeywordWindow() {
 
-        final String stringValue = argsAccessor.getArgument(
-                keywordWindow::get,
-                arguments,
-                context,
-                DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW,
-                "directoryscan_summarize_keyword_window",
-                Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "").value();
+            final String stringValue = argsAccessor.getArgument(
+                    keywordWindow::get,
+                    arguments,
+                    context,
+                    DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW,
+                    "directoryscan_summarize_keyword_window",
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "").value();
 
-        return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
-    }
+            return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
 
-    public boolean getDisableLinks() {
-        final String stringValue = argsAccessor.getArgument(
-                disableLinks::get,
-                arguments,
-                context,
-                DirectoryScan.DIRECTORYSCAN_DISABLELINKS_ARG,
-                "directoryscan_disable_links",
-                "false").value();
+        public boolean getDisableLinks() {
+            final String stringValue = argsAccessor.getArgument(
+                    disableLinks::get,
+                    arguments,
+                    context,
+                    DirectoryScan.DIRECTORYSCAN_DISABLELINKS_ARG,
+                    "directoryscan_disable_links",
+                    "false").value();
 
-        return BooleanUtils.toBoolean(stringValue);
-    }
+            return BooleanUtils.toBoolean(stringValue);
+        }
 
-    public boolean getSummarizeIndividualFiles() {
-        final String stringValue = argsAccessor.getArgument(
-                summarizeIndividualFiles::get,
-                arguments,
-                context,
-                DirectoryScan.DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG,
-                "directoryscan_summarize_individual_files",
-                "true").value();
+        public boolean getSummarizeIndividualFiles() {
+            final String stringValue = argsAccessor.getArgument(
+                    summarizeIndividualFiles::get,
+                    arguments,
+                    context,
+                    DirectoryScan.DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG,
+                    "directoryscan_summarize_individual_files",
+                    "true").value();
 
-        return BooleanUtils.toBoolean(stringValue);
+            return BooleanUtils.toBoolean(stringValue);
+        }
     }
 }
 
