@@ -170,8 +170,8 @@ $model = "phi4"
 # OLLAMA_FLASH_ATTENTION=1
 $contextWindow = "32768"
 
-$sevenDaysAgo = (Get-Date).AddDays(-7) -Format "yyyy-MM-dd"
-$now= Get-Date -Format "yyyy-MM-dd"
+$sevenDaysAgo = (Get-Date).AddDays(-$Days).ToString("yyyy-MM-dd")
+$now= (Get-Date).ToString("yyyy-MM-dd")
 
 # First step is to process all the entities to generate a high level summary
 
