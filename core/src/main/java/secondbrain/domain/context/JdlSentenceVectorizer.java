@@ -7,6 +7,7 @@ import ai.djl.repository.zoo.ZooModel;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import secondbrain.domain.exceptions.InternalFailure;
 
 /**
  * Use the Java Deep Learning library to vectorize sentences.
@@ -39,7 +40,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
         return Try.of(() -> predictor.predict(text))
                 .map(embeddings -> new Vector(floatToDouble(embeddings)))
                 .map(vector -> new RagStringContext(text, vector))
-                .getOrElseThrow((Throwable e) -> new RuntimeException("Error while getting embeddings", e));
+                .getOrElseThrow((Throwable e) -> new InternalFailure("Error while getting embeddings", e));
     }
 
     private double[] floatToDouble(final float[] values) {

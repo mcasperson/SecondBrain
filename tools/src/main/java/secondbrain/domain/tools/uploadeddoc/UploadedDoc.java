@@ -178,8 +178,6 @@ public class UploadedDoc implements Tool<Void> {
                 .map(trimDocument -> validateString.throwIfEmpty(trimDocument, TrimResult::document))
                 .map(this::getTrimmedDocumentContext)
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(getContextLabel(), contents, List.of()))
                 .get();
     }
 

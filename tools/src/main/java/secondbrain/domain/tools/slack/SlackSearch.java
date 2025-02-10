@@ -199,8 +199,6 @@ public class SlackSearch implements Tool<MatchedItem> {
                         meta,
                         matchToUrl(meta)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                // If we can't vectorize the sentences, just return the document
-                .recover(e -> new RagDocumentContext<>(getContextLabel(), meta.getText(), List.of(), meta.getId(), meta, null))
                 .get();
     }
 
