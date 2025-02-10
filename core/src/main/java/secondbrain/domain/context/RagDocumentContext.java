@@ -104,6 +104,6 @@ public record RagDocumentContext<T>(String contextLabel, String document, List<R
             return null;
         }
 
-        return new RagMatchedStringContext(context, bestSimilarity.getLeft().context(), bestSimilarity.getRight(), id);
+        return new RagMatchedStringContext(bestSimilarity.getLeft().context(), context, bestSimilarity.getRight(), id);
     }
 }
