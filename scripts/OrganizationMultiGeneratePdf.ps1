@@ -164,7 +164,7 @@ mkdir $subDir
 Write-Host "Working in $subDir"
 
 $toolModel = "llama3.1"
-$model = "phi4:14b-q8_0"
+$model = "mistral-nemo:12b-instruct-2407-q8_0"
 
 # Consider using K/V cache quanisation to support larger context windows with the following env vars:
 # OLLAMA_KV_CACHE_TYPE="q8_0"
@@ -172,7 +172,7 @@ $model = "phi4:14b-q8_0"
 $contextWindow = "32768"
 
 $sevenDaysAgo = (Get-Date).AddDays(-$Days).ToString("yyyy-MM-dd")
-$now= (Get-Date).ToString("yyyy-MM-dd")
+$now = (Get-Date).ToString("yyyy-MM-dd")
 
 # First step is to process all the entities to generate a high level summary
 
