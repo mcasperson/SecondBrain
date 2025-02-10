@@ -66,7 +66,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     private static final String INSTRUCTIONS = """
             You are helpful agent.
-            You are given the contents of a multiple Slack channels, Google Documents, and the help desk tickets from ZenDesk.
+            You are given the contents of a multiple Slack channels, Google Documents, PlanHat activities, and the help desk tickets from ZenDesk.
             You must answer the prompt based on the information provided.
             """;
 
