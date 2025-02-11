@@ -1,6 +1,5 @@
 package secondbrain.application.cli;
 
-import dev.feedforward.markdownto.DownParser;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.jboss.weld.environment.se.Weld;
@@ -40,14 +39,7 @@ public class Main {
         throw new RuntimeException("No prompt specified");
     }
 
-    private void printMarkDn(final String response) {
-        final String markdn = new DownParser(response, true).toSlack().toString();
-        // The markdown parser seems to let a bunch of strong text through, so clean that up manually
-        final String fixedMarkdn = markdn.replaceAll("\\*\\*(.+)\\*\\*", "*$1*");
-        System.out.println(fixedMarkdn);
-    }
-
-    public void entry(String[] args) {
+    public void entry(final String[] args) {
         final String response = promptHandler.handlePrompt(Map.of(), getPrompt(args));
 
         if (args.length > 1 && "markdn".equals(args[1])) {

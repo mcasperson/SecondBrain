@@ -72,7 +72,7 @@ public class PromptHandlerOllama implements PromptHandler {
      * quantized to 4 bits, can struggle to generate valid JSON in response to a request to select a tool.
      * So we retry a bunch of times to try and get a valid response.
      */
-    public String handlePromptWithRetry(final Map<String, String> context, final String prompt, int count) {
+    public String handlePromptWithRetry(final Map<String, String> context, final String prompt, final int count) {
         return Try.of(() -> toolSelector.getTool(prompt, context))
                 .map(toolCall -> callTool(toolCall, context, prompt))
                 /*

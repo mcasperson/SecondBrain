@@ -32,7 +32,6 @@ import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
-import secondbrain.domain.validate.ValidateListEmptyOrNull;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
@@ -112,8 +111,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private Logger log;
     @Inject
     private Logger logger;
-    @Inject
-    private ValidateListEmptyOrNull validateListEmptyOrNull;
 
     @Override
     public String getName() {
@@ -437,7 +434,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         if (key != null) {
             result.put(key, value);
         }
-        
+
         return result;
     }
 
