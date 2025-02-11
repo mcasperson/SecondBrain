@@ -87,6 +87,11 @@ class RagMultiDocumentContextTest {
 
     static class MockSentenceVectorizer implements SentenceVectorizer {
         @Override
+        public RagStringContext vectorize(String text, String hiddenText) {
+            return vectorize(text);
+        }
+
+        @Override
         public RagStringContext vectorize(String sentence) {
             if (sentence.equals("This is a test document after processing")) {
                 return new RagStringContext(sentence, new Vector(1d));  // Mock vector
