@@ -11,6 +11,7 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
@@ -430,9 +431,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return validateSufficientContext(retValue, parsedArgs);
     }
 
-    private Map<String, String> addItemToMap(final Map<String, String> map, final String key, final String value) {
+    private Map<String, String> addItemToMap(@Nullable final Map<String, String> map, final String key, final String value) {
         final Map<String, String> result = map == null ? new HashMap<>() : new HashMap<>(map);
-        result.put(key, value);
+
+        if (key != null) {
+            result.put(key, value);
+        }
+        
         return result;
     }
 
