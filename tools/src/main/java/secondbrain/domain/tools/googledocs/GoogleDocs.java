@@ -58,6 +58,7 @@ public class GoogleDocs implements Tool<Void> {
     public static final String GOOGLE_DOC_ID_ARG = "googleDocumentId";
     public static final String GOOGLE_KEYWORD_ARG = "keywords";
     public static final String GOOGLE_DISABLE_LINKS_ARG = "disableLinks";
+    public static final String GOOGLE_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String APPLICATION_NAME = "SecondBrain";
@@ -233,7 +234,7 @@ public class GoogleDocs implements Tool<Void> {
                         getContextLabel(),
                         trimResult.document(),
                         sentences.stream()
-                                .map(sentenceVectorizer::vectorize)
+                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
                                 .collect(Collectors.toList()),
                         parsedArgs.getDocumentId(),
                         null,
@@ -415,6 +416,16 @@ class GoogleDocsConfig {
                     "false");
 
             return BooleanUtils.toBoolean(argument.value());
+        }
+
+        public String getEntity() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    context,
+                    null,
+                    GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

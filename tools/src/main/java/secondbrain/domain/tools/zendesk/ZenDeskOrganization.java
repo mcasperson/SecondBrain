@@ -60,6 +60,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     public static final String HOURS_ARG = "hours";
     public static final String ZENDESK_KEYWORD_ARG = "keywords";
     public static final String ZENDESK_KEYWORD_WINDOW_ARG = "keywordWindow";
+    public static final String ZENDESK_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
 
     private static final int MAX_TICKETS = 100;
@@ -366,7 +367,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                         getContextLabel(),
                         document,
                         sentences.stream()
-                                .map(sentenceVectorizer::vectorize)
+                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
                                 .collect(Collectors.toList()),
                         id,
                         meta,
@@ -807,6 +808,16 @@ class ZenDeskConfig {
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
+
+        public String getEntity() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    context,
+                    null,
+                    ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

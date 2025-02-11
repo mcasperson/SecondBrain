@@ -7,6 +7,7 @@ import ai.djl.repository.zoo.ZooModel;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptions.InternalFailure;
 
 /**
@@ -33,11 +34,17 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
     }
 
     public RagStringContext vectorize(final String text) {
+        return vectorize(text, null);
+    }
+
+    public RagStringContext vectorize(final String text, final @Nullable String hiddenText) {
         if (predictor == null) {
             throw new RuntimeException("Predictor is not initialized");
         }
 
-        return Try.of(() -> predictor.predict(text))
+        final String prefix = hiddenText == null ? "" : hiddenText + " ";
+
+        return Try.of(() -> predictor.predict(prefix + text))
                 .map(embeddings -> new Vector(floatToDouble(embeddings)))
                 .map(vector -> new RagStringContext(text, vector))
                 .getOrElseThrow((Throwable e) -> new InternalFailure("Error while getting embeddings", e));

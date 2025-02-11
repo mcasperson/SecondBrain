@@ -48,6 +48,7 @@ public class PublicWeb implements Tool<Void> {
     public static final String PUBLICWEB_DISABLELINKS_ARG = "disableLinks";
     public static final String PUBLICWEB_KEYWORD_ARG = "keywords";
     public static final String PUBLICWEB_KEYWORD_WINDOW_ARG = "keywordWindow";
+    public static final String PUBLICWEB_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -196,7 +197,7 @@ public class PublicWeb implements Tool<Void> {
                         getContextLabel(),
                         trimResult.document(),
                         sentences.stream()
-                                .map(sentenceVectorizer::vectorize)
+                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
                                 .collect(Collectors.toList()),
                         null,
                         null,
@@ -307,6 +308,16 @@ class PublicWebConfig {
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
+
+        public String getEntity() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    context,
+                    null,
+                    PublicWeb.PUBLICWEB_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

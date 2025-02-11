@@ -53,6 +53,7 @@ public class PlanHat implements Tool<Conversation> {
     public static final String DISABLE_LINKS_ARG = "disableLinks";
     public static final String PLANHAT_KEYWORD_ARG = "keywords";
     public static final String PLANHAT_KEYWORD_WINDOW_ARG = "keywordWindow";
+    public static final String PLANHAT_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -211,7 +212,7 @@ public class PlanHat implements Tool<Conversation> {
                         getContextLabel() + " " + trimmedConversationResult.getLeft().date(),
                         trimmedConversationResult.getLeft().getContent(),
                         sentences.stream()
-                                .map(sentenceVectorizer::vectorize)
+                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
                                 .collect(Collectors.toList()),
                         trimmedConversationResult.getLeft().id(),
                         trimmedConversationResult.getLeft(),
@@ -402,6 +403,16 @@ class PlanHatConfig {
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
+
+        public String getEntity() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    context,
+                    null,
+                    PlanHat.PLANHAT_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

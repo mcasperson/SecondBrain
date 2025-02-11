@@ -57,6 +57,7 @@ public class SlackChannel implements Tool<Void> {
     public static final String SLACK_DISABLELINKS_ARG = "disableLinks";
     public static final String SLACK_KEYWORD_ARG = "keywords";
     public static final String SLACK_KEYWORD_WINDOW_ARG = "keywordWindow";
+    public static final String SLACK_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final String INSTRUCTIONS = """
@@ -234,7 +235,7 @@ public class SlackChannel implements Tool<Void> {
                         getContextLabel(),
                         trimResult.document(),
                         sentences.stream()
-                                .map(sentenceVectorizer::vectorize)
+                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
                                 .collect(Collectors.toList()),
                         channelDetails.channelName(),
                         null,
@@ -484,6 +485,16 @@ class SlackChannelConfig {
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
+
+        public String getEntity() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    context,
+                    null,
+                    SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

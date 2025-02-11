@@ -46,6 +46,7 @@ import static com.google.common.base.Predicates.instanceOf;
 public class UploadedDoc implements Tool<Void> {
     public static final String UPLOADED_DOC_KEYWORD_ARG = "keywords";
     public static final String UPLOADED_DOC_KEYWORD_WINDOW_ARG = "keywordWindow";
+    public static final String UPLOADED_DOC_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -176,18 +177,18 @@ public class UploadedDoc implements Tool<Void> {
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))
                 .map(trimDocument -> validateString.throwIfEmpty(trimDocument, TrimResult::document))
-                .map(this::getTrimmedDocumentContext)
+                .map(trimmedResult -> getTrimmedDocumentContext(trimmedResult, parsedArgs))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }
 
-    private RagDocumentContext<Void> getTrimmedDocumentContext(final TrimResult trimResult) {
+    private RagDocumentContext<Void> getTrimmedDocumentContext(final TrimResult trimResult, final UploadDocConfig.LocalArguments parsedArgs) {
         return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
                         trimResult.document(),
                         sentences.stream()
-                                .map(sentenceVectorizer::vectorize)
+                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
                                 .collect(Collectors.toList()),
                         null,
                         null,
@@ -278,6 +279,16 @@ class UploadDocConfig {
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
+
+        public String getEntity() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    context,
+                    null,
+                    UploadedDoc.UPLOADED_DOC_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

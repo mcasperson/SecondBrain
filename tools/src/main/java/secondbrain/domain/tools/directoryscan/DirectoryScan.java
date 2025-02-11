@@ -64,6 +64,7 @@ public class DirectoryScan implements Tool<Void> {
     public static final String DIRECTORYSCAN_FILE_CUSTOM_MODEL = "fileCustomModel";
     public static final String DIRECTORYSCAN_MAX_FILES = "maxfiles";
     public static final String DIRECTORYSCAN_DIRECTORY = "directory";
+    public static final String DIRECTORYSCAN_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
     private static final String INSTRUCTIONS = """
             You are given a question and the answer to the question from many individual files.
@@ -268,7 +269,7 @@ public class DirectoryScan implements Tool<Void> {
                 trimResult.document(),
                 sentenceSplitter.splitDocument(trimResult.document(), 10)
                         .stream()
-                        .map(sentenceVectorizer::vectorize)
+                        .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
                         .toList(),
                 file,
                 null,
@@ -574,6 +575,16 @@ class DirectoryScanConfig {
                     "true").value();
 
             return BooleanUtils.toBoolean(stringValue);
+        }
+
+        public String getEntity() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    context,
+                    null,
+                    DirectoryScan.DIRECTORYSCAN_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

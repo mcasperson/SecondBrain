@@ -50,6 +50,7 @@ public class SlackSearch implements Tool<MatchedItem> {
     public static final String SLACK_SEARCH_KEYWORDS_ARG = "searchKeywords";
     public static final String SLACK_SEARCH_FILTER_KEYWORDS_ARG = "keywords";
     public static final String SLACK_SEARCH_DISABLELINKS_ARG = "disableLinks";
+    public static final String SLACK_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
@@ -193,7 +194,7 @@ public class SlackSearch implements Tool<MatchedItem> {
                         getContextLabel(),
                         meta.getText(),
                         sentences.stream()
-                                .map(sentenceVectorizer::vectorize)
+                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
                                 .collect(Collectors.toList()),
                         meta.getId(),
                         meta,
@@ -452,6 +453,16 @@ class SlackSearchConfig {
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
+
+        public String getEntity() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    context,
+                    null,
+                    SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
         }
     }
 }
