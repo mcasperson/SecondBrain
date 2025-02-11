@@ -431,8 +431,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private Map<String, String> addItemToMap(final Map<String, String> map, final String key, final String value) {
-        final Map<String, String> result = new HashMap<>(map);
-        map.put(key, value);
+        final Map<String, String> result = map == null ? new HashMap<>() : new HashMap<>(map);
+        result.put(key, value);
         return result;
     }
 
