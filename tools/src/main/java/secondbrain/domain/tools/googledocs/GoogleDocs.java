@@ -74,9 +74,6 @@ public class GoogleDocs implements Tool<Void> {
             """;
 
     @Inject
-    private ArgsAccessor argsAccessor;
-
-    @Inject
     private ModelConfig modelConfig;
 
     @Inject
@@ -132,7 +129,7 @@ public class GoogleDocs implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(argsAccessor, arguments, prompt, context);
+        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
         final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
@@ -345,6 +342,9 @@ class GoogleDocsConfig {
     @ConfigProperty(name = "sb.google.keywords")
     private Optional<String> configGoogleKeywords;
 
+    @Inject
+    private ArgsAccessor argsAccessor;
+
     public Optional<String> getConfigGoogleServiceAccountJson() {
         return configGoogleServiceAccountJson;
     }
@@ -361,6 +361,10 @@ class GoogleDocsConfig {
         return configGoogleKeywords;
     }
 
+    public ArgsAccessor getArgsAccessor() {
+        return argsAccessor;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -368,17 +372,14 @@ class GoogleDocsConfig {
 
         private final Map<String, String> context;
 
-        private final ArgsAccessor argsAccessor;
-
-        public LocalArguments(final ArgsAccessor argsAccessor, final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
-            this.argsAccessor = argsAccessor;
         }
 
         public String getDocumentId() {
-            return argsAccessor.getArgument(
+            return getArgsAccessor().getArgument(
                     getConfigGoogleDoc()::get,
                     arguments,
                     context,
@@ -388,7 +389,7 @@ class GoogleDocsConfig {
         }
 
         public List<String> getKeywords() {
-            return argsAccessor.getArgumentList(
+            return getArgsAccessor().getArgumentList(
                             getConfigGoogleKeywords()::get,
                             arguments,
                             context,
@@ -405,7 +406,7 @@ class GoogleDocsConfig {
         }
 
         public boolean getDisableLinks() {
-            final Argument argument = argsAccessor.getArgument(
+            final Argument argument = getArgsAccessor().getArgument(
                     getConfigDisableLinks()::get,
                     arguments,
                     context,
