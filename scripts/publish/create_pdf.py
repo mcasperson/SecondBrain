@@ -79,7 +79,6 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     <p>Welcome to the AI of Sauron {title}.</p>
     <p>This document is an AI generated summary the interactions between Octopus and our customers.</p>
     <p>Because it is AI generated, mistakes may occur. Please verify the information before taking any action.</p>
-    <p>Note that keyword lists may include a number of false positives as documents like CDJs include boilerplate sample text that mentions things like Kubernetes even if the company does not use those technologies.</p>
     """)
 
     company_prefix = 'COMPANY '
