@@ -31,6 +31,7 @@ import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
+import secondbrain.domain.validate.ValidateListEmptyOrNull;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
@@ -110,6 +111,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private Logger log;
     @Inject
     private Logger logger;
+    @Inject
+    private ValidateListEmptyOrNull validateListEmptyOrNull;
 
     @Override
     public String getName() {
@@ -156,7 +159,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.getDays(), parsedArgs).stream())
                 .toList();
 
-        return validateSufficientContext(ragContext, parsedArgs);
+        if (ragContext.isEmpty()) {
+            throw new InsufficientContext("No ZenDesk tickets, Slack messages, or PlanHat activities found.");
+        }
+
+        return ragContext;
     }
 
     @Override
@@ -210,7 +217,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 + zenDeskContextCount(ragContext)
                 + planhatContextCount(ragContext)
                 < parsedArgs.getMinTimeBasedContext()) {
-            throw new InsufficientContext("No Slack messages, ZenDesk tickets, or PlanHat activities found.");
+            return List.of();
         }
 
         return ragContext;
@@ -403,7 +410,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         retValue.addAll(googleContext);
         retValue.addAll(zenContext);
         retValue.addAll(planHatContext);
-        return retValue;
+
+        return validateSufficientContext(retValue, parsedArgs);
     }
 
     private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
