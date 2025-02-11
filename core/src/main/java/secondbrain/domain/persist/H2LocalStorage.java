@@ -9,7 +9,6 @@ import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
-import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
 
@@ -52,7 +51,8 @@ public class H2LocalStorage implements LocalStorage {
     @PostConstruct
     private void getConnection() {
         this.connection = Try.of(() -> DriverManager.getConnection(getConnectionString()))
-                .getOrElseThrow(ex -> new InternalFailure("Failed to connect to the database", ex));
+                .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
+                .getOrNull();
     }
 
     @PreDestroy
@@ -111,7 +111,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     synchronized private boolean deleteExpired(final Connection connection) {
-        if (isDisabled()) {
+        if (isDisabled() || connection == null) {
             return false;
         }
 
@@ -131,7 +131,7 @@ public class H2LocalStorage implements LocalStorage {
 
     @Override
     synchronized public String getString(final String tool, final String source, final String promptHash) {
-        if (isDisabled() || isWriteOnly()) {
+        if (isDisabled() || isWriteOnly() || connection == null) {
             return null;
         }
 
@@ -232,7 +232,7 @@ public class H2LocalStorage implements LocalStorage {
 
     @Override
     synchronized public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
-        if (isDisabled() || isReadOnly()) {
+        if (isDisabled() || isReadOnly() || connection == null) {
             return;
         }
 
