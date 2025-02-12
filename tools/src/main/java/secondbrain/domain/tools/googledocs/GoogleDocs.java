@@ -57,6 +57,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class GoogleDocs implements Tool<Void> {
     public static final String GOOGLE_DOC_ID_ARG = "googleDocumentId";
     public static final String GOOGLE_KEYWORD_ARG = "keywords";
+    public static final String GOOGLE_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String GOOGLE_DISABLE_LINKS_ARG = "disableLinks";
     public static final String GOOGLE_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
@@ -344,6 +345,10 @@ class GoogleDocsConfig {
     private Optional<String> configGoogleKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.google.keywordwindow")
+    private Optional<String> configKeywordWindow;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     public Optional<String> getConfigGoogleServiceAccountJson() {
@@ -364,6 +369,10 @@ class GoogleDocsConfig {
 
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
     }
 
     public class LocalArguments {
@@ -426,6 +435,18 @@ class GoogleDocsConfig {
                     null,
                     GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG,
                     "").value();
+        }
+
+        public int getKeywordWindow() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
+                    arguments,
+                    context,
+                    GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG,
+                    "google_keyword_window",
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
     }
 }

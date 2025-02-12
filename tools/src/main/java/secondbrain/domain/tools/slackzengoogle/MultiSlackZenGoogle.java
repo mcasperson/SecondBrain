@@ -15,6 +15,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
@@ -60,6 +61,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     public static final String MULTI_SLACK_ZEN_GOOGLE_DISABLELINKS = "disableLinks";
     public static final String MULTI_SLACK_ZEN_KEYWORD_ARG = "keywords";
+    public static final String MULTI_SLACK_ZEN_WINDOW_ARG = "keywordWindow";
     public static final String MULTI_SLACK_ZEN_URL_ARG = "url";
     public static final String MULTI_SLACK_ZEN_DAYS_ARG = "days";
     public static final String MULTI_SLACK_ZEN_ENTITY_NAME_ARG = "entityName";
@@ -303,6 +305,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
                         new ToolArgs(SlackChannel.SLACK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(SlackChannel.SLACK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(SlackChannel.DAYS_ARG, "" + days, true),
                         new ToolArgs(SlackChannel.SLACK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
@@ -357,6 +360,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
                         new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(GoogleDocs.GOOGLE_DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(
                                 addItemToMap(context, GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG, entity.name()),
@@ -529,6 +533,10 @@ class MultiSlackZenGoogleConfig {
     @ConfigProperty(name = "sb.slackzengoogle.keywords")
     private Optional<String> configKeywords;
 
+    @Inject
+    @ConfigProperty(name = "sb.slackzengoogle.keywordwindow")
+    private Optional<String> configKeywordWindow;
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -559,6 +567,10 @@ class MultiSlackZenGoogleConfig {
 
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
     }
 
     public class LocalArguments {
@@ -661,6 +673,18 @@ class MultiSlackZenGoogleConfig {
                             "multislackzengoogle_keywords",
                             "")
                     .value();
+        }
+
+        public Integer getKeywordWindow() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_WINDOW_ARG,
+                    "multislackzengoogle_keyword_window",
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
     }
 }
