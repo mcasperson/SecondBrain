@@ -382,6 +382,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + days, true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(
@@ -405,6 +406,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(PlanHat.DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true),
                         new ToolArgs(PlanHat.PLANHAT_KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(PlanHat.PLANHAT_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
                         new ToolArgs(PlanHat.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> planHat.getContext(

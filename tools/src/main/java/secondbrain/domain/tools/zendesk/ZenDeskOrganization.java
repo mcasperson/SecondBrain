@@ -442,7 +442,7 @@ class ZenDeskConfig {
     private Optional<String> configKeywords;
 
     @Inject
-    @ConfigProperty(name = "sb.upload.keywordwindow")
+    @ConfigProperty(name = "sb.zendesk.keywordwindow")
     private Optional<String> configKeywordWindow;
 
     @Inject
