@@ -1,6 +1,10 @@
 package secondbrain.domain.constants;
 
 public class Constants {
+    /**
+     * This number has been picked to avoid most api rate limits. It was mostly trial and error, and there
+     * may be a better number to use.
+     */
     public static final int DEFAULT_SEMAPHORE_COUNT = 5;
 
     /**
