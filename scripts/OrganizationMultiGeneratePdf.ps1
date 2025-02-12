@@ -169,7 +169,7 @@ $model = "mistral-nemo:12b-instruct-2407-q8_0"
 # Consider using K/V cache quanisation to support larger context windows with the following env vars:
 # OLLAMA_KV_CACHE_TYPE="q8_0"
 # OLLAMA_FLASH_ATTENTION=1
-$contextWindow = "65536"
+$contextWindow = "131072"
 
 $sevenDaysAgo = (Get-Date).AddDays(-$Days).ToString("yyyy-MM-dd")
 $now = (Get-Date).ToString("yyyy-MM-dd")
