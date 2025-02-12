@@ -284,7 +284,7 @@ if ($GenerateExecutiveSummary)
 
 if ($GeneratePDF)
 {
-    $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" --directory `"$subDir`" --pdf `"$PdfFile`" --title `"'$PdfTitle'`" --date_from `"$sevenDaysAgo`" --date_to `"$now`" --cover_page `"$CoverPage`""
+    $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" --directory `"$subDir`" --pdf `"$PdfFile`" --title `"$PdfTitle`" --date_from `"$sevenDaysAgo`" --date_to `"$now`" --cover_page `"$CoverPage`""
     Add-Content -Path /tmp/pdfgenerate.log -Value $pdfResult.StdOut
     Add-Content -Path /tmp/pdfgenerate.log -Value $pdfResult.StdErr
 
