@@ -164,7 +164,15 @@ mkdir $subDir
 Write-Host "Working in $subDir"
 
 $toolModel = "llama3.1"
-$model = "mistral-nemo:12b-instruct-2407-q8_0"
+
+# Mistral nemo is fast and produces consise reports
+# It does not follow all the instructions
+# It found 19 of around 50 entities in a long context
+#$model = "mistral-nemo:12b-instruct-2407-q8_0"
+
+# Llama 3.3 is chatty and wants to talk rather than write a report.
+# You have to tell Llama to not ask for more information.
+$model = "llama3.3"
 
 # Consider using K/V cache quanisation to support larger context windows with the following env vars:
 # OLLAMA_KV_CACHE_TYPE="q8_0"
