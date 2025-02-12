@@ -204,6 +204,8 @@ if ($GenerateCompanyReports)
             continue
         }
 
+        $EntityLog = "/tmp/pdfgenerate $( $entity.name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
+
         $entityName = $entity.name
 
         echo "Processing $entityName in $subDir $( $index + 1 ) of $( $database.entities.Count )"
@@ -216,13 +218,13 @@ if ($GenerateCompanyReports)
         #echo "Slack StdErr"
         #echo $result.StdErr
 
-        Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Entity: $entityName`n"
+        Add-Content -Path $EntityLog -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Entity: $entityName`n"
         if ($result.ExitCode -ne 0)
         {
-            Add-Content -Path /tmp/pdfgenerate.log -Value "Failed to process $entityName"
+            Add-Content -Path $EntityLog -Value "Failed to process $entityName"
         }
-        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
-        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
+        Add-Content -Path $EntityLog -Value $result.StdOut
+        Add-Content -Path $EntityLog -Value $result.StdErr
 
         if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
         {
@@ -238,6 +240,8 @@ if ($GenerateTopicReports)
     foreach ($topic in $topics.topics)
     {
 
+        $TopicLog = "/tmp/pdfgenerate $( $topic.name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
+
         # We need to be tight with the sb.slackzengoogle.keywordwindow value, as the default of 2000
         # characters was leading to whole google documents being included in the output, which was
         # consuming all the context window.
@@ -246,13 +250,13 @@ if ($GenerateTopicReports)
         echo $result.StdOut
         echo $result.StdErr
 
-        Add-Content -Path /tmp/pdfgenerate.log -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Topic: $( $topic.name )`n"
+        Add-Content -Path $TopicLog -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Topic: $( $topic.name )`n"
         if ($result.ExitCode -ne 0)
         {
-            Add-Content -Path /tmp/pdfgenerate.log -Value "Failed to process topic $( $topic.name )"
+            Add-Content -Path $TopicLog -Value "Failed to process topic $( $topic.name )"
         }
-        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdOut
-        Add-Content -Path /tmp/pdfgenerate.log -Value $result.StdErr
+        Add-Content -Path $TopicLog -Value $result.StdOut
+        Add-Content -Path $TopicLog -Value $result.StdErr
 
         if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
         {
