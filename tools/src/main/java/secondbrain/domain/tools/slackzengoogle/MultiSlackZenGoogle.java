@@ -440,17 +440,19 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         validateSufficientContext(retValue, parsedArgs);
 
-        if (contextMeetsRating(retValue, parsedArgs)) {
+        final Integer rating = getContextRating(retValue, parsedArgs);
+
+        if (rating >= parsedArgs.getContextFilterMinimumRating()) {
             return retValue;
         }
 
-        logger.info("Context for entity " + entity.name() + " did not meet the rating threshold.");
+        logger.info("The context rating for entity " + entity.name() + " (" + rating + ") did not meet the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
         return List.of();
     }
 
-    private boolean contextMeetsRating(final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+    private Integer getContextRating(final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return true;
+            return 10;
         }
 
         final RagMultiDocumentContext<Void> multiRagDoc = new RagMultiDocumentContext<>(
@@ -468,9 +470,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         parsedArgs.getContextFilterQuestion(),
                         List.of()).combinedDocument())
                 .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
-                .map(rating -> rating >= parsedArgs.getContextFilterMinimumRating())
-                // Ratings are a best effort, so we ignore any failures
-                .recover(InternalFailure.class, ex -> true)
+                // Ratings are provided on a best effort basis, so we ignore any failures
+                .recover(InternalFailure.class, ex -> 10)
                 .get();
 
     }
