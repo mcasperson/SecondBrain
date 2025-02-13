@@ -444,6 +444,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             return retValue;
         }
 
+        logger.info("Context for entity " + entity.name() + " did not meet the rating threshold.");
         return List.of();
     }
 

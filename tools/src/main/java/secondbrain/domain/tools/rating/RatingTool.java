@@ -28,6 +28,7 @@ import static com.google.common.base.Predicates.instanceOf;
  * RatingTool rates a document or context against the supplied question or criteria and returns a score
  * from 1 to 10. This is useful to filter out context that is not relevant to the question.
  */
+@ApplicationScoped
 public class RatingTool implements Tool<Void> {
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "rating_document";
 
