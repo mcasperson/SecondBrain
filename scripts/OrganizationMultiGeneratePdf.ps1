@@ -177,7 +177,10 @@ $model = "llama3.3"
 # Consider using K/V cache quanisation to support larger context windows with the following env vars:
 # OLLAMA_KV_CACHE_TYPE="q8_0"
 # OLLAMA_FLASH_ATTENTION=1
-$contextWindow = "131072"
+
+# 128K tokens can be just a bit too much when using a 70B model
+#$contextWindow = "131072"
+$contextWindow = "98304"
 
 $sevenDaysAgo = (Get-Date).AddDays(-$Days).ToString("yyyy-MM-dd")
 $now = (Get-Date).ToString("yyyy-MM-dd")
