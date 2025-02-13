@@ -143,11 +143,11 @@ public class DirectoryScan implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getDirectory())) {
             throw new InternalFailure("You must provide a directory to scan");
@@ -161,34 +161,34 @@ public class DirectoryScan implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
         final Try<RagMultiDocumentContext<Void>> result = Try
-                .of(() -> getContext(context, prompt, arguments))
+                .of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
                         modelConfig.getCalculatedContextWindowChars()))
-                .map(ragDocs -> mergeContext(ragDocs, context, debugArgs))
+                .map(ragDocs -> mergeContext(ragDocs, environmentSettings, debugArgs))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                 .map(ragDoc -> ragDoc.updateDocument(
-                        promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildFinalPrompt(
+                        promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings)).buildFinalPrompt(
                                 INSTRUCTIONS,
                                 promptBuilderSelector.getPromptBuilder(
-                                        modelConfig.getCalculatedModel(context)).buildContextPrompt(
+                                        modelConfig.getCalculatedModel(environmentSettings)).buildContextPrompt(
                                         "Individual File Answer", ragDoc.combinedDocument()),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
                         modelConfig.getCalculatedContextWindow()));
 

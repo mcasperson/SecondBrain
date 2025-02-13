@@ -151,11 +151,11 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 
     @Override
     public List<RagDocumentContext<ZenDeskResultsResponse>> getContext(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
                 (parsedArgs.getUser() + "/token:" + parsedArgs.getToken()).getBytes(UTF_8))).get(), UTF_8);
@@ -184,7 +184,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                             raw tickets. The reality is that even LLMs with a context length of 128k tokens mostly fixated
                             one a small number of tickets.
                          */
-                        .map(tickets -> summariseTickets(tickets, context))
+                        .map(tickets -> summariseTickets(tickets, environmentSettings))
                         .get());
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
@@ -198,32 +198,32 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     }
 
     @Override
-    public RagMultiDocumentContext<ZenDeskResultsResponse> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<ZenDeskResultsResponse> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
 
-        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final Try<RagMultiDocumentContext<ZenDeskResultsResponse>> result = Try.of(() -> getContext(context, prompt, arguments))
+        final Try<RagMultiDocumentContext<ZenDeskResultsResponse>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 // Limit the list to just those that fit in the context
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
                         modelConfig.getCalculatedContextWindowChars()))
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                .map(tickets -> mergeContext(tickets, debugArgs, modelConfig.getCalculatedModel(context)))
+                .map(tickets -> mergeContext(tickets, debugArgs, modelConfig.getCalculatedModel(environmentSettings)))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                 // Build the final prompt including instructions, context and the user prompt
                 .map(ragContext -> ragContext.updateDocument(
                         promptBuilderSelector
-                                .getPromptBuilder(modelConfig.getCalculatedModel(context))
+                                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                                 .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
                 // Call Ollama with the final prompt
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
                         modelConfig.getCalculatedContextWindow()))
                 // Clean up the response

@@ -127,8 +127,8 @@ public class PlanHat implements Tool<Conversation> {
     }
 
     @Override
-    public List<RagDocumentContext<Conversation>> getContext(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
-        final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+    public List<RagDocumentContext<Conversation>> getContext(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+        final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
             throw new InternalFailure("You must provide a company ID to query");
@@ -156,26 +156,26 @@ public class PlanHat implements Tool<Conversation> {
     }
 
     @Override
-    public RagMultiDocumentContext<Conversation> call(Map<String, String> context, String prompt, List<ToolArgs> arguments) {
-        final List<RagDocumentContext<Conversation>> contextList = getContext(context, prompt, arguments);
+    public RagMultiDocumentContext<Conversation> call(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+        final List<RagDocumentContext<Conversation>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
             throw new InternalFailure("You must provide a company to query");
         }
 
         final Try<RagMultiDocumentContext<Conversation>> result = Try.of(() -> contextList)
-                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
+                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(context))
+                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
                         modelConfig.getCalculatedContextWindow()));
 

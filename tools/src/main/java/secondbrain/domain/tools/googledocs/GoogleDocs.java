@@ -127,15 +127,15 @@ public class GoogleDocs implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final long defaultExpires = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(3600).toEpochSecond(ZoneOffset.UTC);
-        final Long expires = Try.of(() -> textEncryptor.decrypt(context.get("google_access_token_expires")))
-                .recover(e -> context.get("google_access_token_expires"))
+        final Long expires = Try.of(() -> textEncryptor.decrypt(environmentSettings.get("google_access_token_expires")))
+                .recover(e -> environmentSettings.get("google_access_token_expires"))
                 .mapTry(Objects::requireNonNull)
                 .map(value -> NumberUtils.toLong(value, defaultExpires))
                 .recover(error -> defaultExpires)
@@ -143,13 +143,13 @@ public class GoogleDocs implements Tool<Void> {
 
         final Try<HttpRequestInitializer> token = Try
                 // Start assuming an encrypted access token was sent from the browser
-                .of(() -> textEncryptor.decrypt(context.get("google_access_token")))
+                .of(() -> textEncryptor.decrypt(environmentSettings.get("google_access_token")))
                 // Then try an unencrypted token
-                .recover(e -> context.get("google_access_token"))
+                .recover(e -> environmentSettings.get("google_access_token"))
                 .mapTry(Objects::requireNonNull)
                 .map(accessToken -> getCredentials(accessToken, new Date(expires * 1000L)))
                 // Next try the service account JSON file from the browser
-                .recoverWith(e -> Try.of(() -> context.get("google_service_account_json"))
+                .recoverWith(e -> Try.of(() -> environmentSettings.get("google_service_account_json"))
                         .mapTry(Objects::requireNonNull)
                         .mapTry(this::getServiceAccountCredentials))
                 // The try the service account passed in as a config setting
@@ -185,11 +185,11 @@ public class GoogleDocs implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> context, final String prompt, final List<ToolArgs> arguments) {
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
-                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(context))
+                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 // I've opted to get the end of the document if it is larger than the context window.
@@ -199,7 +199,7 @@ public class GoogleDocs implements Tool<Void> {
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedModel(environmentSettings),
                         GoogleDocs.class.getSimpleName(),
                         modelConfig.getCalculatedContextWindow()));
 

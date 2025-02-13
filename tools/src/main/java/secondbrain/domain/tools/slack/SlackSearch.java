@@ -111,11 +111,11 @@ public class SlackSearch implements Tool<MatchedItem> {
 
     @Override
     public List<RagDocumentContext<MatchedItem>> getContext(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         // If there is nothing to search for, return an empty list
         if (CollectionUtils.isEmpty(parsedArgs.getSearchKeywords())) {
@@ -155,21 +155,21 @@ public class SlackSearch implements Tool<MatchedItem> {
 
     @Override
     public RagMultiDocumentContext<MatchedItem> call(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<MatchedItem>> contextList = getContext(context, prompt, arguments);
+        final List<RagDocumentContext<MatchedItem>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<MatchedItem>> result = Try.of(() -> mergeContext(contextList, context))
+        final Try<RagMultiDocumentContext<MatchedItem>> result = Try.of(() -> mergeContext(contextList, environmentSettings))
                 .map(ragContext -> ragContext.updateDocument(
-                        promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildFinalPrompt(
+                        promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings)).buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
                         modelConfig.getCalculatedContextWindow()));
 

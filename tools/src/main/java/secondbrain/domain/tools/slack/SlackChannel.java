@@ -125,11 +125,11 @@ public class SlackChannel implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         /*
             Get the oldest date to search from, starting from the starr of the current day.
@@ -189,27 +189,27 @@ public class SlackChannel implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(
                         ragDoc.stream()
-                                .map(document -> promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildContextPrompt("Message", document.document()))
+                                .map(document -> promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings)).buildContextPrompt("Message", document.document()))
                                 .collect(Collectors.joining(System.lineSeparator())),
                         ragDoc))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(context))
+                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
                         modelConfig.getCalculatedContextWindow()));
 

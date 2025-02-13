@@ -30,6 +30,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
+import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
@@ -66,6 +67,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_DAYS_ARG = "days";
     public static final String MULTI_SLACK_ZEN_ENTITY_NAME_ARG = "entityName";
     public static final String MULTI_SLACK_ZEN_MAX_ENTITIES_ARG = "maxEntities";
+    public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
+    public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
 
     private static final String INSTRUCTIONS = """
             You are helpful agent.
@@ -92,6 +95,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private ZenDeskOrganization zenDeskOrganization;
 
     @Inject
+    private RatingTool ratingTool;
+
+    @Inject
     private OllamaClient ollamaClient;
 
     @Inject
@@ -111,6 +117,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private Logger log;
+
     @Inject
     private Logger logger;
 
@@ -142,11 +149,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final EntityDirectory entityDirectory = Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
@@ -156,7 +163,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .parallelStream()
                 .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.name().toLowerCase()))
                 .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
-                .flatMap(entity -> getEntityContext(entity, context, prompt, parsedArgs.getDays(), parsedArgs).stream())
+                .flatMap(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs.getDays(), parsedArgs).stream())
                 .toList();
 
         if (ragContext.isEmpty()) {
@@ -168,15 +175,15 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
-                .map(ragContext -> mergeContext(ragContext, modelConfig.getCalculatedModel(context)))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+                .map(ragContext -> mergeContext(ragContext, modelConfig.getCalculatedModel(environmentSettings)))
                 .map(multiRagDoc -> multiRagDoc.updateDocument(
                         promptBuilderSelector
-                                .getPromptBuilder(modelConfig.getCalculatedModel(context))
+                                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                                 .buildFinalPrompt(getInstructions(multiRagDoc),
                                         // I've opted to get the end of the document if it is larger than the context window.
                                         // The end of the document is typically given more weight by LLMs, and so any long
@@ -185,7 +192,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                         prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
                         modelConfig.getCalculatedContextWindow()))
                 /*
@@ -431,7 +438,40 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         retValue.addAll(zenContext);
         retValue.addAll(planHatContext);
 
-        return validateSufficientContext(retValue, parsedArgs);
+        validateSufficientContext(retValue, parsedArgs);
+
+        if (contextMeetsRating(retValue, parsedArgs)) {
+            return retValue;
+        }
+
+        return List.of();
+    }
+
+    private boolean contextMeetsRating(final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return true;
+        }
+
+        final RagMultiDocumentContext<Void> multiRagDoc = new RagMultiDocumentContext<>(
+                context.stream()
+                        .map(ragDoc -> promptBuilderSelector
+                                .getPromptBuilder("plain")
+                                .buildContextPrompt(
+                                        ragDoc.contextLabel(),
+                                        ragDoc.document()))
+                        .collect(Collectors.joining("\n")),
+                context);
+
+        return Try.of(() -> ratingTool.call(
+                        Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, multiRagDoc.combinedDocument()),
+                        parsedArgs.getContextFilterQuestion(),
+                        List.of()).combinedDocument())
+                .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
+                .map(rating -> rating >= parsedArgs.getContextFilterMinimumRating())
+                // Ratings are a best effort, so we ignore any failures
+                .recover(InternalFailure.class, ex -> true)
+                .get();
+
     }
 
     private Map<String, String> addItemToMap(@Nullable final Map<String, String> map, final String key, final String value) {
@@ -539,6 +579,14 @@ class MultiSlackZenGoogleConfig {
     @ConfigProperty(name = "sb.slackzengoogle.keywordwindow")
     private Optional<String> configKeywordWindow;
 
+    @Inject
+    @ConfigProperty(name = "sb.slackzengoogle.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.slackzengoogle.contextFilterMinimumRating")
+    private Optional<String> configContextFilterMinimumRating;
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -573,6 +621,14 @@ class MultiSlackZenGoogleConfig {
 
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
+    }
+
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
+    }
+
+    public Optional<String> getConfigContextFilterMinimumRating() {
+        return configContextFilterMinimumRating;
     }
 
     public class LocalArguments {
@@ -687,6 +743,29 @@ class MultiSlackZenGoogleConfig {
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG,
+                            "multislackzengoogle_context_filter_question",
+                            "")
+                    .value();
+        }
+
+        public Integer getContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    "multislackzengoogle_context_filter_minimum_rating",
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
     }
 }

@@ -117,10 +117,10 @@ public class PublicWeb implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        final PublicWebConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final PublicWebConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getUrl())) {
             throw new InternalFailure("You must provide a URL to download");
@@ -140,29 +140,29 @@ public class PublicWeb implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<Void>> contextList = getContext(context, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final PublicWebConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final PublicWebConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getUrl())) {
             throw new InternalFailure("You must provide a URL to download");
         }
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
+                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(context))
+                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 ragContext.getDocumentLeft(modelConfig.getCalculatedContextWindowChars()),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
                         modelConfig.getCalculatedContextWindow()));
 

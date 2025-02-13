@@ -126,11 +126,11 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
     @Override
     public List<RagDocumentContext<GitHubCommitAndDiff>> getContext(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final String authHeader = "Bearer " + parsedArgs.getToken();
 
@@ -167,16 +167,16 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
     @Override
     public RagMultiDocumentContext<GitHubCommitAndDiff> call(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final Try<RagMultiDocumentContext<GitHubCommitAndDiff>> result = Try
-                .of(() -> getContext(context, prompt, arguments))
+                .of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
@@ -186,13 +186,13 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
                 .map(ragDoc -> ragDoc.updateDocument(
-                        promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildFinalPrompt(
+                        promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings)).buildFinalPrompt(
                                 INSTRUCTIONS,
-                                promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildContextPrompt("Git Diffs", ragDoc.combinedDocument()),
+                                promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings)).buildContextPrompt("Git Diffs", ragDoc.combinedDocument()),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
                         modelConfig.getCalculatedContextWindow()));
 

@@ -101,11 +101,11 @@ public class SlackZenGoogle implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final SlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, context);
+        final SlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final List<ToolArgs> planHatArguments = List.of(
                 new ToolArgs("companyId", parsedArgs.getPlanHatCompany(), true),
@@ -114,7 +114,7 @@ public class SlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> planHatContext = StringUtils.isBlank(parsedArgs.getPlanHatCompany())
                 ? List.of()
-                : Try.of(() -> planHat.getContext(context, prompt, planHatArguments))
+                : Try.of(() -> planHat.getContext(environmentSettings, prompt, planHatArguments))
                 .recover(e -> List.of())
                 .get()
                 .stream()
@@ -128,7 +128,7 @@ public class SlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> slackContext = StringUtils.isBlank(parsedArgs.getSlackChannel())
                 ? List.of()
-                : Try.of(() -> slackChannel.getContext(context, prompt, slackArguments))
+                : Try.of(() -> slackChannel.getContext(environmentSettings, prompt, slackArguments))
                 .recover(e -> List.of())
                 .get();
 
@@ -138,7 +138,7 @@ public class SlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> googleContext = StringUtils.isBlank(parsedArgs.getGoogleDocumentId())
                 ? List.of()
-                : Try.of(() -> googleDocs.getContext(context, prompt, googleArguments))
+                : Try.of(() -> googleDocs.getContext(environmentSettings, prompt, googleArguments))
                 .recover(e -> List.of())
                 .get();
 
@@ -149,7 +149,7 @@ public class SlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> zenContext = StringUtils.isBlank(parsedArgs.getZenDeskOrganization())
                 ? List.of()
-                : Try.of(() -> zenDeskOrganization.getContext(context, prompt, zenArguments))
+                : Try.of(() -> zenDeskOrganization.getContext(environmentSettings, prompt, zenArguments))
                 .recover(e -> List.of())
                 .get()
                 .stream()
@@ -170,14 +170,14 @@ public class SlackZenGoogle implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(
-            final Map<String, String> context,
+            final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(context, prompt, arguments))
-                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(context)))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(context))
+                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
                                 // I've opted to get the end of the document if it is larger than the context window.
@@ -187,7 +187,7 @@ public class SlackZenGoogle implements Tool<Void> {
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(context),
+                        modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
                         modelConfig.getCalculatedContextWindow()))
                 /*
