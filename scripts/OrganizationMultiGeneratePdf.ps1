@@ -167,7 +167,8 @@ $toolModel = "llama3.1"
 
 #$model = "mistral-nemo:12b-instruct-2407-q8_0"
 #$model = "llama3.3"
-$model = "gemma2:27b"
+#$model = "gemma2:27b"
+$model = "qwen2.5:32b"
 
 # Consider using K/V cache quanisation to support larger context windows with the following env vars:
 # OLLAMA_KV_CACHE_TYPE="q8_0"
