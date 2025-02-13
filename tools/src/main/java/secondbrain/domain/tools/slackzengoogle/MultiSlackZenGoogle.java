@@ -440,13 +440,18 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         validateSufficientContext(retValue, parsedArgs);
 
-        final Integer rating = getContextRating(retValue, parsedArgs);
+        return contextMeetsRating(retValue, entity.name(), parsedArgs);
+    }
+
+    private List<RagDocumentContext<Void>> contextMeetsRating(final List<RagDocumentContext<Void>> ragContext, final String entityName, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        final Integer rating = getContextRating(ragContext, parsedArgs);
 
         if (rating >= parsedArgs.getContextFilterMinimumRating()) {
-            return retValue;
+            logger.info("The context rating for entity " + entityName + " (" + rating + ") meets the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
+            return ragContext;
         }
 
-        logger.info("The context rating for entity " + entity.name() + " (" + rating + ") did not meet the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
+        logger.info("The context rating for entity " + entityName + " (" + rating + ") did not meet the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
         return List.of();
     }
 
