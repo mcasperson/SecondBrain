@@ -180,8 +180,9 @@ $model = "qwen2.5:32b"
 # Environment="OLLAMA_GPU_OVERHEAD=524288000"
 
 # 128K tokens can be just a bit too much when using a 70B model
+#$contextWindow = "32768"
+$contextWindow = "65536"
 #$contextWindow = "131072"
-$contextWindow = "32768"
 
 $sevenDaysAgo = (Get-Date).AddDays(-$Days).ToString("yyyy-MM-dd")
 $now = (Get-Date).ToString("yyyy-MM-dd")
