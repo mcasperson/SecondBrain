@@ -442,6 +442,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> contextMeetsRating(final List<RagDocumentContext<Void>> ragContext, final String entityName, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return ragContext;
+        }
+
         final Integer rating = getContextRating(ragContext, parsedArgs);
 
         if (rating >= parsedArgs.getContextFilterMinimumRating()) {
