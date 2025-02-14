@@ -438,9 +438,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         retValue.addAll(zenContext);
         retValue.addAll(planHatContext);
 
-        validateSufficientContext(retValue, parsedArgs);
-
-        return contextMeetsRating(retValue, entity.name(), parsedArgs);
+        return contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
     }
 
     private List<RagDocumentContext<Void>> contextMeetsRating(final List<RagDocumentContext<Void>> ragContext, final String entityName, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
