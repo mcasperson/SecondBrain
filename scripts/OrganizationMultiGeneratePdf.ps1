@@ -175,6 +175,10 @@ $model = "qwen2.5:32b"
 # OLLAMA_KV_CACHE_TYPE="q8_0"
 # OLLAMA_FLASH_ATTENTION=1
 
+# I also found that ollama was not making full use of the GPU. This environment variable reduces the amount of
+# GPU memory that is saved for the system to 500 MB, meaning more of the LLM is placed on the GPU.
+# Environment="OLLAMA_GPU_OVERHEAD=524288000"
+
 # 128K tokens can be just a bit too much when using a 70B model
 #$contextWindow = "131072"
 $contextWindow = "98304"
