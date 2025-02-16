@@ -111,7 +111,7 @@ $channels = ConvertFrom-Yaml $channelsYaml
 foreach ($channel in $channels.channels)
 {
     # Replace the location of the Jar file with your copy of the CLI UberJAR
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.tools.force=SlackChannel`" `"-Dsb.slack.channel=$channel`"  `"-Dsb.slack.days=7`" -jar $jarFile `"$($channels.prompt)`" markdn"
+    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.tools.force=SlackChannel`" `"-Dsb.slack.channel=$channel`"  `"-Dsb.slack.days=7`" -jar $jarFile `"$( $channels.prompt )`" markdn"
 
     echo $result
 
@@ -122,7 +122,7 @@ foreach ($channel in $channels.channels)
     $uriSlack = $env:SB_SLACK_GENERAL_WEBHOOK
     $body = ConvertTo-Json @{
         type = "mrkdwn"
-        text = "*" + $args[0] + " summary*`n" + $result.StdOut
+        text = "*" + $channel + " summary*`n" + $result.StdOut
     }
 
     try
