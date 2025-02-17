@@ -242,9 +242,9 @@ if ($GenerateCompanyReports)
             }
         }
     }
-}
 
-Wait-Job -Job $jobs
+    Wait-Job -Job $jobs
+}
 
 if ($GenerateTopicReports)
 {
