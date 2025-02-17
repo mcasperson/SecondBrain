@@ -236,7 +236,7 @@ if ($GenerateCompanyReports)
             {
                 Set-Content -Path "$subDir/COMPANY $entityName.md"  -Value $result.StdOut
             }
-        }
+        }.GetNewClosure()
     }
 
     Wait-Job -Job $jobs
