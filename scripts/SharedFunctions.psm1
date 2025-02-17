@@ -110,3 +110,18 @@ Function Invoke-CustomCommand
 
     return $executionResults
 }
+
+Function Get-FullException
+{
+    Param ($err)
+
+    $e = $err.Exception
+
+    $msg = $e.Message
+    while ($e.InnerException)
+    {
+        $e = $e.InnerException
+        $msg += "`n" + $e.Message
+    }
+    return $msg
+}

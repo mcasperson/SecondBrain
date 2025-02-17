@@ -9,22 +9,7 @@ Param (
     [string]$PdfFile = $( $env:PDF_OUTPUT )
 )
 
-Import-Module $PSScriptRoot/SharedFunctions.psm1
-
-Function Get-FullException
-{
-    Param ($err)
-
-    $e = $err.Exception
-
-    $msg = $e.Message
-    while ($e.InnerException)
-    {
-        $e = $e.InnerException
-        $msg += "`n" + $e.Message
-    }
-    return $msg
-}
+Import-Module $PSScriptRoot\SharedFunctions.psm1
 
 # Powershell has to be set to parse the output of an executable as UTF8
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
@@ -99,7 +84,7 @@ if ($GenerateCompanyReports)
 
         $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
-            Import-Module $PSScriptRoot/SharedFunctions.psm1
+            Import-Module $PSScriptRoot\SharedFunctions.psm1
 
             $entityName = ($using:entity).name
 
