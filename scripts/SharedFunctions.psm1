@@ -1,3 +1,9 @@
+# Must use globals here
+# https://stackoverflow.com/a/4059007/157605
+$global:stdErr = [System.Text.StringBuilder]::new()
+$global:stdOut = [System.Text.StringBuilder]::new()
+$global:myprocessrunning = $true
+
 Function Invoke-CustomCommand
 {
     Param (
@@ -8,13 +14,9 @@ Function Invoke-CustomCommand
         $processTimeout = 1000 * 60 * 30
     )
 
-    write-host "Running command: $commandPath $commandArguments" -ForegroundColor yellow
-
-    $sharedState = @{
-        "stdErr" = [System.Text.StringBuilder]::new()
-        "stdOut" = [System.Text.StringBuilder]::new()
-        "myprocessrunning" = $true
-    }
+    $global:stdErr.Clear()
+    $global:stdOut.Clear()
+    $global:myprocessrunning = $true
 
     $path += $env:PATH
     $newPath = $path -join [IO.Path]::PathSeparator
@@ -35,34 +37,20 @@ Function Invoke-CustomCommand
     # Reading from one stream must be async
     # We read the error stream, because events can be handled out of order,
     # and it is better to have this happen with debug output
-    $errorDataReceivedEvent = {
-        $sharedState["stdErr"].AppendLine($EventArgs.Data)
-    }.GetNewClosure()
-    Register-ObjectEvent -InputObject $p -EventName "ErrorDataReceived" -Action $errorDataReceivedEvent | Out-Null
+    Register-ObjectEvent -InputObject $p -EventName "ErrorDataReceived" -Action {
+        $global:stdErr.AppendLine($EventArgs.Data)
+    } | Out-Null
 
-    $outputDataReceivedEvent = {
-        $sharedState["stdOut"].AppendLine($EventArgs.Data)
-    }.GetNewClosure()
-    Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action $outputDataReceivedEvent | Out-Null
+    Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action {
+        $global:stdOut.AppendLine($EventArgs.Data)
+    } | Out-Null
 
     # We must wait for the Exited event rather than WaitForExit()
     # because WaitForExit() can result in events being missed
     # https://stackoverflow.com/questions/13113624/captured-output-of-command-run-by-powershell-is-sometimes-incomplete
-    $exitedEvent = {
-        try
-        {
-            Write-Host "Process exited" -ForegroundColor yellow
-            Write-Host "Shared state: "  -ForegroundColor yellow
-            Write-Host $script:sharedState["myprocessrunning"] -ForegroundColor yellow
-            Write-Host "Shared done "  -ForegroundColor yellow
-            $sharedState["myprocessrunning"] = $false
-        }
-        catch
-        {
-            Write-Host "Error in exited event: $( Get-FullException($_) )" -ForegroundColor red
-        }
-    }.GetNewClosure()
-    Register-ObjectEvent -InputObject $p -EventName "Exited" -action $exitedEvent | Out-Null
+    Register-ObjectEvent -InputObject $p -EventName "Exited" -action {
+        $global:myprocessrunning = $false
+    } | Out-Null
 
     $p.StartInfo = $pinfo
     $p.Start() | Out-Null
@@ -70,7 +58,7 @@ Function Invoke-CustomCommand
     $p.BeginErrorReadLine()
 
     $lastUpdate = 0
-    while (($sharedState["myprocessrunning"] -eq $true) -and ($processTimeout -gt 0))
+    while (($global:myprocessrunning -eq $true) -and ($processTimeout -gt 0))
     {
         # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
         $processTimeout -= 50
@@ -83,25 +71,25 @@ Function Invoke-CustomCommand
             $lastUpdate = 1000 * 10
             Write-Host "Still running... $( $processTimeout / 1000 ) seconds left" -ForegroundColor yellow
 
-            $tail = 500
+            $tail = 5000
 
-            $tailStdOut = if ($sharedState["stdOut"].ToString().Length -gt $tail)
+            $tailStdOut = if ($global:stdOut.ToString().Length -gt $tail)
             {
-                $sharedState["stdOut"].ToString().Substring($sharedState["stdOut"].ToString().Length - $tail)
+                $global:stdOut.ToString().Substring($global:stdOut.ToString().Length - $tail)
             }
             else
             {
-                $sharedState["stdOut"].ToString()
+                $global:stdOut.ToString()
             }
             Write-Host "StdOut: $tailStdOut"
 
-            $tailStdErr = if ($sharedState["stdErr"].ToString().Length -gt $tail)
+            $tailStdErr = if ($global:stdErr.ToString().Length -gt $tail)
             {
-                $sharedState["stdErr"].ToString().Substring($ssharedState.tdErr.ToString().Length - $tail)
+                $global:stdErr.ToString().Substring($global:stdErr.ToString().Length - $tail)
             }
             else
             {
-                $sharedState["stdErr"].ToString()
+                $global:stdErr.ToString()
             }
             Write-Host "StdErr: $tailStdErr"
         }
@@ -122,7 +110,7 @@ Function Invoke-CustomCommand
 
     $executionResults = [pscustomobject]@{
         StdOut = $output
-        StdErr = $sharedState["stdErr"].ToString()
+        StdErr = $global:stdErr.ToString()
         ExitCode = $exitCode
     }
 
