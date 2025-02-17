@@ -9,11 +9,9 @@ Param (
     [string]$PdfFile = $( $env:PDF_OUTPUT )
 )
 
-Import-Module $PSScriptRoot\SharedFunctions.psm1
+$ModulePath = $PSScriptRoot\SharedFunctions.psm1
 
-Invoke-CustomCommand echo "hi"
-
-ls  $PSScriptRoot/SharedFunctions.psm1
+Import-Module $ModulePath
 
 # Powershell has to be set to parse the output of an executable as UTF8
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
@@ -88,11 +86,7 @@ if ($GenerateCompanyReports)
 
         $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
-            Import-Module $PSScriptRoot/SharedFunctions.psm1
-
-            Write-Host $PSScriptRoot/SharedFunctions.psm1
-
-            Invoke-CustomCommand echo "hi"
+            Import-Module $using:ModulePath
 
             $entityName = ($using:entity).name
 
