@@ -132,7 +132,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 Queries an entity directory stored in a URL.
                 Example queries include:
                 * Load the entity directory from "https://example.org/directory.yaml" and find all references to the person John Smith.
-                * Given the directory from "https://mysebsite.org/whatever" write a story about the use of the astro framework.
+                * Given the directory from "/home/user/data/entities.yml" write a story about the use of the astro framework.
                 """.stripIndent();
     }
 
@@ -442,6 +442,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> contextMeetsRating(final List<RagDocumentContext<Void>> ragContext, final String entityName, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return ragContext;
+        }
+
         final Integer rating = getContextRating(ragContext, parsedArgs);
 
         if (rating >= parsedArgs.getContextFilterMinimumRating()) {
