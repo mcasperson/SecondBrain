@@ -19,6 +19,11 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
+/**
+ * A very low effort caching solution that uses an H2 database to store the cache. It takes no additional configuration,
+ * but H2 does not support simultaneous connections. The results store things like API calls and LLM results, which are
+ * quite costly, so time spent retrying connections is still worth it.
+ */
 @ApplicationScoped
 public class H2LocalStorage implements LocalStorage {
 
@@ -111,6 +116,13 @@ public class H2LocalStorage implements LocalStorage {
                 .isSuccess();
     }
 
+    /**
+     * We want to hold the database connection as short as possible. This will help when multiple CLI instances are
+     * running at the same time. H2 has file locking that will prevent multiple instances trying to open the same
+     * file at the same time, so we'll retry a few times to try and allow multiple instances interleave their requests.
+     * If there are multiple threads, the synchronized keyword will prevent them from trying to open multiple
+     * connections.
+     */
     @Retry(delay = 1000)
     @Override
     synchronized public String getString(final String tool, final String source, final String promptHash) {
