@@ -53,7 +53,7 @@ Function Invoke-CustomCommand
         {
             Write-Host "Process exited" -ForegroundColor yellow
             Write-Host "Shared state: "  -ForegroundColor yellow
-            Write-Host $sharedState["myprocessrunning"] -ForegroundColor yellow
+            Write-Host $script:sharedState["myprocessrunning"] -ForegroundColor yellow
             Write-Host "Shared done "  -ForegroundColor yellow
             $sharedState["myprocessrunning"] = $false
         }
