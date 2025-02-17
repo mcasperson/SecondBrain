@@ -8,6 +8,8 @@ Function Invoke-CustomCommand
         $processTimeout = 1000 * 60 * 30
     )
 
+    write-host "Running command: $commandPath $commandArguments" -ForegroundColor yellow
+
     $stdErr = [System.Text.StringBuilder]::new()
     $stdOut = [System.Text.StringBuilder]::new()
     $myprocessrunning = $true

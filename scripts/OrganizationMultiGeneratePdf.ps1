@@ -86,9 +86,7 @@ if ($GenerateCompanyReports)
 
         $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
-            ls  $PSScriptRoot\SharedFunctions.psm1
-
-            Import-Module $PSScriptRoot\SharedFunctions.psm1
+            Import-Module $PSScriptRoot/SharedFunctions.psm1
 
             $entityName = ($using:entity).name
 
