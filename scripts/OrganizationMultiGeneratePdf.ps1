@@ -43,18 +43,18 @@ Function Invoke-CustomCommand
     # We read the error stream, because events can be handled out of order,
     # and it is better to have this happen with debug output
     Register-ObjectEvent -InputObject $p -EventName "ErrorDataReceived" -Action {
-        $stdErr.AppendLine($EventArgs.Data)
+        $script:stdErr.AppendLine($EventArgs.Data)
     }.GetNewClosure() | Out-Null
 
     Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action {
-        $stdOut.AppendLine($EventArgs.Data)
+        $script:stdOut.AppendLine($EventArgs.Data)
     }.GetNewClosure() | Out-Null
 
     # We must wait for the Exited event rather than WaitForExit()
     # because WaitForExit() can result in events being missed
     # https://stackoverflow.com/questions/13113624/captured-output-of-command-run-by-powershell-is-sometimes-incomplete
     Register-ObjectEvent -InputObject $p -EventName "Exited" -action {
-        $myprocessrunning = $false
+        $script:myprocessrunning = $false
     }.GetNewClosure() | Out-Null
 
     $p.StartInfo = $pinfo
