@@ -10,9 +10,11 @@ Function Invoke-CustomCommand
 
     write-host "Running command: $commandPath $commandArguments" -ForegroundColor yellow
 
-    $stdErr = [System.Text.StringBuilder]::new()
-    $stdOut = [System.Text.StringBuilder]::new()
-    $myprocessrunning = $true
+    $sharedState @{
+        $stdErr = [System.Text.StringBuilder]::new()
+        $stdOut = [System.Text.StringBuilder]::new()
+        $myprocessrunning = $true
+    }
 
     $path += $env:PATH
     $newPath = $path -join [IO.Path]::PathSeparator
@@ -34,18 +36,18 @@ Function Invoke-CustomCommand
     # We read the error stream, because events can be handled out of order,
     # and it is better to have this happen with debug output
     Register-ObjectEvent -InputObject $p -EventName "ErrorDataReceived" -Action {
-        $script:stdErr.AppendLine($EventArgs.Data)
+        $sharedState.stdErr.AppendLine($EventArgs.Data)
     }.GetNewClosure() | Out-Null
 
     Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action {
-        $script:stdOut.AppendLine($EventArgs.Data)
+        $sharedState.stdOut.AppendLine($EventArgs.Data)
     }.GetNewClosure() | Out-Null
 
     # We must wait for the Exited event rather than WaitForExit()
     # because WaitForExit() can result in events being missed
     # https://stackoverflow.com/questions/13113624/captured-output-of-command-run-by-powershell-is-sometimes-incomplete
     Register-ObjectEvent -InputObject $p -EventName "Exited" -action {
-        $script:myprocessrunning = $false
+        $sharedState.myprocessrunning = $false
     }.GetNewClosure() | Out-Null
 
     $p.StartInfo = $pinfo
@@ -54,7 +56,7 @@ Function Invoke-CustomCommand
     $p.BeginErrorReadLine()
 
     $lastUpdate = 0
-    while (($myprocessrunning -eq $true) -and ($processTimeout -gt 0))
+    while (($sharedState.myprocessrunning -eq $true) -and ($processTimeout -gt 0))
     {
         # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
         $processTimeout -= 50
@@ -69,23 +71,23 @@ Function Invoke-CustomCommand
 
             $tail = 500
 
-            $tailStdOut = if ($stdOut.ToString().Length -gt $tail)
+            $tailStdOut = if ($sharedState.stdOut.ToString().Length -gt $tail)
             {
-                $stdOut.ToString().Substring($stdOut.ToString().Length - $tail)
+                $sharedState.stdOut.ToString().Substring($sharedState.stdOut.ToString().Length - $tail)
             }
             else
             {
-                $stdOut.ToString()
+                $sharedState.stdOut.ToString()
             }
             Write-Host "StdOut: $tailStdOut"
 
-            $tailStdErr = if ($stdErr.ToString().Length -gt $tail)
+            $tailStdErr = if ($sharedState.stdErr.ToString().Length -gt $tail)
             {
-                $stdErr.ToString().Substring($stdErr.ToString().Length - $tail)
+                $sharedState.stdErr.ToString().Substring($ssharedState.tdErr.ToString().Length - $tail)
             }
             else
             {
-                $stdErr.ToString()
+                $sharedState.stdErr.ToString()
             }
             Write-Host "StdErr: $tailStdErr"
         }
@@ -106,7 +108,7 @@ Function Invoke-CustomCommand
 
     $executionResults = [pscustomobject]@{
         StdOut = $output
-        StdErr = $stdErr.ToString()
+        StdErr = $sharedState.stdErr.ToString()
         ExitCode = $exitCode
     }
 
