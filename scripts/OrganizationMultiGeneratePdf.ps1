@@ -211,7 +211,7 @@ if ($GenerateCompanyReports)
 
         $jobs += Start-ThreadJob -ThrottleLimit 10 -ScriptBlock {
 
-            ${function:Invoke-CustomCommand} = $invokeCustomCommandFunc
+            ${function:Invoke-CustomCommand} = $using:invokeCustomCommandFunc
 
             $entityName = ($using:entity).name
 
