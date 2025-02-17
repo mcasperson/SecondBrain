@@ -11,7 +11,7 @@ Param (
 
 Import-Module $PSScriptRoot\SharedFunctions.psm1
 
-Invoke-CustomCommand hostname
+Invoke-CustomCommand echo "hi"
 
 ls  $PSScriptRoot/SharedFunctions.psm1
 
