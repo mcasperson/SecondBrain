@@ -6,13 +6,15 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.nio.file.Paths;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.Timestamp;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Optional;
@@ -48,9 +50,22 @@ public class H2LocalStorage implements LocalStorage {
     @Inject
     private Logger logger;
 
+    private Connection getConnection() {
+        return getConnection(0);
+    }
 
-    private Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(getConnectionString());
+    private Connection getConnection(final int count) {
+        if (count > 5) {
+            throw new LocalStorageFailure("Failed to get connection after 5 attempts");
+        }
+
+        if (count > 0) {
+            Try.run(() -> Thread.sleep(1000 * 3));
+        }
+
+        return Try.of(() -> DriverManager.getConnection(getConnectionString()))
+                .recover(ex -> getConnection(count + 1))
+                .get();
     }
 
     private void cleanConnection(final Connection connection) {
@@ -123,7 +138,6 @@ public class H2LocalStorage implements LocalStorage {
      * If there are multiple threads, the synchronized keyword will prevent them from trying to open multiple
      * connections.
      */
-    @Retry(delay = 5000)
     @Override
     synchronized public String getString(final String tool, final String source, final String promptHash) {
         if (isDisabled() || isWriteOnly()) {
@@ -228,7 +242,6 @@ public class H2LocalStorage implements LocalStorage {
         return getOrPutObject(tool, source, promptHash, 0, clazz, generateValue);
     }
 
-    @Retry(delay = 5000)
     @Override
     synchronized public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
         if (isDisabled() || isReadOnly()) {
