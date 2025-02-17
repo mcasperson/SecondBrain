@@ -78,19 +78,19 @@ Function Invoke-CustomCommand
 
             $tail = 5000
 
-            $tailStdOut = if ($global:stdOut.ToString().Length -gt $tail)
+            $tailStdOut = if ($stdOut.ToString().Length -gt $tail)
             {
-                $stdOut.ToString().Substring($global:stdOut.ToString().Length - $tail)
+                $stdOut.ToString().Substring($stdOut.ToString().Length - $tail)
             }
             else
             {
-                $global:stdOut.ToString()
+                $stdOut.ToString()
             }
             Write-Host "StdOut: $tailStdOut"
 
-            $tailStdErr = if ($global:stdErr.ToString().Length -gt $tail)
+            $tailStdErr = if ($stdErr.ToString().Length -gt $tail)
             {
-                $stdErr.ToString().Substring($global:stdErr.ToString().Length - $tail)
+                $stdErr.ToString().Substring($stdErr.ToString().Length - $tail)
             }
             else
             {
