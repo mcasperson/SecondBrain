@@ -123,7 +123,7 @@ public class H2LocalStorage implements LocalStorage {
      * If there are multiple threads, the synchronized keyword will prevent them from trying to open multiple
      * connections.
      */
-    @Retry(delay = 1000)
+    @Retry(delay = 5000)
     @Override
     synchronized public String getString(final String tool, final String source, final String promptHash) {
         if (isDisabled() || isWriteOnly()) {
@@ -228,7 +228,7 @@ public class H2LocalStorage implements LocalStorage {
         return getOrPutObject(tool, source, promptHash, 0, clazz, generateValue);
     }
 
-    @Retry(delay = 1000)
+    @Retry(delay = 5000)
     @Override
     synchronized public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
         if (isDisabled() || isReadOnly()) {
