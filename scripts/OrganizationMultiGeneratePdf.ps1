@@ -90,6 +90,8 @@ if ($GenerateCompanyReports)
 
             Import-Module $PSScriptRoot/SharedFunctions.psm1
 
+            Invoke-CustomCommand echo "hi"
+
             $entityName = ($using:entity).name
 
             $EntityLog = "/tmp/pdfgenerate $entityName $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
