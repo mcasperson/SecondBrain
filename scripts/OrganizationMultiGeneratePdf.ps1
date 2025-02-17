@@ -240,6 +240,10 @@ if ($GenerateCompanyReports)
     }
 
     Wait-Job -Job $jobs
+    foreach ($job in $jobs)
+    {
+        Receive-Job -Job $job
+    }
 }
 
 if ($GenerateTopicReports)
