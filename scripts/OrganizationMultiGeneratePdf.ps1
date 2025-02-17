@@ -11,6 +11,8 @@ Param (
 
 Import-Module $PSScriptRoot\SharedFunctions.psm1
 
+Invoke-CustomCommand hostname
+
 ls  $PSScriptRoot/SharedFunctions.psm1
 
 # Powershell has to be set to parse the output of an executable as UTF8
