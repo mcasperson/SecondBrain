@@ -213,7 +213,7 @@ if ($GenerateCompanyReports)
 
             ${function:Invoke-CustomCommand} = $invokeCustomCommandFunc
 
-            $entityName = $using:entity.name
+            $entityName = ($using:entity).name
 
             $EntityLog = "/tmp/pdfgenerate $entityName $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
