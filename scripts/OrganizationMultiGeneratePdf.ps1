@@ -76,7 +76,7 @@ Function Invoke-CustomCommand
             $lastUpdate = 1000 * 10
             Write-Host "Still running... $( $processTimeout / 1000 ) seconds left" -ForegroundColor yellow
 
-            $tail = 5000
+            $tail = 500
 
             $tailStdOut = if ($stdOut.ToString().Length -gt $tail)
             {
