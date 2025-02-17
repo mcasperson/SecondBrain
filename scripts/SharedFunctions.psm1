@@ -10,7 +10,7 @@ Function Invoke-CustomCommand
 
     write-host "Running command: $commandPath $commandArguments" -ForegroundColor yellow
 
-    $sharedState @{
+    $sharedState = @{
         $stdErr = [System.Text.StringBuilder]::new()
         $stdOut = [System.Text.StringBuilder]::new()
         $myprocessrunning = $true
