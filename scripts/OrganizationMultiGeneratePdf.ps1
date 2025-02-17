@@ -204,39 +204,42 @@ if ($GenerateCompanyReports)
     $index = 0
     foreach ($entity in $database.entities)
     {
+        $index++
+
         if ($entity.disabled)
         {
             continue
         }
 
-        $EntityLog = "/tmp/pdfgenerate $( $entity.name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
+        Start-ThreadJob -ThrottleLimit 10 -ScriptBlock {
 
-        $entityName = $entity.name
+            $EntityLog = "/tmp/pdfgenerate $( $entity.name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
-        echo "Processing $entityName in $subDir $( $index + 1 ) of $( $database.entities.Count )"
+            $entityName = $entity.name
 
-        $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.minTimeBasedContext=1`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$Days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Write a business report based on the the last $days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName. Include an executive summary as the first paragraph. If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes. You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt. You will be penalized for including a general summary of the Google Document in the report. You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities. You will be penalized for saying that you will monitor for tickets or messages in future. You will be penalized for for metioning a date range or period covered. You will be penalized for providing statistics or counts of the ZenDesk tickets. You will be penalized for providing instructions to refer to or link to the Google Document. You will be penalized for providing next steps, action items, recommendations, or looking ahead. You will be penalized for attempting to resolve the ZenDesk tickets. You will be penalized for mentioning the duration covered. You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID. You must use bullet point lists instead of numbered lists. You will be penalized for using nested bullet points. You will be penalized for using numbered lists in the output.`""
+            echo "Processing $entityName in $subDir $( $index + 1 ) of $( $database.entities.Count )"
 
-        echo "Slack StdOut"
-        echo $result.StdOut
+            $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.minTimeBasedContext=1`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$Days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Write a business report based on the the last $days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName. Include an executive summary as the first paragraph. If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes. You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt. You will be penalized for including a general summary of the Google Document in the report. You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities. You will be penalized for saying that you will monitor for tickets or messages in future. You will be penalized for for metioning a date range or period covered. You will be penalized for providing statistics or counts of the ZenDesk tickets. You will be penalized for providing instructions to refer to or link to the Google Document. You will be penalized for providing next steps, action items, recommendations, or looking ahead. You will be penalized for attempting to resolve the ZenDesk tickets. You will be penalized for mentioning the duration covered. You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID. You must use bullet point lists instead of numbered lists. You will be penalized for using nested bullet points. You will be penalized for using numbered lists in the output.`""
 
-        #echo "Slack StdErr"
-        #echo $result.StdErr
+            echo "Slack StdOut"
+            echo $result.StdOut
 
-        Add-Content -Path $EntityLog -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Entity: $entityName`n"
-        if ($result.ExitCode -ne 0)
-        {
-            Add-Content -Path $EntityLog -Value "Failed to process $entityName"
+            #echo "Slack StdErr"
+            #echo $result.StdErr
+
+            Add-Content -Path $EntityLog -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Entity: $entityName`n"
+            if ($result.ExitCode -ne 0)
+            {
+                Add-Content -Path $EntityLog -Value "Failed to process $entityName"
+            }
+            Add-Content -Path $EntityLog -Value $result.StdOut
+            Add-Content -Path $EntityLog -Value $result.StdErr
+
+            if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
+            {
+                Set-Content -Path "$subDir/COMPANY $entityName.md"  -Value $result.StdOut
+            }
         }
-        Add-Content -Path $EntityLog -Value $result.StdOut
-        Add-Content -Path $EntityLog -Value $result.StdErr
-
-        if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
-        {
-            Set-Content -Path "$subDir/COMPANY $entityName.md"  -Value $result.StdOut
-        }
-
-        $index++
     }
 }
 
