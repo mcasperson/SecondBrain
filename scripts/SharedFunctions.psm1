@@ -49,11 +49,18 @@ Function Invoke-CustomCommand
     # because WaitForExit() can result in events being missed
     # https://stackoverflow.com/questions/13113624/captured-output-of-command-run-by-powershell-is-sometimes-incomplete
     $exitedEvent = {
-        Write-Host "Process exited" -ForegroundColor yellow
-        Write-Host "Shared state: "  -ForegroundColor yellow
-        Write-Host $sharedState["myprocessrunning"] -ForegroundColor yellow
-        Write-Host "Shared done "  -ForegroundColor yellow
-        $sharedState["myprocessrunning"] = $false
+        try
+        {
+            Write-Host "Process exited" -ForegroundColor yellow
+            Write-Host "Shared state: "  -ForegroundColor yellow
+            Write-Host $sharedState["myprocessrunning"] -ForegroundColor yellow
+            Write-Host "Shared done "  -ForegroundColor yellow
+            $sharedState["myprocessrunning"] = $false
+        }
+        catch
+        {
+            Write-Host "Error in exited event: $( Get-FullException($_) )" -ForegroundColor red
+        }
     }.GetNewClosure()
     Register-ObjectEvent -InputObject $p -EventName "Exited" -action $exitedEvent | Out-Null
 
