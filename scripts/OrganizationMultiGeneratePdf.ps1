@@ -9,7 +9,7 @@ Param (
     [string]$PdfFile = $( $env:PDF_OUTPUT )
 )
 
-$ModulePath = $PSScriptRoot\SharedFunctions.psm1
+$ModulePath = "$PSScriptRoot\SharedFunctions.psm1"
 
 Import-Module $ModulePath
 
