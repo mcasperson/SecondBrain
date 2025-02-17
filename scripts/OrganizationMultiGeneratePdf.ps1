@@ -11,7 +11,7 @@ Param (
 
 Import-Module $PSScriptRoot\SharedFunctions.psm1
 
-ls  $PSScriptRoot\SharedFunctions.psm1
+ls  $PSScriptRoot/SharedFunctions.psm1
 
 # Powershell has to be set to parse the output of an executable as UTF8
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
