@@ -36,18 +36,18 @@ Function Invoke-CustomCommand
     # We read the error stream, because events can be handled out of order,
     # and it is better to have this happen with debug output
     Register-ObjectEvent -InputObject $p -EventName "ErrorDataReceived" -Action {
-        $sharedState.stdErr.AppendLine($EventArgs.Data)
+        $sharedState["stdErr"].AppendLine($EventArgs.Data)
     }.GetNewClosure() | Out-Null
 
     Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action {
-        $sharedState.stdOut.AppendLine($EventArgs.Data)
+        $sharedState["stdOut"].AppendLine($EventArgs.Data)
     }.GetNewClosure() | Out-Null
 
     # We must wait for the Exited event rather than WaitForExit()
     # because WaitForExit() can result in events being missed
     # https://stackoverflow.com/questions/13113624/captured-output-of-command-run-by-powershell-is-sometimes-incomplete
     Register-ObjectEvent -InputObject $p -EventName "Exited" -action {
-        $sharedState.myprocessrunning = $false
+        $sharedState["myprocessrunning"] = $false
     }.GetNewClosure() | Out-Null
 
     $p.StartInfo = $pinfo
@@ -56,7 +56,7 @@ Function Invoke-CustomCommand
     $p.BeginErrorReadLine()
 
     $lastUpdate = 0
-    while (($sharedState.myprocessrunning -eq $true) -and ($processTimeout -gt 0))
+    while (($sharedState["myprocessrunning"] -eq $true) -and ($processTimeout -gt 0))
     {
         # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
         $processTimeout -= 50
@@ -71,23 +71,23 @@ Function Invoke-CustomCommand
 
             $tail = 500
 
-            $tailStdOut = if ($sharedState.stdOut.ToString().Length -gt $tail)
+            $tailStdOut = if ($sharedState["stdOut"].ToString().Length -gt $tail)
             {
-                $sharedState.stdOut.ToString().Substring($sharedState.stdOut.ToString().Length - $tail)
+                $sharedState["stdOut"].ToString().Substring($sharedState["stdOut"].ToString().Length - $tail)
             }
             else
             {
-                $sharedState.stdOut.ToString()
+                $sharedState["stdOut"].ToString()
             }
             Write-Host "StdOut: $tailStdOut"
 
-            $tailStdErr = if ($sharedState.stdErr.ToString().Length -gt $tail)
+            $tailStdErr = if ($sharedState["stdErr"].ToString().Length -gt $tail)
             {
-                $sharedState.stdErr.ToString().Substring($ssharedState.tdErr.ToString().Length - $tail)
+                $sharedState["stdErr"].ToString().Substring($ssharedState.tdErr.ToString().Length - $tail)
             }
             else
             {
-                $sharedState.stdErr.ToString()
+                $sharedState["stdErr"].ToString()
             }
             Write-Host "StdErr: $tailStdErr"
         }
@@ -108,7 +108,7 @@ Function Invoke-CustomCommand
 
     $executionResults = [pscustomobject]@{
         StdOut = $output
-        StdErr = $sharedState.stdErr.ToString()
+        StdErr = $sharedState["stdErr"].ToString()
         ExitCode = $exitCode
     }
 
