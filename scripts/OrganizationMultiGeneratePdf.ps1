@@ -209,7 +209,7 @@ if ($GenerateCompanyReports)
             continue
         }
 
-        $jobs += Start-ThreadJob -ThrottleLimit 10 -ScriptBlock {
+        $jobs += Start-ThreadJob -StreamingHost -ThrottleLimit 10 -ScriptBlock {
 
             ${function:Invoke-CustomCommand} = $using:invokeCustomCommandFunc
 
