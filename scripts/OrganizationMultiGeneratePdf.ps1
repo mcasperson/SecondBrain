@@ -202,6 +202,7 @@ if ($GenerateCompanyReports)
 {
 
     $index = 0
+    $jobs = @()
     foreach ($entity in $database.entities)
     {
         $index++
@@ -211,7 +212,7 @@ if ($GenerateCompanyReports)
             continue
         }
 
-        Start-ThreadJob -ThrottleLimit 10 -ScriptBlock {
+        $jobs += Start-ThreadJob -ThrottleLimit 10 -ScriptBlock {
 
             $EntityLog = "/tmp/pdfgenerate $( $entity.name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
@@ -242,6 +243,8 @@ if ($GenerateCompanyReports)
         }
     }
 }
+
+Wait-Job -Job $jobs
 
 if ($GenerateTopicReports)
 {
