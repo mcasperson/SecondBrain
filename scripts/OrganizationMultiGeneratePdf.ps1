@@ -9,10 +9,6 @@ Param (
     [string]$PdfFile = $( $env:PDF_OUTPUT )
 )
 
-$global:stdErr = [System.Text.StringBuilder]::new()
-$global:stdOut = [System.Text.StringBuilder]::new()
-$global:myprocessrunning = $true
-
 Function Invoke-CustomCommand
 {
     Param (
@@ -23,9 +19,9 @@ Function Invoke-CustomCommand
         $processTimeout = 1000 * 60 * 30
     )
 
-    $global:stdErr.Clear()
-    $global:stdOut.Clear()
-    $global:myprocessrunning = $true
+    $stdErr = [System.Text.StringBuilder]::new()
+    $stdOut = [System.Text.StringBuilder]::new()
+    $myprocessrunning = $true
 
     $path += $env:PATH
     $newPath = $path -join [IO.Path]::PathSeparator
@@ -47,19 +43,19 @@ Function Invoke-CustomCommand
     # We read the error stream, because events can be handled out of order,
     # and it is better to have this happen with debug output
     Register-ObjectEvent -InputObject $p -EventName "ErrorDataReceived" -Action {
-        $global:stdErr.AppendLine($EventArgs.Data)
-    } | Out-Null
+        $stdErr.AppendLine($EventArgs.Data)
+    }.GetNewClosure() | Out-Null
 
     Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action {
-        $global:stdOut.AppendLine($EventArgs.Data)
-    } | Out-Null
+        $stdOut.AppendLine($EventArgs.Data)
+    }.GetNewClosure() | Out-Null
 
     # We must wait for the Exited event rather than WaitForExit()
     # because WaitForExit() can result in events being missed
     # https://stackoverflow.com/questions/13113624/captured-output-of-command-run-by-powershell-is-sometimes-incomplete
     Register-ObjectEvent -InputObject $p -EventName "Exited" -action {
-        $global:myprocessrunning = $false
-    } | Out-Null
+        $myprocessrunning = $false
+    }.GetNewClosure() | Out-Null
 
     $p.StartInfo = $pinfo
     $p.Start() | Out-Null
@@ -67,7 +63,7 @@ Function Invoke-CustomCommand
     $p.BeginErrorReadLine()
 
     $lastUpdate = 0
-    while (($global:myprocessrunning -eq $true) -and ($processTimeout -gt 0))
+    while (($myprocessrunning -eq $true) -and ($processTimeout -gt 0))
     {
         # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
         $processTimeout -= 50
@@ -84,7 +80,7 @@ Function Invoke-CustomCommand
 
             $tailStdOut = if ($global:stdOut.ToString().Length -gt $tail)
             {
-                $global:stdOut.ToString().Substring($global:stdOut.ToString().Length - $tail)
+                $stdOut.ToString().Substring($global:stdOut.ToString().Length - $tail)
             }
             else
             {
@@ -94,11 +90,11 @@ Function Invoke-CustomCommand
 
             $tailStdErr = if ($global:stdErr.ToString().Length -gt $tail)
             {
-                $global:stdErr.ToString().Substring($global:stdErr.ToString().Length - $tail)
+                $stdErr.ToString().Substring($global:stdErr.ToString().Length - $tail)
             }
             else
             {
-                $global:stdErr.ToString()
+                $stdErr.ToString()
             }
             Write-Host "StdErr: $tailStdErr"
         }
@@ -119,7 +115,7 @@ Function Invoke-CustomCommand
 
     $executionResults = [pscustomobject]@{
         StdOut = $output
-        StdErr = $global:stdErr.ToString()
+        StdErr = $stdErr.ToString()
         ExitCode = $exitCode
     }
 
