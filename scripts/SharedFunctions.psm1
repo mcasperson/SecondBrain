@@ -50,7 +50,7 @@ Function Invoke-CustomCommand
     # https://stackoverflow.com/questions/13113624/captured-output-of-command-run-by-powershell-is-sometimes-incomplete
     $exitedEvent = {
         Write-Host "Process exited" -ForegroundColor yellow
-        Write-Host $sharedState
+        Write-Host "Shared state: $( $sharedState["myprocessrunning"] )" -ForegroundColor yellow
         $sharedState["myprocessrunning"] = $false
     }.GetNewClosure()
     Register-ObjectEvent -InputObject $p -EventName "Exited" -action $exitedEvent | Out-Null
