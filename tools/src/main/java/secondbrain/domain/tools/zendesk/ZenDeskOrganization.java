@@ -14,6 +14,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
@@ -43,6 +44,7 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -264,13 +266,15 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .get();
     }
 
+    @Nullable
     private String getOrganizationName(final ZenDeskResultsResponse meta, final String authHeader, final String url) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try
                         .of(() -> zenDeskClient.getOrganizationCached(client, authHeader, url, meta.organization_id()))
                         .map(ZenDeskOrganizationItemResponse::name)
                         .get())
-                .get();
+                // Do a best effort here - we don't want to fail the whole process because we can't get the organization name
+                .getOrNull();
     }
 
     private String idToLink(final String url, final String id) {
@@ -367,7 +371,11 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     }
 
     private RagDocumentContext<ZenDeskResultsResponse> getDocumentContext(final String document, final String id, final ZenDeskResultsResponse meta, final String authHeader, final ZenDeskConfig.LocalArguments parsedArgs) {
-        final String contextLabel = getContextLabel() + " " + getOrganizationName(meta, authHeader, parsedArgs.getZenDeskUrl());
+        final String contextLabel = String.join(
+                " ",
+                Stream.of(getContextLabel(), getOrganizationName(meta, authHeader, parsedArgs.getZenDeskUrl()))
+                        .filter(StringUtils::isNotBlank)
+                        .toList());
 
         if (parsedArgs.getDisableLinks()) {
             return new RagDocumentContext<>(contextLabel, document, List.of());
