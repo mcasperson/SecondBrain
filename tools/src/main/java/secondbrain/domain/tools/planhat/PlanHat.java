@@ -48,7 +48,7 @@ import static com.google.common.base.Predicates.instanceOf;
 @ApplicationScoped
 public class PlanHat implements Tool<Conversation> {
     public static final String DAYS_ARG = "days";
-    public static final String SEARCHTTL_ARG = "searchTtl";
+    public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String COMPANY_ID_ARGS = "companyId";
     public static final String DISABLE_LINKS_ARG = "disableLinks";
     public static final String PLANHAT_KEYWORD_ARG = "keywords";
@@ -363,7 +363,7 @@ class PlanHatConfig {
                     getConfigSearchTtl()::get,
                     arguments,
                     context,
-                    PlanHat.SEARCHTTL_ARG,
+                    PlanHat.SEARCH_TTL_ARG,
                     "planhat_searchttl",
                     DEFAULT_TTL);
 
