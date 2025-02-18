@@ -6,9 +6,9 @@ import org.apache.commons.lang3.StringUtils;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record Conversation(@JsonProperty("_id") String id, String description, String snippet, String date,
-                           String companyId, String subject, String type) {
+                           String companyId, String companyName, String subject, String type) {
     public Conversation updateDescriptionAndSnippet(final String description, final String snippet) {
-        return new Conversation(id, description, snippet, date, companyId, subject, type);
+        return new Conversation(id, description, snippet, date, companyId, companyName, subject, type);
     }
 
     public String getContent() {

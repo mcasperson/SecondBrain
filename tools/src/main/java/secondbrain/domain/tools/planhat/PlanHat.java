@@ -203,13 +203,17 @@ public class PlanHat implements Tool<Conversation> {
     private RagDocumentContext<Conversation> getDocumentContext(final Conversation conversation, final PlanHatConfig.LocalArguments parsedArgs) {
         final Pair<Conversation, List<String>> trimmedConversationResult = trimConversation(conversation, parsedArgs);
 
+        final String contextLabel = getContextLabel() + " " + trimmedConversationResult.getLeft().companyName() + " " + trimmedConversationResult.getLeft().date();
+
         if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), trimmedConversationResult.getLeft().getContent(), List.of(), null, null, null, trimmedConversationResult.getRight());
+            return new RagDocumentContext<>(
+                    contextLabel,
+                    trimmedConversationResult.getLeft().getContent(), List.of(), null, null, null, trimmedConversationResult.getRight());
         }
 
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.getLeft().getContent(), 10))
                 .map(sentences -> new RagDocumentContext<Conversation>(
-                        getContextLabel() + " " + trimmedConversationResult.getLeft().date(),
+                        contextLabel,
                         trimmedConversationResult.getLeft().getContent(),
                         sentences.stream()
                                 .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
