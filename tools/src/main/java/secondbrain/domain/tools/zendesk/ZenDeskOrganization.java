@@ -264,6 +264,15 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .get();
     }
 
+    private String getOrganizationName(final ZenDeskResultsResponse meta, final String authHeader, final String url) {
+        return Try.withResources(ClientBuilder::newClient)
+                .of(client -> Try
+                        .of(() -> zenDeskClient.getOrganizationCached(client, authHeader, url, meta.organization_id()))
+                        .map(ZenDeskOrganizationItemResponse::name)
+                        .get())
+                .get();
+    }
+
     private String idToLink(final String url, final String id) {
         return url + "/agent/tickets/" + id;
     }
@@ -358,13 +367,15 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     }
 
     private RagDocumentContext<ZenDeskResultsResponse> getDocumentContext(final String document, final String id, final ZenDeskResultsResponse meta, final String authHeader, final ZenDeskConfig.LocalArguments parsedArgs) {
+        final String contextLabel = getContextLabel() + " " + getOrganizationName(meta, authHeader, parsedArgs.getZenDeskUrl());
+
         if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), document, List.of());
+            return new RagDocumentContext<>(contextLabel, document, List.of());
         }
 
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext<>(
-                        getContextLabel(),
+                        contextLabel,
                         document,
                         sentences.stream()
                                 .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
