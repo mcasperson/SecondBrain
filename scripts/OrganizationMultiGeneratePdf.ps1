@@ -103,7 +103,7 @@ if ($GenerateCompanyReports)
             #Write-Host "StdErr"
             #Write-Host $result.StdErr
 
-            Add-Content -Path $EntityLog -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Entity: $entityName`n"
+            Add-Content -Path $EntityLog -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Entity: $entityName $( $using:index ) of $( ($using:database).entities.Count )`n"
             if ($result.ExitCode -ne 0)
             {
                 Add-Content -Path $EntityLog -Value "Failed to process $entityName"
