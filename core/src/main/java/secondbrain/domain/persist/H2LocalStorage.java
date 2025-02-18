@@ -58,16 +58,18 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     private Connection getConnection(final int count) {
-        if (count > MAX_RETRIES) {
-            throw new LocalStorageFailure("Failed to get connection after 5 attempts");
-        }
-
         if (count > 0) {
             Try.run(() -> Thread.sleep(DELAY));
         }
 
         return Try.of(() -> DriverManager.getConnection(getConnectionString()))
-                .recover(ex -> getConnection(count + 1))
+                .recover(ex -> {
+                    if (count < MAX_RETRIES) {
+                        return getConnection(count + 1);
+                    }
+
+                    throw new LocalStorageFailure("Failed to get connection after 5 attempts", ex);
+                })
                 .get();
     }
 
