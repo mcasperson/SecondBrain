@@ -2,8 +2,6 @@ package secondbrain.domain.persist;
 
 import io.vavr.API;
 import io.vavr.control.Try;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
@@ -23,8 +21,16 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
+/**
+ * A very low effort caching solution that uses an H2 database to store the cache. It takes no additional configuration,
+ * but H2 does not support simultaneous connections. The results store things like API calls and LLM results, which are
+ * quite costly, so time spent retrying connections is still worth it.
+ */
 @ApplicationScoped
 public class H2LocalStorage implements LocalStorage {
+
+    private static final int MAX_RETRIES = 5;
+    private static final int DELAY = 1000 * 3;
 
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
@@ -46,34 +52,33 @@ public class H2LocalStorage implements LocalStorage {
     private ExceptionHandler exceptionHandler;
     @Inject
     private Logger logger;
-    private Connection connection;
 
-    @PostConstruct
-    private void getConnection() {
-        this.connection = Try.of(() -> DriverManager.getConnection(getConnectionString()))
-                .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
-                .getOrNull();
+    private Connection getConnection() {
+        return getConnection(0);
     }
 
-    @PreDestroy
-    private void cleanConnection() {
-        if (this.connection != null) {
-            Try.run(() -> this.connection.createStatement().execute("SHUTDOWN"))
+    private Connection getConnection(final int count) {
+        if (count > MAX_RETRIES) {
+            throw new LocalStorageFailure("Failed to get connection after 5 attempts");
+        }
+
+        if (count > 0) {
+            Try.run(() -> Thread.sleep(DELAY));
+        }
+
+        return Try.of(() -> DriverManager.getConnection(getConnectionString()))
+                .recover(ex -> getConnection(count + 1))
+                .get();
+    }
+
+    private void cleanConnection(final Connection connection) {
+        if (connection != null) {
+            Try.run(() -> connection.createStatement().execute("SHUTDOWN"))
                     .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
-            Try.run(this.connection::close)
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
-                    .andFinally(() -> this.connection = null);
-
+            Try.run(connection::close)
+                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
         }
-
-        if (totalReads.get() > 0) {
-            logger.info("Cache hits percentage: " + getCacheHitsPercentage() + "%");
-        }
-    }
-
-    private float getCacheHitsPercentage() {
-        return totalReads.get() > 0 ? totalCacheHits.floatValue() / totalReads.get() * 100 : 0;
     }
 
     private String getDatabasePath() {
@@ -129,36 +134,46 @@ public class H2LocalStorage implements LocalStorage {
                 .isSuccess();
     }
 
+    /**
+     * We want to hold the database connection as short as possible. This will help when multiple CLI instances are
+     * running at the same time. H2 has file locking that will prevent multiple instances trying to open the same
+     * file at the same time, so we'll retry a few times to try and allow multiple instances interleave their requests.
+     * If there are multiple threads, the synchronized keyword will prevent them from trying to open multiple
+     * connections.
+     */
     @Override
     synchronized public String getString(final String tool, final String source, final String promptHash) {
-        if (isDisabled() || isWriteOnly() || connection == null) {
+        if (isDisabled() || isWriteOnly()) {
             return null;
         }
 
         totalReads.incrementAndGet();
 
         final Try<String> result = Try
-                .of(() -> connection.prepareStatement("""
-                        SELECT response FROM local_storage
-                                        WHERE tool = ?
-                                        AND source = ?
-                                        AND prompt_hash = ?
-                                        AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
-                .mapTry(preparedStatement -> {
-                    preparedStatement.setString(1, tool);
-                    preparedStatement.setString(2, source);
-                    preparedStatement.setString(3, promptHash);
-                    return preparedStatement;
-                })
-                .mapTry(PreparedStatement::executeQuery)
-                .mapTry(resultSet -> {
-                    if (resultSet.next()) {
-                        totalCacheHits.incrementAndGet();
-                        return resultSet.getString(1);
-                    }
-                    return null;
-                })
-                .onSuccess(value -> deleteExpired(connection));
+                .withResources(this::getConnection)
+                .of(connection -> Try.of(() -> connection.prepareStatement("""
+                                SELECT response FROM local_storage
+                                                WHERE tool = ?
+                                                AND source = ?
+                                                AND prompt_hash = ?
+                                                AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
+                        .mapTry(preparedStatement -> {
+                            preparedStatement.setString(1, tool);
+                            preparedStatement.setString(2, source);
+                            preparedStatement.setString(3, promptHash);
+                            return preparedStatement;
+                        })
+                        .mapTry(PreparedStatement::executeQuery)
+                        .mapTry(resultSet -> {
+                            if (resultSet.next()) {
+                                totalCacheHits.incrementAndGet();
+                                return resultSet.getString(1);
+                            }
+                            return null;
+                        })
+                        .onSuccess(value -> deleteExpired(connection))
+                        .andFinally(() -> cleanConnection(connection)))
+                .get();
 
         return result
                 .mapFailure(
@@ -232,28 +247,31 @@ public class H2LocalStorage implements LocalStorage {
 
     @Override
     synchronized public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
-        if (isDisabled() || isReadOnly() || connection == null) {
+        if (isDisabled() || isReadOnly()) {
             return;
         }
 
         final Try<PreparedStatement> result = Try
-                .of(() -> connection.prepareStatement("""
-                        INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
-                        VALUES (?, ?, ?, ?, ?)""".stripIndent()))
-                .mapTry(preparedStatement -> {
-                    preparedStatement.setString(1, tool);
-                    preparedStatement.setString(2, source);
-                    preparedStatement.setString(3, promptHash);
-                    preparedStatement.setString(4, response);
-                    preparedStatement.setTimestamp(5, ttlSeconds == 0
-                            ? null
-                            : Timestamp.from(ZonedDateTime
-                            .now(ZoneOffset.UTC)
-                            .plusSeconds(ttlSeconds)
-                            .toInstant()));
-                    preparedStatement.executeUpdate();
-                    return preparedStatement;
-                });
+                .withResources(this::getConnection)
+                .of(connection -> Try.of(() -> connection.prepareStatement("""
+                                INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
+                                VALUES (?, ?, ?, ?, ?)""".stripIndent()))
+                        .mapTry(preparedStatement -> {
+                            preparedStatement.setString(1, tool);
+                            preparedStatement.setString(2, source);
+                            preparedStatement.setString(3, promptHash);
+                            preparedStatement.setString(4, response);
+                            preparedStatement.setTimestamp(5, ttlSeconds == 0
+                                    ? null
+                                    : Timestamp.from(ZonedDateTime
+                                    .now(ZoneOffset.UTC)
+                                    .plusSeconds(ttlSeconds)
+                                    .toInstant()));
+                            preparedStatement.executeUpdate();
+                            return preparedStatement;
+                        })
+                        .andFinally(() -> cleanConnection(connection)))
+                .get();
 
         result
                 .mapFailure(
