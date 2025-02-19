@@ -143,7 +143,7 @@ public class H2LocalStorage implements LocalStorage {
         }
 
         Try.run(() -> Files.copy(
-                Paths.get(getDatabasePath()),
+                Paths.get(getDatabasePath() + ".mv.db"),
                 Paths.get(getDatabasePath() + ".mv.db.backup.1")));
     }
 
