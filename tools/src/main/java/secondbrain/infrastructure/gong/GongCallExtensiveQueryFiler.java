@@ -2,8 +2,6 @@ package secondbrain.infrastructure.gong;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import java.util.List;
-
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record GongCallExtensiveQueryFiler(List<String> callIds, String fromDateTime, String toDateTime) {
+public record GongCallExtensiveQueryFiler(String fromDateTime, String toDateTime) {
 }
