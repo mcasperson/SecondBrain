@@ -48,6 +48,12 @@ public class H2LocalStorage implements LocalStorage {
     @Inject
     @ConfigProperty(name = "sb.cache.path")
     private Optional<String> path;
+    /**
+     * Long locking means we open a connection to the H2 database at the start of the app and release it at the end.
+     * This is more performant, but means multiple instances of the app will not be able to access the shared cache.
+     * Set this to true when there is only likely to be one instance of the app running at a time.
+     * Set this to false (or leave it unset) when there are likely to be multiple instances of the app running at a time.
+     */
     @Inject
     @ConfigProperty(name = "sb.cache.longlock")
     private Optional<String> longlock;
