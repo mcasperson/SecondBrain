@@ -4,7 +4,10 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.concurrency.SemaphoreLender;
@@ -36,7 +39,7 @@ public class PlanHatClient {
         final Conversation[] conversations = localStorage.getOrPutObject(
                 PlanHatClient.class.getSimpleName(),
                 "PlanHatAPIConversations",
-                company,
+                DigestUtils.sha256Hex(company),
                 ttlSeconds,
                 Conversation[].class,
                 () -> getConversationsApi(client, company, token));
@@ -49,8 +52,12 @@ public class PlanHatClient {
     @Retry
     private Conversation[] getConversationsApi(final Client client, final String company, final String token) {
         final String target = url + "/conversations";
-        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
-                        .queryParam("cId", company)
+
+        final WebTarget webTarget = StringUtils.isNotBlank(company)
+                ? client.target(target).queryParam("cId", company)
+                : client.target(target);
+
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(webTarget
                         .request()
                         .header("Authorization", "Bearer " + token)
                         .header("Accept", MediaType.APPLICATION_JSON)

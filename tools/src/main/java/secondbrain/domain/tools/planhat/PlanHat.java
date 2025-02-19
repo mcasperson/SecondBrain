@@ -137,12 +137,13 @@ public class PlanHat implements Tool<Conversation> {
         final List<Conversation> conversations = Try.withResources(ClientBuilder::newClient)
                 .of(client -> planHatClient.getConversations(
                         client,
-                        parsedArgs.getCompany(),
+                        "",
                         parsedArgs.getToken(),
                         parsedArgs.getSearchTTL()))
                 .get();
 
         return conversations.stream()
+                .filter(conversation -> parsedArgs.getCompany().equals(conversation.companyId()))
                 .filter(conversation -> parsedArgs.getDays() == 0
                         || dateParser.parseDate(conversation.date()).isAfter(ZonedDateTime.now(ZoneOffset.UTC).minusDays(parsedArgs.getDays())))
                 .filter(conversation -> !"ticket".equals(conversation.type()))
