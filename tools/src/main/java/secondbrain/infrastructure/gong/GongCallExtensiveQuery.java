@@ -4,5 +4,5 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GongCallExtensiveQuery(GongCallExtensiveQueryFiler filter,
-                                     GongCallExtensiveQueryContextSelector contextSelector) {
+                                     GongCallExtensiveQueryContentSelector contentSelector) {
 }

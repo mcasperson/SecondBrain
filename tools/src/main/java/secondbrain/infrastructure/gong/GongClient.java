@@ -50,7 +50,7 @@ public class GongClient {
         final GongCallsExtensive calls = localStorage.getOrPutObject(
                 GongClient.class.getSimpleName(),
                 "GongAPICallsExtensive",
-                DigestUtils.sha256Hex(fromDateTime + toDateTime),
+                DigestUtils.sha256Hex(fromDateTime + toDateTime + 2),
                 GongCallsExtensive.class,
                 () -> getCallsExtensiveApi(client, fromDateTime, toDateTime, username, password));
 
@@ -95,7 +95,7 @@ public class GongClient {
 
         final GongCallExtensiveQuery body = new GongCallExtensiveQuery(
                 new GongCallExtensiveQueryFiler(fromDateTime, toDateTime),
-                new GongCallExtensiveQueryContextSelector("Extended", List.of("Now", "TimeOfCall"))
+                new GongCallExtensiveQueryContentSelector("Extended", List.of("Now", "TimeOfCall"))
         );
 
         return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
