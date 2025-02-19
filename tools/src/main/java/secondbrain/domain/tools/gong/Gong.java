@@ -347,7 +347,7 @@ class GongConfig {
                     context,
                     Gong.DAYS_ARG,
                     "gong_days",
-                    "0").value();
+                    "30").value();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
