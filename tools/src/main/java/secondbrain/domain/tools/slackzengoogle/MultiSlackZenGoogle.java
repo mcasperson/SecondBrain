@@ -329,7 +329,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         logger.info("Processing " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
-        final List<RagDocumentContext<Void>> slackContext = entity.getSlack()
+        final List<RagDocumentContext<Void>> slackContext = Objects.requireNonNullElse(entity.getSlack(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
@@ -384,7 +384,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .toList();
 
 
-        final List<RagDocumentContext<Void>> googleContext = entity.getGoogleDcos()
+        final List<RagDocumentContext<Void>> googleContext = Objects.requireNonNullElse(entity.getGoogleDcos(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
@@ -406,7 +406,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateGroup(entity.name()))
                 .toList();
 
-        final List<RagDocumentContext<Void>> zenContext = entity.getZenDesk()
+        final List<RagDocumentContext<Void>> zenContext = Objects.requireNonNullElse(entity.getZenDesk(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
@@ -430,7 +430,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
-        final List<RagDocumentContext<Void>> planHatContext = entity.getPlanHat()
+        final List<RagDocumentContext<Void>> planHatContext = Objects.requireNonNullElse(entity.getPlanHat(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
@@ -454,7 +454,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
-        final List<RagDocumentContext<Void>> gongContext = entity.salesforce()
+        final List<RagDocumentContext<Void>> gongContext = Objects.requireNonNullElse(entity.salesforce(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
