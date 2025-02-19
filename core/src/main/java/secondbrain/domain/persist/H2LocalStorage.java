@@ -2,6 +2,8 @@ package secondbrain.domain.persist;
 
 import io.vavr.API;
 import io.vavr.control.Try;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
@@ -47,16 +49,36 @@ public class H2LocalStorage implements LocalStorage {
     @ConfigProperty(name = "sb.cache.path")
     private Optional<String> path;
     @Inject
+    @ConfigProperty(name = "sb.cache.longlock")
+    private Optional<String> longlock;
+    @Inject
     private JsonDeserializer jsonDeserializer;
     @Inject
     private ExceptionHandler exceptionHandler;
     @Inject
     private Logger logger;
+    private Connection longConnection;
 
     public H2LocalStorage() {
         synchronized (H2LocalStorage.class) {
             Try.withResources(this::getConnection)
                     .of(connection -> Try.of(() -> deleteExpired(connection)));
+        }
+    }
+
+    @PostConstruct
+    public void postConstruct() {
+        if (longlock.map(Boolean::parseBoolean).orElse(false)) {
+            synchronized (H2LocalStorage.class) {
+                this.longConnection = getConnection();
+            }
+        }
+    }
+
+    @PreDestroy
+    public void preDestroy() {
+        if (longConnection != null) {
+            cleanConnection(longConnection);
         }
     }
 
@@ -162,30 +184,47 @@ public class H2LocalStorage implements LocalStorage {
 
             totalReads.incrementAndGet();
 
-            final Try<String> result = Try
+            if (longConnection != null) {
+                return getString(longConnection, tool, source, promptHash);
+            }
+
+            return Try
                     .withResources(this::getConnection)
-                    .of(connection -> Try.of(() -> connection.prepareStatement("""
-                                    SELECT response FROM local_storage
-                                                    WHERE tool = ?
-                                                    AND source = ?
-                                                    AND prompt_hash = ?
-                                                    AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
-                            .mapTry(preparedStatement -> {
-                                preparedStatement.setString(1, tool);
-                                preparedStatement.setString(2, source);
-                                preparedStatement.setString(3, promptHash);
-                                return preparedStatement;
-                            })
-                            .mapTry(PreparedStatement::executeQuery)
-                            .mapTry(resultSet -> {
-                                if (resultSet.next()) {
-                                    totalCacheHits.incrementAndGet();
-                                    return resultSet.getString(1);
-                                }
-                                return null;
-                            })
-                            .andFinally(() -> cleanConnection(connection)))
+                    .of(connection -> Try.of(() -> getString(connection, tool, source, promptHash))
+                            .andFinally(() -> cleanConnection(connection))
+                            .get())
                     .get();
+        }
+    }
+
+    private String getString(final Connection connection, final String tool, final String source, final String promptHash) {
+        synchronized (H2LocalStorage.class) {
+            if (isDisabled() || isWriteOnly()) {
+                return null;
+            }
+
+            totalReads.incrementAndGet();
+
+            final Try<String> result = Try.of(() -> connection.prepareStatement("""
+                            SELECT response FROM local_storage
+                                            WHERE tool = ?
+                                            AND source = ?
+                                            AND prompt_hash = ?
+                                            AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
+                    .mapTry(preparedStatement -> {
+                        preparedStatement.setString(1, tool);
+                        preparedStatement.setString(2, source);
+                        preparedStatement.setString(3, promptHash);
+                        return preparedStatement;
+                    })
+                    .mapTry(PreparedStatement::executeQuery)
+                    .mapTry(resultSet -> {
+                        if (resultSet.next()) {
+                            totalCacheHits.incrementAndGet();
+                            return resultSet.getString(1);
+                        }
+                        return null;
+                    });
 
             return result
                     .mapFailure(
@@ -265,27 +304,40 @@ public class H2LocalStorage implements LocalStorage {
                 return;
             }
 
-            final Try<PreparedStatement> result = Try
-                    .withResources(this::getConnection)
-                    .of(connection -> Try.of(() -> connection.prepareStatement("""
-                                    INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
-                                    VALUES (?, ?, ?, ?, ?)""".stripIndent()))
-                            .mapTry(preparedStatement -> {
-                                preparedStatement.setString(1, tool);
-                                preparedStatement.setString(2, source);
-                                preparedStatement.setString(3, promptHash);
-                                preparedStatement.setString(4, response);
-                                preparedStatement.setTimestamp(5, ttlSeconds == 0
-                                        ? null
-                                        : Timestamp.from(ZonedDateTime
-                                        .now(ZoneOffset.UTC)
-                                        .plusSeconds(ttlSeconds)
-                                        .toInstant()));
-                                preparedStatement.executeUpdate();
-                                return preparedStatement;
-                            })
-                            .andFinally(() -> cleanConnection(connection)))
-                    .get();
+            if (longConnection != null) {
+                putString(longConnection, tool, source, promptHash, ttlSeconds, response);
+            } else {
+                Try.withResources(this::getConnection)
+                        .of(connection -> Try.run(() -> putString(connection, tool, source, promptHash, ttlSeconds, response))
+                                .andFinally(() -> cleanConnection(connection)))
+                        .get();
+            }
+        }
+    }
+
+    private void putString(final Connection connection, final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
+        synchronized (H2LocalStorage.class) {
+            if (isDisabled() || isReadOnly()) {
+                return;
+            }
+
+            final Try<PreparedStatement> result = Try.of(() -> connection.prepareStatement("""
+                            INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
+                            VALUES (?, ?, ?, ?, ?)""".stripIndent()))
+                    .mapTry(preparedStatement -> {
+                        preparedStatement.setString(1, tool);
+                        preparedStatement.setString(2, source);
+                        preparedStatement.setString(3, promptHash);
+                        preparedStatement.setString(4, response);
+                        preparedStatement.setTimestamp(5, ttlSeconds == 0
+                                ? null
+                                : Timestamp.from(ZonedDateTime
+                                .now(ZoneOffset.UTC)
+                                .plusSeconds(ttlSeconds)
+                                .toInstant()));
+                        preparedStatement.executeUpdate();
+                        return preparedStatement;
+                    });
 
             result
                     .mapFailure(
