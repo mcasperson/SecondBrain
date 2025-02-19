@@ -112,7 +112,7 @@ public class SlackClient {
             final int retryCount) {
 
         if (retryCount > RETRIES) {
-            throw new ExternalFailure("Could not call searchAll after 5 retries");
+            throw new ExternalFailure("Could not call searchAll after " + RETRIES + " retries");
         }
 
         if (retryCount > 0) {
