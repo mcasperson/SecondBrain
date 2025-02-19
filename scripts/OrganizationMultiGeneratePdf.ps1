@@ -135,7 +135,7 @@ if ($GenerateTopicReports)
 
         $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
-            $TopicLog = "/tmp/pdfgenerate $( $using:topic.name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
+            $TopicLog = "/tmp/pdfgenerate $( ($using:topic).name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
             # We need to be tight with the sb.slackzengoogle.keywordwindow value, as the default of 2000
             # characters was leading to whole google documents being included in the output, which was
@@ -145,17 +145,17 @@ if ($GenerateTopicReports)
             echo $result.StdOut
             echo $result.StdErr
 
-            Add-Content -Path $TopicLog -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Topic: $( $using:topic.name )`n"
+            Add-Content -Path $TopicLog -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Topic: $( ($using:topic).name )`n"
             if ($result.ExitCode -ne 0)
             {
-                Add-Content -Path $TopicLog -Value "Failed to process topic $( $using:topic.name )"
+                Add-Content -Path $TopicLog -Value "Failed to process topic $( ($using:topic).name )"
             }
             Add-Content -Path $TopicLog -Value $result.StdOut
             Add-Content -Path $TopicLog -Value $result.StdErr
 
             if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
             {
-                Set-Content -Path "$using:subDir/TOPIC $( $using:topic.name ).md"  -Value $result.StdOut
+                Set-Content -Path "$using:subDir/TOPIC $( ($using:topic).name ).md"  -Value $result.StdOut
             }
         }
     }
