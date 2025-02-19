@@ -53,9 +53,10 @@ public class PlanHatClient {
     private Conversation[] getConversationsApi(final Client client, final String company, final String token) {
         final String target = url + "/conversations";
 
+        // https://docs.planhat.com/#get_conversation_list
         final WebTarget webTarget = StringUtils.isNotBlank(company)
-                ? client.target(target).queryParam("cId", company)
-                : client.target(target);
+                ? client.target(target).queryParam("cId", company).queryParam("limit", 2000)
+                : client.target(target).queryParam("limit", 2000);
 
         return Try.withResources(() -> SEMAPHORE_LENDER.lend(webTarget
                         .request()
