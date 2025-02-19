@@ -63,6 +63,20 @@ public class GongClient {
 
     }
 
+    public GongCallTranscript getCallTranscript(
+            final Client client,
+            final String username,
+            final String password,
+            final String id) {
+
+        return localStorage.getOrPutObject(
+                GongClient.class.getSimpleName(),
+                "GongAPICallTranscript",
+                id,
+                GongCallTranscript.class,
+                () -> getCallTranscriptApi(client, id, username, password));
+    }
+
     private GongCallsExtensive getCallsExtensiveApi(
             final Client client,
             final String fromDateTime,
@@ -84,5 +98,27 @@ public class GongClient {
                         .map(r -> r.readEntity(GongCallsExtensive.class))
                         .get())
                 .getOrElseThrow(e -> new RuntimeException("Failed to get calls from Gong API", e));
+    }
+
+    private GongCallTranscript getCallTranscriptApi(
+            final Client client,
+            final String id,
+            final String username,
+            final String password) {
+        final String target = url + "/v2/calls/transcript";
+
+        final GongCallTranscriptQuery body = new GongCallTranscriptQuery(
+                new GongCallTranscriptQueryFilter(List.of(id))
+        );
+
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
+                        .request()
+                        .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
+                        .header("Accept", MediaType.APPLICATION_JSON)
+                        .post(Entity.entity(body, MediaType.APPLICATION_JSON))))
+                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
+                        .map(r -> r.readEntity(GongCallTranscript.class))
+                        .get())
+                .getOrElseThrow(e -> new RuntimeException("Failed to get call transcript from Gong API", e));
     }
 }
