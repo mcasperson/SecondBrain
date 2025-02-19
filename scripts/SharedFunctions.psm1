@@ -15,6 +15,7 @@ Function Invoke-CustomCommand
     )
 
     $remainingTimeout = $processTimeout
+    $executionTime = 0
 
     $global:stdErr.Clear()
     $global:stdOut.Clear()
@@ -68,6 +69,8 @@ Function Invoke-CustomCommand
             $remainingTimeout -= 50
         }
 
+        $executionTime += 50
+
         Start-Sleep -m 50
 
         $lastUpdate -= 50
@@ -78,11 +81,11 @@ Function Invoke-CustomCommand
 
             if ($processTimeout -ge 0)
             {
-                Write-Host "Still running... $( $processTimeout / 1000 ) seconds left" -ForegroundColor yellow
+                Write-Host "Still running... $( $executionTime / 1000 ) seconds, $( $processTimeout / 1000 ) seconds left" -ForegroundColor yellow
             }
             else
             {
-                Write-Host "Still running..." -ForegroundColor yellow
+                Write-Host "Still running... $( $executionTime / 1000 ) seconds" -ForegroundColor yellow
             }
 
             $tail = 1000
