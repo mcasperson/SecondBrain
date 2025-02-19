@@ -137,18 +137,18 @@ public class H2LocalStorage implements LocalStorage {
      * corrupt it.
      */
     private void backupDatabase() {
-        Try.run(() -> Files.delete(Paths.get(getDatabasePath() + ".backup.5")));
+        Try.run(() -> Files.delete(Paths.get(getDatabasePath() + ".mv.db.backup.5")));
 
         for (int i = 4; i > 0; i--) {
             final int index = i;
             Try.run(() -> Files.move(
-                    Paths.get(getDatabasePath() + ".backup." + index),
-                    Paths.get(getDatabasePath() + ".backup." + (index + 1))));
+                    Paths.get(getDatabasePath() + ".mv.db.backup." + index),
+                    Paths.get(getDatabasePath() + ".mv.db.backup." + (index + 1))));
         }
 
         Try.run(() -> Files.copy(
                 Paths.get(getDatabasePath()),
-                Paths.get(getDatabasePath() + ".backup.1")));
+                Paths.get(getDatabasePath() + ".mv.db.backup.1")));
     }
 
     private String getConnectionString() {
