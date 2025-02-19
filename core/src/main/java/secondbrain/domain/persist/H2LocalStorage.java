@@ -65,26 +65,26 @@ public class H2LocalStorage implements LocalStorage {
     private Logger logger;
     private Connection longConnection;
 
-    public H2LocalStorage() {
-        synchronized (H2LocalStorage.class) {
-            Try.withResources(this::getConnection)
-                    .of(connection -> Try.of(() -> deleteExpired(connection)));
-        }
-    }
-
     @PostConstruct
     public void postConstruct() {
-        if (longlock.map(Boolean::parseBoolean).orElse(false)) {
-            synchronized (H2LocalStorage.class) {
+        synchronized (H2LocalStorage.class) {
+            if (longlock.map(Boolean::parseBoolean).orElse(false)) {
                 this.longConnection = getConnection();
+                deleteExpired(longConnection);
+            } else {
+                Try.withResources(this::getConnection)
+                        .of(connection -> Try.of(() -> deleteExpired(connection)))
+                        .andFinally(() -> cleanConnection(longConnection));
             }
         }
     }
 
     @PreDestroy
     public void preDestroy() {
-        if (longConnection != null) {
-            cleanConnection(longConnection);
+        synchronized (H2LocalStorage.class) {
+            if (longConnection != null) {
+                cleanConnection(longConnection);
+            }
         }
     }
 
