@@ -149,6 +149,7 @@ public class H2LocalStorage implements LocalStorage {
 
     private String getConnectionString() {
         return "jdbc:h2:file:" + getDatabasePath() + ";" + """
+                AUTO_SERVER=TRUE\\;
                 INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
                 SET SCHEMA SECONDBRAIN\\;
                 CREATE TABLE IF NOT EXISTS local_storage
