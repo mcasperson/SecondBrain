@@ -15,6 +15,6 @@ public record GongCallTranscript(List<GongCallTranscriptCollection> callTranscri
                 .flatMap(transcript -> transcript.transcript().stream())
                 .flatMap(transcriptItem -> transcriptItem.sentences().stream())
                 .map(GongCallTranscriptItemSentence::text)
-                .reduce("", (a, b) -> a + " " + b);
+                .reduce("", (a, b) -> a + "\n" + b);
     }
 }
