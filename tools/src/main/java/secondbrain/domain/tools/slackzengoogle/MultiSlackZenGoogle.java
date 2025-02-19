@@ -159,9 +159,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
                 .getOrElseThrow(ex -> new ExternalFailure("Failed to download or parse the entity directory", ex));
 
-        final List<RagDocumentContext<Void>> ragContext = entityDirectory.getEntities()
+        final List<RagDocumentContext<Void>> ragContext = entityDirectory.getPositionalEntities()
                 .parallelStream()
-                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.name().toLowerCase()))
+                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.entity.name().toLowerCase()))
                 .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
                 .flatMap(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs.getDays(), parsedArgs).stream())
                 .toList();
@@ -299,12 +299,14 @@ public class MultiSlackZenGoogle implements Tool<Void> {
      * Try and get all the downstream context. Note that this tool is a long-running operation that attempts to access a lot
      * of data. We silently fail for any downstream context that could not be retrieved rather than fail the entire operation.
      */
-    private List<RagDocumentContext<Void>> getEntityContext(final Entity entity, final Map<String, String> context, final String prompt, final int days, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+    private List<RagDocumentContext<Void>> getEntityContext(final PositionalEntity positionalEntity, final Map<String, String> context, final String prompt, final int days, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        final Entity entity = positionalEntity.entity();
+
         if (entity.disabled()) {
             return List.of();
         }
 
-        logger.info("Processing " + entity.name());
+        logger.info("Processing " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final List<RagDocumentContext<Void>> slackContext = entity.getSlack()
                 .stream()
@@ -503,9 +505,18 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 context);
     }
 
+    record PositionalEntity(Entity entity, int position, int total) {
+    }
+
     record EntityDirectory(List<Entity> entities) {
         public List<Entity> getEntities() {
             return Objects.requireNonNullElse(entities, List.of());
+        }
+
+        public List<PositionalEntity> getPositionalEntities() {
+            return getEntities().stream()
+                    .map(entity -> new PositionalEntity(entity, getEntities().indexOf(entity) + 1, getEntities().size()))
+                    .toList();
         }
     }
 
