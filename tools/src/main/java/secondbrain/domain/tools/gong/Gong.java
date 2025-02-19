@@ -1,5 +1,6 @@
 package secondbrain.domain.tools.gong;
 
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -19,6 +20,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
@@ -40,6 +42,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Predicates.instanceOf;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
@@ -50,7 +53,15 @@ public class Gong implements Tool<GongCallExtensive> {
     public static final String GONG_DISABLELINKS_ARG = "disableLinks";
     public static final String GONG_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String GONG_ENTITY_NAME_CONTEXT_ARG = "entityName";
-
+    private static final String INSTRUCTIONS = """
+            You are a helpful assistant.
+            You are given list of call transcripts from Gong.
+            You must assume the information required to answer the question is present in the transcripts.
+            You must answer the question based on the transcripts provided.
+            You will be tipped $1000 for answering the question directly from the transcripts.
+            When the user asks a question indicating that they want to know about transcripts, you must generate the answer based on the transcripts.
+            You will be penalized for answering that the transcripts can not be accessed.
+            """.stripLeading();
     @Inject
     private GongConfig config;
 
@@ -148,7 +159,47 @@ public class Gong implements Tool<GongCallExtensive> {
 
     @Override
     public RagMultiDocumentContext<GongCallExtensive> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        return null;
+        final List<RagDocumentContext<GongCallExtensive>> contextList = getContext(environmentSettings, prompt, arguments);
+
+        final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        if (StringUtils.isBlank(parsedArgs.getCompany())) {
+            throw new InternalFailure("You must provide a company to query");
+        }
+
+        final Try<RagMultiDocumentContext<GongCallExtensive>> result = Try.of(() -> contextList)
+                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
+                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
+                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
+                        .buildFinalPrompt(
+                                INSTRUCTIONS,
+                                ragContext.getDocumentLeft(modelConfig.getCalculatedContextWindowChars()),
+                                prompt)))
+                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                        ragDoc,
+                        modelConfig.getCalculatedModel(environmentSettings),
+                        getName(),
+                        modelConfig.getCalculatedContextWindow()));
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Gong transcript activities is empty", throwable)),
+                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call Ollama", ex)))
+                .get();
+    }
+
+    private RagMultiDocumentContext<GongCallExtensive> mergeContext(final List<RagDocumentContext<GongCallExtensive>> context, final String customModel) {
+        return new RagMultiDocumentContext<>(
+                context.stream()
+                        .map(ragDoc -> promptBuilderSelector
+                                .getPromptBuilder(customModel)
+                                .buildContextPrompt(
+                                        ragDoc.contextLabel(),
+                                        ragDoc.document()))
+                        .collect(Collectors.joining("\n")),
+                context);
     }
 
     @Override
