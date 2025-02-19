@@ -127,31 +127,43 @@ if ($GenerateCompanyReports)
 
 if ($GenerateTopicReports)
 {
+    $topicJobs = @()
+    $topicIndex = 0
     foreach ($topic in $topics.topics)
     {
+        $topicIndex++
 
-        $TopicLog = "/tmp/pdfgenerate $( $topic.name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
+        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
-        # We need to be tight with the sb.slackzengoogle.keywordwindow value, as the default of 2000
-        # characters was leading to whole google documents being included in the output, which was
-        # consuming all the context window.
-        $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.cache.backup=true`" `"-Dsb.slackzengoogle.keywordwindow=350`" `"-Dsb.slackzengoogle.contextFilterQuestion=$( $topic.filterQuestion )`" `"-Dsb.slackzengoogle.contextFilterMinimumRating=$( $topic.filterThreshold )`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.slackzengoogle.disablelinks=false`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.keywords=$( $topic.keywords -join "," )`" `"-Dsb.slackzengoogle.minTimeBasedContext=1`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$Days`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"$( $topic.prompt )`n$( $topics.shared.endPrompt )`"" -processTimeout 0
+            $TopicLog = "/tmp/pdfgenerate $( $topic.name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
-        echo $result.StdOut
-        echo $result.StdErr
+            # We need to be tight with the sb.slackzengoogle.keywordwindow value, as the default of 2000
+            # characters was leading to whole google documents being included in the output, which was
+            # consuming all the context window.
+            $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.cache.backup=$( $topicIndex -eq 1 )`" `"-Dsb.slackzengoogle.keywordwindow=350`" `"-Dsb.slackzengoogle.contextFilterQuestion=$( $topic.filterQuestion )`" `"-Dsb.slackzengoogle.contextFilterMinimumRating=$( $topic.filterThreshold )`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.slackzengoogle.disablelinks=false`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.keywords=$( $topic.keywords -join "," )`" `"-Dsb.slackzengoogle.minTimeBasedContext=1`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$Days`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"$( $topic.prompt )`n$( $topics.shared.endPrompt )`"" -processTimeout 0
 
-        Add-Content -Path $TopicLog -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Topic: $( $topic.name )`n"
-        if ($result.ExitCode -ne 0)
-        {
-            Add-Content -Path $TopicLog -Value "Failed to process topic $( $topic.name )"
+            echo $result.StdOut
+            echo $result.StdErr
+
+            Add-Content -Path $TopicLog -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Topic: $( $topic.name )`n"
+            if ($result.ExitCode -ne 0)
+            {
+                Add-Content -Path $TopicLog -Value "Failed to process topic $( $topic.name )"
+            }
+            Add-Content -Path $TopicLog -Value $result.StdOut
+            Add-Content -Path $TopicLog -Value $result.StdErr
+
+            if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
+            {
+                Set-Content -Path "$subDir/TOPIC $( $topic.name ).md"  -Value $result.StdOut
+            }
         }
-        Add-Content -Path $TopicLog -Value $result.StdOut
-        Add-Content -Path $TopicLog -Value $result.StdErr
+    }
 
-        if (-not [string]::IsNullOrWhitespace($result.StdOut) -and -not $result.StdOut.Contains("InsufficientContext") -and -not $result.StdOut.Contains("Failed to call Ollama"))
-        {
-            Set-Content -Path "$subDir/TOPIC $( $topic.name ).md"  -Value $result.StdOut
-        }
+    Wait-Job -Job $topicJobs
+    foreach ($job in $topicJobs)
+    {
+        Receive-Job -Job $job
     }
 }
 
