@@ -135,6 +135,8 @@ if ($GenerateTopicReports)
 
         $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
+            Import-Module $using:ModulePath
+
             $TopicLog = "/tmp/pdfgenerate $( ($using:topic).name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
             # We need to be tight with the sb.slackzengoogle.keywordwindow value, as the default of 2000
