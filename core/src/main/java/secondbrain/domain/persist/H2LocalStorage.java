@@ -76,6 +76,14 @@ public class H2LocalStorage implements LocalStorage {
                 cleanConnection(connection);
             }
         }
+
+        if (totalReads.get() > 0) {
+            logger.info("Cache hits percentage: " + getCacheHitsPercentage() + "%");
+        }
+    }
+
+    private float getCacheHitsPercentage() {
+        return totalReads.get() > 0 ? (float) totalCacheHits.get() / totalReads.get() * 100 : 0;
     }
 
     private Connection getConnection() {
