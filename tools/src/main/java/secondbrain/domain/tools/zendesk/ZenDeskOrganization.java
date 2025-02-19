@@ -166,14 +166,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         query.add("type:ticket");
         query.add("created>" + parsedArgs.getStartDate());
 
-        if (!StringUtils.isBlank(parsedArgs.getOrganization())) {
-            query.add("organization:" + parsedArgs.getOrganization());
-        }
-
         final Try<List<RagDocumentContext<ZenDeskResultsResponse>>> result = Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, parsedArgs.getUrl(), String.join(" ", query)))
                         // Filter out any tickets based on the submitter and assignee
-                        .map(response -> filterResponse(response, true, parsedArgs.getExcludedSubmitters(), parsedArgs.getExcludedOrganization(), parsedArgs.getRecipient()))
+                        .map(response -> filterResponse(response, parsedArgs.getOrganization(), true, parsedArgs.getExcludedSubmitters(), parsedArgs.getExcludedOrganization(), parsedArgs.getRecipient()))
                         // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
                         .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
                         // Get the ticket comments (i.e. the initial email)
@@ -294,6 +290,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 
     private List<ZenDeskResultsResponse> filterResponse(
             final List<ZenDeskResultsResponse> tickets,
+            final String organization,
             final boolean forceAssignee,
             final List<String> exclude,
             final List<String> excludedOwner,
@@ -307,6 +304,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .filter(ticket -> !excludedOwner.contains(ticket.organization_id()))
                 .filter(ticket -> !forceAssignee || !StringUtils.isBlank(ticket.assignee_id()))
                 .filter(ticket -> StringUtils.isBlank(recipient) || recipient.equals(ticket.recipient()))
+                .filter(ticket -> StringUtils.isBlank(organization) || organization.equals(ticket.organization_id()))
                 .collect(Collectors.toList());
     }
 
