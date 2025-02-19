@@ -222,7 +222,7 @@ public class SlackSearch implements Tool<MatchedItem> {
 
 @ApplicationScoped
 class SlackSearchConfig {
-    private static final String DEFAULT_TTL = "3600";
+    private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
 
     @Inject
     private ArgsAccessor argsAccessor;
