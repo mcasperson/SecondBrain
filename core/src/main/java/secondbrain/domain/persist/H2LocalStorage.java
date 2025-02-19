@@ -29,8 +29,8 @@ import java.util.logging.Logger;
 @ApplicationScoped
 public class H2LocalStorage implements LocalStorage {
 
-    private static final int MAX_RETRIES = 5;
-    private static final int DELAY = 1000 * 3;
+    private static final int MAX_RETRIES = 15;
+    private static final int DELAY = 1000;
 
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
@@ -76,7 +76,7 @@ public class H2LocalStorage implements LocalStorage {
                         return getConnection(count + 1);
                     }
 
-                    throw new LocalStorageFailure("Failed to get connection after 5 attempts", ex);
+                    throw new LocalStorageFailure("Failed to get connection after " + MAX_RETRIES + " attempts", ex);
                 })
                 .get();
     }
