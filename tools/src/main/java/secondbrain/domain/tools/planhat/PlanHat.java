@@ -242,7 +242,7 @@ public class PlanHat implements Tool<Conversation> {
 
 @ApplicationScoped
 class PlanHatConfig {
-    private static final String DEFAULT_TTL = "3600";
+    private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
 
     @Inject
     @ConfigProperty(name = "sb.planhat.company")
