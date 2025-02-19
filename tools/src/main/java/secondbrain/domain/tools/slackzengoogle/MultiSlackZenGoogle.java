@@ -28,6 +28,7 @@ import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.rating.RatingTool;
@@ -72,7 +73,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     private static final String INSTRUCTIONS = """
             You are helpful agent.
-            You are given the contents of a multiple Slack channels, Google Documents, PlanHat activities, and the help desk tickets from ZenDesk.
+            You are given the contents of a multiple Slack channels, Google Documents, PlanHat activities, Gong calls, and the help desk tickets from ZenDesk.
             You must answer the prompt based on the information provided.
             """;
 
@@ -93,6 +94,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private ZenDeskOrganization zenDeskOrganization;
+
+    @Inject
+    private Gong gong;
 
     @Inject
     private RatingTool ratingTool;
@@ -216,6 +220,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 + getAdditionalSlackInstructions(multiRagDoc.individualContexts())
                 + getAdditionalPlanHatInstructions(multiRagDoc.individualContexts())
                 + getAdditionalGoogleDocsInstructions(multiRagDoc.individualContexts())
+                + getAdditionalGongInstructions(multiRagDoc.individualContexts())
                 + getAdditionalZenDeskInstructions(multiRagDoc.individualContexts());
     }
 
@@ -223,6 +228,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         if (slackContextCount(ragContext)
                 + zenDeskContextCount(ragContext)
                 + planhatContextCount(ragContext)
+                + gongContextCount(ragContext)
                 < parsedArgs.getMinTimeBasedContext()) {
             return List.of();
         }
@@ -286,8 +292,23 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return "";
     }
 
+    /**
+     * If there are no gong calls to include in the prompt, make a note in the system prompt to ignore any reference to planhat activities.
+     */
+    private String getAdditionalGongInstructions(final List<RagDocumentContext<Void>> ragContext) {
+        if (gongContextCount(ragContext) == 0) {
+            return "No " + gong.getContextLabel() + " are available. You will be penalized for referencing any " + gong.getContextLabel() + " in the response.";
+        }
+
+        return "";
+    }
+
     private long planhatContextCount(final List<RagDocumentContext<Void>> ragContext) {
         return ragContext.stream().filter(ragDoc -> ragDoc.contextLabel().contains(planHat.getContextLabel())).count();
+    }
+
+    private long gongContextCount(final List<RagDocumentContext<Void>> ragContext) {
+        return ragContext.stream().filter(ragDoc -> ragDoc.contextLabel().contains(gong.getContextLabel())).count();
     }
 
     @Override
@@ -433,12 +454,37 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
+        final List<RagDocumentContext<Void>> gongContext = entity.salesforce()
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(
+                        new ToolArgs(Gong.GONG_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true),
+                        new ToolArgs(Gong.GONG_KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(Gong.GONG_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(Gong.COMPANY_ARG, id, true),
+                        new ToolArgs(Gong.DAYS_ARG, parsedArgs.getDays() + "", true)))
+                .flatMap(args -> Try.of(() -> gong.getContext(
+                                addItemToMap(context, Gong.GONG_ENTITY_NAME_CONTEXT_ARG, entity.name()),
+                                prompt,
+                                args))
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(InternalFailure.class, ex -> log.info("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
+
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
         retValue.addAll(slackKeywordSearch);
         retValue.addAll(slackContext);
         retValue.addAll(googleContext);
         retValue.addAll(zenContext);
         retValue.addAll(planHatContext);
+        retValue.addAll(gongContext);
 
         return contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
     }
