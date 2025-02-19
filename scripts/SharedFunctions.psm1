@@ -14,6 +14,8 @@ Function Invoke-CustomCommand
         $processTimeout = 1000 * 60 * 30
     )
 
+    $remainingTimeout = $processTimeout
+
     $global:stdErr.Clear()
     $global:stdOut.Clear()
     $global:myprocessrunning = $true
@@ -58,10 +60,14 @@ Function Invoke-CustomCommand
     $p.BeginErrorReadLine()
 
     $lastUpdate = 0
-    while (($global:myprocessrunning -eq $true) -and ($processTimeout -gt 0))
+    while (($global:myprocessrunning -eq $true) -and (($remainingTimeout -gt 0) -or ($processTimeout -le 0)))
     {
         # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
-        $processTimeout -= 50
+        if ($processTimeout -ge 0)
+        {
+            $remainingTimeout -= 50
+        }
+
         Start-Sleep -m 50
 
         $lastUpdate -= 50
@@ -69,7 +75,15 @@ Function Invoke-CustomCommand
         if ($lastUpdate -lt 0)
         {
             $lastUpdate = 1000 * 10
-            Write-Host "Still running... $( $processTimeout / 1000 ) seconds left" -ForegroundColor yellow
+
+            if ($processTimeout -ge 0)
+            {
+                Write-Host "Still running... $( $processTimeout / 1000 ) seconds left" -ForegroundColor yellow
+            }
+            else
+            {
+                Write-Host "Still running..." -ForegroundColor yellow
+            }
 
             $tail = 1000
 
@@ -95,7 +109,7 @@ Function Invoke-CustomCommand
         }
     }
 
-    if ($processTimeout -le 0)
+    if (($remainingTimeout -le 0) -and ($processTimeout -ge 0))
     {
         $p.Kill($true)
         $output = ""
