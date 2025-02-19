@@ -124,6 +124,7 @@ public class Gong implements Tool<GongCallExtensive> {
                                         call,
                                         gongClient.getCallTranscript(client, parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), call.metaData().id())))
                                 .toList())
+                        .onFailure(ex -> System.err.println("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                         .get())
                 .get();
 
@@ -350,7 +351,7 @@ class GongConfig {
                     "30").value();
 
             return Try.of(() -> Integer.parseInt(stringValue))
-                    .recover(throwable -> 0)
+                    .recover(throwable -> 30)
                     .map(i -> Math.max(0, i))
                     .get();
         }
