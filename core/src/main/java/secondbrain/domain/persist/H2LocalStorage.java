@@ -52,44 +52,28 @@ public class H2LocalStorage implements LocalStorage {
     @Inject
     @ConfigProperty(name = "sb.cache.path")
     private Optional<String> path;
-    /**
-     * Long locking means we open a connection to the H2 database at the start of the app and release it at the end.
-     * This is more performant, but means multiple instances of the app will not be able to access the shared cache.
-     * Set this to true (or leave it unset) when there is only likely to be one instance of the app running at a time.
-     * Set this to false when there are likely to be multiple instances of the app running at a time.
-     */
-    @Inject
-    @ConfigProperty(name = "sb.cache.longlock")
-    private Optional<String> longlock;
     @Inject
     private JsonDeserializer jsonDeserializer;
     @Inject
     private ExceptionHandler exceptionHandler;
     @Inject
     private Logger logger;
-    private Connection longConnection;
+    private Connection connection;
 
     @PostConstruct
     public void postConstruct() {
         synchronized (H2LocalStorage.class) {
             backupDatabase();
-
-            if (longlock.map(Boolean::parseBoolean).orElse(true)) {
-                this.longConnection = getConnection();
-                deleteExpired(longConnection);
-            } else {
-                Try.withResources(this::getConnection)
-                        .of(connection -> Try.of(() -> deleteExpired(connection)))
-                        .andFinally(() -> cleanConnection(longConnection));
-            }
+            this.connection = getConnection();
+            deleteExpired();
         }
     }
 
     @PreDestroy
     public void preDestroy() {
         synchronized (H2LocalStorage.class) {
-            if (longConnection != null) {
-                cleanConnection(longConnection);
+            if (connection != null) {
+                cleanConnection(connection);
             }
         }
     }
@@ -183,7 +167,7 @@ public class H2LocalStorage implements LocalStorage {
         return writeOnly != null && writeOnly.isPresent() && Boolean.parseBoolean(writeOnly.get());
     }
 
-    private boolean deleteExpired(final Connection connection) {
+    private boolean deleteExpired() {
         synchronized (H2LocalStorage.class) {
             if (isDisabled() || connection == null) {
                 return false;
@@ -214,28 +198,7 @@ public class H2LocalStorage implements LocalStorage {
     @Override
     public String getString(final String tool, final String source, final String promptHash) {
         synchronized (H2LocalStorage.class) {
-            if (isDisabled() || isWriteOnly()) {
-                return null;
-            }
-
-            totalReads.incrementAndGet();
-
-            if (longConnection != null) {
-                return getString(longConnection, tool, source, promptHash);
-            }
-
-            return Try
-                    .withResources(this::getConnection)
-                    .of(connection -> Try.of(() -> getString(connection, tool, source, promptHash))
-                            .andFinally(() -> cleanConnection(connection))
-                            .get())
-                    .get();
-        }
-    }
-
-    private String getString(final Connection connection, final String tool, final String source, final String promptHash) {
-        synchronized (H2LocalStorage.class) {
-            if (isDisabled() || isWriteOnly()) {
+            if (isDisabled() || isWriteOnly() || this.connection == null) {
                 return null;
             }
 
@@ -336,24 +299,7 @@ public class H2LocalStorage implements LocalStorage {
     @Override
     public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
         synchronized (H2LocalStorage.class) {
-            if (isDisabled() || isReadOnly()) {
-                return;
-            }
-
-            if (longConnection != null) {
-                putString(longConnection, tool, source, promptHash, ttlSeconds, response);
-            } else {
-                Try.withResources(this::getConnection)
-                        .of(connection -> Try.run(() -> putString(connection, tool, source, promptHash, ttlSeconds, response))
-                                .andFinally(() -> cleanConnection(connection)))
-                        .get();
-            }
-        }
-    }
-
-    private void putString(final Connection connection, final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
-        synchronized (H2LocalStorage.class) {
-            if (isDisabled() || isReadOnly()) {
+            if (isDisabled() || isReadOnly() || this.connection == null) {
                 return;
             }
 
