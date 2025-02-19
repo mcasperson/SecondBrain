@@ -3,18 +3,34 @@ package secondbrain.domain.tools.gong;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
+import secondbrain.domain.config.ModelConfig;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.context.SentenceSplitter;
+import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.limit.TrimResult;
+import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.gong.GongCallExtensive;
+import secondbrain.infrastructure.gong.GongCallTranscript;
+import secondbrain.infrastructure.gong.GongClient;
+import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -22,6 +38,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
@@ -29,6 +46,37 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 public class Gong implements Tool<GongCallExtensive> {
     public static final String DAYS_ARG = "days";
     public static final String COMPANY_ARG = "company";
+    public static final String GONG_KEYWORD_ARG = "keywords";
+    public static final String GONG_DISABLELINKS_ARG = "disableLinks";
+    public static final String GONG_KEYWORD_WINDOW_ARG = "keywordWindow";
+    public static final String GONG_ENTITY_NAME_CONTEXT_ARG = "entityName";
+
+    @Inject
+    private GongConfig config;
+
+    @Inject
+    private GongClient gongClient;
+
+    @Inject
+    private SentenceSplitter sentenceSplitter;
+
+    @Inject
+    private SentenceVectorizer sentenceVectorizer;
+
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
+    @Inject
+    private ModelConfig modelConfig;
+
+    @Inject
+    private PromptBuilderSelector promptBuilderSelector;
+
+    @Inject
+    private OllamaClient ollamaClient;
+
+    @Inject
+    private ValidateString validateString;
 
     @Override
     public String getName() {
@@ -48,7 +96,54 @@ public class Gong implements Tool<GongCallExtensive> {
     @Override
     public List<RagDocumentContext<GongCallExtensive>> getContext(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        return List.of();
+
+        final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        final List<Pair<GongCallExtensive, GongCallTranscript>> calls = Try.withResources(ClientBuilder::newClient)
+                .of(client -> Try.of(() ->
+                                gongClient.getCallsExtensive(
+                                        client,
+                                        parsedArgs.getCompany(),
+                                        parsedArgs.getAccessKey(),
+                                        parsedArgs.getAccessSecretKey(),
+                                        parsedArgs.getStartDate(),
+                                        parsedArgs.getEndDate()))
+                        .map(c -> c.stream()
+                                .map(call -> Pair.of(
+                                        call,
+                                        gongClient.getCallTranscript(client, parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), call.metaData().id())))
+                                .toList())
+                        .get())
+                .get();
+
+        return calls.stream()
+                .map(pair -> getDocumentContext(pair.getLeft(), pair.getRight(), parsedArgs))
+                .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                .toList();
+    }
+
+    private RagDocumentContext<GongCallExtensive> getDocumentContext(final GongCallExtensive call, final GongCallTranscript transcript, final GongConfig.LocalArguments parsedArgs) {
+        final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(transcript.getTranscript(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
+
+        if (parsedArgs.getDisableLinks()) {
+            return new RagDocumentContext<>(
+                    getContextLabel(),
+                    trimmedConversationResult.document(), List.of(), null, null, null, trimmedConversationResult.keywordMatches());
+        }
+
+        return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
+                .map(sentences -> new RagDocumentContext<GongCallExtensive>(
+                        getContextLabel(),
+                        trimmedConversationResult.document(),
+                        sentences.stream()
+                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
+                                .collect(Collectors.toList()),
+                        call.metaData().id(),
+                        call,
+                        "[Gong " + call.metaData().id() + "](" + call.metaData().url() + ")",
+                        trimmedConversationResult.keywordMatches()))
+                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                .get();
     }
 
     @Override
@@ -75,6 +170,22 @@ class GongConfig {
     @Inject
     @ConfigProperty(name = "sb.gong.days")
     private Optional<String> configDays;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.company")
+    private Optional<String> configCompany;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.disablelinks")
+    private Optional<String> configDisableLinks;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.keywords")
+    private Optional<String> configKeywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.keywordwindow")
+    private Optional<String> configKeywordWindow;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -107,6 +218,22 @@ class GongConfig {
 
     public ValidateString getValidateString() {
         return validateString;
+    }
+
+    public Optional<String> getConfigCompany() {
+        return configCompany;
+    }
+
+    public Optional<String> getConfigDisableLinks() {
+        return configDisableLinks;
+    }
+
+    public Optional<String> getConfigKeywords() {
+        return configKeywords;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
     }
 
     public class LocalArguments {
@@ -152,6 +279,16 @@ class GongConfig {
             return token.get();
         }
 
+        public String getCompany() {
+            return getArgsAccessor().getArgument(
+                    getConfigCompany()::get,
+                    arguments,
+                    context,
+                    Gong.COMPANY_ARG,
+                    "gong_company",
+                    "").value();
+        }
+
         public int getDays() {
             final String stringValue = getArgsAccessor().getArgument(
                     getConfigDays()::get,
@@ -174,6 +311,60 @@ class GongConfig {
                     // Assume one day if nothing was specified
                     .minusDays(getDays())
                     .format(ISO_OFFSET_DATE_TIME);
+        }
+
+        public String getEndDate() {
+            return OffsetDateTime.now(ZoneId.systemDefault())
+                    // truncate to the day to increase the chances of getting a cache hit
+                    .truncatedTo(ChronoUnit.DAYS)
+                    .format(ISO_OFFSET_DATE_TIME);
+        }
+
+        public boolean getDisableLinks() {
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigDisableLinks()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_DISABLELINKS_ARG,
+                    "gong_disable_links",
+                    "false").value();
+
+            return BooleanUtils.toBoolean(stringValue);
+        }
+
+        public List<String> getKeywords() {
+            return getArgsAccessor().getArgumentList(
+                            getConfigKeywords()::get,
+                            arguments,
+                            context,
+                            Gong.GONG_KEYWORD_ARG,
+                            "gong_keywords",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
+
+        public int getKeywordWindow() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_KEYWORD_WINDOW_ARG,
+                    "gong_keyword_window",
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
+
+        public String getEntity() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    context,
+                    null,
+                    Gong.GONG_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
         }
     }
 }
