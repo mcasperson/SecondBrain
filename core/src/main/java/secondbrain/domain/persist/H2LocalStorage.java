@@ -12,6 +12,7 @@ import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
 
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -64,6 +65,12 @@ public class H2LocalStorage implements LocalStorage {
     @Inject
     private Logger logger;
     private Connection longConnection;
+
+    public H2LocalStorage() {
+        synchronized (H2LocalStorage.class) {
+            backupDatabase();
+        }
+    }
 
     @PostConstruct
     public void postConstruct() {
@@ -123,6 +130,25 @@ public class H2LocalStorage implements LocalStorage {
         return path
                 .map(p -> Paths.get(p, "localstoragev2").toAbsolutePath().toString())
                 .orElse("./localstoragev2");
+    }
+
+    /**
+     * The cache is quite useful, and also easy to corrupt. So we keep a few copies of the database around in case we
+     * corrupt it.
+     */
+    private void backupDatabase() {
+        Try.run(() -> Files.delete(Paths.get(getDatabasePath() + ".backup.5")));
+
+        for (int i = 4; i > 0; i--) {
+            final int index = i;
+            Try.run(() -> Files.move(
+                    Paths.get(getDatabasePath() + ".backup." + index),
+                    Paths.get(getDatabasePath() + ".backup." + (index + 1))));
+        }
+
+        Try.run(() -> Files.copy(
+                Paths.get(getDatabasePath()),
+                Paths.get(getDatabasePath() + ".backup.1")));
     }
 
     private String getConnectionString() {
