@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.slack;
 
 import com.slack.api.methods.AsyncMethodsClient;
+import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.methods.response.search.SearchAllResponse;
@@ -28,6 +29,9 @@ import static io.vavr.Predicates.instanceOf;
 @ApplicationScoped
 public class SlackClient {
 
+    private static final int RETRIES = 5;
+    private static final int RETRY_DELAY = 30000;
+    private static final int RETRY_JITTER = 1000;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
 
     @Inject
@@ -98,13 +102,38 @@ public class SlackClient {
             final AsyncMethodsClient client,
             final String accessToken,
             final Set<String> keywords) {
-        return Try.withResources(SEMAPHORE_LENDER::lend)
-                .of(sem ->
-                        Try.of(() -> client.searchAll(r -> r.token(accessToken)
-                                                .query(String.join(" ", keywords)))
-                                        .get())
-                                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call searchAll", ex)))
-                                .get())
+        return searchFromApi(client, accessToken, keywords, 0);
+    }
+
+    private SearchAllResponse searchFromApi(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final Set<String> keywords,
+            final int retryCount) {
+
+        if (retryCount > RETRIES) {
+            throw new ExternalFailure("Could not call searchAll after 5 retries");
+        }
+
+        if (retryCount > 0) {
+            Try.run(() -> Thread.sleep(RETRY_DELAY + (int) (Math.random() * RETRY_JITTER)));
+        }
+
+        final Try<SearchAllResponse> result = Try
+                .of(() -> client.searchAll(r -> r.token(accessToken)
+                                .query(String.join(" ", keywords)))
+                        .get())
+                .recover(SlackApiException.class, ex -> {
+                    if (ex.getError().getError().equals("ratelimited")) {
+                        return searchFromApi(client, accessToken, keywords, retryCount + 1);
+                    }
+
+                    throw new ExternalFailure("Could not call searchAll", ex);
+                });
+
+        return result
+                .mapFailure(API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex))
+                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call searchAll", ex)))
                 .get();
     }
 
