@@ -59,7 +59,8 @@ public class H2LocalStorage implements LocalStorage {
 
     private Connection getConnection(final int count) {
         if (count > 0) {
-            Try.run(() -> Thread.sleep(DELAY));
+            // Sleep with some jitter
+            Try.run(() -> Thread.sleep(DELAY + (int) (Math.random() * 1000)));
         }
 
         return Try.of(() -> DriverManager.getConnection(getConnectionString()))
@@ -117,23 +118,25 @@ public class H2LocalStorage implements LocalStorage {
         return writeOnly != null && writeOnly.isPresent() && Boolean.parseBoolean(writeOnly.get());
     }
 
-    synchronized private boolean deleteExpired(final Connection connection) {
-        if (isDisabled() || connection == null) {
-            return false;
+    private boolean deleteExpired(final Connection connection) {
+        synchronized (H2LocalStorage.class) {
+            if (isDisabled() || connection == null) {
+                return false;
+            }
+
+            final Try<Integer> result = Try
+                    .of(() -> connection.prepareStatement("""
+                            DELETE FROM local_storage
+                            WHERE timestamp IS NOT NULL
+                            AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
+                    .mapTry(PreparedStatement::executeUpdate);
+
+            return result
+                    .mapFailure(
+                            API.Case(API.$(), ex -> new LocalStorageFailure("Failed to delete old records", ex))
+                    )
+                    .isSuccess();
         }
-
-        final Try<Integer> result = Try
-                .of(() -> connection.prepareStatement("""
-                        DELETE FROM local_storage
-                        WHERE timestamp IS NOT NULL
-                        AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
-                .mapTry(PreparedStatement::executeUpdate);
-
-        return result
-                .mapFailure(
-                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to delete old records", ex))
-                )
-                .isSuccess();
     }
 
     /**
@@ -144,44 +147,46 @@ public class H2LocalStorage implements LocalStorage {
      * connections.
      */
     @Override
-    synchronized public String getString(final String tool, final String source, final String promptHash) {
-        if (isDisabled() || isWriteOnly()) {
-            return null;
+    public String getString(final String tool, final String source, final String promptHash) {
+        synchronized (H2LocalStorage.class) {
+            if (isDisabled() || isWriteOnly()) {
+                return null;
+            }
+
+            totalReads.incrementAndGet();
+
+            final Try<String> result = Try
+                    .withResources(this::getConnection)
+                    .of(connection -> Try.of(() -> connection.prepareStatement("""
+                                    SELECT response FROM local_storage
+                                                    WHERE tool = ?
+                                                    AND source = ?
+                                                    AND prompt_hash = ?
+                                                    AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
+                            .mapTry(preparedStatement -> {
+                                preparedStatement.setString(1, tool);
+                                preparedStatement.setString(2, source);
+                                preparedStatement.setString(3, promptHash);
+                                return preparedStatement;
+                            })
+                            .mapTry(PreparedStatement::executeQuery)
+                            .mapTry(resultSet -> {
+                                if (resultSet.next()) {
+                                    totalCacheHits.incrementAndGet();
+                                    return resultSet.getString(1);
+                                }
+                                return null;
+                            })
+                            .onSuccess(value -> deleteExpired(connection))
+                            .andFinally(() -> cleanConnection(connection)))
+                    .get();
+
+            return result
+                    .mapFailure(
+                            API.Case(API.$(), ex -> new LocalStorageFailure("Failed to get record", ex))
+                    )
+                    .get();
         }
-
-        totalReads.incrementAndGet();
-
-        final Try<String> result = Try
-                .withResources(this::getConnection)
-                .of(connection -> Try.of(() -> connection.prepareStatement("""
-                                SELECT response FROM local_storage
-                                                WHERE tool = ?
-                                                AND source = ?
-                                                AND prompt_hash = ?
-                                                AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
-                        .mapTry(preparedStatement -> {
-                            preparedStatement.setString(1, tool);
-                            preparedStatement.setString(2, source);
-                            preparedStatement.setString(3, promptHash);
-                            return preparedStatement;
-                        })
-                        .mapTry(PreparedStatement::executeQuery)
-                        .mapTry(resultSet -> {
-                            if (resultSet.next()) {
-                                totalCacheHits.incrementAndGet();
-                                return resultSet.getString(1);
-                            }
-                            return null;
-                        })
-                        .onSuccess(value -> deleteExpired(connection))
-                        .andFinally(() -> cleanConnection(connection)))
-                .get();
-
-        return result
-                .mapFailure(
-                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to get record", ex))
-                )
-                .get();
     }
 
     @Override
@@ -248,38 +253,40 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    synchronized public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
-        if (isDisabled() || isReadOnly()) {
-            return;
+    public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
+        synchronized (H2LocalStorage.class) {
+            if (isDisabled() || isReadOnly()) {
+                return;
+            }
+
+            final Try<PreparedStatement> result = Try
+                    .withResources(this::getConnection)
+                    .of(connection -> Try.of(() -> connection.prepareStatement("""
+                                    INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
+                                    VALUES (?, ?, ?, ?, ?)""".stripIndent()))
+                            .mapTry(preparedStatement -> {
+                                preparedStatement.setString(1, tool);
+                                preparedStatement.setString(2, source);
+                                preparedStatement.setString(3, promptHash);
+                                preparedStatement.setString(4, response);
+                                preparedStatement.setTimestamp(5, ttlSeconds == 0
+                                        ? null
+                                        : Timestamp.from(ZonedDateTime
+                                        .now(ZoneOffset.UTC)
+                                        .plusSeconds(ttlSeconds)
+                                        .toInstant()));
+                                preparedStatement.executeUpdate();
+                                return preparedStatement;
+                            })
+                            .andFinally(() -> cleanConnection(connection)))
+                    .get();
+
+            result
+                    .mapFailure(
+                            API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
+                    )
+                    .get();
         }
-
-        final Try<PreparedStatement> result = Try
-                .withResources(this::getConnection)
-                .of(connection -> Try.of(() -> connection.prepareStatement("""
-                                INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
-                                VALUES (?, ?, ?, ?, ?)""".stripIndent()))
-                        .mapTry(preparedStatement -> {
-                            preparedStatement.setString(1, tool);
-                            preparedStatement.setString(2, source);
-                            preparedStatement.setString(3, promptHash);
-                            preparedStatement.setString(4, response);
-                            preparedStatement.setTimestamp(5, ttlSeconds == 0
-                                    ? null
-                                    : Timestamp.from(ZonedDateTime
-                                    .now(ZoneOffset.UTC)
-                                    .plusSeconds(ttlSeconds)
-                                    .toInstant()));
-                            preparedStatement.executeUpdate();
-                            return preparedStatement;
-                        })
-                        .andFinally(() -> cleanConnection(connection)))
-                .get();
-
-        result
-                .mapFailure(
-                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
-                )
-                .get();
     }
 
     @Override
