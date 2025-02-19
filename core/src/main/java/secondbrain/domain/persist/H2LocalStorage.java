@@ -53,6 +53,13 @@ public class H2LocalStorage implements LocalStorage {
     @Inject
     private Logger logger;
 
+    public H2LocalStorage() {
+        synchronized (H2LocalStorage.class) {
+            Try.withResources(this::getConnection)
+                    .of(connection -> Try.of(() -> deleteExpired(connection)));
+        }
+    }
+
     private Connection getConnection() {
         return getConnection(0);
     }
@@ -177,7 +184,6 @@ public class H2LocalStorage implements LocalStorage {
                                 }
                                 return null;
                             })
-                            .onSuccess(value -> deleteExpired(connection))
                             .andFinally(() -> cleanConnection(connection)))
                     .get();
 
