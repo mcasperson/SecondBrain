@@ -64,7 +64,7 @@ Function Invoke-CustomCommand
     while (($global:myprocessrunning -eq $true) -and (($remainingTimeout -gt 0) -or ($processTimeout -le 0)))
     {
         # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
-        if ($processTimeout -ge 0)
+        if ($processTimeout -gt 0)
         {
             $remainingTimeout -= 50
         }
@@ -112,7 +112,7 @@ Function Invoke-CustomCommand
         }
     }
 
-    if (($remainingTimeout -le 0) -and ($processTimeout -ge 0))
+    if (($remainingTimeout -le 0) -and ($processTimeout -gt 0))
     {
         $p.Kill($true)
         $output = ""
