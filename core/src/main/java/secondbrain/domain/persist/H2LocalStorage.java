@@ -66,15 +66,11 @@ public class H2LocalStorage implements LocalStorage {
     private Logger logger;
     private Connection longConnection;
 
-    public H2LocalStorage() {
-        synchronized (H2LocalStorage.class) {
-            backupDatabase();
-        }
-    }
-
     @PostConstruct
     public void postConstruct() {
         synchronized (H2LocalStorage.class) {
+            backupDatabase();
+
             if (longlock.map(Boolean::parseBoolean).orElse(true)) {
                 this.longConnection = getConnection();
                 deleteExpired(longConnection);
