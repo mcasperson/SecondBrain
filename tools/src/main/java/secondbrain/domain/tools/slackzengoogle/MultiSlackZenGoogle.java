@@ -514,8 +514,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         }
 
         public List<PositionalEntity> getPositionalEntities() {
-            return getEntities().stream()
+            return getEntities()
+                    .stream()
                     .map(entity -> new PositionalEntity(entity, getEntities().indexOf(entity) + 1, getEntities().size()))
+                    .sorted((item1, item2) -> NumberUtils.compare(item1.position, item2.position))
                     .toList();
         }
     }
