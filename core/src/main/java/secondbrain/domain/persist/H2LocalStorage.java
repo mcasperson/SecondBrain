@@ -41,6 +41,9 @@ public class H2LocalStorage implements LocalStorage {
     @ConfigProperty(name = "sb.cache.disable")
     private Optional<String> disable;
     @Inject
+    @ConfigProperty(name = "sb.cache.backup")
+    private Optional<String> backup;
+    @Inject
     @ConfigProperty(name = "sb.cache.readonly")
     private Optional<String> readOnly;
     @Inject
@@ -133,6 +136,10 @@ public class H2LocalStorage implements LocalStorage {
      * corrupt it.
      */
     private void backupDatabase() {
+        if (!backup.map(Boolean::parseBoolean).orElse(false)) {
+            return;
+        }
+
         Try.run(() -> Files.delete(Paths.get(getDatabasePath() + ".mv.db.backup.5")));
 
         for (int i = 4; i > 0; i--) {
