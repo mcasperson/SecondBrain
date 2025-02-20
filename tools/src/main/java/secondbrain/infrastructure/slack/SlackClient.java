@@ -32,7 +32,6 @@ import static io.vavr.Predicates.instanceOf;
 public class SlackClient {
 
     private static final int RETRIES = 10;
-    private static final int RETRY_DELAY = 120000;
     private static final int RETRY_JITTER = 10000;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
 
@@ -50,7 +49,8 @@ public class SlackClient {
             final String accessToken,
             final String channelId,
             final String oldest,
-            final int ttlSeconds) {
+            final int ttlSeconds,
+            final int apiDelay) {
 
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
@@ -66,7 +66,7 @@ public class SlackClient {
                                 hash,
                                 ttlSeconds,
                                 ConversationsHistoryResponse.class,
-                                () -> conversationHistoryFromApi(client, accessToken, channelId, oldest, 0)))
+                                () -> conversationHistoryFromApi(client, accessToken, channelId, oldest, 0, apiDelay)))
 
 
                         .get())
@@ -78,14 +78,15 @@ public class SlackClient {
             final String accessToken,
             final String channelId,
             final String oldest,
-            final int retryCount) {
+            final int retryCount,
+            final int apiDelay) {
         if (retryCount > RETRIES) {
             throw new ExternalFailure("Could not call conversationsHistory after " + RETRIES + " retries");
         }
 
         if (retryCount > 0) {
             logger.info("Retrying Slack conversationsHistory");
-            Try.run(() -> Thread.sleep(RETRY_DELAY + (int) (Math.random() * RETRY_JITTER)));
+            Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
         }
 
         return Try.of(() -> client.conversationsHistory(r -> r
@@ -95,7 +96,7 @@ public class SlackClient {
                         .get())
                 .recover(SlackApiException.class, ex -> {
                     if (ex.getResponse().code() == 429) {
-                        return conversationHistoryFromApi(client, accessToken, channelId, oldest, retryCount + 1);
+                        return conversationHistoryFromApi(client, accessToken, channelId, oldest, retryCount + 1, apiDelay);
                     }
 
                     throw new ExternalFailure("Could not call searchAll", ex);
@@ -108,7 +109,8 @@ public class SlackClient {
             final AsyncMethodsClient client,
             final String accessToken,
             final Set<String> keywords,
-            final int ttlSeconds) {
+            final int ttlSeconds,
+            final int apiDelay) {
 
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
@@ -124,7 +126,7 @@ public class SlackClient {
                                 hash,
                                 ttlSeconds,
                                 SearchAllResponse.class,
-                                () -> searchFromApi(client, accessToken, keywords)))
+                                () -> searchFromApi(client, accessToken, keywords, apiDelay)))
                         .get())
                 .get();
     }
@@ -132,15 +134,17 @@ public class SlackClient {
     private SearchAllResponse searchFromApi(
             final AsyncMethodsClient client,
             final String accessToken,
-            final Set<String> keywords) {
-        return searchFromApi(client, accessToken, keywords, 0);
+            final Set<String> keywords,
+            final int apiDelay) {
+        return searchFromApi(client, accessToken, keywords, 0, apiDelay);
     }
 
     private SearchAllResponse searchFromApi(
             final AsyncMethodsClient client,
             final String accessToken,
             final Set<String> keywords,
-            final int retryCount) {
+            final int retryCount,
+            final int apiDelay) {
 
         if (retryCount > RETRIES) {
             throw new ExternalFailure("Could not call searchAll after " + RETRIES + " retries");
@@ -148,7 +152,7 @@ public class SlackClient {
 
         if (retryCount > 0) {
             logger.info("Retrying Slack searchAll");
-            Try.run(() -> Thread.sleep(RETRY_DELAY + (int) (Math.random() * RETRY_JITTER)));
+            Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
         }
 
         final Try<SearchAllResponse> result = Try
@@ -172,7 +176,8 @@ public class SlackClient {
     public ChannelDetails findChannelId(
             final AsyncMethodsClient client,
             final String accessToken,
-            final String channel) {
+            final String channel,
+            final int apiDelay) {
 
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
@@ -188,7 +193,7 @@ public class SlackClient {
                                 "SlackAPIChannel",
                                 hash,
                                 ChannelDetails.class,
-                                () -> findChannelIdFromApi(client, accessToken, channel, null)))
+                                () -> findChannelIdFromApi(client, accessToken, channel, null, apiDelay)))
                         .get())
                 .get();
     }
@@ -197,9 +202,10 @@ public class SlackClient {
             final AsyncMethodsClient client,
             final String accessToken,
             final String channel,
-            final String cursor) {
+            final String cursor,
+            final int apiDelay) {
 
-        final ConversationsListResponse response = findConversationListFromApi(client, accessToken, cursor, 0);
+        final ConversationsListResponse response = findConversationListFromApi(client, accessToken, cursor, 0, apiDelay);
 
         final Try<ChannelDetails> results = Try.of(() -> response)
                 // try to get the channel
@@ -212,7 +218,8 @@ public class SlackClient {
                         accessToken,
                         channel,
                         // the cursor must be a non-empty string to do a recursive call
-                        validateString.throwIfEmpty(response.getResponseMetadata().getNextCursor())));
+                        validateString.throwIfEmpty(response.getResponseMetadata().getNextCursor()),
+                        apiDelay));
 
         return results
                 .mapFailure(
@@ -234,7 +241,8 @@ public class SlackClient {
             final AsyncMethodsClient client,
             final String accessToken,
             final String cursor,
-            final int retryCount) {
+            final int retryCount,
+            final int apiDelay) {
 
         if (retryCount > RETRIES) {
             throw new ExternalFailure("Could not call conversationsList after " + RETRIES + " retries");
@@ -242,7 +250,7 @@ public class SlackClient {
 
         if (retryCount > 0) {
             logger.info("Retrying Slack conversationsList");
-            Try.run(() -> Thread.sleep(RETRY_DELAY + (int) (Math.random() * RETRY_JITTER)));
+            Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
         }
 
         return Try.of(() -> client.conversationsList(r -> r
@@ -253,7 +261,7 @@ public class SlackClient {
                                 .cursor(cursor))
                         .exceptionally(ex -> {
                             if (ex instanceof SlackApiException && ((SlackApiException) ex).getResponse().code() == 429) {
-                                return findConversationListFromApi(client, accessToken, cursor, retryCount + 1);
+                                return findConversationListFromApi(client, accessToken, cursor, retryCount + 1, apiDelay);
                             }
 
                             throw new ExternalFailure("Failed to call conversationsList", ex);

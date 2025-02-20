@@ -126,7 +126,8 @@ public class SlackSearch implements Tool<MatchedItem> {
                         Slack.getInstance().methodsAsync(),
                         parsedArgs.getAccessToken(),
                         parsedArgs.getSearchKeywords(),
-                        parsedArgs.getSearchTTL()))
+                        parsedArgs.getSearchTTL(),
+                        parsedArgs.getApiDelay()))
                 .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not search messages", ex)))
                 .get();
 
@@ -223,6 +224,7 @@ public class SlackSearch implements Tool<MatchedItem> {
 @ApplicationScoped
 class SlackSearchConfig {
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
+    private static final int DEFAULT_API_DELAY = (1000 * 120);
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -268,6 +270,10 @@ class SlackSearchConfig {
     @Inject
     @ConfigProperty(name = "sb.slack.disablelinks")
     private Optional<String> configDisableLinks;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.apidelay")
+    private Optional<String> configApiDelay;
 
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
@@ -315,6 +321,10 @@ class SlackSearchConfig {
 
     public Optional<String> getConfigDisableLinks() {
         return configDisableLinks;
+    }
+
+    public Optional<String> getConfigApiDelay() {
+        return configApiDelay;
     }
 
     public class LocalArguments {
@@ -412,6 +422,20 @@ class SlackSearchConfig {
 
             return Try.of(() -> stringValue)
                     .map(i -> Math.max(0, Integer.parseInt(i)))
+                    .get();
+        }
+
+        public int getApiDelay() {
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigApiDelay()::get,
+                    arguments,
+                    context,
+                    "apiDelay",
+                    "slack_api_delay",
+                    DEFAULT_API_DELAY + "").value();
+
+            return Try.of(() -> stringValue)
+                    .map(i -> Math.max(0, NumberUtils.toInt(i, DEFAULT_API_DELAY)))
                     .get();
         }
 

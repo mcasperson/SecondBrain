@@ -150,7 +150,8 @@ public class SlackChannel implements Tool<Void> {
         final ChannelDetails channelDetails = Try.of(() -> slackClient.findChannelId(
                         client,
                         parsedArgs.getAccessToken(),
-                        parsedArgs.getChannel()))
+                        parsedArgs.getChannel(),
+                        parsedArgs.getApiDelay()))
                 .getOrElseThrow(() -> new InternalFailure("Channel not found"));
 
         final Try<TrimResult> messagesTry = Try.of(() -> slackClient.conversationHistory(
@@ -158,7 +159,8 @@ public class SlackChannel implements Tool<Void> {
                         parsedArgs.getAccessToken(),
                         channelDetails.channelId(),
                         oldest,
-                        parsedArgs.getSearchTTL()))
+                        parsedArgs.getSearchTTL(),
+                        parsedArgs.getApiDelay()))
                 .map(this::conversationsToText)
                 .map(document -> documentTrimmer.trimDocumentToKeywords(
                         document,
@@ -318,6 +320,7 @@ public class SlackChannel implements Tool<Void> {
 @ApplicationScoped
 class SlackChannelConfig {
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
+    private static final int DEFAULT_API_DELAY = (1000 * 120);
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
@@ -346,6 +349,10 @@ class SlackChannelConfig {
     @Inject
     @ConfigProperty(name = "sb.slack.keywordwindow")
     private Optional<String> configKeywordWindow;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.apidelay")
+    private Optional<String> configApiDelay;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -387,6 +394,10 @@ class SlackChannelConfig {
 
     public Encryptor getTextEncryptor() {
         return textEncryptor;
+    }
+
+    public Optional<String> getConfigApiDelay() {
+        return configApiDelay;
     }
 
     public class LocalArguments {
@@ -447,6 +458,20 @@ class SlackChannelConfig {
 
             return Try.of(argument::value)
                     .map(i -> Math.max(0, Integer.parseInt(i)))
+                    .get();
+        }
+
+        public int getApiDelay() {
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigApiDelay()::get,
+                    arguments,
+                    context,
+                    "apiDelay",
+                    "slack_api_delay",
+                    DEFAULT_API_DELAY + "").value();
+
+            return Try.of(() -> stringValue)
+                    .map(i -> Math.max(0, NumberUtils.toInt(i, DEFAULT_API_DELAY)))
                     .get();
         }
 
