@@ -329,6 +329,31 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         logger.info("Processing " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
+        logger.info("Getting ZenDesk tickets for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        final List<RagDocumentContext<Void>> zenContext = Objects.requireNonNullElse(entity.getZenDesk(), List.<String>of())
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + days, true),
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
+                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(
+                                addItemToMap(context, ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG, entity.name()),
+                                prompt,
+                                args))
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(InternalFailure.class, ex -> log.info("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
+
         logger.info("Getting Slack channel for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         final List<RagDocumentContext<Void>> slackContext = Objects.requireNonNullElse(entity.getSlack(), List.<String>of())
                 .stream()
@@ -407,31 +432,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
                 .map(ragDoc -> ragDoc.updateGroup(entity.name()))
-                .toList();
-
-        logger.info("Getting ZenDesk tickets for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
-        final List<RagDocumentContext<Void>> zenContext = Objects.requireNonNullElse(entity.getZenDesk(), List.<String>of())
-                .stream()
-                .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
-                        new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + days, true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
-                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(
-                                addItemToMap(context, ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG, entity.name()),
-                                prompt,
-                                args))
-                        // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .getOrElse(List::of)
-                        .stream())
-                // The context label is updated to include the entity name
-                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
         logger.info("Getting PlanHat activities for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
