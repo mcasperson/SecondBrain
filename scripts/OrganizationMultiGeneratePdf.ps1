@@ -87,7 +87,7 @@ if ($GenerateCompanyReports)
         $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
             # Delay subsequent topics by 5 mins to allow the first run to pupulate the cache
-            if (($using:index) -gt 0)
+            if (($using:index) -gt 1)
             {
                 Start-Sleep -m (1000 * 60 * 5)
             }
@@ -142,7 +142,7 @@ if ($GenerateTopicReports)
         $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
             # Delay subsequent topics by 5 mins to allow the first run to pupulate the cache
-            if (($using:topicIndex) -gt 0)
+            if (($using:topicIndex) -gt 1)
             {
                 Start-Sleep -m (1000 * 60 * 5)
             }
