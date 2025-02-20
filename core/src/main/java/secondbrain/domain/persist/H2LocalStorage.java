@@ -286,6 +286,8 @@ public class H2LocalStorage implements LocalStorage {
 
     @Override
     public <T> T getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
+        logger.info("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
+
         return Try.of(() -> getString(tool, source, promptHash))
                 // a cache miss means the string is empty, so we throw an exception
                 .filter(StringUtils::isNotBlank)

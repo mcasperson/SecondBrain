@@ -39,10 +39,14 @@ import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.instanceOf;
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
+
 
 /**
  * This meta-tool calls the zendesk, slack, and google tools to answer a prompt against multiple
@@ -60,7 +64,6 @@ import static com.google.common.base.Predicates.instanceOf;
  */
 @ApplicationScoped
 public class MultiSlackZenGoogle implements Tool<Void> {
-
     public static final String MULTI_SLACK_ZEN_GOOGLE_DISABLELINKS = "disableLinks";
     public static final String MULTI_SLACK_ZEN_KEYWORD_ARG = "keywords";
     public static final String MULTI_SLACK_ZEN_WINDOW_ARG = "keywordWindow";
@@ -70,7 +73,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_MAX_ENTITIES_ARG = "maxEntities";
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
-
+    private static final int BATCH_SIZE = 10;
     private static final String INSTRUCTIONS = """
             You are helpful agent.
             You are given the contents of a multiple Slack channels, Google Documents, PlanHat activities, Gong calls, and the help desk tickets from ZenDesk.
@@ -163,11 +166,16 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
                 .getOrElseThrow(ex -> new ExternalFailure("Failed to download or parse the entity directory", ex));
 
+        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
+
         final List<RagDocumentContext<Void>> ragContext = entityDirectory.getPositionalEntities()
-                .parallelStream()
+                .stream()
                 .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.entity.name().toLowerCase()))
                 .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
-                .flatMap(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream())
+                // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
+                // We batch here to interleave API requests to the various external data sources
+                .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))
+                .flatMap(stream -> stream)
                 .toList();
 
         if (ragContext.isEmpty()) {
@@ -326,8 +334,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         if (entity.disabled()) {
             return List.of();
         }
-
-        logger.info("Processing " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final List<RagDocumentContext<Void>> zenContext = getZenContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> slackContext = getSlackContext(positionalEntity, parsedArgs, prompt, context);

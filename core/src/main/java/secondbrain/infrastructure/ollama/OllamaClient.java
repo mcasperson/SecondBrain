@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InvalidResponse;
@@ -24,6 +25,8 @@ import static io.vavr.control.Try.of;
 
 @ApplicationScoped
 public class OllamaClient {
+    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
+
     @Inject
     @ConfigProperty(name = "sb.ollama.url", defaultValue = "http://localhost:11434")
     private String uri;
@@ -48,12 +51,12 @@ public class OllamaClient {
 
         final String target = uri + "/api/generate";
 
-        return Try.withResources(() -> client.target(uri + "/api/generate")
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(uri + "/api/generate")
                         .request()
                         .header("Content-Type", "application/json")
                         .header("Accept", "application/json")
-                        .post(Entity.entity(body.sanitizedCopy(), MediaType.APPLICATION_JSON)))
-                .of(response -> of(() -> responseValidation.validate(response, target))
+                        .post(Entity.entity(body.sanitizedCopy(), MediaType.APPLICATION_JSON))))
+                .of(response -> of(() -> responseValidation.validate(response.getWrapped(), target))
                         .recover(InvalidResponse.class, e -> {
                             throw new FailedOllama("OllamaClient failed to call Ollama:\n"
                                     + e.getCode() + "\n"
@@ -61,8 +64,8 @@ public class OllamaClient {
                         })
                         .recover(MissingResponse.class, e -> {
                             throw new FailedOllama("OllamaClient failed to call Ollama:\n"
-                                    + response.getStatus() + "\n"
-                                    + Try.of(() -> response.readEntity(String.class)).getOrElse("")
+                                    + response.getWrapped().getStatus() + "\n"
+                                    + Try.of(() -> response.getWrapped().readEntity(String.class)).getOrElse("")
                                     + "\nMake sure to run 'ollama pull " + body.model() + "'"
                                     + "or 'docker exec -it secondbrain-ollama-1 ollama pull " + body.model() + "'");
                         })
