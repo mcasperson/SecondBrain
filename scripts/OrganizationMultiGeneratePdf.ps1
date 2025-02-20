@@ -133,7 +133,7 @@ if ($GenerateTopicReports)
     {
         $topicIndex++
 
-        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 1 -ScriptBlock {
+        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
             Import-Module $using:ModulePath
 
