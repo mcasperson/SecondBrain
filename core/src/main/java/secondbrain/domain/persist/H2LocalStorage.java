@@ -8,7 +8,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.h2.util.NetworkConnectionInfo;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
@@ -35,7 +34,7 @@ public class H2LocalStorage implements LocalStorage {
 
     private static final int MAX_RETRIES = 15;
     private static final int DELAY = 1000;
-
+    private static Connection connection;
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
     @Inject
@@ -59,18 +58,14 @@ public class H2LocalStorage implements LocalStorage {
     private ExceptionHandler exceptionHandler;
     @Inject
     private Logger logger;
-    private Connection connection;
 
     @PostConstruct
     public void postConstruct() {
         logger.info("Initializing local storage");
         synchronized (H2LocalStorage.class) {
-
-            Try.of(() -> new NetworkConnectionInfo("", "", 0));
-
             if (connection == null) {
                 backupDatabase();
-                this.connection = getConnection();
+                connection = getConnection();
                 deleteExpired();
             }
         }
@@ -220,7 +215,7 @@ public class H2LocalStorage implements LocalStorage {
     @Override
     public String getString(final String tool, final String source, final String promptHash) {
         synchronized (H2LocalStorage.class) {
-            if (isDisabled() || isWriteOnly() || this.connection == null) {
+            if (isDisabled() || isWriteOnly() || connection == null) {
                 return null;
             }
 
@@ -321,7 +316,7 @@ public class H2LocalStorage implements LocalStorage {
     @Override
     public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
         synchronized (H2LocalStorage.class) {
-            if (isDisabled() || isReadOnly() || this.connection == null) {
+            if (isDisabled() || isReadOnly() || connection == null) {
                 return;
             }
 
