@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import static io.vavr.Predicates.instanceOf;
 
@@ -37,8 +38,12 @@ public class SlackClient {
 
     @Inject
     private ValidateString validateString;
+
     @Inject
     private LocalStorage localStorage;
+
+    @Inject
+    private Logger logger;
 
     public ConversationsHistoryResponse conversationHistory(
             final AsyncMethodsClient client,
@@ -125,6 +130,7 @@ public class SlackClient {
         }
 
         if (retryCount > 0) {
+            logger.info("Retrying Slack searchAll");
             Try.run(() -> Thread.sleep(RETRY_DELAY + (int) (Math.random() * RETRY_JITTER)));
         }
 
@@ -218,6 +224,7 @@ public class SlackClient {
         }
 
         if (retryCount > 0) {
+            logger.info("Retrying Slack conversationsList");
             Try.run(() -> Thread.sleep(RETRY_DELAY + (int) (Math.random() * RETRY_JITTER)));
         }
 
