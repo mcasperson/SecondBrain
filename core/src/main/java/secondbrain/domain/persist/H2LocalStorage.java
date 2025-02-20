@@ -91,6 +91,10 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     private Connection getConnection(final int count) {
+        if (count > MAX_RETRIES) {
+            throw new LocalStorageFailure("Failed to get connection after " + MAX_RETRIES + " attempts");
+        }
+
         if (count > 0) {
             logger.info("Retrying connection to local storage");
             // Sleep with some jitter
