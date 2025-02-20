@@ -31,8 +31,8 @@ import static io.vavr.Predicates.instanceOf;
 @ApplicationScoped
 public class SlackClient {
 
-    private static final int RETRIES = 5;
-    private static final int RETRY_DELAY = 30000;
+    private static final int RETRIES = 10;
+    private static final int RETRY_DELAY = 450000;
     private static final int RETRY_JITTER = 1000;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
 
