@@ -179,7 +179,7 @@ if ($GenerateTopicReports)
 if ($GenerateExecutiveSummary)
 {
     # Delete the executie summary file
-    Remove-Item "$subDir/Executive Summary.md"
+    Remove-Item "$subDir/Executive Summary.md" | Out-Null
 
     # Get all files in the directory
     $files = Get-ChildItem -Path $subDir
