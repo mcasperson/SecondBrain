@@ -66,7 +66,7 @@ public class SlackClient {
                                 hash,
                                 ttlSeconds,
                                 ConversationsHistoryResponse.class,
-                                () -> conversationHistoryFromApi(client, accessToken, channelId, oldest)))
+                                () -> conversationHistoryFromApi(client, accessToken, channelId, oldest, 0)))
 
 
                         .get())
@@ -77,12 +77,29 @@ public class SlackClient {
             final AsyncMethodsClient client,
             final String accessToken,
             final String channelId,
-            final String oldest) {
+            final String oldest,
+            final int retryCount) {
+        if (retryCount > RETRIES) {
+            throw new ExternalFailure("Could not call conversationsHistory after " + RETRIES + " retries");
+        }
+
+        if (retryCount > 0) {
+            logger.info("Retrying Slack conversationsHistory");
+            Try.run(() -> Thread.sleep(RETRY_DELAY + (int) (Math.random() * RETRY_JITTER)));
+        }
+
         return Try.of(() -> client.conversationsHistory(r -> r
                                 .token(accessToken)
                                 .channel(channelId)
                                 .oldest(oldest))
                         .get())
+                .recover(SlackApiException.class, ex -> {
+                    if (ex.getResponse().code() == 429) {
+                        return conversationHistoryFromApi(client, accessToken, channelId, oldest, retryCount + 1);
+                    }
+
+                    throw new ExternalFailure("Could not call searchAll", ex);
+                })
                 .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsHistory", ex)))
                 .get();
     }
