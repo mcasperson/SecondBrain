@@ -21,6 +21,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
@@ -60,7 +61,7 @@ public class GoogleDocs implements Tool<Void> {
     public static final String GOOGLE_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String GOOGLE_DISABLE_LINKS_ARG = "disableLinks";
     public static final String GOOGLE_ENTITY_NAME_CONTEXT_ARG = "entityName";
-
+    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String APPLICATION_NAME = "SecondBrain";
     private static final String INSTRUCTIONS = """
@@ -153,7 +154,7 @@ public class GoogleDocs implements Tool<Void> {
                         .mapTry(Objects::requireNonNull)
                         .mapTry(this::getServiceAccountCredentials))
                 // The try the service account passed in as a config setting
-                .recoverWith(e -> Try.of(() -> parsedArgs.getGoogleServiceAccountJson())
+                .recoverWith(e -> Try.of(parsedArgs::getGoogleServiceAccountJson)
                         .map(b64 -> new String(new Base64().decode(b64.getBytes(UTF_8)), UTF_8))
                         .mapTry(this::getServiceAccountCredentials))
                 // Finally see if the existing gcloud login can be used
@@ -163,17 +164,19 @@ public class GoogleDocs implements Tool<Void> {
             throw new InternalFailure("Failed to get Google access token: " + token.getCause().getMessage());
         }
 
-        final Try<List<RagDocumentContext<Void>>> result = Try.of(GoogleNetHttpTransport::newTrustedTransport)
-                .map(transport -> new Docs.Builder(transport, JSON_FACTORY, token.get())
-                        .setApplicationName(APPLICATION_NAME)
-                        .build())
-                .mapTry(service -> service.documents().get(parsedArgs.getDocumentId()).execute())
-                .map(this::getDocumentText)
-                .map(document -> documentTrimmer.trimDocumentToKeywords(
-                        document, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
-                .map(trimResult -> validateString.throwIfEmpty(trimResult, TrimResult::document))
-                .map(trimResult -> getDocumentContext(trimResult, parsedArgs))
-                .map(List::of);
+        final Try<List<RagDocumentContext<Void>>> result = Try.withResources(SEMAPHORE_LENDER::lend)
+                .of(s -> Try.of(GoogleNetHttpTransport::newTrustedTransport)
+                        .map(transport -> new Docs.Builder(transport, JSON_FACTORY, token.get())
+                                .setApplicationName(APPLICATION_NAME)
+                                .build())
+                        .mapTry(service -> service.documents().get(parsedArgs.getDocumentId()).execute())
+                        .map(this::getDocumentText)
+                        .map(document -> documentTrimmer.trimDocumentToKeywords(
+                                document, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
+                        .map(trimResult -> validateString.throwIfEmpty(trimResult, TrimResult::document))
+                        .map(trimResult -> getDocumentContext(trimResult, parsedArgs))
+                        .map(List::of))
+                .get();
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
