@@ -60,6 +60,23 @@ public class ZenDeskClient {
             final String query,
             final int page,
             final int maxPage) {
+        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client))
+                .of(sem -> getTicketsApi(sem.getWrapped(), authorization, url, query, page, maxPage))
+                .get();
+    }
+
+    /**
+     * ZenDesk has API rate limits measured in requests per minute, so we
+     * attempt to retry a few times with a delay.
+     */
+    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
+    private List<ZenDeskResultsResponse> getTicketsApi(
+            final Client client,
+            final String authorization,
+            final String url,
+            final String query,
+            final int page,
+            final int maxPage) {
 
         if (StringUtils.isBlank(query)) {
             throw new IllegalArgumentException("Query is required");
@@ -67,7 +84,7 @@ public class ZenDeskClient {
 
         final String target = url + "/api/v2/search.json";
 
-        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
+        return Try.of(() -> client.target(target)
                         .queryParam("query", query)
                         .queryParam("sort_by", "created_at")
                         .queryParam("sort_order", "desc")
@@ -75,14 +92,14 @@ public class ZenDeskClient {
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
-                        .get()))
-                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
+                        .get())
+                .map(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskResponse.class))
                         // Recurse if there is a next page and we have not gone too far
                         .map(r -> ListUtils.union(
                                 r.getResults(),
                                 r.next_page() != null && page < maxPage
-                                        ? getTickets(client, authorization, url, query, page + 1, maxPage)
+                                        ? getTicketsApi(client, authorization, url, query, page + 1, maxPage)
                                         : List.of()))
                         .get())
                 .get();
