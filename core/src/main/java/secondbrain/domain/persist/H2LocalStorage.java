@@ -34,7 +34,7 @@ public class H2LocalStorage implements LocalStorage {
 
     private static final int MAX_RETRIES = 15;
     private static final int DELAY = 1000;
-    private static Connection connection;
+
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
     @Inject
@@ -59,13 +59,15 @@ public class H2LocalStorage implements LocalStorage {
     @Inject
     private Logger logger;
 
+    private Connection connection;
+
     @PostConstruct
     public void postConstruct() {
         logger.info("Initializing local storage");
         synchronized (H2LocalStorage.class) {
             if (connection == null) {
                 backupDatabase();
-                connection = getConnection();
+                this.connection = getConnection();
                 deleteExpired();
             }
         }
@@ -157,7 +159,6 @@ public class H2LocalStorage implements LocalStorage {
 
     private String getConnectionString() {
         return "jdbc:h2:file:" + getDatabasePath() + ";" + """
-                AUTO_SERVER=TRUE;
                 INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
                 SET SCHEMA SECONDBRAIN\\;
                 CREATE TABLE IF NOT EXISTS local_storage
@@ -215,7 +216,7 @@ public class H2LocalStorage implements LocalStorage {
     @Override
     public String getString(final String tool, final String source, final String promptHash) {
         synchronized (H2LocalStorage.class) {
-            if (isDisabled() || isWriteOnly() || connection == null) {
+            if (isDisabled() || isWriteOnly() || this.connection == null) {
                 return null;
             }
 
@@ -316,7 +317,7 @@ public class H2LocalStorage implements LocalStorage {
     @Override
     public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
         synchronized (H2LocalStorage.class) {
-            if (isDisabled() || isReadOnly() || connection == null) {
+            if (isDisabled() || isReadOnly() || this.connection == null) {
                 return;
             }
 
