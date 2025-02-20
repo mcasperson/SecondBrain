@@ -106,6 +106,8 @@ public class H2LocalStorage implements LocalStorage {
 
         return Try.of(() -> DriverManager.getConnection(getConnectionString()))
                 .recover(ex -> {
+                    logger.warning(exceptionHandler.getExceptionMessage(ex));
+
                     if (count < MAX_RETRIES) {
                         return getConnection(count + 1);
                     }
