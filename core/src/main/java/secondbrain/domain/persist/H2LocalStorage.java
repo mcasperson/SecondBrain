@@ -92,6 +92,7 @@ public class H2LocalStorage implements LocalStorage {
 
     private Connection getConnection(final int count) {
         if (count > 0) {
+            logger.info("Retrying connection to local storage");
             // Sleep with some jitter
             Try.run(() -> Thread.sleep(DELAY + (int) (Math.random() * 1000)));
         }
