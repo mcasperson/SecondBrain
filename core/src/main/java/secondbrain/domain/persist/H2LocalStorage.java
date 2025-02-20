@@ -8,6 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.h2.util.NetworkConnectionInfo;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
@@ -64,6 +65,9 @@ public class H2LocalStorage implements LocalStorage {
     public void postConstruct() {
         logger.info("Initializing local storage");
         synchronized (H2LocalStorage.class) {
+
+            Try.of(() -> new NetworkConnectionInfo("", "", 0));
+
             if (connection == null) {
                 backupDatabase();
                 this.connection = getConnection();
