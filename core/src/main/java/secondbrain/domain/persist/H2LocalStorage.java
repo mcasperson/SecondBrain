@@ -62,6 +62,7 @@ public class H2LocalStorage implements LocalStorage {
 
     @PostConstruct
     public void postConstruct() {
+        logger.info("Initializing local storage");
         synchronized (H2LocalStorage.class) {
             if (connection == null) {
                 backupDatabase();
