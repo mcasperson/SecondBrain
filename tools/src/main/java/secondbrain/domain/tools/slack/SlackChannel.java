@@ -317,7 +317,7 @@ public class SlackChannel implements Tool<Void> {
 
 @ApplicationScoped
 class SlackChannelConfig {
-    private static final String DEFAULT_TTL = "3600";
+    private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
