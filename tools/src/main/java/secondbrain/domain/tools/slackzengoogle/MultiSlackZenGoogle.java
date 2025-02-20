@@ -329,6 +329,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         logger.info("Processing " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
+        logger.info("Getting Slack channel for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         final List<RagDocumentContext<Void>> slackContext = Objects.requireNonNullElse(entity.getSlack(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -357,6 +358,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             Search slack for any mention of the salesforce and planhat ids. This will pick up call summaries that are posted
             to slack by the salesforce integration.
          */
+        logger.info("Getting Slack keywords for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         final List<RagDocumentContext<Void>> slackKeywordSearch = Try
                 // Combine all the keywords we are going to search for
                 .of(() -> CollectionUtils.collate(entity.getSalesforce(), entity.getPlanHat()))
@@ -384,6 +386,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .toList();
 
 
+        logger.info("Getting Google Docs for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         final List<RagDocumentContext<Void>> googleContext = Objects.requireNonNullElse(entity.getGoogleDcos(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -406,6 +409,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateGroup(entity.name()))
                 .toList();
 
+        logger.info("Getting ZenDesk tickets for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         final List<RagDocumentContext<Void>> zenContext = Objects.requireNonNullElse(entity.getZenDesk(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -430,6 +434,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
+        logger.info("Getting PlanHat activities for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         final List<RagDocumentContext<Void>> planHatContext = Objects.requireNonNullElse(entity.getPlanHat(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -454,6 +459,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
 
+        logger.info("Getting Gong transcripts for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         final List<RagDocumentContext<Void>> gongContext = Objects.requireNonNullElse(entity.salesforce(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
