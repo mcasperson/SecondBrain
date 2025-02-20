@@ -63,9 +63,11 @@ public class H2LocalStorage implements LocalStorage {
     @PostConstruct
     public void postConstruct() {
         synchronized (H2LocalStorage.class) {
-            backupDatabase();
-            this.connection = getConnection();
-            deleteExpired();
+            if (connection == null) {
+                backupDatabase();
+                this.connection = getConnection();
+                deleteExpired();
+            }
         }
     }
 
