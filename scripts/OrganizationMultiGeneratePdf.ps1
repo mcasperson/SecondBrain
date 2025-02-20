@@ -86,6 +86,12 @@ if ($GenerateCompanyReports)
 
         $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
+            # Delay subsequent topics by 5 mins to allow the first run to pupulate the cache
+            if (($using:index) -gt 0)
+            {
+                Start-Sleep -m (1000 * 60 * 5)
+            }
+
             Import-Module $using:ModulePath
 
             $entityName = ($using:entity).name
@@ -136,7 +142,7 @@ if ($GenerateTopicReports)
         $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
             # Delay subsequent topics by 5 mins to allow the first run to pupulate the cache
-            if (($using:index) -gt 0)
+            if (($using:topicIndex) -gt 0)
             {
                 Start-Sleep -m (1000 * 60 * 5)
             }
