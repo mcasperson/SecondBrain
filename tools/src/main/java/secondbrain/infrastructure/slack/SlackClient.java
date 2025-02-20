@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.slack;
 
 import com.slack.api.methods.AsyncMethodsClient;
+import com.slack.api.methods.MethodsCompletionException;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
@@ -158,14 +159,8 @@ public class SlackClient {
         final Try<SearchAllResponse> result = Try
                 .of(() -> client.searchAll(r -> r.token(accessToken)
                                 .query(String.join(" ", keywords)))
-                        .exceptionally(ex -> {
-                            if (ex instanceof SlackApiException && ((SlackApiException) ex).getResponse().code() == 429) {
-                                return searchFromApi(client, accessToken, keywords, retryCount + 1);
-                            }
-
-                            throw new ExternalFailure("Failed to call searchAll", ex);
-                        })
-                        .get());
+                        .get())
+                .recover(MethodsCompletionException.class, ex -> searchFromApi(client, accessToken, keywords, retryCount + 1));
 
         return result
                 .mapFailure(API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex))
@@ -259,14 +254,8 @@ public class SlackClient {
                                 .types(List.of(ConversationType.PUBLIC_CHANNEL))
                                 .excludeArchived(true)
                                 .cursor(cursor))
-                        .exceptionally(ex -> {
-                            if (ex instanceof SlackApiException && ((SlackApiException) ex).getResponse().code() == 429) {
-                                return findConversationListFromApi(client, accessToken, cursor, retryCount + 1, apiDelay);
-                            }
-
-                            throw new ExternalFailure("Failed to call conversationsList", ex);
-                        })
                         .get())
+                .recover(MethodsCompletionException.class, ex -> findConversationListFromApi(client, accessToken, cursor, retryCount + 1, apiDelay))
                 .get();
     }
 }
