@@ -135,6 +135,12 @@ if ($GenerateTopicReports)
 
         $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
+            # Delay subsequent topics by 5 mins to allow the first run to pupulate the cache
+            if (($using:index) -gt 0)
+            {
+                Start-Sleep -m (1000 * 60 * 5)
+            }
+
             Import-Module $using:ModulePath
 
             $TopicLog = "/tmp/pdfgenerate $( ($using:topic).name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
