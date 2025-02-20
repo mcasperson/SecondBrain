@@ -4,6 +4,24 @@ $global:stdErr = [System.Text.StringBuilder]::new()
 $global:stdOut = [System.Text.StringBuilder]::new()
 $global:myprocessrunning = $true
 
+Function New-TempDir
+{
+    # Create a temporary file
+    $tempFile = New-TemporaryFile
+
+    # Get the directory of the temporary file
+    $tempDir = Split-Path -Parent $tempFile.FullName
+
+    # Remove the temporary file
+    Remove-Item $tempFile.FullName | Out-Null
+
+    $subDir = $tempDir + "/" + $( New-Guid )
+
+    mkdir $subDir | Out-Null
+
+    return $subDir
+}
+
 Function Invoke-CustomCommand
 {
     Param (

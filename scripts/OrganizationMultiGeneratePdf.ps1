@@ -20,18 +20,7 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 #$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
 $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
-# Create a temporary file
-$tempFile = New-TemporaryFile
-
-# Get the directory of the temporary file
-$tempDir = Split-Path -Parent $tempFile.FullName
-
-# Remove the temporary file
-Remove-Item $tempFile.FullName
-
-$subDir = $tempDir + "/" + $( New-Guid )
-
-mkdir $subDir
+$subDir = New-TempDir
 
 Write-Host "Working in $subDir"
 
