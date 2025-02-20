@@ -21,6 +21,7 @@ import secondbrain.domain.tools.slack.ChannelDetails;
 import secondbrain.domain.validate.ValidateString;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 
@@ -52,13 +53,19 @@ public class SlackClient {
          */
         final String hash = DigestUtils.sha256Hex(channelId + oldest);
 
-        return localStorage.getOrPutObject(
-                SlackClient.class.getSimpleName(),
-                "SlackAPIConversationHistory",
-                hash,
-                ttlSeconds,
-                ConversationsHistoryResponse.class,
-                () -> conversationHistoryFromApi(client, accessToken, channelId, oldest));
+        return Try.withResources(SEMAPHORE_LENDER::lend)
+                .of(sem -> Try
+                        .of(() -> localStorage.getOrPutObject(
+                                SlackClient.class.getSimpleName(),
+                                "SlackAPIConversationHistory",
+                                hash,
+                                ttlSeconds,
+                                ConversationsHistoryResponse.class,
+                                () -> conversationHistoryFromApi(client, accessToken, channelId, oldest)))
+
+
+                        .get())
+                .get();
     }
 
     private ConversationsHistoryResponse conversationHistoryFromApi(
@@ -66,14 +73,12 @@ public class SlackClient {
             final String accessToken,
             final String channelId,
             final String oldest) {
-        return Try.withResources(SEMAPHORE_LENDER::lend)
-                .of(sem ->
-                        Try.of(() -> client.conversationsHistory(r -> r
-                                        .token(accessToken)
-                                        .channel(channelId)
-                                        .oldest(oldest)).get())
-                                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsHistory", ex)))
-                                .get())
+        return Try.of(() -> client.conversationsHistory(r -> r
+                                .token(accessToken)
+                                .channel(channelId)
+                                .oldest(oldest))
+                        .get())
+                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsHistory", ex)))
                 .get();
     }
 
@@ -89,13 +94,17 @@ public class SlackClient {
          */
         final String hash = DigestUtils.sha256Hex(String.join(" ", keywords));
 
-        return localStorage.getOrPutObject(
-                SlackClient.class.getSimpleName(),
-                "SlackAPISearch",
-                hash,
-                ttlSeconds,
-                SearchAllResponse.class,
-                () -> searchFromApi(client, accessToken, keywords));
+        return Try.withResources(SEMAPHORE_LENDER::lend)
+                .of(sem -> Try
+                        .of(() -> localStorage.getOrPutObject(
+                                SlackClient.class.getSimpleName(),
+                                "SlackAPISearch",
+                                hash,
+                                ttlSeconds,
+                                SearchAllResponse.class,
+                                () -> searchFromApi(client, accessToken, keywords)))
+                        .get())
+                .get();
     }
 
     private SearchAllResponse searchFromApi(
@@ -149,12 +158,16 @@ public class SlackClient {
         final String hash = DigestUtils.sha256Hex(channel);
 
         // get the result from the cache
-        return localStorage.getOrPutObject(
-                SlackClient.class.getSimpleName(),
-                "SlackAPIChannel",
-                hash,
-                ChannelDetails.class,
-                () -> findChannelIdFromApi(client, accessToken, channel, null));
+        return Try.withResources(SEMAPHORE_LENDER::lend)
+                .of(sem -> Try
+                        .of(() -> localStorage.getOrPutObject(
+                                SlackClient.class.getSimpleName(),
+                                "SlackAPIChannel",
+                                hash,
+                                ChannelDetails.class,
+                                () -> findChannelIdFromApi(client, accessToken, channel, null)))
+                        .get())
+                .get();
     }
 
     private ChannelDetails findChannelIdFromApi(
@@ -163,15 +176,12 @@ public class SlackClient {
             final String channel,
             final String cursor) {
 
-        final Try<ConversationsListResponse> response = Try.withResources(SEMAPHORE_LENDER::lend)
-                .of(sem -> Try.of(() -> client.conversationsList(r -> r
-                                .token(accessToken)
-                                .limit(1000)
-                                .types(List.of(ConversationType.PUBLIC_CHANNEL))
-                                .excludeArchived(true)
-                                .cursor(cursor)).get())
-                        .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsList", ex))))
-                .get();
+        final Try<ConversationsListResponse> response = Try.of(() -> client.conversationsList(r -> r
+                .token(accessToken)
+                .limit(1000)
+                .types(List.of(ConversationType.PUBLIC_CHANNEL))
+                .excludeArchived(true)
+                .cursor(cursor)).get());
 
         final Try<ChannelDetails> results = response
                 // try to get the channel
@@ -179,7 +189,7 @@ public class SlackClient {
                 // this fails if nothing was returned
                 .map(Optional::get)
                 // if we fail, we try to get the next page
-                .recover(ex -> findChannelIdFromApi(
+                .recover(NoSuchElementException.class, ex -> findChannelIdFromApi(
                         client,
                         accessToken,
                         channel,
@@ -190,6 +200,7 @@ public class SlackClient {
                 .mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)),
                                 ex -> new InternalFailure("Slack channel API reached the end of the results. Failed to find channel " + channel, ex)))
+                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsList", ex)))
                 .get();
     }
 
