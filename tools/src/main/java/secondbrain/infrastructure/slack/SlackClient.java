@@ -176,14 +176,9 @@ public class SlackClient {
             final String channel,
             final String cursor) {
 
-        final Try<ConversationsListResponse> response = Try.of(() -> client.conversationsList(r -> r
-                .token(accessToken)
-                .limit(1000)
-                .types(List.of(ConversationType.PUBLIC_CHANNEL))
-                .excludeArchived(true)
-                .cursor(cursor)).get());
+        final ConversationsListResponse response = findConversationListFromApi(client, accessToken, cursor, 0);
 
-        final Try<ChannelDetails> results = response
+        final Try<ChannelDetails> results = Try.of(() -> response)
                 // try to get the channel
                 .map(r -> getChannelId(r, channel))
                 // this fails if nothing was returned
@@ -194,7 +189,7 @@ public class SlackClient {
                         accessToken,
                         channel,
                         // the cursor must be a non-empty string to do a recursive call
-                        validateString.throwIfEmpty(response.get().getResponseMetadata().getNextCursor())));
+                        validateString.throwIfEmpty(response.getResponseMetadata().getNextCursor())));
 
         return results
                 .mapFailure(
@@ -210,5 +205,35 @@ public class SlackClient {
                 .filter(c -> c.getName().equals(channel))
                 .map(c -> new ChannelDetails(channel, c.getId(), c.getContextTeamId()))
                 .findFirst();
+    }
+
+    private ConversationsListResponse findConversationListFromApi(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String cursor,
+            final int retryCount) {
+
+        if (retryCount > RETRIES) {
+            throw new ExternalFailure("Could not call conversationsList after " + RETRIES + " retries");
+        }
+
+        if (retryCount > 0) {
+            Try.run(() -> Thread.sleep(RETRY_DELAY + (int) (Math.random() * RETRY_JITTER)));
+        }
+
+        return Try.of(() -> client.conversationsList(r -> r
+                        .token(accessToken)
+                        .limit(1000)
+                        .types(List.of(ConversationType.PUBLIC_CHANNEL))
+                        .excludeArchived(true)
+                        .cursor(cursor)).get())
+                .recover(SlackApiException.class, ex -> {
+                    if (ex.getResponse().code() == 429) {
+                        return findConversationListFromApi(client, accessToken, cursor, retryCount + 1);
+                    }
+
+                    throw new ExternalFailure("Could not call conversationsList", ex);
+                })
+                .get();
     }
 }
