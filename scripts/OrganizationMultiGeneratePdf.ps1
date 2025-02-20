@@ -73,9 +73,14 @@ if ($GenerateCompanyReports)
             continue
         }
 
+        # We can have thousands of entities to process, so we need to use threads to process them in parallel.
         $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
-            # Delay subsequent topics by 5 mins to allow the first run to pupulate the cache
+            # Delay subsequent topics by 1 min to allow the first run to pupulate the cache.
+            # The API access to external systems are often configured to return all the available results across the
+            # specified time range, cache them, and then have each entity pick their own data from the cache. This
+            # means the first time SecondBrain is run, it will make large requests to the external systems.
+            # Subsequent runs will get their data from the shared cache.
             if (($using:index) -gt 1)
             {
                 Start-Sleep -m (1000 * 60)
