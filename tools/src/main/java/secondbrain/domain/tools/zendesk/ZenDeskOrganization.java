@@ -167,7 +167,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         query.add("created>" + parsedArgs.getStartDate());
 
         final Try<List<RagDocumentContext<ZenDeskResultsResponse>>> result = Try.withResources(ClientBuilder::newClient)
-                .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, parsedArgs.getUrl(), String.join(" ", query)))
+                .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, parsedArgs.getUrl(), String.join(" ", query), parsedArgs.getSearchTTL()))
                         // Filter out any tickets based on the submitter and assignee
                         .map(response -> filterResponse(response, parsedArgs.getOrganization(), true, parsedArgs.getExcludedSubmitters(), parsedArgs.getExcludedOrganization(), parsedArgs.getRecipient()))
                         // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
@@ -409,6 +409,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 @ApplicationScoped
 class ZenDeskConfig {
     private static final int MAX_TICKETS = 100;
+    private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
@@ -461,6 +462,10 @@ class ZenDeskConfig {
     @Inject
     @ConfigProperty(name = "sb.zendesk.keywordwindow")
     private Optional<String> configKeywordWindow;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.historyttl")
+    private Optional<String> configHistoryttl;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -556,6 +561,10 @@ class ZenDeskConfig {
 
     public SanitizeArgument getSanitizeOrganization() {
         return sanitizeOrganization;
+    }
+
+    public Optional<String> getConfigHistoryttl() {
+        return configHistoryttl;
     }
 
     public class LocalArguments {
@@ -835,6 +844,20 @@ class ZenDeskConfig {
                     null,
                     ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG,
                     "").value();
+        }
+
+        public int getSearchTTL() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigHistoryttl()::get,
+                    arguments,
+                    context,
+                    "historyTtl",
+                    "zen_historyttl",
+                    DEFAULT_TTL);
+
+            return Try.of(argument::value)
+                    .map(i -> Math.max(0, Integer.parseInt(i)))
+                    .get();
         }
     }
 }

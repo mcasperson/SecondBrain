@@ -4,14 +4,16 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
-import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.infrastructure.slack.SlackClient;
 
+import java.util.Arrays;
 import java.util.List;
 
 @ApplicationScoped
@@ -39,30 +41,40 @@ public class ZenDeskClient {
             final Client client,
             final String authorization,
             final String url,
-            final String query) {
+            final String query,
+            final int ttlSeconds) {
 
         if (StringUtils.isBlank(query)) {
             throw new IllegalArgumentException("Query is required");
         }
 
-        return getTickets(client, authorization, url, query, 1, MAX_PAGES);
+        return getTickets(client, authorization, url, query, 1, MAX_PAGES, ttlSeconds);
     }
 
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
+     * This method is synchronized to have one tool populate the cache and let the others read from it.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    private List<ZenDeskResultsResponse> getTickets(
+    synchronized private List<ZenDeskResultsResponse> getTickets(
             final Client client,
             final String authorization,
             final String url,
             final String query,
             final int page,
-            final int maxPage) {
-        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client))
-                .of(sem -> getTicketsApi(sem.getWrapped(), authorization, url, query, page, maxPage))
-                .get();
+            final int maxPage,
+            final int ttlSeconds) {
+
+        final ZenDeskResultsResponse[] value = localStorage.getOrPutObject(
+                SlackClient.class.getSimpleName(),
+                "ZenDeskApiTickets",
+                "Global",
+                ttlSeconds,
+                ZenDeskResultsResponse[].class,
+                () -> getTicketsApi(client, authorization, url, query, page, maxPage));
+
+        return Arrays.asList(value);
     }
 
     /**
@@ -70,7 +82,7 @@ public class ZenDeskClient {
      * attempt to retry a few times with a delay.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    private List<ZenDeskResultsResponse> getTicketsApi(
+    private ZenDeskResultsResponse[] getTicketsApi(
             final Client client,
             final String authorization,
             final String url,
@@ -96,11 +108,11 @@ public class ZenDeskClient {
                 .map(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskResponse.class))
                         // Recurse if there is a next page and we have not gone too far
-                        .map(r -> ListUtils.union(
+                        .map(r -> ArrayUtils.addAll(
                                 r.getResults(),
                                 r.next_page() != null && page < maxPage
                                         ? getTicketsApi(client, authorization, url, query, page + 1, maxPage)
-                                        : List.of()))
+                                        : new ZenDeskResultsResponse[]{}))
                         .get())
                 .get();
     }

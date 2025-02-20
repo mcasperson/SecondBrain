@@ -2,12 +2,11 @@ package secondbrain.infrastructure.zendesk;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import java.util.List;
 import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ZenDeskResponse(List<ZenDeskResultsResponse> results, String next_page) {
-    public List<ZenDeskResultsResponse> getResults() {
-        return Objects.requireNonNullElse(results, List.of());
+public record ZenDeskResponse(ZenDeskResultsResponse[] results, String next_page) {
+    public ZenDeskResultsResponse[] getResults() {
+        return Objects.requireNonNullElse(results, new ZenDeskResultsResponse[]{});
     }
 }
