@@ -133,7 +133,7 @@ public class SlackClient {
                                 .query(String.join(" ", keywords)))
                         .get())
                 .recover(SlackApiException.class, ex -> {
-                    if (ex.getError().getError().equals("ratelimited")) {
+                    if (ex.getResponse().code() == 429) {
                         return searchFromApi(client, accessToken, keywords, retryCount + 1);
                     }
 
