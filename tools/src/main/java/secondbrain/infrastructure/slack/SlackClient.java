@@ -1,7 +1,6 @@
 package secondbrain.infrastructure.slack;
 
 import com.slack.api.methods.AsyncMethodsClient;
-import com.slack.api.methods.MethodsCompletionException;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
@@ -160,7 +159,7 @@ public class SlackClient {
                 .of(() -> client.searchAll(r -> r.token(accessToken)
                                 .query(String.join(" ", keywords)))
                         .get())
-                .recover(MethodsCompletionException.class, ex -> searchFromApi(client, accessToken, keywords, retryCount + 1));
+                .recover(ex -> searchFromApi(client, accessToken, keywords, retryCount + 1));
 
         return result
                 .mapFailure(API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex))
@@ -255,7 +254,7 @@ public class SlackClient {
                                 .excludeArchived(true)
                                 .cursor(cursor))
                         .get())
-                .recover(MethodsCompletionException.class, ex -> findConversationListFromApi(client, accessToken, cursor, retryCount + 1, apiDelay))
+                .recover(ex -> findConversationListFromApi(client, accessToken, cursor, retryCount + 1, apiDelay))
                 .get();
     }
 }
