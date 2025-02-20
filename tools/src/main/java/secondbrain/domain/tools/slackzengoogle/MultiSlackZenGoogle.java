@@ -167,7 +167,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .parallelStream()
                 .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.entity.name().toLowerCase()))
                 .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
-                .flatMap(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs.getDays(), parsedArgs).stream())
+                .flatMap(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream())
                 .toList();
 
         if (ragContext.isEmpty()) {
@@ -320,7 +320,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
      * Try and get all the downstream context. Note that this tool is a long-running operation that attempts to access a lot
      * of data. We silently fail for any downstream context that could not be retrieved rather than fail the entire operation.
      */
-    private List<RagDocumentContext<Void>> getEntityContext(final PositionalEntity positionalEntity, final Map<String, String> context, final String prompt, final int days, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+    private List<RagDocumentContext<Void>> getEntityContext(final PositionalEntity positionalEntity, final Map<String, String> context, final String prompt, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
         final Entity entity = positionalEntity.entity();
 
         if (entity.disabled()) {
@@ -329,160 +329,12 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         logger.info("Processing " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
-        logger.info("Getting ZenDesk tickets for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
-        final List<RagDocumentContext<Void>> zenContext = Objects.requireNonNullElse(entity.getZenDesk(), List.<String>of())
-                .stream()
-                .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
-                        new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + days, true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
-                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(
-                                addItemToMap(context, ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG, entity.name()),
-                                prompt,
-                                args))
-                        // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .getOrElse(List::of)
-                        .stream())
-                // The context label is updated to include the entity name
-                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
-                .toList();
-
-        logger.info("Getting Slack channel for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
-        final List<RagDocumentContext<Void>> slackContext = Objects.requireNonNullElse(entity.getSlack(), List.<String>of())
-                .stream()
-                .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(
-                        new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
-                        new ToolArgs(SlackChannel.SLACK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(SlackChannel.SLACK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
-                        new ToolArgs(SlackChannel.DAYS_ARG, "" + days, true),
-                        new ToolArgs(SlackChannel.SLACK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
-                // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
-                .flatMap(args -> Try.of(() -> slackChannel.getContext(
-                                addItemToMap(context, SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG, entity.name()),
-                                prompt,
-                                args))
-                        // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .getOrElse(List::of)
-                        .stream())
-                // The context label is updated to include the entity name
-                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
-                .toList();
-
-        /*
-            Search slack for any mention of the salesforce and planhat ids. This will pick up call summaries that are posted
-            to slack by the salesforce integration.
-         */
-        logger.info("Getting Slack keywords for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
-        final List<RagDocumentContext<Void>> slackKeywordSearch = Try
-                // Combine all the keywords we are going to search for
-                .of(() -> CollectionUtils.collate(entity.getSalesforce(), entity.getPlanHat()))
-                // Get a list of arguments using the keywords
-                .map(ids -> List.of(
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, String.join(",", ids), true),
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + days, true),
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
-                // Search for the keywords
-                .map(args -> slackSearch.getContext(
-                        addItemToMap(context, SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG, entity.name()),
-                        prompt,
-                        args))
-                // We continue on even if one tool fails, so log and swallow the exception
-                .onFailure(InternalFailure.class, ex -> log.info("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                .onFailure(ExternalFailure.class, ex -> log.warning("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                // If anything fails, get an empty list
-                .getOrElse(List::of)
-                // Post-process the rag context
-                .stream()
-                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
-                .toList();
-
-
-        logger.info("Getting Google Docs for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
-        final List<RagDocumentContext<Void>> googleContext = Objects.requireNonNullElse(entity.getGoogleDcos(), List.<String>of())
-                .stream()
-                .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(
-                        new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
-                        new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
-                        new ToolArgs(GoogleDocs.GOOGLE_DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
-                .flatMap(args -> Try.of(() -> googleDocs.getContext(
-                                addItemToMap(context, GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG, entity.name()),
-                                prompt,
-                                args))
-                        // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .getOrElse(List::of)
-                        .stream())
-                // The context label is updated to include the entity name
-                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
-                .toList();
-
-        logger.info("Getting PlanHat activities for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
-        final List<RagDocumentContext<Void>> planHatContext = Objects.requireNonNullElse(entity.getPlanHat(), List.<String>of())
-                .stream()
-                .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(
-                        new ToolArgs(PlanHat.DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true),
-                        new ToolArgs(PlanHat.PLANHAT_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(PlanHat.PLANHAT_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
-                        new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
-                        new ToolArgs(PlanHat.DAYS_ARG, parsedArgs.getDays() + "", true)))
-                .flatMap(args -> Try.of(() -> planHat.getContext(
-                                addItemToMap(context, PlanHat.PLANHAT_ENTITY_NAME_CONTEXT_ARG, entity.name()),
-                                prompt,
-                                args))
-                        // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .getOrElse(List::of)
-                        .stream())
-                // The context label is updated to include the entity name
-                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
-                .toList();
-
-        logger.info("Getting Gong transcripts for " + entity.name() + " " + positionalEntity.position + " of " + positionalEntity.total);
-        final List<RagDocumentContext<Void>> gongContext = Objects.requireNonNullElse(entity.salesforce(), List.<String>of())
-                .stream()
-                .filter(StringUtils::isNotBlank)
-                .map(id -> List.of(
-                        new ToolArgs(Gong.GONG_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true),
-                        new ToolArgs(Gong.GONG_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(Gong.GONG_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
-                        new ToolArgs(Gong.COMPANY_ARG, id, true),
-                        new ToolArgs(Gong.DAYS_ARG, parsedArgs.getDays() + "", true)))
-                .flatMap(args -> Try.of(() -> gong.getContext(
-                                addItemToMap(context, Gong.GONG_ENTITY_NAME_CONTEXT_ARG, entity.name()),
-                                prompt,
-                                args))
-                        // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .getOrElse(List::of)
-                        .stream())
-                // The context label is updated to include the entity name
-                .map(ragDoc -> ragDoc.updateContextLabel(entity.name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(entity.name()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
-                .toList();
+        final List<RagDocumentContext<Void>> zenContext = getZenContext(positionalEntity, parsedArgs, prompt, context);
+        final List<RagDocumentContext<Void>> slackContext = getSlackContext(positionalEntity, parsedArgs, prompt, context);
+        final List<RagDocumentContext<Void>> slackKeywordSearch = getSlackKeywordContext(positionalEntity, parsedArgs, prompt, context);
+        final List<RagDocumentContext<Void>> googleContext = getGoogleContext(positionalEntity, parsedArgs, prompt, context);
+        final List<RagDocumentContext<Void>> planHatContext = getPlanhatContext(positionalEntity, parsedArgs, prompt, context);
+        final List<RagDocumentContext<Void>> gongContext = getGongContext(positionalEntity, parsedArgs, prompt, context);
 
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
         retValue.addAll(slackKeywordSearch);
@@ -493,6 +345,173 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         retValue.addAll(gongContext);
 
         return contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
+    }
+
+    /**
+     * Search slack for any mention of the salesforce and planhat ids. This will pick up call summaries that are posted
+     * to slack by the salesforce integration.
+     */
+    private List<RagDocumentContext<Void>> getSlackKeywordContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        logger.info("Getting Slack keywords for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        return Try
+                // Combine all the keywords we are going to search for
+                .of(() -> CollectionUtils.collate(positionalEntity.entity().getSalesforce(), positionalEntity.entity().getPlanHat()))
+                // Get a list of arguments using the keywords
+                .map(ids -> List.of(
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, String.join(",", ids), true),
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + parsedArgs.getDays(), true),
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
+                // Search for the keywords
+                .map(args -> slackSearch.getContext(
+                        addItemToMap(context, SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
+                        prompt,
+                        args))
+                // We continue on even if one tool fails, so log and swallow the exception
+                .onFailure(InternalFailure.class, ex -> log.info("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(ExternalFailure.class, ex -> log.warning("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                // If anything fails, get an empty list
+                .getOrElse(List::of)
+                // Post-process the rag context
+                .stream()
+                .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
+    }
+
+    private List<RagDocumentContext<Void>> getGongContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        logger.info("Getting Gong transcripts for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        return Objects.requireNonNullElse(positionalEntity.entity().salesforce(), List.<String>of())
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(
+                        new ToolArgs(Gong.GONG_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true),
+                        new ToolArgs(Gong.GONG_KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(Gong.GONG_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(Gong.COMPANY_ARG, id, true),
+                        new ToolArgs(Gong.DAYS_ARG, parsedArgs.getDays() + "", true)))
+                .flatMap(args -> Try.of(() -> gong.getContext(
+                                addItemToMap(context, Gong.GONG_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
+                                prompt,
+                                args))
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(InternalFailure.class, ex -> log.info("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
+    }
+
+    private List<RagDocumentContext<Void>> getPlanhatContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        logger.info("Getting PlanHat activities for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        return Objects.requireNonNullElse(positionalEntity.entity().getPlanHat(), List.<String>of())
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(
+                        new ToolArgs(PlanHat.DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true),
+                        new ToolArgs(PlanHat.PLANHAT_KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(PlanHat.PLANHAT_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
+                        new ToolArgs(PlanHat.DAYS_ARG, parsedArgs.getDays() + "", true)))
+                .flatMap(args -> Try.of(() -> planHat.getContext(
+                                addItemToMap(context, PlanHat.PLANHAT_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
+                                prompt,
+                                args))
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(InternalFailure.class, ex -> log.info("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
+    }
+
+    private List<RagDocumentContext<Void>> getGoogleContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        logger.info("Getting Google Docs for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        return Objects.requireNonNullElse(positionalEntity.entity().getGoogleDcos(), List.<String>of())
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(
+                        new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
+                        new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(GoogleDocs.GOOGLE_DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
+                .flatMap(args -> Try.of(() -> googleDocs.getContext(
+                                addItemToMap(context, GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
+                                prompt,
+                                args))
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(InternalFailure.class, ex -> log.info("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
+                .toList();
+    }
+
+    private List<RagDocumentContext<Void>> getSlackContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        logger.info("Getting Slack channel for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        return Objects.requireNonNullElse(positionalEntity.entity().getSlack(), List.<String>of())
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(
+                        new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
+                        new ToolArgs(SlackChannel.SLACK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(SlackChannel.SLACK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(SlackChannel.DAYS_ARG, "" + parsedArgs.getDays(), true),
+                        new ToolArgs(SlackChannel.SLACK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
+                // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
+                .flatMap(args -> Try.of(() -> slackChannel.getContext(
+                                addItemToMap(context, SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
+                                prompt,
+                                args))
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(InternalFailure.class, ex -> log.info("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
+                .toList();
+    }
+
+    private List<RagDocumentContext<Void>> getZenContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        logger.info("Getting ZenDesk tickets for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+
+        return Objects.requireNonNullElse(positionalEntity.entity().getZenDesk(), List.<String>of())
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + parsedArgs.getDays(), true),
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
+                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(
+                                addItemToMap(context, ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
+                                prompt,
+                                args))
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(InternalFailure.class, ex -> log.info("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
     }
 
     private List<RagDocumentContext<Void>> contextMeetsRating(final List<RagDocumentContext<Void>> ragContext, final String entityName, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
