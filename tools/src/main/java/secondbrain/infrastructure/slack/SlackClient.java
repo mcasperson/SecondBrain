@@ -154,14 +154,14 @@ public class SlackClient {
         final Try<SearchAllResponse> result = Try
                 .of(() -> client.searchAll(r -> r.token(accessToken)
                                 .query(String.join(" ", keywords)))
-                        .get())
-                .recover(SlackApiException.class, ex -> {
-                    if (ex.getResponse().code() == 429) {
-                        return searchFromApi(client, accessToken, keywords, retryCount + 1);
-                    }
+                        .exceptionally(ex -> {
+                            if (ex instanceof SlackApiException && ((SlackApiException) ex).getResponse().code() == 429) {
+                                return searchFromApi(client, accessToken, keywords, retryCount + 1);
+                            }
 
-                    throw new ExternalFailure("Could not call searchAll", ex);
-                });
+                            throw new ExternalFailure("Failed to call searchAll", ex);
+                        })
+                        .get());
 
         return result
                 .mapFailure(API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex))
@@ -246,18 +246,19 @@ public class SlackClient {
         }
 
         return Try.of(() -> client.conversationsList(r -> r
-                        .token(accessToken)
-                        .limit(1000)
-                        .types(List.of(ConversationType.PUBLIC_CHANNEL))
-                        .excludeArchived(true)
-                        .cursor(cursor)).get())
-                .recover(SlackApiException.class, ex -> {
-                    if (ex.getResponse().code() == 429) {
-                        return findConversationListFromApi(client, accessToken, cursor, retryCount + 1);
-                    }
+                                .token(accessToken)
+                                .limit(1000)
+                                .types(List.of(ConversationType.PUBLIC_CHANNEL))
+                                .excludeArchived(true)
+                                .cursor(cursor))
+                        .exceptionally(ex -> {
+                            if (ex instanceof SlackApiException && ((SlackApiException) ex).getResponse().code() == 429) {
+                                return findConversationListFromApi(client, accessToken, cursor, retryCount + 1);
+                            }
 
-                    throw new ExternalFailure("Could not call conversationsList", ex);
-                })
+                            throw new ExternalFailure("Failed to call conversationsList", ex);
+                        })
+                        .get())
                 .get();
     }
 }
