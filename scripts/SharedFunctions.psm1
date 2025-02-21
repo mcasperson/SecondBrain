@@ -99,7 +99,7 @@ Function Invoke-CustomCommand
 
             if ($processTimeout -gt 0)
             {
-                Write-Host "Still running... $( $executionTime / 1000 ) seconds, $( $processTimeout / 1000 ) seconds left" -ForegroundColor yellow
+                Write-Host "Still running... $( $executionTime / 1000 ) seconds, $( $remainingTimeout / 1000 ) seconds left" -ForegroundColor yellow
             }
             else
             {
