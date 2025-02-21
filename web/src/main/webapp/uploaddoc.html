@@ -115,6 +115,12 @@
                     </div>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label" for="contextWindow">Context Window</label>
+                    <input class="form-control" id="contextWindow" type="text" value="65536">
+                    <div class="form-text" id="contextWindowHelp">This is the context window used by Ollama
+                    </div>
+                </div>
+                <div class="mb-3">
                     <button class="btn btn-primary" type="submit">Submit</button>
                 </div>
                 <div class="mb-3">
@@ -168,6 +174,7 @@
 
         const prompt = document.getElementById('prompt').value;
         const customModel = document.getElementById('customModel').value;
+        const contextWindow = document.getElementById('contextWindow').value;
 
         savePrompt(prompt);
         displaySavedPrompts();
@@ -183,7 +190,8 @@
                     filename: file.name,
                     upload_keywords: keywords.value,
                     upload_keyword_window: keywordWindow.value,
-                    custom_model: customModel
+                    custom_model: customModel,
+                    context_window: contextWindow
                 };
                 fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
                     method: 'POST',

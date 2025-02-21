@@ -174,7 +174,7 @@ public class DirectoryScan implements Tool<Void> {
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
-                        modelConfig.getCalculatedContextWindowChars()))
+                        modelConfig.getCalculatedContextWindow(environmentSettings)))
                 .map(ragDocs -> mergeContext(ragDocs, environmentSettings, debugArgs))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
@@ -190,7 +190,7 @@ public class DirectoryScan implements Tool<Void> {
                         ragDoc,
                         modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
-                        modelConfig.getCalculatedContextWindow()));
+                        modelConfig.getCalculatedContextWindow(environmentSettings)));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411

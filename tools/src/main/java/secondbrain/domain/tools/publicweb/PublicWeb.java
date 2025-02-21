@@ -158,13 +158,13 @@ public class PublicWeb implements Tool<Void> {
                         .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                         .buildFinalPrompt(
                                 INSTRUCTIONS,
-                                ragContext.getDocumentLeft(modelConfig.getCalculatedContextWindowChars()),
+                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars(environmentSettings)),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
                         modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
-                        modelConfig.getCalculatedContextWindow()));
+                        modelConfig.getCalculatedContextWindow(environmentSettings)));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411

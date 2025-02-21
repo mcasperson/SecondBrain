@@ -41,16 +41,19 @@ public class ModelConfig {
         return contextWindow;
     }
 
-    public Integer getCalculatedContextWindow() {
+    public Integer getCalculatedContextWindow(final Map<String, String> context) {
         return Try.of(contextWindow::get)
+                .mapTry(validateString::throwIfEmpty)
+                .recover(ex -> context.get("context_window"))
+                .mapTry(validateString::throwIfEmpty)
                 .map(Integer::parseInt)
                 .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
                 .get();
     }
 
-    public Integer getCalculatedContextWindowChars() {
-        return getCalculatedContextWindow() == null
+    public Integer getCalculatedContextWindowChars(final Map<String, String> context) {
+        return getCalculatedContextWindow(context) == null
                 ? Constants.DEFAULT_MAX_CONTEXT_LENGTH
-                : (int) (getCalculatedContextWindow() * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
+                : (int) (getCalculatedContextWindow(context) * Constants.CONTENT_WINDOW_BUFFER * Constants.CHARACTERS_PER_TOKEN);
     }
 }

@@ -207,7 +207,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
-                        modelConfig.getCalculatedContextWindowChars()))
+                        modelConfig.getCalculatedContextWindow(environmentSettings)))
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
                 .map(tickets -> mergeContext(tickets, debugArgs, modelConfig.getCalculatedModel(environmentSettings)))
                 // Make sure we had some content for the prompt
@@ -223,7 +223,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                         ragDoc,
                         modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
-                        modelConfig.getCalculatedContextWindow()))
+                        modelConfig.getCalculatedContextWindow(environmentSettings)))
                 // Clean up the response
                 .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())))
                 .recover(EmptyString.class, e -> new RagMultiDocumentContext<>("No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'", List.of(), ""));
@@ -331,20 +331,20 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     /**
      * Summarise an individual ticket
      */
-    private String getTicketSummary(final String ticketContents, final Map<String, String> context) {
+    private String getTicketSummary(final String ticketContents, final Map<String, String> environmentSettings) {
         final String ticketContext = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(context))
+                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                 .buildContextPrompt("ZenDesk Ticket", ticketContents);
 
         final String prompt = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(context))
+                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                 .buildFinalPrompt("You are a helpful agent", ticketContext, "Summarise the ticket in one paragraph");
 
         return ollamaClient.callOllamaWithCache(
                 new RagMultiDocumentContext<>(prompt),
-                modelConfig.getCalculatedModel(context),
+                modelConfig.getCalculatedModel(environmentSettings),
                 getName(),
-                modelConfig.getCalculatedContextWindow()
+                modelConfig.getCalculatedContextWindow(environmentSettings)
         ).combinedDocument();
     }
 
