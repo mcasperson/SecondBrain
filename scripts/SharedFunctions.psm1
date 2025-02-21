@@ -79,6 +79,7 @@ Function Invoke-CustomCommand
     $p.BeginErrorReadLine()
 
     $lastUpdate = 0
+    $executionTime = 0
     while (($global:myprocessrunning -eq $true) -and (($remainingTimeout -gt 0) -or ($processTimeout -le 0)))
     {
         # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
