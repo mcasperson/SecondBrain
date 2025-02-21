@@ -4,6 +4,24 @@ $global:stdErr = [System.Text.StringBuilder]::new()
 $global:stdOut = [System.Text.StringBuilder]::new()
 $global:myprocessrunning = $true
 
+Function New-TempDir
+{
+    # Create a temporary file
+    $tempFile = New-TemporaryFile
+
+    # Get the directory of the temporary file
+    $tempDir = Split-Path -Parent $tempFile.FullName
+
+    # Remove the temporary file
+    Remove-Item $tempFile.FullName | Out-Null
+
+    $subDir = $tempDir + "/" + $( New-Guid )
+
+    mkdir $subDir | Out-Null
+
+    return $subDir
+}
+
 Function Invoke-CustomCommand
 {
     Param (
@@ -16,6 +34,7 @@ Function Invoke-CustomCommand
 
     $remainingTimeout = $processTimeout
     $executionTime = 0
+    $lastUpdate = 0
 
     $global:stdErr.Clear()
     $global:stdOut.Clear()
@@ -59,8 +78,7 @@ Function Invoke-CustomCommand
     $p.Start() | Out-Null
 
     $p.BeginErrorReadLine()
-
-    $lastUpdate = 0
+    
     while (($global:myprocessrunning -eq $true) -and (($remainingTimeout -gt 0) -or ($processTimeout -le 0)))
     {
         # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
@@ -81,7 +99,7 @@ Function Invoke-CustomCommand
 
             if ($processTimeout -gt 0)
             {
-                Write-Host "Still running... $( $executionTime / 1000 ) seconds, $( $processTimeout / 1000 ) seconds left" -ForegroundColor yellow
+                Write-Host "Still running... $( $executionTime / 1000 ) seconds, $( $remainingTimeout / 1000 ) seconds left" -ForegroundColor yellow
             }
             else
             {

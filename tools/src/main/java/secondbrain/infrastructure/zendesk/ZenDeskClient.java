@@ -96,7 +96,7 @@ public class ZenDeskClient {
 
         final String target = url + "/api/v2/search.json";
 
-        return Try.of(() -> client.target(target)
+        return Try.withResources(() -> client.target(target)
                         .queryParam("query", query)
                         .queryParam("sort_by", "created_at")
                         .queryParam("sort_order", "desc")
@@ -105,9 +105,9 @@ public class ZenDeskClient {
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
                         .get())
-                .map(response -> Try.of(() -> responseValidation.validate(response, target))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskResponse.class))
-                        // Recurse if there is a next page and we have not gone too far
+                        // Recurse if there is a next page, and we have not gone too far
                         .map(r -> ArrayUtils.addAll(
                                 r.getResults(),
                                 r.next_page() != null && page < maxPage

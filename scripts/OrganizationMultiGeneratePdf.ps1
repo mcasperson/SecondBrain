@@ -20,18 +20,7 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 #$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
 $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
-# Create a temporary file
-$tempFile = New-TemporaryFile
-
-# Get the directory of the temporary file
-$tempDir = Split-Path -Parent $tempFile.FullName
-
-# Remove the temporary file
-Remove-Item $tempFile.FullName
-
-$subDir = $tempDir + "/" + $( New-Guid )
-
-mkdir $subDir
+$subDir = New-TempDir
 
 Write-Host "Working in $subDir"
 
@@ -84,12 +73,17 @@ if ($GenerateCompanyReports)
             continue
         }
 
+        # We can have thousands of entities to process, so we need to use threads to process them in parallel.
         $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
-            # Delay subsequent topics by 5 mins to allow the first run to pupulate the cache
+            # Delay subsequent topics by 1 min to allow the first run to pupulate the cache.
+            # The API access to external systems are often configured to return all the available results across the
+            # specified time range, cache them, and then have each entity pick their own data from the cache. This
+            # means the first time SecondBrain is run, it will make large requests to the external systems.
+            # Subsequent runs will get their data from the shared cache.
             if (($using:index) -gt 1)
             {
-                Start-Sleep -m (1000 * 60 * 5)
+                Start-Sleep -m (1000 * 60)
             }
 
             Import-Module $using:ModulePath
@@ -101,7 +95,7 @@ if ($GenerateCompanyReports)
             Get-Module
             Write-Host "Processing $entityName in $using:subDir $( $using:index ) of $( ($using:database).entities.Count )"
 
-            $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.slack.apidelay=350000`" `"-Dsb.cache.backup=$( $using:index % 100 -eq 0 )`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.minTimeBasedContext=1`" `"-Dsb.ollama.contextwindow=$using:contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$using:Days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$using:toolModel`" `"-Dsb.ollama.model=$using:model`" -jar $using:jarFile `"Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName. Include an executive summary as the first paragraph. If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes. You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt. You will be penalized for including a general summary of the Google Document in the report. You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities. You will be penalized for saying that you will monitor for tickets or messages in future. You will be penalized for for metioning a date range or period covered. You will be penalized for providing statistics or counts of the ZenDesk tickets. You will be penalized for providing instructions to refer to or link to the Google Document. You will be penalized for providing next steps, action items, recommendations, or looking ahead. You will be penalized for attempting to resolve the ZenDesk tickets. You will be penalized for mentioning the duration covered. You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID. You must use bullet point lists instead of numbered lists. You will be penalized for using nested bullet points. You will be penalized for using numbered lists in the output.`""
+            $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.slack.apidelay=120000`" `"-Dsb.cache.backup=$( $using:index % 100 -eq 1 )`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.minTimeBasedContext=1`" `"-Dsb.ollama.contextwindow=$using:contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$using:Days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$using:toolModel`" `"-Dsb.ollama.model=$using:model`" -jar $using:jarFile `"Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName. Include an executive summary as the first paragraph. If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes. You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt. You will be penalized for including a general summary of the Google Document in the report. You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities. You will be penalized for saying that you will monitor for tickets or messages in future. You will be penalized for for metioning a date range or period covered. You will be penalized for providing statistics or counts of the ZenDesk tickets. You will be penalized for providing instructions to refer to or link to the Google Document. You will be penalized for providing next steps, action items, recommendations, or looking ahead. You will be penalized for attempting to resolve the ZenDesk tickets. You will be penalized for mentioning the duration covered. You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID. You must use bullet point lists instead of numbered lists. You will be penalized for using nested bullet points. You will be penalized for using numbered lists in the output.`""
 
             Write-Host "StdOut"
             Write-Host $result.StdOut
@@ -190,7 +184,7 @@ if ($GenerateTopicReports)
 if ($GenerateExecutiveSummary)
 {
     # Delete the executie summary file
-    Remove-Item "$subDir/Executive Summary.md"
+    Remove-Item "$subDir/Executive Summary.md" | Out-Null
 
     # Get all files in the directory
     $files = Get-ChildItem -Path $subDir
