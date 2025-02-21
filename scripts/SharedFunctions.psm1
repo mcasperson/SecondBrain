@@ -34,6 +34,7 @@ Function Invoke-CustomCommand
 
     $remainingTimeout = $processTimeout
     $executionTime = 0
+    $lastUpdate = 0
 
     $global:stdErr.Clear()
     $global:stdOut.Clear()
@@ -77,9 +78,7 @@ Function Invoke-CustomCommand
     $p.Start() | Out-Null
 
     $p.BeginErrorReadLine()
-
-    $lastUpdate = 0
-    $executionTime = 0
+    
     while (($global:myprocessrunning -eq $true) -and (($remainingTimeout -gt 0) -or ($processTimeout -le 0)))
     {
         # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
