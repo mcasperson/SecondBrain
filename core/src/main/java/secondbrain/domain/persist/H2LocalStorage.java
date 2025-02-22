@@ -194,7 +194,7 @@ public class H2LocalStorage implements LocalStorage {
 
             final Try<Integer> result = Try
                     .of(() -> connection.prepareStatement("""
-                            DELETE FROM local_storage
+                            DELETE FROM LOCAL_STORAGE
                             WHERE timestamp IS NOT NULL
                             AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
                     .mapTry(PreparedStatement::executeUpdate);
@@ -224,7 +224,7 @@ public class H2LocalStorage implements LocalStorage {
             totalReads.incrementAndGet();
 
             final Try<String> result = Try.of(() -> connection.prepareStatement("""
-                            SELECT response FROM local_storage
+                            SELECT response FROM LOCAL_STORAGE
                                             WHERE tool = ?
                                             AND source = ?
                                             AND prompt_hash = ?
@@ -325,7 +325,7 @@ public class H2LocalStorage implements LocalStorage {
             }
 
             final Try<PreparedStatement> result = Try.of(() -> connection.prepareStatement("""
-                            INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
+                            INSERT INTO LOCAL_STORAGE (tool, source, prompt_hash, response, timestamp)
                             VALUES (?, ?, ?, ?, ?)""".stripIndent()))
                     .mapTry(preparedStatement -> {
                         preparedStatement.setString(1, tool);
