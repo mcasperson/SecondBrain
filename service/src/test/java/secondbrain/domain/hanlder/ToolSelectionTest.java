@@ -97,7 +97,7 @@ public class ToolSelectionTest {
     final @Container
     public GenericContainer<?> ollamaContainer = new GenericContainer<>("ollama/ollama:latest")
             // Mount a fixed directory where models can be downloaded and reused
-            .withFileSystemBind(Paths.get(System.getProperty("java.io.tmpdir")).resolve(Paths.get("secondbrain")).toString(), "/root/.ollama")
+            .withFileSystemBind(Paths.get(System.getProperty("user.home")).resolve(Paths.get(".secondbrain", "test")).toString(), "/root/.ollama")
             .withExposedPorts(11434);
 
     private final AtomicInteger testToolSelectionCounter = new AtomicInteger(0);
