@@ -70,8 +70,10 @@ public class H2LocalStorage implements LocalStorage {
         synchronized (H2LocalStorage.class) {
             if (connection == null) {
                 backupDatabase();
-                this.connection = getConnection();
-                deleteExpired();
+                this.connection = Try.of(this::getConnection)
+                        .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
+                        .onSuccess(conn -> deleteExpired())
+                        .getOrNull();
             }
         }
     }
@@ -177,6 +179,9 @@ public class H2LocalStorage implements LocalStorage {
                 CREATE INDEX IF NOT EXISTS idx_prompt_hash ON SECONDBRAIN.LOCAL_STORAGE(prompt_hash);""".stripIndent().replaceAll("\n", "");
     }
 
+    /**
+     * The auto server functionality doesn't work in Docker.
+     */
     private String getAutoServer() {
         return autoserver != null && autoserver.isPresent() && Boolean.parseBoolean(autoserver.get())
                 ? "TRUE"
