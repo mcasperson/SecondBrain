@@ -162,7 +162,7 @@ public class H2LocalStorage implements LocalStorage {
                 AUTO_SERVER=TRUE;
                 INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
                 SET SCHEMA SECONDBRAIN\\;
-                CREATE TABLE IF NOT EXISTS LOCAL_STORAGE
+                CREATE TABLE IF NOT EXISTS SECONDBRAIN.LOCAL_STORAGE
                 (tool VARCHAR(100) NOT NULL,
                 source VARCHAR(1024) NOT NULL,
                 prompt_hash VARCHAR(1024) NOT NULL,
