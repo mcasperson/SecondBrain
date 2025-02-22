@@ -180,7 +180,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
-                        modelConfig.getCalculatedContextWindowChars()))
+                        modelConfig.getCalculatedContextWindow(environmentSettings)))
                 .map(ragDocs -> mergeContext(ragDocs, debugArgs))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
@@ -194,7 +194,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                         ragDoc,
                         modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
-                        modelConfig.getCalculatedContextWindow()));
+                        modelConfig.getCalculatedContextWindow(environmentSettings)));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411

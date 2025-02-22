@@ -20,7 +20,9 @@ import secondbrain.domain.context.JdlSentenceVectorizer;
 import secondbrain.domain.context.SimpleSentenceSplitter;
 import secondbrain.domain.debug.DebugToolArgsKeyValue;
 import secondbrain.domain.encryption.JasyptEncryptor;
+import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
+import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.limit.ListLimiterAtomicCutOff;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.persist.H2LocalStorage;
@@ -88,12 +90,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @AddBeanClasses(Llama32ValidateInputs.class)
 @AddBeanClasses(RemoveSpacing.class)
 @AddBeanClasses(SanitizeEmail.class)
+@AddBeanClasses(LoggingExceptionHandler.class)
+@AddBeanClasses(DocumentTrimmerExactKeywords.class)
 public class ToolSelectionTest {
 
     final @Container
     public GenericContainer<?> ollamaContainer = new GenericContainer<>("ollama/ollama:latest")
             // Mount a fixed directory where models can be downloaded and reused
-            .withFileSystemBind(Paths.get(System.getProperty("java.io.tmpdir")).resolve(Paths.get("secondbrain")).toString(), "/root/.ollama")
+            .withFileSystemBind(Paths.get(System.getProperty("user.home")).resolve(Paths.get(".secondbrain", "test")).toString(), "/root/.ollama")
             .withExposedPorts(11434);
 
     private final AtomicInteger testToolSelectionCounter = new AtomicInteger(0);
@@ -112,7 +116,7 @@ public class ToolSelectionTest {
                         "sb.ollama.url", "http://localhost:" + ollamaContainer.getMappedPort(11434),
                         // Unfortunately llama3.2 is not reliable enough for tool selection.
                         // To make these tests reliable, we need to use llama3.1, which is a larger model.
-                        "sb.ollama.toolmodel", "llama3.1"),
+                        "sb.ollama.toolmodel", "llama3.1:8b-instruct-q5_K_M "),
                 "TestConfig",
                 Integer.MAX_VALUE
         );
@@ -134,7 +138,7 @@ public class ToolSelectionTest {
     void getModels() throws IOException, InterruptedException {
         ollamaContainer.start();
         ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.2");
-        ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.1");
+        ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.1:8b-instruct-q5_K_M ");
     }
 
     @RepeatedTest(value = 5, failureThreshold = 1)

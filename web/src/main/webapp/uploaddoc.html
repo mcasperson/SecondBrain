@@ -100,10 +100,14 @@
                         <option value="gemma2:27b">gemma2:27b</option>
                         <option value="mixtral:8x7b">mixtral:8x7b</option>
                         <option value="mistral">mistral</option>
+                        <option value="mistral-small">mistral-small</option>
                         <option value="phi3:3.8b">phi3:3.8b</option>
                         <option value="phi3:14b">phi3:14b</option>
                         <option value="phi4:14b">phi4:14b</option>
+                        <option value="hf.co/unsloth/phi-4-GGUF">hf.co/unsloth/phi-4-GGUF</option>
                         <option value="qwen2">qwen2</option>
+                        <option value="qwen2.5:32b">qwen2.5:32b</option>
+                        <option value="qwen2.5-coder">qwen2.5-coder</option>
                         <option value="qwq">qwq</option>
                     </select>
                     <div class="form-text" id="customModelHelp">These models must be <a
@@ -112,6 +116,12 @@
                         <code>ollama pull phi4:14b</code> (when running Ollama locally)
                         or <code>docker exec secondbrain-ollama-1 ollama pull phi4</code> (when running Ollama in
                         Docker).
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="contextWindow">Context Window</label>
+                    <input class="form-control" id="contextWindow" type="text" value="65536">
+                    <div class="form-text" id="contextWindowHelp">This is the context window used by Ollama
                     </div>
                 </div>
                 <div class="mb-3">
@@ -168,6 +178,7 @@
 
         const prompt = document.getElementById('prompt').value;
         const customModel = document.getElementById('customModel').value;
+        const contextWindow = document.getElementById('contextWindow').value;
 
         savePrompt(prompt);
         displaySavedPrompts();
@@ -183,7 +194,8 @@
                     filename: file.name,
                     upload_keywords: keywords.value,
                     upload_keyword_window: keywordWindow.value,
-                    custom_model: customModel
+                    custom_model: customModel,
+                    context_window: contextWindow
                 };
                 fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
                     method: 'POST',

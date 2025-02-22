@@ -212,6 +212,8 @@ if ($GenerateExecutiveSummary)
     }
 }
 
+Compress-Archive -Path $subDir -DestinationPath "$PdfFile.source.zip"
+
 if ($GeneratePDF)
 {
     $ExecutiveSummaryLog = "/tmp/pdfgenerate PDF $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"

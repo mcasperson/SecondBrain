@@ -47,6 +47,9 @@ public class H2LocalStorage implements LocalStorage {
     @ConfigProperty(name = "sb.cache.readonly")
     private Optional<String> readOnly;
     @Inject
+    @ConfigProperty(name = "sb.cache.autoserver", defaultValue = "true")
+    private Optional<String> autoserver;
+    @Inject
     @ConfigProperty(name = "sb.cache.writeonly")
     private Optional<String> writeOnly;
     @Inject
@@ -67,8 +70,10 @@ public class H2LocalStorage implements LocalStorage {
         synchronized (H2LocalStorage.class) {
             if (connection == null) {
                 backupDatabase();
-                this.connection = getConnection();
-                deleteExpired();
+                this.connection = Try.of(this::getConnection)
+                        .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
+                        .onSuccess(conn -> deleteExpired())
+                        .getOrNull();
             }
         }
     }
@@ -159,19 +164,28 @@ public class H2LocalStorage implements LocalStorage {
 
     private String getConnectionString() {
         return "jdbc:h2:file:" + getDatabasePath() + ";" + """
-                AUTO_SERVER=TRUE;
+                AUTO_SERVER=""" + getAutoServer() + ";" + """
                 INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
                 SET SCHEMA SECONDBRAIN\\;
-                CREATE TABLE IF NOT EXISTS local_storage
+                CREATE TABLE IF NOT EXISTS SECONDBRAIN.LOCAL_STORAGE
                 (tool VARCHAR(100) NOT NULL,
                 source VARCHAR(1024) NOT NULL,
                 prompt_hash VARCHAR(1024) NOT NULL,
                 response CLOB NOT NULL,
                 timestamp TIMESTAMP DEFAULT NULL)\\;
-                CREATE INDEX IF NOT EXISTS idx_timestamp ON local_storage(timestamp)\\;
-                CREATE INDEX IF NOT EXISTS idx_tool ON local_storage(tool)\\;
-                CREATE INDEX IF NOT EXISTS idx_source ON local_storage(source)\\;
-                CREATE INDEX IF NOT EXISTS idx_prompt_hash ON local_storage(prompt_hash);""".stripIndent().replaceAll("\n", "");
+                CREATE INDEX IF NOT EXISTS idx_timestamp ON SECONDBRAIN.LOCAL_STORAGE(timestamp)\\;
+                CREATE INDEX IF NOT EXISTS idx_tool ON SECONDBRAIN.LOCAL_STORAGE(tool)\\;
+                CREATE INDEX IF NOT EXISTS idx_source ON SECONDBRAIN.LOCAL_STORAGE(source)\\;
+                CREATE INDEX IF NOT EXISTS idx_prompt_hash ON SECONDBRAIN.LOCAL_STORAGE(prompt_hash);""".stripIndent().replaceAll("\n", "");
+    }
+
+    /**
+     * The auto server functionality doesn't work in Docker.
+     */
+    private String getAutoServer() {
+        return autoserver != null && autoserver.isPresent() && Boolean.parseBoolean(autoserver.get())
+                ? "TRUE"
+                : "FALSE";
     }
 
     private boolean isDisabled() {
@@ -194,7 +208,7 @@ public class H2LocalStorage implements LocalStorage {
 
             final Try<Integer> result = Try
                     .of(() -> connection.prepareStatement("""
-                            DELETE FROM local_storage
+                            DELETE FROM LOCAL_STORAGE
                             WHERE timestamp IS NOT NULL
                             AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
                     .mapTry(PreparedStatement::executeUpdate);
@@ -224,7 +238,7 @@ public class H2LocalStorage implements LocalStorage {
             totalReads.incrementAndGet();
 
             final Try<String> result = Try.of(() -> connection.prepareStatement("""
-                            SELECT response FROM local_storage
+                            SELECT response FROM LOCAL_STORAGE
                                             WHERE tool = ?
                                             AND source = ?
                                             AND prompt_hash = ?
@@ -325,7 +339,7 @@ public class H2LocalStorage implements LocalStorage {
             }
 
             final Try<PreparedStatement> result = Try.of(() -> connection.prepareStatement("""
-                            INSERT INTO local_storage (tool, source, prompt_hash, response, timestamp)
+                            INSERT INTO LOCAL_STORAGE (tool, source, prompt_hash, response, timestamp)
                             VALUES (?, ?, ?, ?, ?)""".stripIndent()))
                     .mapTry(preparedStatement -> {
                         preparedStatement.setString(1, tool);

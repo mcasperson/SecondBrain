@@ -200,13 +200,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                         // I've opted to get the end of the document if it is larger than the context window.
                                         // The end of the document is typically given more weight by LLMs, and so any long
                                         // document being processed should place the most relevant content towards the end.
-                                        multiRagDoc.getDocumentRight(modelConfig.getCalculatedContextWindowChars()),
+                                        multiRagDoc.getDocumentRight(modelConfig.getCalculatedContextWindow(environmentSettings)),
                                         prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
                         modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
-                        modelConfig.getCalculatedContextWindow()))
+                        modelConfig.getCalculatedContextWindow(environmentSettings)))
                 /*
                     InsufficientContext is expected when there is not enough information to answer the prompt.
                     It is not passed up though, as it is not a failure, but rather a lack of information.
