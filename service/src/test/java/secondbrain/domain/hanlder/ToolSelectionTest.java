@@ -116,7 +116,7 @@ public class ToolSelectionTest {
                         "sb.ollama.url", "http://localhost:" + ollamaContainer.getMappedPort(11434),
                         // Unfortunately llama3.2 is not reliable enough for tool selection.
                         // To make these tests reliable, we need to use llama3.1, which is a larger model.
-                        "sb.ollama.toolmodel", "llama3.1"),
+                        "sb.ollama.toolmodel", "llama3.1:8b-instruct-q5_K_M "),
                 "TestConfig",
                 Integer.MAX_VALUE
         );
@@ -138,7 +138,7 @@ public class ToolSelectionTest {
     void getModels() throws IOException, InterruptedException {
         ollamaContainer.start();
         ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.2");
-        ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.1");
+        ollamaContainer.execInContainer("/usr/bin/ollama", "pull", "llama3.1:8b-instruct-q5_K_M ");
     }
 
     @RepeatedTest(value = 5, failureThreshold = 1)
