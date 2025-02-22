@@ -20,7 +20,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
-        <resteasy.version>6.2.10.Final</resteasy.version>
+        <resteasy.version>6.2.11.Final</resteasy.version>
     </properties>
 
     <dependencies>
