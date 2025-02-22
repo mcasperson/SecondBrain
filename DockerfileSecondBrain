@@ -29,7 +29,7 @@ ENV SB_GOOGLE_REDIRECTURL=changeme
 ENV SB_CACHE_PATH=/cache
 
 RUN mkdir -p $SB_CACHE_PATH
-RUN chown -R payara:payara ${$SB_CACHE_PATH}
+RUN chown -R payara:payara ${SB_CACHE_PATH}
 
 # Create and set the Payara user and working directory owned by the new user
 RUN addgroup payara && \
