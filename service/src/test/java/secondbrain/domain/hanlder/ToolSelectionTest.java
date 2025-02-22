@@ -22,6 +22,7 @@ import secondbrain.domain.debug.DebugToolArgsKeyValue;
 import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
+import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.limit.ListLimiterAtomicCutOff;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.persist.H2LocalStorage;
@@ -90,6 +91,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @AddBeanClasses(RemoveSpacing.class)
 @AddBeanClasses(SanitizeEmail.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
+@AddBeanClasses(DocumentTrimmerExactKeywords.class)
 public class ToolSelectionTest {
 
     final @Container
