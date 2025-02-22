@@ -106,3 +106,6 @@ jobs:
           tag_name: ${{ steps.determine_version.outputs.semVer }}+run${{ github.run_number }}-attempt${{ github.run_attempt }}
           draft: ${{ github.ref == 'refs/heads/main' && 'false' || 'true' }}
           name: Release ${{ steps.determine_version.outputs.semVer }} Run ${{ github.run_number }} Attempt ${{ github.run_attempt }}
+
+      - name: Allow ollama models to be cached
+        run: sudo chmod -R 777 ~/.secondbrain
