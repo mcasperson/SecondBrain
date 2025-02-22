@@ -20,6 +20,7 @@ import secondbrain.domain.context.JdlSentenceVectorizer;
 import secondbrain.domain.context.SimpleSentenceSplitter;
 import secondbrain.domain.debug.DebugToolArgsKeyValue;
 import secondbrain.domain.encryption.JasyptEncryptor;
+import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.ListLimiterAtomicCutOff;
 import secondbrain.domain.logger.Loggers;
@@ -88,6 +89,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @AddBeanClasses(Llama32ValidateInputs.class)
 @AddBeanClasses(RemoveSpacing.class)
 @AddBeanClasses(SanitizeEmail.class)
+@AddBeanClasses(LoggingExceptionHandler.class)
 public class ToolSelectionTest {
 
     final @Container
