@@ -162,16 +162,16 @@ public class H2LocalStorage implements LocalStorage {
                 AUTO_SERVER=TRUE;
                 INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
                 SET SCHEMA SECONDBRAIN\\;
-                CREATE TABLE IF NOT EXISTS local_storage
+                CREATE TABLE IF NOT EXISTS LOCAL_STORAGE
                 (tool VARCHAR(100) NOT NULL,
                 source VARCHAR(1024) NOT NULL,
                 prompt_hash VARCHAR(1024) NOT NULL,
                 response CLOB NOT NULL,
                 timestamp TIMESTAMP DEFAULT NULL)\\;
-                CREATE INDEX IF NOT EXISTS idx_timestamp ON local_storage(timestamp)\\;
-                CREATE INDEX IF NOT EXISTS idx_tool ON local_storage(tool)\\;
-                CREATE INDEX IF NOT EXISTS idx_source ON local_storage(source)\\;
-                CREATE INDEX IF NOT EXISTS idx_prompt_hash ON local_storage(prompt_hash);""".stripIndent().replaceAll("\n", "");
+                CREATE INDEX IF NOT EXISTS idx_timestamp ON LOCAL_STORAGE(timestamp)\\;
+                CREATE INDEX IF NOT EXISTS idx_tool ON LOCAL_STORAGE(tool)\\;
+                CREATE INDEX IF NOT EXISTS idx_source ON LOCAL_STORAGE(source)\\;
+                CREATE INDEX IF NOT EXISTS idx_prompt_hash ON LOCAL_STORAGE(prompt_hash);""".stripIndent().replaceAll("\n", "");
     }
 
     private boolean isDisabled() {
