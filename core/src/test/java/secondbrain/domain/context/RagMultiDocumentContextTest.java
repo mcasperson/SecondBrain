@@ -41,8 +41,8 @@ class RagMultiDocumentContextTest {
 
         // Verify the annotations
         assertEquals(2, annotations.size());
-        assertTrue(annotations.stream().anyMatch(e -> e.context().equals("This is a test document")));
-        assertTrue(annotations.stream().anyMatch(e -> e.context().equals("It contains multiple sentences")));
+        assertTrue(annotations.stream().anyMatch(e -> e.originalContext().equals("This is a test document")));
+        assertTrue(annotations.stream().anyMatch(e -> e.originalContext().equals("It contains multiple sentences")));
 
         // Get lookups
         final List<RagSentence> lookups = multiContext.getAnnotationLookup(annotations);
@@ -57,8 +57,8 @@ class RagMultiDocumentContextTest {
                 similarityCalculator,
                 sentenceVectorizer
         );
-        assertTrue(annotatedDocument.result().contains("[2]: This is a test document"));
-        assertTrue(annotatedDocument.result().contains("[1]: It contains multiple sentences"));
+        assertTrue(annotatedDocument.result().contains("[1]: This is a test document"));
+        assertTrue(annotatedDocument.result().contains("[2]: It contains multiple sentences"));
         assertEquals(1, annotatedDocument.annotationCoverage());
     }
 
