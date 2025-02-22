@@ -47,6 +47,9 @@ public class H2LocalStorage implements LocalStorage {
     @ConfigProperty(name = "sb.cache.readonly")
     private Optional<String> readOnly;
     @Inject
+    @ConfigProperty(name = "sb.cache.autoserver", defaultValue = "true")
+    private Optional<String> autoserver;
+    @Inject
     @ConfigProperty(name = "sb.cache.writeonly")
     private Optional<String> writeOnly;
     @Inject
@@ -159,7 +162,7 @@ public class H2LocalStorage implements LocalStorage {
 
     private String getConnectionString() {
         return "jdbc:h2:file:" + getDatabasePath() + ";" + """
-                AUTO_SERVER=TRUE;
+                AUTO_SERVER=""" + getAutoServer() + ";" + """
                 INIT=CREATE SCHEMA IF NOT EXISTS SECONDBRAIN\\;
                 SET SCHEMA SECONDBRAIN\\;
                 CREATE TABLE IF NOT EXISTS SECONDBRAIN.LOCAL_STORAGE
@@ -172,6 +175,12 @@ public class H2LocalStorage implements LocalStorage {
                 CREATE INDEX IF NOT EXISTS idx_tool ON SECONDBRAIN.LOCAL_STORAGE(tool)\\;
                 CREATE INDEX IF NOT EXISTS idx_source ON SECONDBRAIN.LOCAL_STORAGE(source)\\;
                 CREATE INDEX IF NOT EXISTS idx_prompt_hash ON SECONDBRAIN.LOCAL_STORAGE(prompt_hash);""".stripIndent().replaceAll("\n", "");
+    }
+
+    private String getAutoServer() {
+        return autoserver != null && autoserver.isPresent() && Boolean.parseBoolean(autoserver.get())
+                ? "TRUE"
+                : "FALSE";
     }
 
     private boolean isDisabled() {
