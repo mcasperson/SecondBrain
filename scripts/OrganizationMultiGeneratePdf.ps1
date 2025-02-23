@@ -7,7 +7,8 @@ Param (
     [string]$PdfTitle = "Weekly Customer Digest",
     [string]$CoverPage = "logo.jpg",
     [string]$PdfFile = $( $env:PDF_OUTPUT ),
-    [string]$SlackImage = "https://gist.github.com/user-attachments/assets/e4d4c4a8-7255-4e01-bbe9-9c211df8d8df"
+    [string]$SlackImage = "https://gist.github.com/user-attachments/assets/e4d4c4a8-7255-4e01-bbe9-9c211df8d8df",
+    [string]$SlackWebHook = $($env:SLACK_PDF_WEBHOOK))
 )
 
 $ModulePath = "$PSScriptRoot\SharedFunctions.psm1"
@@ -241,7 +242,7 @@ $JqFilter = '"{\"blocks\":[{\"type\":\"section\", \"text\": {\"type\": \"mrkdwn\
 $SlackBody = $( rclone lsjson "gdrive:AI of Sauron/$PdfFileRelative" | jq "$SlackImage" -r $JqFilter )
 
 # Post to Slack
-Invoke-RestMethod -Uri $env:SLACK_PDF_WEBHOOK -Method Post -ContentType 'application/json' -Body $SlackBody
+Invoke-RestMethod -Uri $SlackWebHook -Method Post -ContentType 'application/json' -Body $SlackBody
 
 
 
