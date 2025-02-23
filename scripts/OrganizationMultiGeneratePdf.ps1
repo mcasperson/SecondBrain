@@ -231,6 +231,15 @@ if ($GeneratePDF)
     }
 }
 
+# Save to google drive
+rclone copy "$PdfFile" "gdrive:AI of Sauron"
+
+# Get the Slack webhook body
+$PdfFileRelative = Split-Path -Path $PdfFile -Leaf
+$SlackBody = $( rclone lsjson "gdrive:AI of Sauron/$PdfFileRelative" | jq -r '"{\"blocks\":[{\"type\":\"section\", \"text\": {\"type\": \"mrkdwn\", \"text\": \"https://drive.google.com/file/d/" + .[0].ID + "/view?usp=sharing\"}},{\"type\":\"image\",\"title\": {\"type\": \"plain_text\", \"text\": \"AI of Sauron\"},\"image_url\": \"https://gist.github.com/user-attachments/assets/e4d4c4a8-7255-4e01-bbe9-9c211df8d8df\", \"alt_text\": \"AI of Sauron\"}]}"' )
+
+# Post to Slack
+curl -X POST -H 'Content-type: application/json' --data $SlackBody $env:SLACK_PDF_WEBHOOK
 
 
 
