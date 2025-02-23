@@ -6,7 +6,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -185,10 +184,6 @@ class PlanHatUsageConfig {
     private Optional<String> configCompany;
 
     @Inject
-    @ConfigProperty(name = "sb.planhat.days")
-    private Optional<String> configFrom;
-
-    @Inject
     @ConfigProperty(name = "sb.planhat.accesstoken")
     private Optional<String> configToken;
 
@@ -248,10 +243,6 @@ class PlanHatUsageConfig {
 
     public Optional<String> getConfigCompany() {
         return configCompany;
-    }
-
-    public Optional<String> getConfigFrom() {
-        return configFrom;
     }
 
     public Optional<String> getConfigToken() {
@@ -332,28 +323,15 @@ class PlanHatUsageConfig {
                     getConfigCompany()::get,
                     arguments,
                     context,
-                    PlanHat.COMPANY_ID_ARGS,
-                    "planhat_company",
+                    PlanHatUsage.COMPANY_ID_ARGS,
+                    "planhat_usage_company",
                     "").value();
         }
-
-        public int getDays() {
-            final Argument argument = getArgsAccessor().getArgument(
-                    getConfigFrom()::get,
-                    arguments,
-                    context,
-                    PlanHat.DAYS_ARG,
-                    "planhat_days",
-                    "");
-
-            return NumberUtils.toInt(argument.value(), 1);
-        }
-
 
         public String getToken() {
             return Try.of(getConfigToken()::get)
                     .mapTry(getValidateString()::throwIfEmpty)
-                    .recover(e -> context.get("planhat_token"))
+                    .recover(e -> context.get("planhat_usage_token"))
                     .mapTry(getValidateString()::throwIfEmpty)
                     .recover(e -> "")
                     .get();
@@ -379,7 +357,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHat.DISABLE_LINKS_ARG,
-                    "planhat_disablelinks",
+                    "planhat_usage_disablelinks",
                     "false");
 
             return BooleanUtils.toBoolean(argument.value());

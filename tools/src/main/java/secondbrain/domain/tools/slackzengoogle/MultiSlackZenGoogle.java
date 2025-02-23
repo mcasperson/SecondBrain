@@ -452,7 +452,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true)))
+                        new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, id, true)))
                 .flatMap(args -> Try.of(() -> planHatUsage.getContext(
                                 context,
                                 prompt,

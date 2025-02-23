@@ -87,7 +87,7 @@ public class PlanHatClient {
 
     @Retry
     private Company getCompanyApi(final Client client, final String company, final String token) {
-        final String target = url + "/company/" + URLEncoder.encode(company, Charset.defaultCharset());
+        final String target = url + "/companies/" + URLEncoder.encode(company, Charset.defaultCharset());
 
         return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
                         .request()
