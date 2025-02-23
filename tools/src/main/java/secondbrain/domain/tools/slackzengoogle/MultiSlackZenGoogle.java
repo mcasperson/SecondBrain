@@ -31,6 +31,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
+import secondbrain.domain.tools.planhat.PlanHatUsage;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.slack.SlackSearch;
@@ -94,6 +95,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private PlanHat planHat;
+
+    @Inject
+    private PlanHatUsage planHatUsage;
 
     @Inject
     private ZenDeskOrganization zenDeskOrganization;
@@ -350,6 +354,12 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         retValue.addAll(planHatContext);
         retValue.addAll(gongContext);
 
+        // Only proceed with these details if we have enough context to include this entity in the response.
+        if (!validateSufficientContext(retValue, parsedArgs).isEmpty()) {
+            final List<RagDocumentContext<Void>> planHatUsageContext = getPlanhatUsageContext(positionalEntity, parsedArgs, prompt, context);
+            retValue.addAll(planHatUsageContext);
+        }
+
         return contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
     }
 
@@ -431,6 +441,29 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> log.info("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> log.warning("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
+                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
+    }
+
+    private List<RagDocumentContext<Void>> getPlanhatUsageContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        logger.info("Getting PlanHat usage for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        return Objects.requireNonNullElse(positionalEntity.entity().getPlanHat(), List.<String>of())
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(
+                        new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, id, true)))
+                .flatMap(args -> Try.of(() -> planHatUsage.getContext(
+                                context,
+                                prompt,
+                                args))
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(InternalFailure.class, ex -> log.info("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> log.warning("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
