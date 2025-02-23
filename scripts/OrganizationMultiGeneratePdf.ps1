@@ -8,7 +8,7 @@ Param (
     [string]$CoverPage = "logo.jpg",
     [string]$PdfFile = $( $env:PDF_OUTPUT ),
     [string]$SlackImage = "https://gist.github.com/user-attachments/assets/e4d4c4a8-7255-4e01-bbe9-9c211df8d8df",
-    [string]$SlackWebHook = $($env:SLACK_PDF_WEBHOOK))
+    [string]$SlackWebHook = $( $env:SLACK_PDF_WEBHOOK )
 )
 
 $ModulePath = "$PSScriptRoot\SharedFunctions.psm1"
