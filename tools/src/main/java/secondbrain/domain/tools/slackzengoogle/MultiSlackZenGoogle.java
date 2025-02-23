@@ -344,7 +344,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> slackKeywordSearch = getSlackKeywordContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> googleContext = getGoogleContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> planHatContext = getPlanhatContext(positionalEntity, parsedArgs, prompt, context);
-        final List<RagDocumentContext<Void>> planHatUsageContext = getPlanhatUsageContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> gongContext = getGongContext(positionalEntity, parsedArgs, prompt, context);
 
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
@@ -353,8 +352,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         retValue.addAll(googleContext);
         retValue.addAll(zenContext);
         retValue.addAll(planHatContext);
-        retValue.addAll(planHatUsageContext);
         retValue.addAll(gongContext);
+
+        // Only proceed with these details if we have enough context to include this entity in the response.
+        if (!validateSufficientContext(retValue, parsedArgs).isEmpty()) {
+            final List<RagDocumentContext<Void>> planHatUsageContext = getPlanhatUsageContext(positionalEntity, parsedArgs, prompt, context);
+            retValue.addAll(planHatUsageContext);
+        }
 
         return contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
     }
