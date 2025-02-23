@@ -164,6 +164,7 @@ public class PromptHandlerOllama implements PromptHandler {
                 document.individualContexts()
                         .stream()
                         .sorted(Comparator.comparing(RagDocumentContext::getGroup))
+                        .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.link()))
                         .map(ragDoc ->
                                 getRagDocGroupPrefix(ragDoc)
                                         + ragDoc.link()
