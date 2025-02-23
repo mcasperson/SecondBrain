@@ -238,8 +238,8 @@ rclone copy "$PdfFile" "gdrive:AI of Sauron"
 
 # Get the Slack webhook body
 $PdfFileRelative = Split-Path -Path $PdfFile -Leaf
-$JqFilter = '"{\"blocks\":[{\"type\":\"section\", \"text\": {\"type\": \"mrkdwn\", \"text\": \"https://drive.google.com/file/d/" + .[0].ID + "/view?usp=sharing\"}},{\"type\":\"image\",\"title\": {\"type\": \"plain_text\", \"text\": \"AI of Sauron\"},\"image_url\": \"' + $SlackImage + '\", \"alt_text\": \"AI of Sauron\"}]}"'
-$SlackBody = $( rclone lsjson "gdrive:AI of Sauron/$PdfFileRelative" | jq "$SlackImage" -r $JqFilter )
+$JqFilter = '"{\"blocks\":[{\"type\":\"section\", \"text\": {\"type\": \"mrkdwn\", \"text\": \"<https://drive.google.com/file/d/" + .[0].ID + "/view?usp=sharing|' + $PdfTitle + '>\"}},{\"type\":\"image\",\"title\": {\"type\": \"plain_text\", \"text\": \"AI of Sauron\"},\"image_url\": \"' + $SlackImage + '\", \"alt_text\": \"AI of Sauron\"}]}"'
+$SlackBody = $( rclone lsjson "gdrive:AI of Sauron/$PdfFileRelative" | jq -r $JqFilter )
 
 # Post to Slack
 Invoke-RestMethod -Uri $SlackWebHook -Method Post -ContentType 'application/json' -Body $SlackBody
