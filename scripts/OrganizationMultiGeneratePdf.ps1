@@ -233,7 +233,7 @@ if ($GeneratePDF)
     }
 }
 
-# Save to google drive
+# Save to google drive with https://rclone.org/
 rclone copy "$PdfFile" "gdrive:AI of Sauron"
 
 # Get the Slack webhook body
