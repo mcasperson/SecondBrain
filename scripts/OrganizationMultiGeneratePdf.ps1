@@ -47,7 +47,7 @@ $model = "qwen2.5:32b"
 $contextWindow = "65536"
 #$contextWindow = "131072"
 
-$sevenDaysAgo = (Get-Date).AddDays(-$Days).ToString("yyyy-MM-dd")
+$from = (Get-Date).AddDays(-$Days).ToString("yyyy-MM-dd")
 $now = (Get-Date).ToString("yyyy-MM-dd")
 
 # First step is to process all the entities to generate a high level summary
@@ -220,7 +220,7 @@ if ($GeneratePDF)
 {
     $ExecutiveSummaryLog = "/tmp/pdfgenerate PDF $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
-    $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" --directory `"$subDir`" --pdf `"$PdfFile`" --title `"$PdfTitle`" --date_from `"$sevenDaysAgo`" --date_to `"$now`" --cover_page `"$CoverPage`""
+    $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" --directory `"$subDir`" --pdf `"$PdfFile`" --title `"$PdfTitle`" --date_from `"$from`" --date_to `"$now`" --cover_page `"$CoverPage`""
     Add-Content -Path $ExecutiveSummaryLog -Value $pdfResult.StdOut
     Add-Content -Path $ExecutiveSummaryLog -Value $pdfResult.StdErr
 
@@ -238,7 +238,7 @@ rclone copy "$PdfFile" "gdrive:AI of Sauron"
 
 # Get the Slack webhook body
 $PdfFileRelative = Split-Path -Path $PdfFile -Leaf
-$JqFilter = '"{\"blocks\":[{\"type\":\"section\", \"text\": {\"type\": \"mrkdwn\", \"text\": \"<https://drive.google.com/file/d/" + .[0].ID + "/view?usp=sharing|' + $PdfTitle + '>\"}},{\"type\":\"image\",\"title\": {\"type\": \"plain_text\", \"text\": \"AI of Sauron\"},\"image_url\": \"' + $SlackImage + '\", \"alt_text\": \"AI of Sauron\"}]}"'
+$JqFilter = '"{\"blocks\":[{\"type\":\"section\", \"text\": {\"type\": \"mrkdwn\", \"text\": \"<https://drive.google.com/file/d/" + .[0].ID + "/view?usp=sharing|' + $PdfTitle + " " + $from + " to " + $now + '>\"}},{\"type\":\"image\",\"title\": {\"type\": \"plain_text\", \"text\": \"AI of Sauron\"},\"image_url\": \"' + $SlackImage + '\", \"alt_text\": \"AI of Sauron\"}]}"'
 $SlackBody = $( rclone lsjson "gdrive:AI of Sauron/$PdfFileRelative" | jq -r $JqFilter )
 
 # Post to Slack
