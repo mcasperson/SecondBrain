@@ -1,7 +1,9 @@
 import argparse
-import markdown2
+import json
 import os
 import re
+
+import markdown2
 from fpdf.enums import XPos, YPos
 from fpdf.fpdf import FPDF
 
@@ -85,6 +87,24 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     topic_prefix = 'TOPIC '
     contents = []
 
+    # Parse the metadata
+    total_context = 0
+    total_entities = 0
+    average_context = 0
+    for filename in sorted(os.listdir(directory)):
+        if filename.startswith(company_prefix) and filename.endswith('.json'):
+            filepath = os.path.join(directory, filename)
+            with open(filepath, 'r', encoding='utf-8') as file:
+                try:
+                    json_data = json.load(file)
+                    total_entities += 1
+                    total_context += json_data.get('contextCount', 0)
+                except json.JSONDecodeError:
+                    print(f"Error parsing {filename}")
+
+    if total_entities > 0:
+        average_context = total_context / total_entities
+
     # Move the Executive Summary to the top
     if os.path.exists(os.path.join(directory, 'Executive Summary.md')):
         contents.append({'title': 'Executive Summary', 'filename': os.path.join(directory, 'Executive Summary.md'),
@@ -100,8 +120,25 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     # Find the companies in the second loop
     for filename in sorted(os.listdir(directory)):
         if filename.startswith(company_prefix) and filename.endswith('.md'):
+            # Get the filename with extension
+            raw_file = os.path.splitext(filename)[0]
+
+            # Get the metadata file
+            metadata = os.path.exists(os.path.join(directory, raw_file + ".json"))
+
+            high_activity = False
+            if os.path.exists(metadata):
+                with open(metadata, 'r', encoding='utf-8') as file:
+                    json_data = json.load(file)
+                    if json_data['contextCount'] > average_context:
+                        high_activity = True
+
             # Get file name without extension or the prefix
-            title = (os.path.splitext(filename)[0])[len(company_prefix):]
+            title = raw_file[len(company_prefix):]
+
+            if high_activity:
+                title = title + " (High Activity)"
+
             contents.append({'title': title, 'filename': filename, 'link': pdf.add_link()})
 
     # Add Table of Contents
