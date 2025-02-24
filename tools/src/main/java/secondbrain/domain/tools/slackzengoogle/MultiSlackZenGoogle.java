@@ -23,6 +23,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
@@ -39,6 +40,9 @@ import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -73,6 +77,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_ENTITY_NAME_ARG = "entityName";
     public static final String MULTI_SLACK_ZEN_MAX_ENTITIES_ARG = "maxEntities";
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
+    public static final String MULTI_SLACK_ZEN_META_REPORT_ARG = "metaReport";
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     private static final int BATCH_SIZE = 10;
     private static final String INSTRUCTIONS = """
@@ -131,6 +136,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private JsonDeserializer jsonDeserializer;
 
     @Override
     public String getName() {
@@ -360,7 +368,25 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             retValue.addAll(planHatUsageContext);
         }
 
-        return contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
+        final List<RagDocumentContext<Void>> filteredContext = contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
+
+        saveMetaResult(positionalEntity, filteredContext, parsedArgs);
+
+        return filteredContext;
+    }
+
+    private void saveMetaResult(final PositionalEntity positionalEntity, final List<RagDocumentContext<Void>> ragContext, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        if (StringUtils.isNotBlank(parsedArgs.getMetaReport())) {
+            final MetaResult metaResult = new MetaResult(
+                    positionalEntity.entity().name(),
+                    ragContext.size());
+
+            Try.run(() -> Files.write(Paths.get(parsedArgs.getMetaReport()),
+                            jsonDeserializer.serialize(metaResult).getBytes(),
+                            StandardOpenOption.CREATE,
+                            StandardOpenOption.TRUNCATE_EXISTING))
+                    .onFailure(ex -> logger.severe(exceptionHandler.getExceptionMessage(ex)));
+        }
     }
 
     /**
@@ -684,6 +710,10 @@ class MultiSlackZenGoogleConfig {
     private Optional<String> configUrl;
 
     @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.metareport")
+    private Optional<String> configMetaReport;
+
+    @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.entity")
     private Optional<String> configEntity;
 
@@ -761,6 +791,10 @@ class MultiSlackZenGoogleConfig {
 
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
+    }
+
+    public Optional<String> getConfigMetaReport() {
+        return configMetaReport;
     }
 
     public class LocalArguments {
@@ -898,6 +932,17 @@ class MultiSlackZenGoogleConfig {
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+        }
+
+        public String getMetaReport() {
+            return getArgsAccessor().getArgument(
+                            getConfigMetaReport()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_REPORT_ARG,
+                            "multislackzengoogle_meta_report",
+                            "")
+                    .value();
         }
     }
 }
