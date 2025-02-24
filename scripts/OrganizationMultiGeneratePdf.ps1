@@ -6,7 +6,9 @@ Param (
     [string]$Days = "7",
     [string]$PdfTitle = "Weekly Customer Digest",
     [string]$CoverPage = "logo.jpg",
-    [string]$PdfFile = $( $env:PDF_OUTPUT )
+    [string]$PdfFile = $( $env:PDF_OUTPUT ),
+    [string]$SlackImage = "https://gist.github.com/user-attachments/assets/e4d4c4a8-7255-4e01-bbe9-9c211df8d8df",
+    [string]$SlackWebHook = $( $env:SLACK_PDF_WEBHOOK )
 )
 
 $ModulePath = "$PSScriptRoot\SharedFunctions.psm1"
@@ -231,6 +233,16 @@ if ($GeneratePDF)
     }
 }
 
+# Save to google drive with https://rclone.org/
+rclone copy "$PdfFile" "gdrive:AI of Sauron"
+
+# Get the Slack webhook body
+$PdfFileRelative = Split-Path -Path $PdfFile -Leaf
+$JqFilter = '"{\"blocks\":[{\"type\":\"section\", \"text\": {\"type\": \"mrkdwn\", \"text\": \"<https://drive.google.com/file/d/" + .[0].ID + "/view?usp=sharing|' + $PdfTitle + '>\"}},{\"type\":\"image\",\"title\": {\"type\": \"plain_text\", \"text\": \"AI of Sauron\"},\"image_url\": \"' + $SlackImage + '\", \"alt_text\": \"AI of Sauron\"}]}"'
+$SlackBody = $( rclone lsjson "gdrive:AI of Sauron/$PdfFileRelative" | jq -r $JqFilter )
+
+# Post to Slack
+Invoke-RestMethod -Uri $SlackWebHook -Method Post -ContentType 'application/json' -Body $SlackBody
 
 
 
