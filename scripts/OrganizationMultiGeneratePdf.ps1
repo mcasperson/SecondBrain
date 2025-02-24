@@ -34,14 +34,6 @@ $toolModel = "llama3.1"
 #$model = "mistral-small"
 $model = "qwen2.5:32b"
 
-# Consider using K/V cache quanisation to support larger context windows with the following env vars:
-# OLLAMA_KV_CACHE_TYPE="q8_0"
-# OLLAMA_FLASH_ATTENTION=1
-
-# I also found that ollama was not making full use of the GPU. This environment variable reduces the amount of
-# GPU memory that is saved for the system to 500 MB, meaning more of the LLM is placed on the GPU.
-# Environment="OLLAMA_GPU_OVERHEAD=524288000"
-
 # 128K tokens can be just a bit too much when using a 70B model
 #$contextWindow = "32768"
 $contextWindow = "65536"
@@ -76,7 +68,7 @@ if ($GenerateCompanyReports)
         }
 
         # We can have thousands of entities to process, so we need to use threads to process them in parallel.
-        $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
+        $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 20 -ScriptBlock {
 
             # Delay subsequent topics by 1 min to allow the first run to pupulate the cache.
             # The API access to external systems are often configured to return all the available results across the
@@ -135,7 +127,7 @@ if ($GenerateTopicReports)
     {
         $topicIndex++
 
-        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 20 -ScriptBlock {
+        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
 
             # Delay subsequent topics by 5 mins to allow the first run to pupulate the cache
             if (($using:topicIndex) -gt 1)
