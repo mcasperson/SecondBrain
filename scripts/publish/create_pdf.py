@@ -87,6 +87,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     contents = []
 
     # Parse the metadata
+    print("Parsing metadata...")
     total_context = 0
     total_entities = 0
     average_context = 0
@@ -156,6 +157,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
         pdf.cell(0, 10, f'{content['title']}', 0, 1, 'L', link=content['link'])
     pdf.ln(10)
 
+    print("Converting markdown...")
     for content in contents:
         filepath = os.path.join(directory, content['filename'])
         with open(filepath, 'r', encoding='utf-8') as file:
