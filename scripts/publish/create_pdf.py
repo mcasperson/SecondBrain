@@ -128,7 +128,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             raw_file = os.path.splitext(filename)[0]
 
             # Get the metadata file
-            metadata = os.path.exists(os.path.join(directory, raw_file + ".json"))
+            metadata = os.path.join(directory, raw_file + ".json")
 
             high_activity = False
             if os.path.exists(metadata):
