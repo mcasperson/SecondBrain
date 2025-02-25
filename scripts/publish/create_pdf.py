@@ -160,7 +160,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     pdf.ln(10)
     pdf.set_font('Roboto', '', 12)
     pdf.ln(10)
-    pdf.cell(0, 10, f' * High Activity Customers', 0, 1, 'L')
+    pdf.cell(0, 10, ' * High Activity Customers', 0, 1, 'L')
     for content in contents:
         pdf.cell(0, 10, f'{content['title']}', 0, 1, 'L', link=content['link'])
     pdf.ln(10)
