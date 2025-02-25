@@ -145,7 +145,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             title = raw_file[len(company_prefix):]
 
             if high_activity:
-                title = title + " (High Activity)"
+                title = title + " *"
 
             contents.append({'title': title, 'filename': filename, 'link': pdf.add_link()})
 
@@ -158,6 +158,8 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     pdf.set_font('Roboto', '', 12)
     for content in contents:
         pdf.cell(0, 10, f'{content['title']}', 0, 1, 'L', link=content['link'])
+    pdf.ln(10)
+    pdf.cell(0, 10, f' * High Activity Customers', 0, 1, 'L')
     pdf.ln(10)
 
     print("Converting markdown...")
