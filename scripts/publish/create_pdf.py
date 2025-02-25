@@ -1,9 +1,8 @@
 import argparse
 import json
+import markdown2
 import os
 import re
-
-import markdown2
 from fpdf.enums import XPos, YPos
 from fpdf.fpdf import FPDF
 
@@ -97,8 +96,10 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             with open(filepath, 'r', encoding='utf-8') as file:
                 try:
                     json_data = json.load(file)
-                    total_entities += 1
-                    total_context += json_data.get('contextCount', 0)
+                    count = json_data.get('contextCount', 0)
+                    if count > 0:
+                        total_entities += 1
+                        total_context += count
                 except json.JSONDecodeError:
                     print(f"Error parsing {filename}")
 
