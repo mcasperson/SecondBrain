@@ -192,7 +192,7 @@ if ($GenerateExecutiveSummary)
             continue
         }
 
-        if (-not ($file.Name.StartsWith("COMPANY ")))
+        if (-not ($file.Name.StartsWith("COMPANY ") -and $file.Name.EndsWith(".md")))
         {
             continue
         }
