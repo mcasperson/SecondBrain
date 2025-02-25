@@ -130,9 +130,12 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             high_activity = False
             if os.path.exists(metadata):
                 with open(metadata, 'r', encoding='utf-8') as file:
-                    json_data = json.load(file)
-                    if json_data['contextCount'] > average_context:
-                        high_activity = True
+                    try:
+                        json_data = json.load(file)
+                        if json_data.get('contextCount', 0) > average_context:
+                            high_activity = True
+                    except:
+                        pass
 
             # Get file name without extension or the prefix
             title = raw_file[len(company_prefix):]
