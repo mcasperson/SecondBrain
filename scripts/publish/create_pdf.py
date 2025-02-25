@@ -132,6 +132,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
 
             high_activity = False
             if os.path.exists(metadata):
+                print(f"Parsing {metadata}...")
                 with open(metadata, 'r', encoding='utf-8') as file:
                     try:
                         json_data = json.load(file)
