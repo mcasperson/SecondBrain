@@ -136,8 +136,10 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
                 with open(metadata, 'r', encoding='utf-8') as file:
                     try:
                         json_data = json.load(file)
-                        # Flag those with above average touch points, but at least 3 if the average is less than 3
-                        if json_data.get('contextCount', 0) > max(average_context, 3):
+                        # Flag those with above average touch points, but at least 6 if the average is less than 6
+                        # Note that we expect all companies to have at least 3 touch points including things
+                        # like deployment, project, and tenant stats
+                        if json_data.get('contextCount', 0) > max(average_context, 6):
                             high_activity = True
                     except:
                         pass
