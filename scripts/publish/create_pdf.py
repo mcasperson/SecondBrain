@@ -95,7 +95,6 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     average_context = 0
     for filename in sorted(os.listdir(directory)):
         if filename.startswith(company_prefix) and filename.endswith('.json'):
-            print(f"Parsing {filename}...")
             filepath = os.path.join(directory, filename)
             with open(filepath, 'r', encoding='utf-8') as file:
                 try:
