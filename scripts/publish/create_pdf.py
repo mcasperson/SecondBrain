@@ -200,4 +200,23 @@ if __name__ == "__main__":
     parser.add_argument('--cover_page', type=str, help='The cover page image.')
 
     args = parser.parse_args()
+
+    if not args.directory:
+        raise ValueError("The directory argument is required.")
+
+    if not args.pdf:
+        raise ValueError("The pdf argument is required.")
+
+    if not args.title:
+        raise ValueError("The title argument is required.")
+
+    if not args.date_from:
+        raise ValueError("The date_from argument is required.")
+
+    if not args.date_to:
+        raise ValueError("The date_to argument is required.")
+
+    if not args.cover_page:
+        raise ValueError("The cover_page argument is required.")
+
     convert_md_to_pdf(args.directory, args.pdf, args.title, args.date_from, args.date_to, args.cover_page)
