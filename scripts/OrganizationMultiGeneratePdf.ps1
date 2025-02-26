@@ -227,6 +227,7 @@ if ($GeneratePDF)
 
 # Save to google drive with https://rclone.org/
 rclone copy "$PdfFile" "gdrive:AI of Sauron"
+rclone copy "$PdfFile.source.zip" "gdrive:AI of Sauron"
 
 # Get the Slack webhook body
 $PdfFileRelative = Split-Path -Path $PdfFile -Leaf
