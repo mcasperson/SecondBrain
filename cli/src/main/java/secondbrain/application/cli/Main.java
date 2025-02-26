@@ -1,14 +1,20 @@
 package secondbrain.application.cli;
 
+import io.vavr.control.Try;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 import secondbrain.Marker;
 import secondbrain.domain.converter.MarkdnParser;
 import secondbrain.domain.handler.PromptHandler;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Map;
+import java.util.Optional;
 
 
 public class Main {
@@ -17,6 +23,10 @@ public class Main {
 
     @Inject
     private MarkdnParser markdnParser;
+
+    @Inject
+    @ConfigProperty(name = "sb.output.file")
+    private Optional<String> file;
 
     public static void main(final String[] args) {
         final Weld weld = new Weld();
@@ -41,11 +51,13 @@ public class Main {
 
     public void entry(final String[] args) {
         final String response = promptHandler.handlePrompt(Map.of(), getPrompt(args));
+        final String content = args.length > 1 && "markdn".equals(args[1])
+                ? markdnParser.printMarkDn(response)
+                : response;
+        
+        System.out.println(content);
 
-        if (args.length > 1 && "markdn".equals(args[1])) {
-            System.out.println(markdnParser.printMarkDn(response));
-        } else {
-            System.out.println(response);
-        }
+        file.ifPresent(s -> Try.run(() -> Files.write(Paths.get(s), content.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+                .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage())));
     }
 }
