@@ -210,11 +210,11 @@ Compress-Archive -Path $subDir -DestinationPath "$PdfFile.source.zip"
 
 if ($GeneratePDF)
 {
-    $ExecutiveSummaryLog = "/tmp/pdfgenerate PDF $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
+    $PdfGenerateLog = "/tmp/pdfgenerate PDF $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
     $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" --directory `"$subDir`" --pdf `"$PdfFile`" --title `"$PdfTitle`" --date_from `"$from`" --date_to `"$now`" --cover_page `"$CoverPage`""
-    Add-Content -Path $ExecutiveSummaryLog -Value $pdfResult.StdOut
-    Add-Content -Path $ExecutiveSummaryLog -Value $pdfResult.StdErr
+    Add-Content -Path $PdfGenerateLog -Value $pdfResult.StdOut
+    Add-Content -Path $PdfGenerateLog -Value $pdfResult.StdErr
 
     Write-Host $pdfResult.StdOut
     Write-Host $pdfResult.StdErr
