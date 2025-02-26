@@ -57,6 +57,8 @@ class PDF(FPDF):
 
 
 def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_page):
+    print(f"Converting {directory} to {output_pdf}...")
+
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
