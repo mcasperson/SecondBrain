@@ -204,6 +204,13 @@ if ($GenerateExecutiveSummary)
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdOut
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdErr
     }
+
+    Write-Host "Generating topics"
+
+    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=PublicWeb`" `"-Dsb.publicweb.disablelinks=true`" `"-Dsb.publicweb.url=$subDir/Executive Summary.md`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"List the common non-functional requirements identified in the document as a bullet point list.`""
+    Add-Content -Path "$subDir/Topics.md" -Value "$( $result.StdOut )`n`n"
+    Add-Content -Path $ExecutiveSummaryLog -Value $result.StdOut
+    Add-Content -Path $ExecutiveSummaryLog -Value $result.StdErr
 }
 
 Compress-Archive -Path $subDir -DestinationPath "$PdfFile.source.zip"

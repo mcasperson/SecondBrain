@@ -114,6 +114,11 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
         contents.append({'title': 'Executive Summary', 'filename': os.path.join(directory, 'Executive Summary.md'),
                          'link': pdf.add_link()})
 
+    # Then list common themes
+    if os.path.exists(os.path.join(directory, 'Topics.md')):
+        contents.append({'title': 'Common Themes', 'filename': os.path.join(directory, 'Topics.md'),
+                         'link': pdf.add_link()})
+
     # Find the topics in the first loop
     for filename in sorted(os.listdir(directory)):
         if filename.startswith(topic_prefix) and filename.endswith('.md'):
