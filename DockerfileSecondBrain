@@ -57,7 +57,8 @@ EXPOSE 8181
 EXPOSE 6900
 
 # Some prompts can take a long time, so set a timeout in the hours
-RUN echo "set configs.config.server-config.network-config.protocols.protocol.http.http.connection-upload-timeout-millis=7200000" > /opt/payara/preboot
-RUN echo "set configs.config.server-config.network-config.protocols.protocol.http.https.connection-upload-timeout-millis=7200000" > /opt/payara/preboot
+# https://docs.payara.fish/community/docs/5.183/documentation/payara-server/server-configuration/http/protocols.html
+RUN echo "set configs.config.server-config.network-config.protocols.protocol.http-listener.http.timeout-seconds=7200" > /opt/payara/preboot
+RUN echo "set configs.config.server-config.network-config.protocols.protocol.https-listener.timeout-seconds=7200" >> /opt/payara/preboot
 
 CMD ["--deploymentDir", "/opt/payara/deployments", "--nocluster", "--port", "8080", "--sslPort", "8181", "--contextroot", "ROOT", "--prebootcommandfile", "/opt/payara/preboot"]
