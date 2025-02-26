@@ -63,6 +63,8 @@ Function Invoke-CustomCommand
         $global:stdErr.AppendLine($EventArgs.Data)
     } | Out-Null
 
+    # This isn't called because we don't use BeginOutputReadLine()
+    # It is left here for reference
     Register-ObjectEvent -InputObject $p -EventName "OutputDataReceived" -Action {
         $global:stdOut.AppendLine($EventArgs.Data)
     } | Out-Null
@@ -78,7 +80,7 @@ Function Invoke-CustomCommand
     $p.Start() | Out-Null
 
     $p.BeginErrorReadLine()
-    
+
     while (($global:myprocessrunning -eq $true) -and (($remainingTimeout -gt 0) -or ($processTimeout -le 0)))
     {
         # We must use lots of shorts sleeps rather than a single long one otherwise events are not processed
