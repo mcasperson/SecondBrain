@@ -128,8 +128,11 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
 
     # Find the companies in the second loop
     print("Parsing companies...")
+    found_companies = False
     for filename in sorted(os.listdir(directory)):
         if filename.startswith(company_prefix) and filename.endswith('.md'):
+            found_companies = True
+
             # Get the filename with extension
             raw_file = os.path.splitext(filename)[0]
 
@@ -166,9 +169,12 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     pdf.ln(10)
     pdf.set_font('Roboto', '', 12)
     pdf.ln(10)
-    pdf.set_text_color(58, 0, 0)
-    pdf.cell(0, 10, ' * High Activity Customers', 0, 1, 'L')
-    pdf.set_text_color(0, 0, 0)
+
+    if found_companies:
+        pdf.set_text_color(58, 0, 0)
+        pdf.cell(0, 10, ' * High Activity Customers', 0, 1, 'L')
+        pdf.set_text_color(0, 0, 0)
+        
     for content in contents:
         pdf.cell(0, 10, f'{content['title']}', 0, 1, 'L', link=content['link'])
     pdf.ln(10)
