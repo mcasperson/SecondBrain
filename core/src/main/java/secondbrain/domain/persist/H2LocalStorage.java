@@ -34,7 +34,7 @@ public class H2LocalStorage implements LocalStorage {
 
     private static final int MAX_RETRIES = 15;
     private static final int DELAY = 1000;
-    private static final int MAX_FAILURES = 3;
+    private static final int MAX_FAILURES = 5;
 
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
@@ -217,12 +217,17 @@ public class H2LocalStorage implements LocalStorage {
                 return false;
             }
 
+            if (totalFailures.get() > MAX_FAILURES) {
+                resetConnection();
+            }
+
             final Try<Integer> result = Try
                     .of(() -> connection.prepareStatement("""
                             DELETE FROM LOCAL_STORAGE
                             WHERE timestamp IS NOT NULL
                             AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
-                    .mapTry(PreparedStatement::executeUpdate);
+                    .mapTry(PreparedStatement::executeUpdate)
+                    .onFailure(ex -> totalFailures.incrementAndGet());
 
             return result
                     .mapFailure(
@@ -246,6 +251,10 @@ public class H2LocalStorage implements LocalStorage {
                 return null;
             }
 
+            if (totalFailures.get() > MAX_FAILURES) {
+                resetConnection();
+            }
+
             totalReads.incrementAndGet();
 
             final Try<String> result = Try.of(() -> connection.prepareStatement("""
@@ -267,7 +276,8 @@ public class H2LocalStorage implements LocalStorage {
                             return resultSet.getString(1);
                         }
                         return null;
-                    });
+                    })
+                    .onFailure(ex -> totalFailures.incrementAndGet());
 
             return result
                     .mapFailure(
@@ -281,10 +291,6 @@ public class H2LocalStorage implements LocalStorage {
     public String getOrPutString(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
         if (isDisabled() || connection == null) {
             return generateValue.generate();
-        }
-
-        if (totalFailures.get() > MAX_FAILURES) {
-            resetConnection();
         }
 
         logger.info("Getting string from cache for tool " + tool + " source " + source + " prompt " + promptHash);
@@ -303,10 +309,7 @@ public class H2LocalStorage implements LocalStorage {
                     Exceptions are swallowed here because caching is just a best effort. But
                     we still need to know if something went wrong.
                  */
-                .onFailure(LocalStorageFailure.class, ex -> {
-                    logger.warning(exceptionHandler.getExceptionMessage(ex));
-                    totalFailures.incrementAndGet();
-                })
+                .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 // If there was an error with the local storage, bypass it and generate the value
                 .recover(LocalStorageFailure.class, ex -> generateValue.generate())
                 // For all other errors, we return the value or rethrow the exception
@@ -322,10 +325,6 @@ public class H2LocalStorage implements LocalStorage {
     public <T> T getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
         if (isDisabled() || connection == null) {
             return generateValue.generate();
-        }
-
-        if (totalFailures.get() > MAX_FAILURES) {
-            resetConnection();
         }
 
         logger.info("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
@@ -347,10 +346,7 @@ public class H2LocalStorage implements LocalStorage {
                     Exceptions are swallowed here because caching is just a best effort. But
                     we still need to know if something went wrong.
                  */
-                .onFailure(LocalStorageFailure.class, ex -> {
-                    logger.warning(exceptionHandler.getExceptionMessage(ex));
-                    totalFailures.incrementAndGet();
-                })
+                .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 // If there was an error with the local storage, bypass it and generate the value
                 .recover(LocalStorageFailure.class, ex -> generateValue.generate())
                 // For all other errors, we return the value or rethrow the exception
@@ -369,6 +365,10 @@ public class H2LocalStorage implements LocalStorage {
                 return;
             }
 
+            if (totalFailures.get() > MAX_FAILURES) {
+                resetConnection();
+            }
+
             final Try<PreparedStatement> result = Try.of(() -> connection.prepareStatement("""
                             INSERT INTO LOCAL_STORAGE (tool, source, prompt_hash, response, timestamp)
                             VALUES (?, ?, ?, ?, ?)""".stripIndent()))
@@ -385,7 +385,8 @@ public class H2LocalStorage implements LocalStorage {
                                 .toInstant()));
                         preparedStatement.executeUpdate();
                         return preparedStatement;
-                    });
+                    })
+                    .onFailure(ex -> totalFailures.incrementAndGet());
 
             result
                     .mapFailure(
