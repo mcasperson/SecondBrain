@@ -34,9 +34,12 @@ public class H2LocalStorage implements LocalStorage {
 
     private static final int MAX_RETRIES = 15;
     private static final int DELAY = 1000;
+    private static final int MAX_FAILURES = 3;
 
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
+    private final AtomicInteger totalFailures = new AtomicInteger();
+
     @Inject
     @ConfigProperty(name = "sb.cache.disable")
     private Optional<String> disable;
@@ -88,6 +91,14 @@ public class H2LocalStorage implements LocalStorage {
 
         if (totalReads.get() > 0) {
             logger.info("Cache hits percentage: " + getCacheHitsPercentage() + "%");
+        }
+    }
+
+    private void resetConnection() {
+        synchronized (H2LocalStorage.class) {
+            totalFailures.set(0);
+            preDestroy();
+            postConstruct();
         }
     }
 
@@ -268,9 +279,15 @@ public class H2LocalStorage implements LocalStorage {
 
     @Override
     public String getOrPutString(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
-        if (isDisabled()) {
+        if (isDisabled() || connection == null) {
             return generateValue.generate();
         }
+
+        if (totalFailures.get() > MAX_FAILURES) {
+            resetConnection();
+        }
+
+        logger.info("Getting string from cache for tool " + tool + " source " + source + " prompt " + promptHash);
 
         return Try
                 .of(() -> getString(tool, source, promptHash))
@@ -286,7 +303,10 @@ public class H2LocalStorage implements LocalStorage {
                     Exceptions are swallowed here because caching is just a best effort. But
                     we still need to know if something went wrong.
                  */
-                .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(LocalStorageFailure.class, ex -> {
+                    logger.warning(exceptionHandler.getExceptionMessage(ex));
+                    totalFailures.incrementAndGet();
+                })
                 // If there was an error with the local storage, bypass it and generate the value
                 .recover(LocalStorageFailure.class, ex -> generateValue.generate())
                 // For all other errors, we return the value or rethrow the exception
@@ -300,6 +320,14 @@ public class H2LocalStorage implements LocalStorage {
 
     @Override
     public <T> T getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
+        if (isDisabled() || connection == null) {
+            return generateValue.generate();
+        }
+
+        if (totalFailures.get() > MAX_FAILURES) {
+            resetConnection();
+        }
+
         logger.info("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
 
         return Try.of(() -> getString(tool, source, promptHash))
@@ -319,7 +347,10 @@ public class H2LocalStorage implements LocalStorage {
                     Exceptions are swallowed here because caching is just a best effort. But
                     we still need to know if something went wrong.
                  */
-                .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(LocalStorageFailure.class, ex -> {
+                    logger.warning(exceptionHandler.getExceptionMessage(ex));
+                    totalFailures.incrementAndGet();
+                })
                 // If there was an error with the local storage, bypass it and generate the value
                 .recover(LocalStorageFailure.class, ex -> generateValue.generate())
                 // For all other errors, we return the value or rethrow the exception
