@@ -127,7 +127,7 @@ if ($GenerateTopicReports)
     {
         $topicIndex++
 
-        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 10 -ScriptBlock {
+        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 20 -ScriptBlock {
 
             # Delay subsequent topics by 5 mins to allow the first run to pupulate the cache
             if (($using:topicIndex) -gt 1)
