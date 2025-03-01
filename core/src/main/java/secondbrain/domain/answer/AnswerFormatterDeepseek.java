@@ -16,6 +16,10 @@ public class AnswerFormatterDeepseek implements AnswerFormatter {
         if (StringUtil.isBlank(answer)) {
             return "";
         }
-        return answer.replaceAll("<think>.*?</think>", "");
+
+        return answer
+                .replaceAll("<think>.*?</think>", "")
+                // Sometimes the start tag is not present
+                .replaceAll("^.*?</think>", "");
     }
 }
