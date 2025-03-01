@@ -102,15 +102,17 @@ function handleSubmit(event) {
 }
 
 function disableForm() {
-    document.querySelectorAll('button').forEach(b => b.disabled = true);
-    document.querySelectorAll('textarea').forEach(b => b.disabled = true);
+    document.getElementById('prompt').disabled = true;
     document.querySelectorAll('input').forEach(b => b.disabled = true);
+    document.querySelectorAll('select').forEach(b => b.disabled = true);
+    document.querySelectorAll('button').forEach(b => b.disabled = true);
 }
 
 function enableForm() {
-    document.querySelectorAll('button').forEach(b => b.disabled = false);
-    document.querySelectorAll('textarea').forEach(b => b.disabled = false);
+    document.getElementById('prompt').disabled = false;
     document.querySelectorAll('input').forEach(b => b.disabled = false);
+    document.querySelectorAll('select').forEach(b => b.disabled = false);
+    document.querySelectorAll('button').forEach(b => b.disabled = false);
 }
 
 function handleLogin() {
