@@ -9,7 +9,6 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 #$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
 $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
-$toolModel = "llama3.1"
 $contextWindow = "32768"
 
 $channelsYaml = Get-Content -Path $env:SB_CHANNELS_YAML -Raw
@@ -18,7 +17,7 @@ $channels = ConvertFrom-Yaml $channelsYaml
 foreach ($channel in $channels.channels)
 {
     # Replace the location of the Jar file with your copy of the CLI UberJAR
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.tools.force=SlackChannel`" `"-Dsb.slack.channel=$channel`"  `"-Dsb.slack.days=7`" -jar $jarFile `"$( $channels.prompt )`" markdn"
+    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.ollama.model=$( $channel.model )`" `"-Dsb.tools.force=SlackChannel`" `"-Dsb.slack.channel=$( $channel.name )`"  `"-Dsb.slack.days=7`" -jar $jarFile `"$( $channels.prompt )`" markdn"
 
     echo $result
 
