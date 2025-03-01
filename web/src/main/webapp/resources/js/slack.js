@@ -69,13 +69,18 @@ function handleSubmit(event) {
     const prompt = document.getElementById('prompt').value;
     const customModel = document.getElementById('customModel').value;
     const contextWindow = document.getElementById('contextWindow').value;
+    const slackChannel = document.getElementById('channel').value;
+    const slackDays = document.getElementById('days').value;
 
     savePrompt(prompt);
     displaySavedPrompts();
 
     const context = {
+        tool: "SlackChannel",
         custom_model: customModel,
-        context_window: contextWindow
+        context_window: contextWindow,
+        slack_channel: slackChannel,
+        slack_days: slackDays,
     };
     const tokenSelection = document.getElementById('tokenSelection');
     if (tokenSelection.checked) {
