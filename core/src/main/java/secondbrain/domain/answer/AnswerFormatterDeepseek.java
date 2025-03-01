@@ -1,10 +1,12 @@
 package secondbrain.domain.answer;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.poi.util.StringUtil;
 
 /**
  * A formatter to remove the thinking part of the Deepseek response from the deepseek-r1 model.
  */
+@ApplicationScoped
 public class AnswerFormatterDeepseek implements AnswerFormatter {
     @Override
     public String modelRegex() {
