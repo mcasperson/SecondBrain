@@ -37,6 +37,7 @@ services:
   ollama:
     image: ollama/ollama
     restart: always
+    pull_policy: always
     volumes:
       - ollama:/root/.ollama
     # Uncomment these lines to enable GPU support
