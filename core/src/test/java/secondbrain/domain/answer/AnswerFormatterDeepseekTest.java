@@ -2,7 +2,7 @@ package secondbrain.domain.answer;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class AnswerFormatterDeepseekTest {
 
@@ -40,5 +40,14 @@ public class AnswerFormatterDeepseekTest {
         String expected = "";
         String actual = formatter.formatAnswer(input);
         assertEquals(expected, actual);
+    }
+
+    @Test
+    public void testModelRegex_MatchesDeepseekR1() {
+        AnswerFormatterDeepseek formatter = new AnswerFormatterDeepseek();
+        String regex = formatter.modelRegex();
+        assertTrue("deepseek-r1".matches(regex));
+        assertTrue("deepseek-r1:32b".matches(regex));
+        assertFalse("phi4".matches(regex));
     }
 }
