@@ -164,3 +164,24 @@ function selectTokenInput() {
 
 // Initial display of saved prompts
 displaySavedPrompts();
+
+document.getElementById('days').value = localStorage.getItem('slackDays') || '';
+document.getElementById('channel').value = localStorage.getItem('slackChannel') || '';
+document.getElementById('contextWindow').value = localStorage.getItem('slackContextWindow') || '65536';
+document.getElementById('customModel').value = localStorage.getItem('slackCustomModel') || '';
+
+document.getElementById('days').onchange = function () {
+    localStorage.setItem('days', document.getElementById('slackDays').value);
+}
+
+document.getElementById('channel').onchange = function () {
+    localStorage.setItem('channel', document.getElementById('slackChannel').value);
+}
+
+document.getElementById('contextWindow').onchange = function () {
+    localStorage.setItem('contextWindow', document.getElementById('slackContextWindow').value);
+}
+
+document.getElementById('customModel').onchange = function () {
+    localStorage.setItem('customModel', document.getElementById('slackCustomModel').value);
+}
