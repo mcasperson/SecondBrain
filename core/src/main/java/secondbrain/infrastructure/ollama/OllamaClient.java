@@ -2,6 +2,7 @@ package secondbrain.infrastructure.ollama;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -10,6 +11,7 @@ import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.answer.AnswerFormatter;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.FailedOllama;
@@ -20,6 +22,7 @@ import secondbrain.domain.response.ResponseValidation;
 
 import java.util.Optional;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 import static io.vavr.control.Try.of;
 
@@ -33,6 +36,9 @@ public class OllamaClient {
 
     @Inject
     private ResponseValidation responseValidation;
+
+    @Inject
+    private Instance<AnswerFormatter> answerFormatters;
 
     @Inject
     private Logger logger;
@@ -70,6 +76,7 @@ public class OllamaClient {
                                     + "or 'docker exec -it secondbrain-ollama-1 ollama pull " + body.model() + "'");
                         })
                         .map(r -> r.readEntity(OllamaResponse.class))
+                        .map(ollamaResponse -> ollamaResponse.replaceResponse(formatResponse(body.model(), ollamaResponse.response())))
                         .get())
                 .get();
     }
@@ -107,5 +114,13 @@ public class OllamaClient {
         });
 
         return ragDoc.updateDocument(result);
+    }
+
+    private String formatResponse(final String model, final String response) {
+        return answerFormatters.stream()
+                .filter(b -> Pattern.compile(b.modelRegex()).matcher(model).matches())
+                .findFirst()
+                .map(formatter -> formatter.formatAnswer(response))
+                .orElse(response);
     }
 }

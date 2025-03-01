@@ -17,4 +17,7 @@ public record OllamaResponse(String model,
                              String eval_count,
                              String eval_duration,
                              String response) {
+    public OllamaResponse replaceResponse(String response) {
+        return new OllamaResponse(model, created_at, done, done_reason, context, total_duration, load_duration, prompt_eval_count, prompt_eval_duration, eval_count, eval_duration, response);
+    }
 }
