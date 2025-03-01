@@ -27,6 +27,38 @@ function stripLineBreaks(text) {
     return text.replace(/\n/g, ' ');
 }
 
+function getUniqueList(arr) {
+    return [...new Set(arr)];
+}
+
+function savePrompt(prompt) {
+    prompt = prompt.split("\n").map(l => l.trim()).join(" ");
+    let savedPrompts = JSON.parse(localStorage.getItem('savedPrompts')) || [];
+    if (savedPrompts.length >= 5) {
+        savedPrompts.shift();
+    }
+    savedPrompts.push(prompt);
+    localStorage.setItem('savedPrompts', JSON.stringify(getUniqueList(savedPrompts)));
+}
+
+function displaySavedPrompts() {
+    const savedPrompts = getUniqueList(JSON.parse(localStorage.getItem('savedPrompts')) || []);
+    const savedPromptsList = document.getElementById('savedPromptsList');
+    savedPromptsList.innerHTML = '';
+    savedPrompts.forEach((prompt, index) => {
+        prompt = prompt.split("\n").map(l => l.trim()).join(" ");
+        const listItem = document.createElement('li');
+        const link = document.createElement('a');
+        link.href = '#';
+        link.innerText = prompt;
+        link.onclick = function () {
+            document.getElementById('prompt').value = prompt;
+        };
+        listItem.appendChild(link);
+        savedPromptsList.appendChild(listItem);
+    });
+}
+
 function handleSubmit(event) {
     event.preventDefault();
 
@@ -35,9 +67,16 @@ function handleSubmit(event) {
     response.innerText = 'Loading...'
 
     const prompt = document.getElementById('prompt').value;
+    const customModel = document.getElementById('customModel').value;
+    const contextWindow = document.getElementById('contextWindow').value;
 
+    savePrompt(prompt);
+    displaySavedPrompts();
 
-    const context = {};
+    const context = {
+        custom_model: customModel,
+        context_window: contextWindow
+    };
     const tokenSelection = document.getElementById('tokenSelection');
     if (tokenSelection.checked) {
         context['slack_access_token'] = slackToken.value;
@@ -115,3 +154,6 @@ function selectTokenInput() {
 
     buildButtons();
 }
+
+// Initial display of saved prompts
+displaySavedPrompts();
