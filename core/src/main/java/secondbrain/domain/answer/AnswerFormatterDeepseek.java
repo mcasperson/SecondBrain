@@ -18,8 +18,8 @@ public class AnswerFormatterDeepseek implements AnswerFormatter {
         }
 
         return answer
-                .replaceAll("<think>.*?</think>", "")
+                .replaceAll("(?s)<think>.*?</think>", "")
                 // Sometimes the start tag is not present
-                .replaceAll("^.*?</think>", "");
+                .replaceAll("(?s)^.*?</think>", "");
     }
 }
