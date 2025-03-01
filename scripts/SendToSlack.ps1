@@ -16,8 +16,17 @@ $channels = ConvertFrom-Yaml $channelsYaml
 
 foreach ($channel in $channels.channels)
 {
+    # Default to shared prompt
+    $prompt = $channels.prompt
+
+    # But then try to use the channel specific prompt
+    if (-not [string]::IsNullOrEmpty($channel.prompt))
+    {
+        $prompt = $channel.prompt
+    }
+
     # Replace the location of the Jar file with your copy of the CLI UberJAR
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.ollama.model=$( $channel.model )`" `"-Dsb.tools.force=SlackChannel`" `"-Dsb.slack.channel=$( $channel.name )`"  `"-Dsb.slack.days=7`" -jar $jarFile `"$( $channels.prompt )`" markdn"
+    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.ollama.model=$( $channel.model )`" `"-Dsb.tools.force=SlackChannel`" `"-Dsb.slack.channel=$( $channel.name )`"  `"-Dsb.slack.days=7`" -jar $jarFile `"$prompt`" markdn"
 
     echo $result
 
@@ -28,7 +37,7 @@ foreach ($channel in $channels.channels)
     $uriSlack = $env:SB_SLACK_GENERAL_WEBHOOK
     $body = ConvertTo-Json @{
         type = "mrkdwn"
-        text = "*" + $channel + " summary*`n" + $result.StdOut
+        text = "*" + $channel.name + " summary*`n" + $result.StdOut
     }
 
     try
