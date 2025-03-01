@@ -171,17 +171,17 @@ document.getElementById('contextWindow').value = localStorage.getItem('slackCont
 document.getElementById('customModel').value = localStorage.getItem('slackCustomModel') || '';
 
 document.getElementById('days').onchange = function () {
-    localStorage.setItem('days', document.getElementById('slackDays').value);
+    localStorage.setItem('slackDays', document.getElementById('days').value);
 }
 
 document.getElementById('channel').onchange = function () {
-    localStorage.setItem('channel', document.getElementById('slackChannel').value);
+    localStorage.setItem('slackChannel', document.getElementById('channel').value);
 }
 
 document.getElementById('contextWindow').onchange = function () {
-    localStorage.setItem('contextWindow', document.getElementById('slackContextWindow').value);
+    localStorage.setItem('slackContextWindow', document.getElementById('contextWindow').value);
 }
 
 document.getElementById('customModel').onchange = function () {
-    localStorage.setItem('customModel', document.getElementById('slackCustomModel').value);
+    localStorage.setItem('slackCustomModel', document.getElementById('customModel').value);
 }
