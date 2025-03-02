@@ -103,20 +103,6 @@
                     <label class="form-label" for="customModel">Custom Model</label>
                     <select aria-label="Default select example" class="form-select" id="customModel">
                         <option selected="selected" value="">Default</option>
-                        <option value="mistral-nemo">mistral-nemo</option>
-                        <option value="llama3.1">llama3.1</option>
-                        <option value="llama3.1:70b">llama3.1:70b</option>
-                        <option value="llama3.2">llama3.2</option>
-                        <option value="llama3.3">llama3.3</option>
-                        <option value="gemma2">gemma2</option>
-                        <option value="gemma2:27b">gemma2:27b</option>
-                        <option value="mixtral:8x7b">mixtral:8x7b</option>
-                        <option value="mistral">mistral</option>
-                        <option value="phi3:3.8b">phi3:3.8b</option>
-                        <option value="phi3:14b">phi3:14b</option>
-                        <option value="phi4:14b">phi4:14b</option>
-                        <option value="qwen2">qwen2</option>
-                        <option value="qwq">qwq</option>
                     </select>
                     <div class="form-text" id="customModelHelp">These models must be <a
                             href="https://github.com/ollama/ollama?tab=readme-ov-file#pull-a-model">pulled by Ollama</a>
@@ -150,6 +136,7 @@
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" type="text/javascript"/>
 <h:outputScript library="js" name="results.js"/>
 <h:outputScript library="js" name="google.js"/>
+<h:outputScript library="js" name="models.js"/>
 
 </body>
 </html>

@@ -93,34 +93,8 @@
                     <label class="form-label" for="customModel">Custom Model</label>
                     <select aria-label="Default select example" class="form-select" id="customModel">
                         <option selected="selected" value="">Default</option>
-                        <option value="mistral-nemo">mistral-nemo</option>
-                        <option value="llama3.1">llama3.1</option>
-                        <option value="llama3.1:70b">llama3.1:70b</option>
-                        <option value="llama3.2">llama3.2</option>
-                        <option value="llama3.3">llama3.3</option>
-                        <option value="gemma2">gemma2</option>
-                        <option value="gemma2:27b">gemma2:27b</option>
-                        <option value="mixtral:8x7b">mixtral:8x7b</option>
-                        <option value="mistral">mistral</option>
-                        <option value="mistral-small">mistral-small</option>
-                        <option value="phi3:3.8b">phi3:3.8b</option>
-                        <option value="phi3:14b">phi3:14b</option>
-                        <option value="phi4:14b">phi4:14b</option>
-                        <option value="hf.co/unsloth/phi-4-GGUF">hf.co/unsloth/phi-4-GGUF</option>
-                        <option value="qwen2">qwen2</option>
-                        <option value="qwen2.5:32b">qwen2.5:32b</option>
-                        <option value="qwen2.5-coder">qwen2.5-coder</option>
-                        <option value="qwq">qwq</option>
-                        <option value="deepseek-r1">deepseek-r1</option>
-                        <option value="deepseek-r1:32b">deepseek-r1:32b</option>
                     </select>
-                    <div class="form-text" id="customModelHelp">These models must be <a
-                            href="https://github.com/ollama/ollama?tab=readme-ov-file#pull-a-model">pulled by Ollama</a>
-                        e.g.
-                        <code>ollama pull phi4:14b</code> (when running Ollama locally)
-                        or <code>docker exec secondbrain-ollama-1 ollama pull phi4</code> (when running Ollama in
-                        Docker).
-                    </div>
+                    <div class="form-text" id="customModelHelp"></div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="contextWindow">Context Window</label>
@@ -276,5 +250,7 @@
     // Initial display of saved prompts
     displaySavedPrompts();
 </script>
+<script src="js/help.js"></script>
+<script src="js/models.js"></script>
 </body>
 </html>
