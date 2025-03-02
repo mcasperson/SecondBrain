@@ -6,6 +6,9 @@ import org.apache.commons.collections4.map.PassiveExpiringMap;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * An in memory implementation of the {@link AsyncResults} interface.
+ */
 @ApplicationScoped
 public class InMemAsyncResult implements AsyncResults {
     /**
