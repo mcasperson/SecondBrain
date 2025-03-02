@@ -233,23 +233,10 @@
         });
     }
 
-    function disableForm() {
-        document.getElementById('prompt').disabled = true;
-        document.querySelectorAll('input').forEach(b => b.disabled = true);
-        document.querySelectorAll('select').forEach(b => b.disabled = true);
-        document.querySelectorAll('button').forEach(b => b.disabled = true);
-    }
-
-    function enableForm() {
-        document.getElementById('prompt').disabled = false;
-        document.querySelectorAll('input').forEach(b => b.disabled = false);
-        document.querySelectorAll('select').forEach(b => b.disabled = false);
-        document.querySelectorAll('button').forEach(b => b.disabled = false);
-    }
-
     // Initial display of saved prompts
     displaySavedPrompts();
 </script>
+<script src="resources/js/form.js"></script>
 <script src="resources/js/help.js"></script>
 <script src="resources/js/models.js"></script>
 </body>

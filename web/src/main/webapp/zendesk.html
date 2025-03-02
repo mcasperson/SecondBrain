@@ -157,25 +157,8 @@
                 enableForm()
             });
     }
-
-    function disableForm() {
-        document.getElementById('token').disabled = true;
-        document.getElementById('user').disabled = true;
-        document.getElementById('customModel').disabled = true;
-        document.getElementById('argumentDebugging').disabled = true;
-        document.getElementById('prompt').disabled = true;
-        document.querySelectorAll('button').forEach(b => b.disabled = true);
-    }
-
-    function enableForm() {
-        document.getElementById('token').disabled = false;
-        document.getElementById('user').disabled = false;
-        document.getElementById('customModel').disabled = false;
-        document.getElementById('argumentDebugging').disabled = false;
-        document.getElementById('prompt').disabled = false;
-        document.querySelectorAll('button').forEach(b => b.disabled = false);
-    }
 </script>
+<script src="resources/js/form.js"></script>
 <script src="resources/js/help.js"></script>
 <script src="resources/js/models.js"></script>
 </body>
