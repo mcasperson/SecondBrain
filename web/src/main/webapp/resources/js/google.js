@@ -35,7 +35,7 @@ function handleSubmit(event) {
 
     disableForm()
 
-    response.innerText = 'Loading...'
+    response.innerText = 'Loading - this can take several minutes, so please be patient...'
 
     const prompt = document.getElementById('prompt').value;
 
