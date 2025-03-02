@@ -9,8 +9,8 @@ import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.StringUtils;
+import secondbrain.domain.async.AsyncResults;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
 
@@ -18,17 +18,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Path("/")
 public class PromptResource {
-    /**
-     * This is an in memory cache of the results of the prompt handler.
-     */
-    private static final PassiveExpiringMap<String, String> RESULTS = new PassiveExpiringMap<>(
-            new PassiveExpiringMap.ConstantTimeToLiveExpirationPolicy<>(5, TimeUnit.MINUTES)
-    );
+
+    @Inject
+    private AsyncResults asyncResults;
 
     @Inject
     private PromptHandler promptHandler;
@@ -67,9 +63,7 @@ public class PromptResource {
 
         Thread.startVirtualThread(() -> {
             final String result = promptHandler.handlePrompt(combinedContext, Objects.requireNonNullElse(prompt, ""));
-            synchronized (RESULTS) {
-                RESULTS.put(resultKey, result);
-            }
+            asyncResults.addResult(resultKey, result);
         });
 
         return resultKey;
@@ -79,12 +73,9 @@ public class PromptResource {
     @Path("/results/{resultKey}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getResult(@PathParam("resultKey") final String resultKey) {
-        synchronized (RESULTS) {
-            final String result = RESULTS.get(resultKey);
-            if (StringUtils.isEmpty(result)) {
-                return Response.status(404).build();
-            }
-            return Response.ok(result).build();
-        }
+        return asyncResults.getResult(resultKey)
+                .map(Response::ok)
+                .orElse(Response.status(404))
+                .build();
     }
 }
