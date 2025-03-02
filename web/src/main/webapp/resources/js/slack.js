@@ -1,8 +1,4 @@
 document.addEventListener('DOMContentLoaded', (event) => {
-    document.getElementById('prompt').value = stripLineBreaks(
-        stripLeadingWhitespace(
-            `Summarize 7 days worth of messages from the #announcements channel`))
-
     buildButtons();
     selectTokenInput();
 
@@ -171,6 +167,9 @@ document.getElementById('days').value = localStorage.getItem('slackDays') || '';
 document.getElementById('channel').value = localStorage.getItem('slackChannel') || '';
 document.getElementById('contextWindow').value = localStorage.getItem('slackContextWindow') || '65536';
 document.getElementById('customModel').value = localStorage.getItem('slackCustomModel') || '';
+document.getElementById('prompt').value = localStorage.getItem('slackPrompt') || stripLineBreaks(
+    stripLeadingWhitespace(
+        `Summarize 7 days worth of messages from the #announcements channel`));
 
 document.getElementById('days').onchange = function () {
     localStorage.setItem('slackDays', document.getElementById('days').value);
@@ -186,4 +185,8 @@ document.getElementById('contextWindow').onchange = function () {
 
 document.getElementById('customModel').onchange = function () {
     localStorage.setItem('slackCustomModel', document.getElementById('customModel').value);
+}
+
+document.getElementById('prompt').onchange = function () {
+    localStorage.setItem('slackPrompt', document.getElementById('prompt').value);
 }
