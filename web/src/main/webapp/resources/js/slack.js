@@ -104,20 +104,6 @@ function handleSubmit(event) {
         });
 }
 
-function disableForm() {
-    document.getElementById('prompt').disabled = true;
-    document.querySelectorAll('input').forEach(b => b.disabled = true);
-    document.querySelectorAll('select').forEach(b => b.disabled = true);
-    document.querySelectorAll('button').forEach(b => b.disabled = true);
-}
-
-function enableForm() {
-    document.getElementById('prompt').disabled = false;
-    document.querySelectorAll('input').forEach(b => b.disabled = false);
-    document.querySelectorAll('select').forEach(b => b.disabled = false);
-    document.querySelectorAll('button').forEach(b => b.disabled = false);
-}
-
 function handleLogin() {
     window.location.href = 'https://slack.com/oauth/v2/authorize'
         + '?user_scope=channels:history,channels:read,search:read'
@@ -183,9 +169,9 @@ document.getElementById('contextWindow').onchange = function () {
     localStorage.setItem('slackContextWindow', document.getElementById('contextWindow').value);
 }
 
-document.getElementById('customModel').onchange = function () {
-    localStorage.setItem('slackCustomModel', document.getElementById('customModel').value);
-}
+document.getElementById('customModel').addEventListener("onchange", function () {
+    localStorage.setItem('slackCustomModel', document.getElementById('customModel').value)
+}, false)
 
 document.getElementById('prompt').onchange = function () {
     localStorage.setItem('slackPrompt', document.getElementById('prompt').value);

@@ -7,6 +7,6 @@ function setModelHelp() {
          or <code>docker exec secondbrain-ollama-1 ollama pull ` + model + `</code> (when running Ollama in Docker).`;
 }
 
-document.getElementById('customModel').onchange = setModelHelp
+document.getElementById('customModel').addEventListener("onchange", setModelHelp, false)
 
 setModelHelp()
