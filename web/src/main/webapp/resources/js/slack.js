@@ -163,8 +163,8 @@ function selectTokenInput() {
 // Initial display of saved prompts
 displaySavedPrompts();
 
-document.getElementById('days').value = localStorage.getItem('slackDays') || '';
-document.getElementById('channel').value = localStorage.getItem('slackChannel') || '';
+document.getElementById('days').value = localStorage.getItem('slackDays') || '7';
+document.getElementById('channel').value = localStorage.getItem('slackChannel') || 'announcements';
 document.getElementById('contextWindow').value = localStorage.getItem('slackContextWindow') || '65536';
 document.getElementById('customModel').value = localStorage.getItem('slackCustomModel') || '';
 document.getElementById('prompt').value = localStorage.getItem('slackPrompt') || stripLineBreaks(
