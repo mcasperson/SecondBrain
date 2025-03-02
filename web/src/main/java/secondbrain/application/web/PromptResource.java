@@ -11,6 +11,7 @@ import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import secondbrain.domain.async.AsyncResults;
+import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
 
@@ -31,6 +32,9 @@ public class PromptResource {
 
     @Inject
     private JsonDeserializer jsonDeserializer;
+
+    @Inject
+    private ExceptionHandler exceptionHandler;
 
     @POST
     @Path("promptweb")
@@ -62,8 +66,9 @@ public class PromptResource {
         final String resultKey = UUID.randomUUID().toString();
 
         Thread.startVirtualThread(() -> {
-            final String result = promptHandler.handlePrompt(combinedContext, Objects.requireNonNullElse(prompt, ""));
-            asyncResults.addResult(resultKey, result);
+            Try.of(() -> promptHandler.handlePrompt(combinedContext, Objects.requireNonNullElse(prompt, "")))
+                    .onSuccess(result -> asyncResults.addResult(resultKey, result))
+                    .onFailure(throwable -> asyncResults.addResult(resultKey, exceptionHandler.getExceptionMessage(throwable)));
         });
 
         return resultKey;
