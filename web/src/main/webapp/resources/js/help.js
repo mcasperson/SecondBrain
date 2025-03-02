@@ -1,5 +1,5 @@
 function setModelHelp() {
-    const model = document.getElementById('customModel').value
+    const model = document.getElementById('customModel').value || "llama3.2"
     document.getElementById('customModelHelp').innerHTML = `
         These models must be
          <a href="https://github.com/ollama/ollama?tab=readme-ov-file#pull-a-model">pulled by Ollama</a>
