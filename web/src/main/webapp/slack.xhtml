@@ -84,11 +84,11 @@
                            type="password"/>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="channel">Channel</label>
+                    <label class="form-label" for="channel">Channel name</label>
                     <input class="form-control" id="channel" type="text"/>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="days">Days</label>
+                    <label class="form-label" for="days">Days worth of messages</label>
                     <input class="form-control" id="days" type="text"/>
                 </div>
                 <div class="mb-3">
@@ -116,7 +116,9 @@
                         <option value="32768">32768</option>
                         <option value="65536">65536</option>
                     </select>
-                    <div class="form-text" id="contextWindowHelp">This is the context window used by Ollama
+                    <div class="form-text" id="contextWindowHelp">This is the context window used by Ollama.
+                        Larger values allow more data to be considerde when answreing the prompt.
+                        Larger values also take up more memory and slow down the response.</div>
                     </div>
                 </div>
                 <div class="mb-3">
