@@ -7,7 +7,9 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.StringUtils;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
@@ -15,10 +17,19 @@ import secondbrain.domain.json.JsonDeserializer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-@Path("promptweb")
+@Path("/")
 public class PromptResource {
+    /**
+     * This is an in memory cache of the results of the prompt handler.
+     */
+    private static final PassiveExpiringMap<String, String> RESULTS = new PassiveExpiringMap<>(
+            new PassiveExpiringMap.ConstantTimeToLiveExpirationPolicy<>(5, TimeUnit.MINUTES)
+    );
+
     @Inject
     private PromptHandler promptHandler;
 
@@ -26,6 +37,7 @@ public class PromptResource {
     private JsonDeserializer jsonDeserializer;
 
     @POST
+    @Path("promptweb")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
     public String getWeb(@QueryParam("prompt") final String prompt,
@@ -51,6 +63,28 @@ public class PromptResource {
         final Map<String, String> combinedContext = new HashMap<>(cookieContext);
         combinedContext.putAll(filteredContext);
 
-        return promptHandler.handlePrompt(combinedContext, Objects.requireNonNullElse(prompt, ""));
+        final String resultKey = UUID.randomUUID().toString();
+
+        Thread.startVirtualThread(() -> {
+            final String result = promptHandler.handlePrompt(combinedContext, Objects.requireNonNullElse(prompt, ""));
+            synchronized (RESULTS) {
+                RESULTS.put(resultKey, result);
+            }
+        });
+
+        return resultKey;
+    }
+
+    @GET
+    @Path("/results/{resultKey}")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response getResult(@PathParam("resultKey") final String resultKey) {
+        synchronized (RESULTS) {
+            final String result = RESULTS.get(resultKey);
+            if (StringUtils.isEmpty(result)) {
+                return Response.status(404).build();
+            }
+            return Response.ok(result).build();
+        }
     }
 }

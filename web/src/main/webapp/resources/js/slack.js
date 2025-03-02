@@ -95,6 +95,8 @@ function handleSubmit(event) {
         body: JSON.stringify(context),
     })
         .then(response => response.text())
+        .then(key => getResult(key))
+        .then(response => response.text())
         .then(data => {
             response.innerHTML = DOMPurify.sanitize(marked.parse(data))
         })
