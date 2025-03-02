@@ -2,7 +2,7 @@ async function getResult(key) {
     let result = null;
 
     do {
-        result = await new Promise(res => setTimeout(res, 30000))
+        result = await new Promise(res => setTimeout(res, 5000))
             .then(() => fetch('/api/results/' + encodeURIComponent(key), {
                 method: 'GET',
             }))
