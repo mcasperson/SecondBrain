@@ -106,7 +106,7 @@
 <script src="resources/js/results.js"></script>
 <script src="resources/js/strings.js"></script>
 <script>
-    document.getElementById('contextWindow').addEventListener("onchange", function () {
+    document.getElementById('contextWindow').addEventListener("change", function () {
         localStorage.setItem('publicwebContextWindow', document.getElementById('contextWindow').value);
     }, false)
 
@@ -114,11 +114,11 @@
         localStorage.setItem('publicwebCustomModel', document.getElementById('customModel').value)
     }, false)
 
-    document.getElementById('prompt').addEventListener("onchange", function () {
+    document.getElementById('prompt').addEventListener("change", function () {
         localStorage.setItem('publicwebPrompt', document.getElementById('prompt').value);
     }, false)
 
-    document.getElementById('url').addEventListener("onchange", function () {
+    document.getElementById('url').addEventListener("change", function () {
         localStorage.setItem('publicwebUrl', document.getElementById('url').value);
     }, false)
 

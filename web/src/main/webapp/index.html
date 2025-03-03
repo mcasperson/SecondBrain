@@ -113,7 +113,7 @@
 <script src="resources/js/results.js"></script>
 <script src="resources/js/strings.js"></script>
 <script>
-    document.getElementById('contextWindow').addEventListener("onchange", function () {
+    document.getElementById('contextWindow').addEventListener("change", function () {
         localStorage.setItem('githubContextWindow', document.getElementById('contextWindow').value);
     }, false)
 
@@ -121,7 +121,7 @@
         localStorage.setItem('githubCustomModel', document.getElementById('customModel').value)
     }, false)
 
-    document.getElementById('prompt').addEventListener("onchange", function () {
+    document.getElementById('prompt').addEventListener("change", function () {
         localStorage.setItem('githubPrompt', document.getElementById('prompt').value);
     }, false)
 

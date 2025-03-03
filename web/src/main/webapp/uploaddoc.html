@@ -133,14 +133,24 @@
 <script>
     document.getElementById('prompt').value = localStorage.getItem('uploaddocPrompt') || '';
     document.getElementById('keywords').value = localStorage.getItem('uploaddocKeywords') || '';
+    document.getElementById('contextWindow').value = localStorage.getItem('uploaddocContextWindow') || '65536';
+    document.getElementById('customModel').value = localStorage.getItem('uploaddocCustomModel') || '';
 
-    document.getElementById('prompt').onchange = function () {
+    document.getElementById('contextWindow').addEventListener("change", function () {
+        localStorage.setItem('uploaddocContextWindow', document.getElementById('contextWindow').value);
+    }, false)
+
+    document.getElementById('customModel').addEventListener("change", function () {
+        localStorage.setItem('uploaddocCustomModel', document.getElementById('customModel').value)
+    }, false)
+
+    document.getElementById('prompt').addEventListener("change", function () {
         localStorage.setItem('uploaddocPrompt', document.getElementById('prompt').value);
-    }
+    }, false)
 
-    document.getElementById('keywords').onchange = function () {
+    document.getElementById('keywords').addEventListener("change", function () {
         localStorage.setItem('uploaddocKeywords', document.getElementById('keywords').value);
-    }
+    }, false)
 
     function handleSubmit(event) {
         event.preventDefault();
