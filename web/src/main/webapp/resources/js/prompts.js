@@ -21,7 +21,12 @@ function displaySavedPrompts(tool) {
         const listItem = document.createElement('li');
         const link = document.createElement('a');
         link.href = '#';
+        link.title = prompt;
         link.innerText = prompt;
+        link.style.display = 'block';
+        link.style.whiteSpace = 'nowrap';
+        link.style.overflow = 'hidden';
+        link.style.textOverflow = 'ellipsis';
         link.onclick = function () {
             document.getElementById('prompt').value = prompt;
         };
