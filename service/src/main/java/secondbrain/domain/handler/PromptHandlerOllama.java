@@ -93,7 +93,7 @@ public class PromptHandlerOllama implements PromptHandler {
                 /*
                     The retry count is exhausted, so we return the error message to the user.
                  */
-                .recover(Throwable.class, e -> "Failed to find a tool or call it: " + ExceptionUtils.getRootCauseMessage(e))
+                .recover(Throwable.class, ExceptionUtils::getRootCauseMessage)
                 .get();
     }
 
