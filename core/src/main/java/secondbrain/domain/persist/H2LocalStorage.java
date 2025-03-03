@@ -311,7 +311,10 @@ public class H2LocalStorage implements LocalStorage {
                  */
                 .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 // If there was an error with the local storage, bypass it and generate the value
-                .recover(LocalStorageFailure.class, ex -> generateValue.generate())
+                .recover(LocalStorageFailure.class, ex -> {
+                    logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                    return generateValue.generate();
+                })
                 // For all other errors, we return the value or rethrow the exception
                 .get();
     }
@@ -348,7 +351,10 @@ public class H2LocalStorage implements LocalStorage {
                  */
                 .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 // If there was an error with the local storage, bypass it and generate the value
-                .recover(LocalStorageFailure.class, ex -> generateValue.generate())
+                .recover(LocalStorageFailure.class, ex -> {
+                    logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                    return generateValue.generate();
+                })
                 // For all other errors, we return the value or rethrow the exception
                 .get();
     }
