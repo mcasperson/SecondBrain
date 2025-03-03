@@ -31,6 +31,7 @@ import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
@@ -46,8 +47,8 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.*;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -211,6 +212,7 @@ public class GoogleDocs implements Tool<Void> {
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Google document is empty", throwable)),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure("Failed to call Ollama", throwable)),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }

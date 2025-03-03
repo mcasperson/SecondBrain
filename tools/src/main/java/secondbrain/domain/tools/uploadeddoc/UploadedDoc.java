@@ -19,6 +19,7 @@ import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.converter.FileToText;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
@@ -148,6 +149,7 @@ public class UploadedDoc implements Tool<Void> {
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The document was empty")),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure("Failed to call Ollama", throwable)),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }

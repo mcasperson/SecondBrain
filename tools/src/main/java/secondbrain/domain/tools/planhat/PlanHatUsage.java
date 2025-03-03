@@ -16,6 +16,7 @@ import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.EmptyString;
+import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
@@ -158,6 +159,7 @@ public class PlanHatUsage implements Tool<Company> {
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The PlanHat activities is empty", throwable)),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure("Failed to call Ollama", throwable)),
                         API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }

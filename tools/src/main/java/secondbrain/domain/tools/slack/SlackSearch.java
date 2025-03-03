@@ -26,6 +26,7 @@ import secondbrain.domain.date.DateParser;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.limit.DocumentTrimmer;
@@ -180,6 +181,7 @@ public class SlackSearch implements Tool<MatchedItem> {
                 .mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Slack channel had no matching messages")),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure("Failed to call Ollama", throwable)),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
 

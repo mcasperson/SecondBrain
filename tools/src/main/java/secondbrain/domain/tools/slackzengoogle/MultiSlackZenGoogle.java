@@ -19,10 +19,7 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.ExternalFailure;
-import secondbrain.domain.exceptions.InsufficientContext;
-import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.exceptions.*;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
@@ -231,6 +228,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("Some content was empty (this is probably a bug...)")),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure("Failed to call Ollama", throwable)),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }

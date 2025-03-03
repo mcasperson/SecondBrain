@@ -24,6 +24,7 @@ import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.converter.HtmlToText;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.exceptions.EmptyString;
+import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
@@ -185,6 +186,7 @@ public class PlanHat implements Tool<Conversation> {
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The PlanHat activities is empty", throwable)),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure("Failed to call Ollama", throwable)),
                         API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
     }

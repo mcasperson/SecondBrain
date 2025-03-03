@@ -22,6 +22,7 @@ import secondbrain.domain.converter.FileToText;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
@@ -198,6 +199,7 @@ public class DirectoryScan implements Tool<Void> {
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(instanceOf(EmptyString.class)),
                                 throwable -> new InternalFailure("No files found for " + parsedArgs.getDirectory() + debugArgs)),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure("Failed to call Ollama", throwable)),
                         API.Case(API.$(),
                                 throwable -> new ExternalFailure("Failed to get file contents: " + throwable.getMessage() + "\n" + debugArgs)))
                 .get();

@@ -8,6 +8,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -69,6 +70,7 @@ public class HelloWorld implements Tool<Void> {
         return result.mapFailure(
                         // Pass through any InternalFailure exceptions
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure("Failed to call Ollama", throwable)),
                         // This is an example of an exception that may have been thrown while processing the result.
                         // We treat this as an internal exception.
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("Something was empty")),
