@@ -28,6 +28,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
     document.getElementById('prompt').value = localStorage.getItem('googlePrompt') || stripLineBreaks(
         stripLeadingWhitespace(
             defaultPrompt || `Summarize the Google document with the id 195j9eDD3ccgjQRttHhJPymLJUCOUjs-jmwTrekvdjFE`));
+
+    displaySavedPrompts('googleDocs');
 });
 
 function handleSubmit(event) {
@@ -38,8 +40,10 @@ function handleSubmit(event) {
     response.innerText = 'Loading - this can take several minutes, so please be patient...'
 
     const prompt = document.getElementById('prompt').value;
-
     const authLoginEnabled = document.getElementById('authLogin').checked;
+
+    savePrompt('googleDocs', prompt);
+    displaySavedPrompts('googleDocs');
 
     if (authLoginEnabled) {
         postRequest(prompt, {});
