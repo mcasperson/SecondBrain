@@ -123,7 +123,7 @@ document.getElementById('customModel').addEventListener("onchange", function () 
     localStorage.setItem('slackContextWindow', document.getElementById('contextWindow').value);
 }, false)
 
-document.getElementById('customModel').addEventListener("onchange", function () {
+document.getElementById('customModel').addEventListener("change", function () {
     localStorage.setItem('slackCustomModel', document.getElementById('customModel').value)
 }, false)
 
