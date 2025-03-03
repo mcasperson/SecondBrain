@@ -72,6 +72,19 @@
                     <div class="form-text" id="customModelHelp"></div>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label" for="contextWindow">Context Window</label>
+                    <select class="form-select" id="contextWindow">
+                        <option value="2048">2048</option>
+                        <option value="4096">4096</option>
+                        <option value="8192">8192</option>
+                        <option value="16384">16384</option>
+                        <option value="32768">32768</option>
+                        <option value="65536">65536</option>
+                    </select>
+                    <div class="form-text" id="contextWindowHelp">This is the context window used by Ollama
+                    </div>
+                </div>
+                <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" id="argumentDebugging" type="checkbox" value="">
                         <label class="form-check-label" for="argumentDebugging">
@@ -93,20 +106,36 @@
 
 <script crossorigin="anonymous" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="resources/js/strings.js"></script>
-<script src="resources/js/cookies.js"></script>
 <script src="resources/js/form.js"></script>
 <script src="resources/js/help.js"></script>
 <script src="resources/js/models.js"></script>
+<script src="resources/js/prompts.js"></script>
+<script src="resources/js/results.js"></script>
+<script src="resources/js/strings.js"></script>
 <script>
-    document.getElementById('prompt').value = stripLineBreaks(
-        stripLeadingWhitespace(
-            `Given the diffs from owner \"mcasperson\" and repo \"SecondBrain\" on branch \"main\",
+    document.getElementById('contextWindow').addEventListener("onchange", function () {
+        localStorage.setItem('githubContextWindow', document.getElementById('contextWindow').value);
+    }, false)
+
+    document.getElementById('customModel').addEventListener("change", function () {
+        localStorage.setItem('githubCustomModel', document.getElementById('customModel').value)
+    }, false)
+
+    document.getElementById('prompt').addEventListener("onchange", function () {
+        localStorage.setItem('githubPrompt', document.getElementById('prompt').value);
+    }, false)
+
+    document.getElementById('contextWindow').value = localStorage.getItem('githubContextWindow') || '65536';
+    document.getElementById('customModel').value = localStorage.getItem('githubCustomModel') || '';
+    document.getElementById('prompt').value = localStorage.getItem('githubPrompt') ||
+        stripLineBreaks(
+            stripLeadingWhitespace(
+                `Given the diffs from owner \"mcasperson\" and repo \"SecondBrain\" on branch \"main\",
             generate release notes with an introductory paragraph and then bullet points of significant changes.
             Limit the number of diffs to 2.
             Use plain language.
             You will be penalized for offering code suggestions.
-            You will be penalized for sounding excited about the changes.`))
+            You will be penalized for sounding excited about the changes.`));
 
     function handleSubmit(event) {
         event.preventDefault();
@@ -119,6 +148,7 @@
         const prompt = document.getElementById('prompt').value;
         const customModel = document.getElementById('customModel').value;
         const argumentDebugging = document.getElementById('argumentDebugging').checked;
+        const contextWindow = document.getElementById('contextWindow').value;
 
         fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
             method: 'POST',
@@ -129,7 +159,8 @@
                 "github_access_token": githubToken,
                 "custom_model": customModel,
                 "argument_debugging": argumentDebugging,
-                "tool": "GitHubDiffs"
+                "tool": "GitHubDiffs",
+                context_window: contextWindow
             }),
         })
             .then(response => response.text())

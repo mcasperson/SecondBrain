@@ -128,16 +128,18 @@
 <script src="resources/js/models.js"></script>
 <script src="resources/js/prompts.js"></script>
 <script src="resources/js/buffers.js"></script>
+<script src="resources/js/results.js"></script>
+<script src="resources/js/strings.js"></script>
 <script>
-    document.getElementById('prompt').value = localStorage.getItem('uploaddoc') || '';
-    document.getElementById('keywords').value = localStorage.getItem('keywords') || '';
+    document.getElementById('prompt').value = localStorage.getItem('uploaddocPrompt') || '';
+    document.getElementById('keywords').value = localStorage.getItem('uploaddocKeywords') || '';
 
     document.getElementById('prompt').onchange = function () {
-        localStorage.setItem('uploaddoc', document.getElementById('prompt').value);
+        localStorage.setItem('uploaddocPrompt', document.getElementById('prompt').value);
     }
 
     document.getElementById('keywords').onchange = function () {
-        localStorage.setItem('keywords', document.getElementById('keywords').value);
+        localStorage.setItem('uploaddocKeywords', document.getElementById('keywords').value);
     }
 
     function handleSubmit(event) {

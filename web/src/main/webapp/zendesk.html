@@ -73,6 +73,19 @@
                     <div class="form-text" id="customModelHelp"></div>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label" for="contextWindow">Context Window</label>
+                    <select class="form-select" id="contextWindow">
+                        <option value="2048">2048</option>
+                        <option value="4096">4096</option>
+                        <option value="8192">8192</option>
+                        <option value="16384">16384</option>
+                        <option value="32768">32768</option>
+                        <option value="65536">65536</option>
+                    </select>
+                    <div class="form-text" id="contextWindowHelp">This is the context window used by Ollama
+                    </div>
+                </div>
+                <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" id="argumentDebugging" type="checkbox" value="">
                         <label class="form-check-label" for="argumentDebugging">
@@ -97,11 +110,28 @@
 <script src="resources/js/form.js"></script>
 <script src="resources/js/help.js"></script>
 <script src="resources/js/models.js"></script>
+<script src="resources/js/prompts.js"></script>
+<script src="resources/js/results.js"></script>
 <script src="resources/js/strings.js"></script>
 <script>
-    document.getElementById('prompt').value = stripLineBreaks(
-        stripLeadingWhitespace(
-            `Given 1 days worth of ZenDesk tickets to recipient 'support@example.com' provide a summary of the questions and problems in the style of a news article with up to 7 paragraphs.
+    document.getElementById('contextWindow').addEventListener("onchange", function () {
+        localStorage.setItem('zendeskContextWindow', document.getElementById('contextWindow').value);
+    }, false)
+
+    document.getElementById('customModel').addEventListener("change", function () {
+        localStorage.setItem('zendeskCustomModel', document.getElementById('customModel').value)
+    }, false)
+
+    document.getElementById('prompt').addEventListener("onchange", function () {
+        localStorage.setItem('zendeskPrompt', document.getElementById('prompt').value);
+    }, false)
+
+    document.getElementById('contextWindow').value = localStorage.getItem('zendeskContextWindow') || '65536';
+    document.getElementById('customModel').value = localStorage.getItem('zendeskCustomModel') || '';
+    document.getElementById('prompt').value = localStorage.getItem('zendeskPrompt') ||
+        stripLineBreaks(
+            stripLeadingWhitespace(
+                `Given 1 days worth of ZenDesk tickets to recipient 'support@example.com' provide a summary of the questions and problems in the style of a news article with up to 7 paragraphs.
             You must carefully consider each ticket when generating the summary.
             You will be penalized for showing category percentages.
             You will be penalized for including ticket IDs or reference numbers.
@@ -111,20 +141,24 @@
             You must only summarize emails that are asking for support.
             You will be penalized for summarizing emails that are not asking for support. You will be penalized for summarizing marketing emails.
             You will be penalized for attempting to answer the questions.
-            You will be penalized for using terms like flooded, wave, or inundated. You will be penalized for including an introductory paragraph.`))
+            You will be penalized for using terms like flooded, wave, or inundated. You will be penalized for including an introductory paragraph.`));
 
     function handleSubmit(event) {
         event.preventDefault();
 
-        disableForm()
+        disableForm();
 
-        response.innerText = 'Loading - this can take several minutes, so please be patient...'
+        response.innerText = 'Loading - this can take several minutes, so please be patient...';
 
         const token = document.getElementById('token').value;
         const user = document.getElementById('user').value;
         const prompt = document.getElementById('prompt').value;
         const customModel = document.getElementById('customModel').value;
         const argumentDebugging = document.getElementById('argumentDebugging').checked;
+        const contextWindow = document.getElementById('contextWindow').value;
+
+        savePrompt(prompt);
+        displaySavedPrompts();
 
         fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
             method: 'POST',
@@ -136,7 +170,8 @@
                 "zendesk_user": user,
                 "custom_model": customModel,
                 "argument_debugging": argumentDebugging,
-                "tool": "ZenDeskOrganization"
+                "tool": "ZenDeskOrganization",
+                context_window: contextWindow
             }),
         })
             .then(response => response.text())
@@ -152,6 +187,9 @@
                 enableForm()
             });
     }
+
+    // Initial display of saved prompts
+    displaySavedPrompts();
 </script>
 </body>
 </html>

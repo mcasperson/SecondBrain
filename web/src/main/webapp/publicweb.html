@@ -62,6 +62,30 @@
                     <textarea aria-describedby="promptHelp" class="form-control" id="prompt" rows="10"></textarea>
                 </div>
                 <div class="mb-3">
+                    <ul id="savedPromptsList"></ul>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="customModel">Custom Model</label>
+                    <select aria-label="Default select example" class="form-select" id="customModel">
+                        <option selected="selected" value="">Default</option>
+                    </select>
+                    <div class="form-text" id="customModelHelp"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="contextWindow">Context Window</label>
+                    <select class="form-select" id="contextWindow">
+                        <option value="2048">2048</option>
+                        <option value="4096">4096</option>
+                        <option value="8192">8192</option>
+                        <option value="16384">16384</option>
+                        <option value="32768">32768</option>
+                        <option value="65536">65536</option>
+                    </select>
+                    <div class="form-text" id="contextWindowHelp">This is the context window used by Ollama
+                    </div>
+                </div>
+                <div class="mb-3">
                     <button class="btn btn-primary" type="submit">Submit</button>
                 </div>
                 <div class="mb-3">
@@ -76,26 +100,50 @@
 <script crossorigin="anonymous" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="resources/js/form.js"></script>
+<script src="resources/js/help.js"></script>
+<script src="resources/js/models.js"></script>
+<script src="resources/js/prompts.js"></script>
+<script src="resources/js/results.js"></script>
+<script src="resources/js/strings.js"></script>
 <script>
-    document.getElementById('prompt').value = localStorage.getItem('publicweb_prompt') || `Given the document from "https://raw.githubusercontent.com/mcasperson/SecondBrain/refs/heads/main/README.md", list the configuration options.`;
-    document.getElementById('url').value = localStorage.getItem('publicweb_url') || 'https://raw.githubusercontent.com/mcasperson/SecondBrain/refs/heads/main/README.md';
+    document.getElementById('contextWindow').addEventListener("onchange", function () {
+        localStorage.setItem('publicwebContextWindow', document.getElementById('contextWindow').value);
+    }, false)
 
-    document.getElementById('prompt').onchange = function () {
-        localStorage.setItem('publicweb_prompt', document.getElementById('prompt').value);
-    }
+    document.getElementById('customModel').addEventListener("change", function () {
+        localStorage.setItem('publicwebCustomModel', document.getElementById('customModel').value)
+    }, false)
 
-    document.getElementById('url').onchange = function () {
-        localStorage.setItem('publicweb_url', document.getElementById('url').value);
-    }
+    document.getElementById('prompt').addEventListener("onchange", function () {
+        localStorage.setItem('publicwebPrompt', document.getElementById('prompt').value);
+    }, false)
+
+    document.getElementById('url').addEventListener("onchange", function () {
+        localStorage.setItem('publicwebUrl', document.getElementById('url').value);
+    }, false)
+
+    document.getElementById('contextWindow').value = localStorage.getItem('publicwebContextWindow') || '65536';
+    document.getElementById('customModel').value = localStorage.getItem('publicwebCustomModel') || '';
+    document.getElementById('url').value = localStorage.getItem('publicwebUrl') || 'https://raw.githubusercontent.com/mcasperson/SecondBrain/refs/heads/main/README.md';
+    document.getElementById('prompt').value = localStorage.getItem('publicwebPrompt') ||
+        stripLineBreaks(
+            stripLeadingWhitespace(
+                `Given the document from "https://raw.githubusercontent.com/mcasperson/SecondBrain/refs/heads/main/README.md", list the configuration options.`));
 
     function handleSubmit(event) {
         event.preventDefault();
 
-        disableForm()
+        disableForm();
 
-        response.innerText = 'Loading - this can take several minutes, so please be patient...'
+        response.innerText = 'Loading - this can take several minutes, so please be patient...';
 
         const prompt = document.getElementById('prompt').value;
+        const customModel = document.getElementById('customModel').value;
+        const url = document.getElementById('url').value;
+        const contextWindow = document.getElementById('contextWindow').value;
+
+        savePrompt(prompt);
+        displaySavedPrompts();
 
         fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
             method: 'POST',
@@ -104,9 +152,13 @@
             },
             body: JSON.stringify({
                 tool: "PublicWeb",
-                publicweb_url: document.getElementById('url').value,
+                publicweb_url: url,
+                custom_model: customModel,
+                context_window: contextWindow
             })
         })
+            .then(response => response.text())
+            .then(key => getResult(key))
             .then(response => response.text())
             .then(data => {
                 response.innerHTML = DOMPurify.sanitize(marked.parse(data))
@@ -118,6 +170,9 @@
                 enableForm()
             });
     }
+
+    // Initial display of saved prompts
+    displaySavedPrompts();
 </script>
 </body>
 </html>

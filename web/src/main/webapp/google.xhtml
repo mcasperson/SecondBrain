@@ -107,6 +107,19 @@
                     <div class="form-text" id="customModelHelp"></div>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label" for="contextWindow">Context Window</label>
+                    <select class="form-select" id="contextWindow">
+                        <option value="2048">2048</option>
+                        <option value="4096">4096</option>
+                        <option value="8192">8192</option>
+                        <option value="16384">16384</option>
+                        <option value="32768">32768</option>
+                        <option value="65536">65536</option>
+                    </select>
+                    <div class="form-text" id="contextWindowHelp">This is the context window used by Ollama
+                    </div>
+                </div>
+                <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" id="argumentDebugging" type="checkbox" value=""/>
                         <label class="form-check-label" for="argumentDebugging">

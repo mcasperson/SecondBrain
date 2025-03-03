@@ -1,10 +1,6 @@
 document.addEventListener('DOMContentLoaded', (event) => {
     const defaultPrompt = new URLSearchParams(window.location.search).get('prompt');
 
-    document.getElementById('prompt').value = stripLineBreaks(
-        stripLeadingWhitespace(
-            defaultPrompt || `Summarize the Google document with the id 195j9eDD3ccgjQRttHhJPymLJUCOUjs-jmwTrekvdjFE`))
-
     buildButtons();
     selectTokenInput();
 
@@ -14,6 +10,24 @@ document.addEventListener('DOMContentLoaded', (event) => {
     logout.addEventListener('click', handleLogout);
     authLogin.addEventListener('click', selectTokenInput);
     authServiceAccount.addEventListener('click', selectTokenInput);
+
+    document.getElementById('contextWindow').addEventListener("onchange", function () {
+        localStorage.setItem('googleContextWindow', document.getElementById('contextWindow').value);
+    }, false)
+
+    document.getElementById('customModel').addEventListener("change", function () {
+        localStorage.setItem('googleCustomModel', document.getElementById('customModel').value)
+    }, false)
+
+    document.getElementById('prompt').addEventListener("onchange", function () {
+        localStorage.setItem('googlePrompt', document.getElementById('prompt').value);
+    }, false)
+
+    document.getElementById('contextWindow').value = localStorage.getItem('googleContextWindow') || '65536';
+    document.getElementById('customModel').value = localStorage.getItem('googleCustomModel') || '';
+    document.getElementById('prompt').value = localStorage.getItem('googlePrompt') || stripLineBreaks(
+        stripLeadingWhitespace(
+            defaultPrompt || `Summarize the Google document with the id 195j9eDD3ccgjQRttHhJPymLJUCOUjs-jmwTrekvdjFE`));
 });
 
 function handleSubmit(event) {
@@ -50,10 +64,12 @@ function handleSubmit(event) {
 function postRequest(prompt, context) {
     const customModel = document.getElementById('customModel').value;
     const argumentDebugging = document.getElementById('argumentDebugging').checked;
+    const contextWindow = document.getElementById('contextWindow').value;
 
     context['custom_model'] = customModel;
     context['argument_debugging'] = argumentDebugging;
     context['tool'] = "GoogleDocs";
+    context['context_window'] = contextWindow;
 
     fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
         method: 'POST',
