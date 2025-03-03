@@ -5,7 +5,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.context.*;
@@ -93,7 +92,7 @@ public class PromptHandlerOllama implements PromptHandler {
                 /*
                     The retry count is exhausted, so we return the error message to the user.
                  */
-                .recover(Throwable.class, ExceptionUtils::getRootCauseMessage)
+                .recover(Throwable.class, exceptionHandler::getExceptionMessage)
                 .get();
     }
 
