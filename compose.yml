@@ -29,7 +29,7 @@ services:
       # docker exec secondbrain-ollama-1 ollama pull llama3.1
       SB_OLLAMA_TOOLMODEL: llama3.1
       # This aids in debugging
-      SB_EXCEPTIONS_PRINTSTACKTRACE: true
+      SB_EXCEPTIONS_PRINTSTACKTRACE: false
       # This value is used to cache the results of various API calls
       SB_CACHE_PATH: /cache
     pull_policy: always
