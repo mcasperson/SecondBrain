@@ -156,8 +156,8 @@
         const argumentDebugging = document.getElementById('argumentDebugging').checked;
         const contextWindow = document.getElementById('contextWindow').value;
 
-        savePrompt(prompt);
-        displaySavedPrompts();
+        savePrompt('zendesk', prompt);
+        displaySavedPrompts('zendesk');
 
         fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
             method: 'POST',
@@ -188,7 +188,7 @@
     }
 
     // Initial display of saved prompts
-    displaySavedPrompts();
+    displaySavedPrompts('zendesk');
 </script>
 <script src="resources/js/help.js"></script>
 </body>

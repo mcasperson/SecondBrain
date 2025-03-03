@@ -141,8 +141,8 @@
         const url = document.getElementById('url').value;
         const contextWindow = document.getElementById('contextWindow').value;
 
-        savePrompt(prompt);
-        displaySavedPrompts();
+        savePrompt('publicWeb', prompt);
+        displaySavedPrompts('publicWeb');
 
         fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
             method: 'POST',
@@ -171,7 +171,7 @@
     }
 
     // Initial display of saved prompts
-    displaySavedPrompts();
+    displaySavedPrompts('publicWeb');
 </script>
 <script src="resources/js/help.js"></script>
 </body>

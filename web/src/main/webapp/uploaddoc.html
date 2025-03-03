@@ -162,8 +162,8 @@
         const customModel = document.getElementById('customModel').value;
         const contextWindow = document.getElementById('contextWindow').value;
 
-        savePrompt(prompt);
-        displaySavedPrompts();
+        savePrompt('uploadDoc', prompt);
+        displaySavedPrompts('uploadDoc');
 
         const file = uploadDoc.files[0];
         if (file) {
@@ -207,7 +207,7 @@
     }
 
     // Initial display of saved prompts
-    displaySavedPrompts();
+    displaySavedPrompts('uploadDoc');
 </script>
 <script src="resources/js/help.js"></script>
 </body>

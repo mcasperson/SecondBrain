@@ -22,8 +22,8 @@ function handleSubmit(event) {
     const slackChannel = document.getElementById('channel').value;
     const slackDays = document.getElementById('days').value;
 
-    savePrompt(prompt);
-    displaySavedPrompts();
+    savePrompt('slackChannel', prompt);
+    displaySavedPrompts('slackChannel');
 
     const context = {
         tool: "SlackChannel",
@@ -101,7 +101,7 @@ function selectTokenInput() {
 }
 
 // Initial display of saved prompts
-displaySavedPrompts();
+displaySavedPrompts('slackChannel');
 
 document.getElementById('days').value = localStorage.getItem('slackDays') || '7';
 document.getElementById('channel').value = localStorage.getItem('slackChannel') || 'announcements';

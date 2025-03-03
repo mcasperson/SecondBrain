@@ -2,9 +2,9 @@ function getUniqueList(arr) {
     return [...new Set(arr)];
 }
 
-function savePrompt(prompt) {
+function savePrompt(tool, prompt) {
     prompt = prompt.split("\n").map(l => l.trim()).join(" ");
-    let savedPrompts = JSON.parse(localStorage.getItem('savedPrompts')) || [];
+    let savedPrompts = JSON.parse(localStorage.getItem(tool + 'SavedPrompts')) || [];
     if (savedPrompts.length >= 5) {
         savedPrompts.shift();
     }
@@ -12,8 +12,8 @@ function savePrompt(prompt) {
     localStorage.setItem('savedPrompts', JSON.stringify(getUniqueList(savedPrompts)));
 }
 
-function displaySavedPrompts() {
-    const savedPrompts = getUniqueList(JSON.parse(localStorage.getItem('savedPrompts')) || []);
+function displaySavedPrompts(tool) {
+    const savedPrompts = getUniqueList(JSON.parse(localStorage.getItem(tool + 'SavedPrompts')) || []);
     const savedPromptsList = document.getElementById('savedPromptsList');
     savedPromptsList.innerHTML = '';
     savedPrompts.forEach((prompt, index) => {
