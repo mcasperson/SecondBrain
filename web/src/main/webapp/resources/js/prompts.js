@@ -9,7 +9,7 @@ function savePrompt(tool, prompt) {
         savedPrompts.shift();
     }
     savedPrompts.push(prompt);
-    localStorage.setItem('savedPrompts', JSON.stringify(getUniqueList(savedPrompts)));
+    localStorage.setItem(tool + 'SavedPrompts', JSON.stringify(getUniqueList(savedPrompts)));
 }
 
 function displaySavedPrompts(tool) {
