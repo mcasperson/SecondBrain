@@ -93,7 +93,11 @@
 
 <script crossorigin="anonymous" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+<script src="resources/js/strings.js"></script>
+<script src="resources/js/cookies.js"></script>
+<script src="resources/js/form.js"></script>
+<script src="resources/js/help.js"></script>
+<script src="resources/js/models.js"></script>
 <script>
     document.getElementById('prompt').value = stripLineBreaks(
         stripLeadingWhitespace(
@@ -103,14 +107,6 @@
             Use plain language.
             You will be penalized for offering code suggestions.
             You will be penalized for sounding excited about the changes.`))
-
-    function stripLeadingWhitespace(text) {
-        return text.split("\n").map(l => l.replace(/^\s+/g, '')).join("\n");
-    }
-
-    function stripLineBreaks(text) {
-        return text.replace(/\n/g, ' ');
-    }
 
     function handleSubmit(event) {
         event.preventDefault();
@@ -150,8 +146,5 @@
             });
     }
 </script>
-<script src="resources/js/form.js"></script>
-<script src="resources/js/help.js"></script>
-<script src="resources/js/models.js"></script>
 </body>
 </html>

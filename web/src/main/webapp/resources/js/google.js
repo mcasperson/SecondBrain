@@ -16,20 +16,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
     authServiceAccount.addEventListener('click', selectTokenInput);
 });
 
-function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-}
-
-function stripLeadingWhitespace(text) {
-    return text.split("\n").map(l => l.replace(/^\s+/g, '')).join("\n");
-}
-
-function stripLineBreaks(text) {
-    return text.replace(/\n/g, ' ');
-}
-
 function handleSubmit(event) {
     event.preventDefault();
 
@@ -88,20 +74,6 @@ function postRequest(prompt, context) {
         .finally(() => {
             enableForm()
         });
-}
-
-function disableForm() {
-    document.querySelectorAll('button').forEach(b => b.disabled = true);
-    document.querySelectorAll('textarea').forEach(b => b.disabled = true);
-    document.querySelectorAll('input').forEach(b => b.disabled = true);
-    document.querySelectorAll('select').forEach(b => b.disabled = true);
-}
-
-function enableForm() {
-    document.querySelectorAll('button').forEach(b => b.disabled = false);
-    document.querySelectorAll('textarea').forEach(b => b.disabled = false);
-    document.querySelectorAll('input').forEach(b => b.disabled = false);
-    document.querySelectorAll('select').forEach(b => b.disabled = false);
 }
 
 function handleLogin() {

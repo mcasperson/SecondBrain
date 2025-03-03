@@ -94,7 +94,10 @@
 
 <script crossorigin="anonymous" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+<script src="resources/js/form.js"></script>
+<script src="resources/js/help.js"></script>
+<script src="resources/js/models.js"></script>
+<script src="resources/js/strings.js"></script>
 <script>
     document.getElementById('prompt').value = stripLineBreaks(
         stripLeadingWhitespace(
@@ -109,14 +112,6 @@
             You will be penalized for summarizing emails that are not asking for support. You will be penalized for summarizing marketing emails.
             You will be penalized for attempting to answer the questions.
             You will be penalized for using terms like flooded, wave, or inundated. You will be penalized for including an introductory paragraph.`))
-
-    function stripLeadingWhitespace(text) {
-        return text.split("\n").map(l => l.replace(/^\s+/g, '')).join("\n");
-    }
-
-    function stripLineBreaks(text) {
-        return text.replace(/\n/g, ' ');
-    }
 
     function handleSubmit(event) {
         event.preventDefault();
@@ -158,8 +153,5 @@
             });
     }
 </script>
-<script src="resources/js/form.js"></script>
-<script src="resources/js/help.js"></script>
-<script src="resources/js/models.js"></script>
 </body>
 </html>

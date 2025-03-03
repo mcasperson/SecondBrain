@@ -75,7 +75,7 @@
 
 <script crossorigin="anonymous" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+<script src="resources/js/form.js"></script>
 <script>
     document.getElementById('prompt').value = localStorage.getItem('publicweb_prompt') || `Given the document from "https://raw.githubusercontent.com/mcasperson/SecondBrain/refs/heads/main/README.md", list the configuration options.`;
     document.getElementById('url').value = localStorage.getItem('publicweb_url') || 'https://raw.githubusercontent.com/mcasperson/SecondBrain/refs/heads/main/README.md';
@@ -119,6 +119,5 @@
             });
     }
 </script>
-<script src="resources/js/form.js"></script>
 </body>
 </html>

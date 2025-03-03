@@ -123,7 +123,11 @@
 
 <script crossorigin="anonymous" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+<script src="resources/js/form.js"></script>
+<script src="resources/js/help.js"></script>
+<script src="resources/js/models.js"></script>
+<script src="resources/js/prompts.js"></script>
+<script src="resources/js/buffers.js"></script>
 <script>
     document.getElementById('prompt').value = localStorage.getItem('uploaddoc') || '';
     document.getElementById('keywords').value = localStorage.getItem('keywords') || '';
@@ -134,16 +138,6 @@
 
     document.getElementById('keywords').onchange = function () {
         localStorage.setItem('keywords', document.getElementById('keywords').value);
-    }
-
-    function arrayBufferToBase64(buffer) {
-        var binary = '';
-        var bytes = new Uint8Array(buffer);
-        var len = bytes.byteLength;
-        for (var i = 0; i < len; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return window.btoa(binary);
     }
 
     function handleSubmit(event) {
@@ -201,43 +195,8 @@
         }
     }
 
-    function getUniqueList(arr) {
-        return [...new Set(arr)];
-    }
-
-    function savePrompt(prompt) {
-        prompt = prompt.split("\n").map(l => l.trim()).join(" ");
-        let savedPrompts = JSON.parse(localStorage.getItem('savedPrompts')) || [];
-        if (savedPrompts.length >= 5) {
-            savedPrompts.shift();
-        }
-        savedPrompts.push(prompt);
-        localStorage.setItem('savedPrompts', JSON.stringify(getUniqueList(savedPrompts)));
-    }
-
-    function displaySavedPrompts() {
-        const savedPrompts = getUniqueList(JSON.parse(localStorage.getItem('savedPrompts')) || []);
-        const savedPromptsList = document.getElementById('savedPromptsList');
-        savedPromptsList.innerHTML = '';
-        savedPrompts.forEach((prompt, index) => {
-            prompt = prompt.split("\n").map(l => l.trim()).join(" ");
-            const listItem = document.createElement('li');
-            const link = document.createElement('a');
-            link.href = '#';
-            link.innerText = prompt;
-            link.onclick = function () {
-                document.getElementById('prompt').value = prompt;
-            };
-            listItem.appendChild(link);
-            savedPromptsList.appendChild(listItem);
-        });
-    }
-
     // Initial display of saved prompts
     displaySavedPrompts();
 </script>
-<script src="resources/js/form.js"></script>
-<script src="resources/js/help.js"></script>
-<script src="resources/js/models.js"></script>
 </body>
 </html>
