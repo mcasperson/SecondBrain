@@ -199,7 +199,7 @@ public class DirectoryScan implements Tool<Void> {
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(instanceOf(EmptyString.class)),
                                 throwable -> new InternalFailure("No files found for " + parsedArgs.getDirectory() + debugArgs)),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure("Failed to call Ollama", throwable)),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
                         API.Case(API.$(),
                                 throwable -> new ExternalFailure("Failed to get file contents: " + throwable.getMessage() + "\n" + debugArgs)))
                 .get();

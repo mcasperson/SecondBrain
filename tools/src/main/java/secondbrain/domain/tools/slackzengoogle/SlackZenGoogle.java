@@ -199,7 +199,7 @@ public class SlackZenGoogle implements Tool<Void> {
         return result.mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("Some string was empty (this is probably a bug...)")),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure("Failed to call Ollama", throwable)),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
                         API.Case(API.$(), throwable -> new ExternalFailure("Failed to process tickets, google doc, or slack messages: " + throwable.getMessage())))
                 .get();
     }
