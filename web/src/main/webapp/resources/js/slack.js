@@ -111,15 +111,15 @@ document.getElementById('prompt').value = localStorage.getItem('slackPrompt') ||
     stripLeadingWhitespace(
         `Summarize 7 days worth of messages from the #announcements channel`));
 
-document.getElementById('days').addEventListener("onchange", function () {
+document.getElementById('days').addEventListener("change", function () {
     localStorage.setItem('slackDays', document.getElementById('days').value);
 }, false)
 
-document.getElementById('channel').addEventListener("onchange", function () {
+document.getElementById('channel').addEventListener("change", function () {
     localStorage.setItem('slackChannel', document.getElementById('channel').value);
 }, false)
 
-document.getElementById('contextWindow').addEventListener("onchange", function () {
+document.getElementById('contextWindow').addEventListener("change", function () {
     localStorage.setItem('slackContextWindow', document.getElementById('contextWindow').value);
 }, false)
 
@@ -127,6 +127,6 @@ document.getElementById('customModel').addEventListener("change", function () {
     localStorage.setItem('slackCustomModel', document.getElementById('customModel').value)
 }, false)
 
-document.getElementById('prompt').addEventListener("onchange", function () {
+document.getElementById('prompt').addEventListener("change", function () {
     localStorage.setItem('slackPrompt', document.getElementById('prompt').value);
 }, false)

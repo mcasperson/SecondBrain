@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
     authLogin.addEventListener('click', selectTokenInput);
     authServiceAccount.addEventListener('click', selectTokenInput);
 
-    document.getElementById('contextWindow').addEventListener("onchange", function () {
+    document.getElementById('contextWindow').addEventListener("change", function () {
         localStorage.setItem('googleContextWindow', document.getElementById('contextWindow').value);
     }, false)
 
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
         localStorage.setItem('googleCustomModel', document.getElementById('customModel').value)
     }, false)
 
-    document.getElementById('prompt').addEventListener("onchange", function () {
+    document.getElementById('prompt').addEventListener("change", function () {
         localStorage.setItem('googlePrompt', document.getElementById('prompt').value);
     }, false)
 
