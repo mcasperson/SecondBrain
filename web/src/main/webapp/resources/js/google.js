@@ -121,8 +121,11 @@ function buildButtons() {
     const authLoginEnabled = document.getElementById('authLogin').checked;
 
     if (authLoginEnabled) {
-        const session = getCookie('session');
-        if (session && JSON.parse(atob(session))["google_access_token"]) {
+        const session = getCookie('session') || btoa("{}");
+        const sessionJson = JSON.parse(atob(session));
+        const token = sessionJson["google_access_token"];
+        const valid = sessionJson["google_access_token_expires"] && Math.floor(Date.now() / 1000) < sessionJson["google_access_token_expires"];
+        if (token && valid) {
             login.style.display = 'none';
             logout.style.display = 'inherit';
             submit.disabled = false;
@@ -149,3 +152,6 @@ function selectTokenInput() {
 
     buildButtons();
 }
+
+// Refresh buttons every minute to check for session expiration
+setInterval(buildButtons, 60000);
