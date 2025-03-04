@@ -124,7 +124,7 @@ function buildButtons() {
         const session = getCookie('session') || btoa("{}");
         const sessionJson = JSON.parse(atob(session));
         const token = sessionJson["google_access_token"];
-        const valid = sessionJson["google_access_token_expires"] && Math.floor(Date.now() / 1000) < sessionJson["google_access_token_expires"];
+        const valid = sessionJson["google_access_token_expires"] && (Math.floor(Date.now() / 1000) - 300) < sessionJson["google_access_token_expires"];
         if (token && valid) {
             login.style.display = 'none';
             logout.style.display = 'inherit';
