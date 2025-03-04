@@ -23,11 +23,16 @@ document.addEventListener('DOMContentLoaded', (event) => {
         localStorage.setItem('googlePrompt', document.getElementById('prompt').value);
     }, false)
 
+    document.getElementById('documentId').addEventListener("change", function () {
+        localStorage.setItem('googleDocumentId', document.getElementById('documentId').value);
+    }, false)
+
     document.getElementById('contextWindow').value = localStorage.getItem('googleContextWindow') || '65536';
     document.getElementById('customModel').value = localStorage.getItem('googleCustomModel') || '';
+    document.getElementById('documentId').value = localStorage.getItem('googleDocumentId') || '195j9eDD3ccgjQRttHhJPymLJUCOUjs-jmwTrekvdjFE';
     document.getElementById('prompt').value = localStorage.getItem('googlePrompt') || stripLineBreaks(
         stripLeadingWhitespace(
-            defaultPrompt || `Summarize the Google document with the id 195j9eDD3ccgjQRttHhJPymLJUCOUjs-jmwTrekvdjFE`));
+            defaultPrompt || `Summarize the Google document`));
 
     displaySavedPrompts('googleDocs');
 });
@@ -69,11 +74,13 @@ function postRequest(prompt, context) {
     const customModel = document.getElementById('customModel').value;
     const argumentDebugging = document.getElementById('argumentDebugging').checked;
     const contextWindow = document.getElementById('contextWindow').value;
+    const documentId = document.getElementById('documentId').value;
 
     context['custom_model'] = customModel;
     context['argument_debugging'] = argumentDebugging;
     context['tool'] = "GoogleDocs";
     context['context_window'] = contextWindow;
+    context['google_document_id'] = documentId;
 
     fetch('/api/promptweb?prompt=' + encodeURIComponent(prompt), {
         method: 'POST',
