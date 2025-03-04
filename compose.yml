@@ -10,6 +10,12 @@ services:
       # if you wish to use the Oauth login flow: https://api.slack.com/apps
       SB_SLACK_CLIENTID: ${SB_SLACK_CLIENTID}
       SB_SLACK_CLIENTSECRET: ${SB_SLACK_CLIENTSECRET}
+
+      # These values must be updated to use the details of your own Google App
+      SB_GOOGLE_CLIENTID: ${SB_GOOGLE_CLIENTID}
+      SB_GOOGLE_CLIENTSECRET: ${SB_GOOGLE_CLIENTSECRET}
+      SB_GOOGLE_REDIRECTURL: ${SB_GOOGLE_REDIRECTURL}
+
       # You should change this to a random value
       SB_ENCRYPTION_PASSWORD: 123456789
       # This value refers to the sibling container
