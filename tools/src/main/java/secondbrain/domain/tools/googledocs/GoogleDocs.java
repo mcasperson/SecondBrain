@@ -15,6 +15,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -198,7 +199,7 @@ public class GoogleDocs implements Tool<Void> {
                                 INSTRUCTIONS,
                                 // I've opted to get the end of the document if it is larger than the context window.
                                 // The end of the document is typically given more weight by LLMs, and so any long
-                                // document being processed should place the most relevant content twoards the end.
+                                // document being processed should place the most relevant content towards the end.
                                 ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars(environmentSettings)),
                                 prompt)))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
@@ -394,13 +395,19 @@ class GoogleDocsConfig {
         }
 
         public String getDocumentId() {
-            return getArgsAccessor().getArgument(
+            final String documentId = getArgsAccessor().getArgument(
                     getConfigGoogleDoc()::get,
                     arguments,
                     context,
                     GoogleDocs.GOOGLE_DOC_ID_ARG,
                     "google_document_id",
                     "").value();
+
+            if (StringUtils.isBlank(documentId)) {
+                throw new InternalFailure("Google document ID is required");
+            }
+
+            return documentId;
         }
 
         public List<String> getKeywords() {
