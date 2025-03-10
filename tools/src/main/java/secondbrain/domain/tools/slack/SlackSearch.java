@@ -217,7 +217,7 @@ public class SlackSearch implements Tool<MatchedItem> {
     private RagMultiDocumentContext<MatchedItem> mergeContext(final List<RagDocumentContext<MatchedItem>> ragContext, Map<String, String> context) {
         return new RagMultiDocumentContext<>(
                 ragContext.stream()
-                        .map(ragDoc -> promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildContextPrompt("Slack Messages", ragDoc.document()))
+                        .map(ragDoc -> promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildContextPrompt(getContextLabel(), ragDoc.document()))
                         .collect(Collectors.joining("\n")),
                 ragContext);
     }
