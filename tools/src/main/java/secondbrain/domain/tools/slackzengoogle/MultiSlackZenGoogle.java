@@ -347,10 +347,15 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> zenContext = getZenContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> slackContext = getSlackContext(positionalEntity, parsedArgs, prompt, context);
-        final List<RagDocumentContext<Void>> slackKeywordSearch = getSlackKeywordContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> googleContext = getGoogleContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> planHatContext = getPlanhatContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> gongContext = getGongContext(positionalEntity, parsedArgs, prompt, context);
+
+        // Slack searches use AND logic. This means we need to search each of the IDs (i.e. salesforce and planhat) separately.
+        final List<RagDocumentContext<Void>> slackKeywordSearch = CollectionUtils.collate(positionalEntity.entity().getSalesforce(), positionalEntity.entity().getPlanHat())
+                .stream()
+                .flatMap(id -> getSlackKeywordContext(positionalEntity, parsedArgs, prompt, context, id).stream())
+                .toList();
 
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
         retValue.addAll(slackKeywordSearch);
@@ -391,14 +396,12 @@ public class MultiSlackZenGoogle implements Tool<Void> {
      * Search slack for any mention of the salesforce and planhat ids. This will pick up call summaries that are posted
      * to slack by the salesforce integration.
      */
-    private List<RagDocumentContext<Void>> getSlackKeywordContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+    private List<RagDocumentContext<Void>> getSlackKeywordContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context, final String id) {
         logger.info("Getting Slack keywords for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         return Try
                 // Combine all the keywords we are going to search for
-                .of(() -> CollectionUtils.collate(positionalEntity.entity().getSalesforce(), positionalEntity.entity().getPlanHat()))
-                // Get a list of arguments using the keywords
-                .map(ids -> List.of(
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, String.join(",", ids), true),
+                .of(() -> List.of(
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, String.join(id), true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + parsedArgs.getDays(), true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
