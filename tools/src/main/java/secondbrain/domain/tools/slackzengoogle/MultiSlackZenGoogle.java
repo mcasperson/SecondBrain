@@ -401,7 +401,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return Try
                 // Combine all the keywords we are going to search for
                 .of(() -> List.of(
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, String.join(id), true),
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + parsedArgs.getDays(), true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
