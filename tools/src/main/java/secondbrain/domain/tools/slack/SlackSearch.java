@@ -225,7 +225,12 @@ public class SlackSearch implements Tool<MatchedItem> {
 
 @ApplicationScoped
 class SlackSearchConfig {
-    private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
+    /**
+     * Cache slack search results for nearly a week. This is based on the assumption that
+     * we're generating reports every week, and that rerunning the report generation within
+     * a week should reuse the same search results.
+     */
+    private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24 * 6) + "";
     private static final int DEFAULT_API_DELAY = (1000 * 120);
 
     @Inject
