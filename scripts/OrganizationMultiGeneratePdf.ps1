@@ -209,6 +209,9 @@ if ($GenerateTopicReports)
             "-Dsb.ollama.model=$using:model"
             -jar $using:jarFile
 "@)
+
+            # The line breaks on the prompts were significant, so they are appended as is rather than
+            # being split, trimmed, and joined.
             $arguments += " `"$( ($using:topic).prompt )`n$endPrompt`""
 
             write-host $arguments
