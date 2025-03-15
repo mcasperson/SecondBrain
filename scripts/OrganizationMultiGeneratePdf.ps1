@@ -169,6 +169,10 @@ if ($GenerateTopicReports)
 
         $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 20 -ScriptBlock {
 
+            # Offset the start of the execution by a few random seconds to avoid
+            # all the threads printing their output at the same time.
+            Start-Sleep -Seconds (Get-Random -Minimum 1 -Maximum 11)
+
             Import-Module $using:ModulePath
 
             $TopicLog = "/tmp/pdfgenerate $( ($using:topic).name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
