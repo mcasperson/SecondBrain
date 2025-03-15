@@ -6,7 +6,7 @@ $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSH
 
 $arguments = Get-SplitTrimmedAndJoinedString(@"
     "-Dstdout.encoding=UTF-8"
-    "-Dsb.slack.apidelay=350000"
+    "-Dsb.slack.apidelay=60000"
     "-Dsb.cache.backup=true"
     "-Dsb.cache.path=/home/matthew"
     "-Dsb.tools.force=MultiSlackSearchCacheWarmer"
