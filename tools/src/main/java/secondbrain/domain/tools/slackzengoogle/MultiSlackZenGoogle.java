@@ -182,13 +182,14 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             to process different entities. If the list is processed in the same order, we risk each instance
             of the tool running into API limits for the same entities over and over again.
          */
-        final List<PositionalEntity> shuffledList = new ArrayList<>(entityDirectory.getPositionalEntities());
+        final List<PositionalEntity> shuffledList = new ArrayList<>(entityDirectory.getPositionalEntities().stream()
+                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.entity.name().toLowerCase()))
+                .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
+                .toList());
         Collections.shuffle(shuffledList);
 
         final List<RagDocumentContext<Void>> ragContext = shuffledList
                 .stream()
-                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.entity.name().toLowerCase()))
-                .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
                 // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
                 // We batch here to interleave API requests to the various external data sources
                 .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))
