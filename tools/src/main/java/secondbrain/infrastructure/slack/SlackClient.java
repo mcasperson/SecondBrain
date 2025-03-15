@@ -159,7 +159,7 @@ public class SlackClient {
                 .of(() -> client.searchAll(r -> r.token(accessToken)
                                 .query(String.join(" ", keywords)))
                         .get())
-                .recover(ex -> searchFromApi(client, accessToken, keywords, retryCount + 1));
+                .recover(ex -> searchFromApi(client, accessToken, keywords, apiDelay, retryCount + 1));
 
         return result
                 .mapFailure(API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex))
