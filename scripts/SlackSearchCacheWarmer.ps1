@@ -2,6 +2,8 @@ $ModulePath = "$PSScriptRoot\SharedFunctions.psm1"
 
 Import-Module $ModulePath
 
+$jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
+
 $arguments = Get-SplitTrimmedAndJoinedString(@"
     "-Dstdout.encoding=UTF-8"
     "-Dsb.slack.apidelay=350000"
@@ -10,7 +12,7 @@ $arguments = Get-SplitTrimmedAndJoinedString(@"
     "-Dsb.tools.force=MultiSlackSearchCacheWarmer"
     "-Dsb.exceptions.printstacktrace=false"
     "-Dsb.multislacksearchcachewarmer.url=/home/matthew/Code/AISauron/EntityDatabase.yaml"
-    -jar $using:jarFile
+    -jar $jarFile
     "Warm the cache for Slack search"
 "@)
 
