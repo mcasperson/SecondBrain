@@ -180,7 +180,7 @@ if ($GenerateTopicReports)
             $TopicLog = "/tmp/pdfgenerate $( ($using:topic).name ) $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
             $endPrompt = ($using:topics).shared.endPrompt
-            if (($using:topic).endPrompt -ne $null )
+            if (($using:topic).endPrompt -ne $null)
             {
                 $endPrompt = ($using:topic).endPrompt
             }
@@ -211,6 +211,9 @@ if ($GenerateTopicReports)
             "$( ($using:topic).prompt )
             $endPrompt"
 "@)
+
+            write-host $arguments
+
             $result = Invoke-CustomCommand java $arguments -processTimeout 0
 
             echo $result.StdOut
