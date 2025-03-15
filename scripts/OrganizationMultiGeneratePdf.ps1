@@ -169,10 +169,10 @@ if ($GenerateTopicReports)
 
         $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 20 -ScriptBlock {
 
-            # Delay subsequent topics by 5 mins to allow the first run to pupulate the cache
+            # Delay subsequent topics by 30 mins to allow the first run to pupulate the cache
             if (($using:topicIndex) -gt 1)
             {
-                Start-Sleep -m (1000 * 60 * 5)
+                Start-Sleep -m (1000 * 60 * 30)
             }
 
             Import-Module $using:ModulePath
