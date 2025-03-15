@@ -277,7 +277,8 @@ public class H2LocalStorage implements LocalStorage {
                         }
                         return null;
                     })
-                    .onFailure(ex -> totalFailures.incrementAndGet());
+                    .onFailure(ex -> totalFailures.incrementAndGet())
+                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
             return result
                     .mapFailure(
@@ -392,7 +393,8 @@ public class H2LocalStorage implements LocalStorage {
                         preparedStatement.executeUpdate();
                         return preparedStatement;
                     })
-                    .onFailure(ex -> totalFailures.incrementAndGet());
+                    .onFailure(ex -> totalFailures.incrementAndGet())
+                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
             result
                     .mapFailure(
