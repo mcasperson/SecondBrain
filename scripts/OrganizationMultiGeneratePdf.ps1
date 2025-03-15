@@ -210,7 +210,7 @@ if ($GenerateTopicReports)
             -jar $using:jarFile
 "@)
 
-            write-host $arguments + " `"$( ($using:topic).prompt )`n$endPrompt`""
+            write-host ($arguments + " `"$( ($using:topic).prompt )`n$endPrompt`"")
 
             $result = Invoke-CustomCommand java $arguments -processTimeout 0
 
