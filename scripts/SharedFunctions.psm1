@@ -175,7 +175,7 @@ function Split-Trim-Join {
     )
 
     $lines = $inputString -split "`n"
-    $trimmedLines = $lines | ForEach-Object { $_.Trim() }
+    $trimmedLines = $lines | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
     $result = $trimmedLines -join " "
     return $result
 }
