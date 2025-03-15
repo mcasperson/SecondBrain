@@ -147,7 +147,7 @@ public class SlackClient {
             final int apiDelay) {
 
         if (retryCount > RETRIES) {
-            throw new ExternalFailure("Could not call searchAll after " + RETRIES + " retries");
+            throw new InternalFailure("Could not call searchAll after " + RETRIES + " retries");
         }
 
         if (retryCount > 0) {
@@ -239,7 +239,7 @@ public class SlackClient {
             final int apiDelay) {
 
         if (retryCount > RETRIES) {
-            throw new ExternalFailure("Could not call conversationsList after " + RETRIES + " retries");
+            throw new InternalFailure("Could not call conversationsList after " + RETRIES + " retries");
         }
 
         if (retryCount > 0) {
