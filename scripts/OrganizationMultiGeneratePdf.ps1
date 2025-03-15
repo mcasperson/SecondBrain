@@ -89,7 +89,7 @@ if ($GenerateCompanyReports)
             Get-Module
             Write-Host "Processing $entityName in $using:subDir $( $using:index ) of $( ($using:database).entities.Count )"
 
-            $arguments = Split-Trim-Join(@"
+            $arguments = Get-SplitTrimmedAndJoinedString(@"
             "-Dstdout.encoding=UTF-8"
             "-Dsb.slack.apidelay=120000"
             "-Dsb.ollama.contextwindow=$using:contextWindow"
@@ -190,7 +190,7 @@ if ($GenerateTopicReports)
             # consuming all the context window.
             # We also need to set a large api delay for the Slack API to avoid rate limiting with many threads
             # running at once.
-            $arguments = Split-Trim-Join(@"
+            $arguments = Get-SplitTrimmedAndJoinedString(@"
             "-Dstdout.encoding=UTF-8"
             "-Dsb.slack.apidelay=350000"
             "-Dsb.cache.backup=$( $using:topicIndex -eq 1 )"
@@ -269,7 +269,7 @@ if ($GenerateExecutiveSummary)
 
         Write-Host "Processing file: $( $file.Name )"
 
-        $arguments = Split-Trim-Join(@"
+        $arguments = Get-SplitTrimmedAndJoinedString(@"
         "-Dstdout.encoding=UTF-8"
         "-Dsb.tools.force=PublicWeb"
         "-Dsb.publicweb.disablelinks=true"
@@ -296,7 +296,7 @@ if ($GenerateExecutiveSummary)
 
     Write-Host "Generating topics"
 
-    $arguments = Split-Trim-Join(@"
+    $arguments = Get-SplitTrimmedAndJoinedString(@"
     "-Dstdout.encoding=UTF-8"
     "-Dsb.tools.force=PublicWeb"
     "-Dsb.publicweb.disablelinks=true"

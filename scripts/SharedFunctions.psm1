@@ -169,7 +169,8 @@ Function Get-FullException
     return $msg
 }
 
-function Split-Trim-Join {
+Function Get-SplitTrimmedAndJoinedString
+{
     param (
         [string]$inputString
     )
