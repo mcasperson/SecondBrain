@@ -177,7 +177,15 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
 
-        final List<RagDocumentContext<Void>> ragContext = entityDirectory.getPositionalEntities()
+        /*
+            We want to randomize the order of the entities to allow multiple concurrent instances of this tool
+            to process different entities. If the list is processed in the same order, we risk each instance
+            of the tool running into API limits for the same entities over and over again.
+         */
+        final List<PositionalEntity> shuffledList = new ArrayList<>(entityDirectory.getPositionalEntities());
+        Collections.shuffle(shuffledList);
+
+        final List<RagDocumentContext<Void>> ragContext = shuffledList
                 .stream()
                 .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.entity.name().toLowerCase()))
                 .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
