@@ -81,7 +81,7 @@ public class SlackClient {
             final int retryCount,
             final int apiDelay) {
         if (retryCount > RETRIES) {
-            throw new ExternalFailure("Could not call conversationsHistory after " + RETRIES + " retries");
+            throw new InternalFailure("Could not call conversationsHistory after " + RETRIES + " retries");
         }
 
         if (retryCount > 0) {
