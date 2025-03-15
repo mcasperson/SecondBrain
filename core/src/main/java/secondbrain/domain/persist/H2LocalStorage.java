@@ -276,7 +276,8 @@ public class H2LocalStorage implements LocalStorage {
                         return null;
                     })
                     .onFailure(ex -> totalFailures.incrementAndGet())
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
+                    .onSuccess(v -> logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash));
 
             return result
                     .mapFailure(
