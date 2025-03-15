@@ -1,8 +1,9 @@
 import argparse
 import json
-import markdown2
 import os
 import re
+
+import markdown2
 from fpdf.enums import XPos, YPos
 from fpdf.fpdf import FPDF
 
@@ -159,7 +160,8 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             if high_activity:
                 title = title + " *"
 
-            contents.append({'title': title, 'filename': filename, 'link': pdf.add_link()})
+            contents.append(
+                {'title': title, 'filename': filename, 'link': pdf.add_link(), 'high_activity': high_activity})
 
     # Add Table of Contents
     pdf.add_page()
@@ -172,12 +174,22 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
 
     if found_companies:
         pdf.set_text_color(58, 0, 0)
-        pdf.cell(0, 10, ' * High Activity Customers', 0, 1, 'L')
+        pdf.cell(0, 10, 'High Activity Customers', 0, 1, 'L')
         pdf.set_text_color(0, 0, 0)
-        
-    for content in contents:
-        pdf.cell(0, 10, f'{content['title']}', 0, 1, 'L', link=content['link'])
-    pdf.ln(10)
+
+        for content in [content for content in contents if content['high_activity']]:
+            pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
+
+        pdf.ln(10)
+
+        pdf.set_text_color(58, 0, 0)
+        pdf.cell(0, 10, 'Low Activity Customers', 0, 1, 'L')
+        pdf.set_text_color(0, 0, 0)
+
+        for content in [content for content in contents if not content['high_activity']]:
+            pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
+
+        pdf.ln(10)
 
     print("Converting markdown...")
     for content in contents:
