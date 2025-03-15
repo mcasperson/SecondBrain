@@ -52,7 +52,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
     private FileReader fileReader;
 
     @Inject
-    private MultiSlackZenGoogleConfig config;
+    private MultiSlackSearchCacheWarmerConfig config;
 
     @Inject
     private ExceptionHandler exceptionHandler;
@@ -88,7 +88,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final MultiSlackSearchCacheWarmerConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final EntityDirectory entityDirectory = Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
@@ -120,7 +120,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
     }
 
 
-    private List<RagDocumentContext<Void>> getEntityContext(final PositionalEntity positionalEntity, final Map<String, String> context, final String prompt, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+    private List<RagDocumentContext<Void>> getEntityContext(final PositionalEntity positionalEntity, final Map<String, String> context, final String prompt, final MultiSlackSearchCacheWarmerConfig.LocalArguments parsedArgs) {
         final Entity entity = positionalEntity.entity();
 
         if (entity.disabled()) {
@@ -135,7 +135,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
     }
 
 
-    private List<RagDocumentContext<Void>> getSlackKeywordContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context, final String id) {
+    private List<RagDocumentContext<Void>> getSlackKeywordContext(final PositionalEntity positionalEntity, final MultiSlackSearchCacheWarmerConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context, final String id) {
         logger.info("Getting Slack keywords for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         return Try
                 .of(() -> List.of(new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true)))
@@ -204,7 +204,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
 }
 
 @ApplicationScoped
-class MultiSlackZenGoogleConfig {
+class MultiSlackSearchCacheWarmerConfig {
 
     @Inject
     private ArgsAccessor argsAccessor;
