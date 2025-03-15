@@ -15,6 +15,8 @@ const options = [
     'llama3.3',
     'gemma2',
     'gemma2:27b',
+    'gemma3',
+    'gemma3:27b',
     'mixtral:8x7b',
     'mistral',
     'mistral-small',
