@@ -148,7 +148,7 @@ if ($GenerateTopicReports)
             # We need to be tight with the sb.slackzengoogle.keywordwindow value, as the default of 2000
             # characters was leading to whole google documents being included in the output, which was
             # consuming all the context window.
-            # We also need to set a large api delay for the Slack API to avoid rate limiting with 10 threads
+            # We also need to set a large api delay for the Slack API to avoid rate limiting with many threads
             # running at once.
             $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.slack.apidelay=350000`" `"-Dsb.cache.backup=$( $using:topicIndex -eq 1 )`" `"-Dsb.slackzengoogle.keywordwindow=350`" `"-Dsb.slackzengoogle.contextFilterQuestion=$( ($using:topic).filterQuestion )`" `"-Dsb.slackzengoogle.contextFilterMinimumRating=$( ($using:topic).filterThreshold )`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.slackzengoogle.disablelinks=false`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.keywords=$( ($using:topic).keywords -join "," )`" `"-Dsb.slackzengoogle.minTimeBasedContext=1`" `"-Dsb.ollama.contextwindow=$using:contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$using:Days`" `"-Dsb.ollama.toolmodel=$using:toolModel`" `"-Dsb.ollama.model=$using:model`" -jar $using:jarFile `"$( ($using:topic).prompt )`n$endPrompt`"" -processTimeout 0
 
