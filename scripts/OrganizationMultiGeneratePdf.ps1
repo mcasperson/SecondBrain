@@ -208,11 +208,9 @@ if ($GenerateTopicReports)
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
             -jar $using:jarFile
-            "$( ($using:topic).prompt )
-            $endPrompt"
 "@)
 
-            write-host $arguments
+            write-host $arguments + " `"$( ($using:topic).prompt )`n$endPrompt`""
 
             $result = Invoke-CustomCommand java $arguments -processTimeout 0
 
