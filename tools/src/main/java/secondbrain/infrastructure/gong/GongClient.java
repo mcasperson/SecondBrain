@@ -10,7 +10,6 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 
@@ -31,9 +30,6 @@ public class GongClient {
 
     @Inject
     private LocalStorage localStorage;
-
-    @Inject
-    private JsonDeserializer jsonDeserializer;
 
     public List<GongCallExtensive> getCallsExtensive(
             final Client client,
