@@ -89,7 +89,47 @@ if ($GenerateCompanyReports)
             Get-Module
             Write-Host "Processing $entityName in $using:subDir $( $using:index ) of $( ($using:database).entities.Count )"
 
-            $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.multislackzengoogle.metareport=$( $using:subDir )/COMPANY $entityName.json`" `"-Dsb.slack.apidelay=120000`" `"-Dsb.planhat.usagename1=Deployments in the last 30 days`" `"-Dsb.planhat.usageid1=676130db81b2485640f92c2e`"  `"-Dsb.planhat.usagename2=Total Projects`" `"-Dsb.planhat.usageid2=6761328bff4d156e143557ac`"   `"-Dsb.planhat.usagename3=Total Tenants`" `"-Dsb.planhat.usageid3=6761330999fcec6bf08648b8`" `"-Dsb.cache.backup=$( $using:index % 100 -eq 1 )`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.minTimeBasedContext=1`" `"-Dsb.ollama.contextwindow=$using:contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$using:Days`" `"-Dsb.multislackzengoogle.entity=$entityName`" `"-Dsb.ollama.toolmodel=$using:toolModel`" `"-Dsb.ollama.model=$using:model`" -jar $using:jarFile `"Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName. Include an executive summary as the first paragraph. Show the total deployments in the last 30 days, total projects, and total tenants as a bullet point list at the end. If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes. You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt. You will be penalized for including a general summary of the Google Document in the report. You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities. You will be penalized for saying that you will monitor for tickets or messages in future. You will be penalized for for metioning a date range or period covered. You will be penalized for providing statistics or counts of the ZenDesk tickets. You will be penalized for providing instructions to refer to or link to the Google Document. You will be penalized for providing next steps, action items, recommendations, or looking ahead. You will be penalized for attempting to resolve the ZenDesk tickets. You will be penalized for mentioning the duration covered. You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID. You must use bullet point lists instead of numbered lists. You will be penalized for using nested bullet points. You will be penalized for using numbered lists in the output.`""
+            $arguments = Split-Trim-Join(@"
+            "-Dstdout.encoding=UTF-8"
+            "-Dsb.slack.apidelay=120000"
+            "-Dsb.ollama.contextwindow=$using:contextWindow"
+            "-Dsb.exceptions.printstacktrace=false"
+            "-Dsb.planhat.usagename1=Deployments in the last 30 days"
+            "-Dsb.planhat.usageid1=676130db81b2485640f92c2e"
+            "-Dsb.planhat.usagename2=Total Projects"
+            "-Dsb.planhat.usageid2=6761328bff4d156e143557ac"
+            "-Dsb.planhat.usagename3=Total Tenants"
+            "-Dsb.planhat.usageid3=6761330999fcec6bf08648b8"
+            "-Dsb.cache.backup=$( $using:index % 100 -eq 1 )"
+            "-Dsb.cache.path=/home/matthew"
+            "-Dsb.tools.force=MultiSlackZenGoogle"
+            "-Dsb.multislackzengoogle.minTimeBasedContext=1"
+            "-Dsb.multislackzengoogle.metareport=$( $using:subDir )/COMPANY $entityName.json"
+            "-Dsb.multislackzengoogle.days=$using:Days"
+            "-Dsb.multislackzengoogle.entity=$entityName"
+            "-Dsb.ollama.toolmodel=$using:toolModel"
+            "-Dsb.ollama.model=$using:model"
+            -jar $using:jarFile
+            "Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName.
+            Include an executive summary as the first paragraph.
+            Show the total deployments in the last 30 days, total projects, and total tenants as a bullet point list at the end.
+            If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes.
+            You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt.
+            You will be penalized for including a general summary of the Google Document in the report.
+            You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities.
+            You will be penalized for saying that you will monitor for tickets or messages in future.
+            You will be penalized for for metioning a date range or period covered.
+            You will be penalized for providing statistics or counts of the ZenDesk tickets.
+            You will be penalized for providing instructions to refer to or link to the Google Document.
+            You will be penalized for providing next steps, action items, recommendations, or looking ahead.
+            You will be penalized for attempting to resolve the ZenDesk tickets.
+            You will be penalized for mentioning the duration covered.
+            You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID.
+            You must use bullet point lists instead of numbered lists.
+            You will be penalized for using nested bullet points.
+            You will be penalized for using numbered lists in the output."
+"@)
+            $result = Invoke-CustomCommand java $arguments
 
             Write-Host "StdOut"
             Write-Host $result.StdOut
@@ -145,12 +185,33 @@ if ($GenerateTopicReports)
                 $endPrompt = ($using:topic).endPrompt
             }
 
-            # We need to be tight with the sb.slackzengoogle.keywordwindow value, as the default of 2000
+            # We need to be tight with the sb.multislackzengoogle.keywordwindow value, as the default of 2000
             # characters was leading to whole google documents being included in the output, which was
             # consuming all the context window.
             # We also need to set a large api delay for the Slack API to avoid rate limiting with many threads
             # running at once.
-            $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.slack.apidelay=350000`" `"-Dsb.cache.backup=$( $using:topicIndex -eq 1 )`" `"-Dsb.slackzengoogle.keywordwindow=350`" `"-Dsb.slackzengoogle.contextFilterQuestion=$( ($using:topic).filterQuestion )`" `"-Dsb.slackzengoogle.contextFilterMinimumRating=$( ($using:topic).filterThreshold )`" `"-Dsb.cache.path=/home/matthew`" `"-Dsb.slackzengoogle.disablelinks=false`" `"-Dsb.tools.force=MultiSlackZenGoogle`" `"-Dsb.slackzengoogle.keywords=$( ($using:topic).keywords -join "," )`" `"-Dsb.slackzengoogle.minTimeBasedContext=1`" `"-Dsb.ollama.contextwindow=$using:contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.multislackzengoogle.days=$using:Days`" `"-Dsb.ollama.toolmodel=$using:toolModel`" `"-Dsb.ollama.model=$using:model`" -jar $using:jarFile `"$( ($using:topic).prompt )`n$endPrompt`"" -processTimeout 0
+            $arguments = Split-Trim-Join(@"
+            "-Dstdout.encoding=UTF-8"
+            "-Dsb.slack.apidelay=350000"
+            "-Dsb.cache.backup=$( $using:topicIndex -eq 1 )"
+            "-Dsb.cache.path=/home/matthew"
+            "-Dsb.tools.force=MultiSlackZenGoogle"
+            "-Dsb.ollama.contextwindow=$using:contextWindow"
+            "-Dsb.exceptions.printstacktrace=false"
+            "-Dsb.multislackzengoogle.days=$using:Days"
+            "-Dsb.multislackzengoogle.keywords=$( ($using:topic).keywords -join "," )"
+            "-Dsb.multislackzengoogle.minTimeBasedContext=1"
+            "-Dsb.multislackzengoogle.keywordwindow=350"
+            "-Dsb.multislackzengoogle.contextFilterQuestion=$( ($using:topic).filterQuestion )"
+            "-Dsb.multislackzengoogle.contextFilterMinimumRating=$( ($using:topic).filterThreshold )"
+            "-Dsb.multislackzengoogle.disablelinks=false"
+            "-Dsb.ollama.toolmodel=$using:toolModel"
+            "-Dsb.ollama.model=$using:model"
+            -jar $using:jarFile
+            "$( ($using:topic).prompt )
+            $endPrompt"
+"@)
+            $result = Invoke-CustomCommand java $arguments -processTimeout 0
 
             echo $result.StdOut
             echo $result.StdErr
@@ -205,7 +266,26 @@ if ($GenerateExecutiveSummary)
 
         Write-Host "Processing file: $( $file.Name )"
 
-        $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=PublicWeb`" `"-Dsb.publicweb.disablelinks=true`" `"-Dsb.publicweb.url=$( $file.FullName )`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"Summarize the document as a single paragraph. Write the company name as a level 2 markdown header and then write the summary as plain text. You will be penalized for using 'Octopus Deploy', 'Octopus', 'OCTOPUS DEPLOY PTY LTD', or 'Company Name' as the company name. You will be penalized for including a 'End of Summary' heading. You will be penalized for inlucding links or references. You will be penalized for outputing tokens lke '<|end|>'. You will be penalized for including number in square brackets, like [1], in the output. You will be penalized for including details about how you have adhered to the instructions.`""
+        $arguments = Split-Trim-Join(@"
+        "-Dstdout.encoding=UTF-8"
+        "-Dsb.tools.force=PublicWeb"
+        "-Dsb.publicweb.disablelinks=true"
+        "-Dsb.publicweb.url=$( $file.FullName )"
+        "-Dsb.ollama.contextwindow=$contextWindow"
+        "-Dsb.exceptions.printstacktrace=false"
+        "-Dsb.ollama.toolmodel=$toolModel"
+        "-Dsb.ollama.model=$model"
+        -jar $jarFile
+        "Summarize the document as a single paragraph.
+        Write the company name as a level 2 markdown header and then write the summary as plain text.
+        You will be penalized for using 'Octopus Deploy', 'Octopus', 'OCTOPUS DEPLOY PTY LTD', or 'Company Name' as the company name.
+        You will be penalized for including a 'End of Summary' heading.
+        You will be penalized for inlucding links or references.
+        You will be penalized for outputing tokens lke '<|end|>'.
+        You will be penalized for including number in square brackets, like [1], in the output.
+        You will be penalized for including details about how you have adhered to the instructions."
+"@)
+        $result = Invoke-CustomCommand java $arguments
         Add-Content -Path "$subDir/Executive Summary.md" -Value "$( $result.StdOut )`n`n"
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdOut
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdErr
@@ -213,7 +293,19 @@ if ($GenerateExecutiveSummary)
 
     Write-Host "Generating topics"
 
-    $result = Invoke-CustomCommand java "`"-Dstdout.encoding=UTF-8`" `"-Dsb.tools.force=PublicWeb`" `"-Dsb.publicweb.disablelinks=true`" `"-Dsb.publicweb.url=$subDir/Executive Summary.md`"  `"-Dsb.ollama.contextwindow=$contextWindow`" `"-Dsb.exceptions.printstacktrace=false`" `"-Dsb.ollama.toolmodel=$toolModel`" `"-Dsb.ollama.model=$model`" -jar $jarFile `"List the common non-functional requirements identified in the document as a bullet point list.`""
+    $arguments = Split-Trim-Join(@"
+    "-Dstdout.encoding=UTF-8"
+    "-Dsb.tools.force=PublicWeb"
+    "-Dsb.publicweb.disablelinks=true"
+    "-Dsb.publicweb.url=$subDir/Executive Summary.md"
+    "-Dsb.ollama.contextwindow=$contextWindow"
+    "-Dsb.exceptions.printstacktrace=false"
+    "-Dsb.ollama.toolmodel=$toolModel"
+    "-Dsb.ollama.model=$model"
+    -jar $jarFile
+    "List the common non-functional requirements identified in the document as a bullet point list."
+"@)
+    $result = Invoke-CustomCommand java $arguments
     Add-Content -Path "$subDir/Topics.md" -Value "$( $result.StdOut )`n`n"
     Add-Content -Path $ExecutiveSummaryLog -Value $result.StdOut
     Add-Content -Path $ExecutiveSummaryLog -Value $result.StdErr

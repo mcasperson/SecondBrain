@@ -727,27 +727,27 @@ class MultiSlackZenGoogleConfig {
     private Optional<String> configDays;
 
     @Inject
-    @ConfigProperty(name = "sb.slackzengoogle.minTimeBasedContext")
+    @ConfigProperty(name = "sb.multislackzengoogle.minTimeBasedContext")
     private Optional<String> configSlackZenGoogleMinTimeBasedContext;
 
     @Inject
-    @ConfigProperty(name = "sb.slackzengoogle.disablelinks")
+    @ConfigProperty(name = "sb.multislackzengoogle.disablelinks")
     private Optional<String> configDisableLinks;
 
     @Inject
-    @ConfigProperty(name = "sb.slackzengoogle.keywords")
+    @ConfigProperty(name = "sb.multislackzengoogle.keywords")
     private Optional<String> configKeywords;
 
     @Inject
-    @ConfigProperty(name = "sb.slackzengoogle.keywordwindow")
+    @ConfigProperty(name = "sb.multislackzengoogle.keywordwindow")
     private Optional<String> configKeywordWindow;
 
     @Inject
-    @ConfigProperty(name = "sb.slackzengoogle.contextFilterQuestion")
+    @ConfigProperty(name = "sb.multislackzengoogle.contextFilterQuestion")
     private Optional<String> configContextFilterQuestion;
 
     @Inject
-    @ConfigProperty(name = "sb.slackzengoogle.contextFilterMinimumRating")
+    @ConfigProperty(name = "sb.multislackzengoogle.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
 
     public Optional<String> getConfigUrl() {

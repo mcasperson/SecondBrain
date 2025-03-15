@@ -168,3 +168,14 @@ Function Get-FullException
     }
     return $msg
 }
+
+function Split-Trim-Join {
+    param (
+        [string]$inputString
+    )
+
+    $lines = $inputString -split "`n"
+    $trimmedLines = $lines | ForEach-Object { $_.Trim() }
+    $result = $trimmedLines -join " "
+    return $result
+}
