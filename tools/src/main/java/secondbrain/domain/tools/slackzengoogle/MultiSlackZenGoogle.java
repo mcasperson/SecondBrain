@@ -43,6 +43,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -82,6 +83,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             You are given the contents of a multiple Slack channels, Google Documents, PlanHat activities, Gong calls, and the help desk tickets from ZenDesk.
             You must answer the prompt based on the information provided.
             """;
+
+    private static final AtomicInteger COUNTER = new AtomicInteger(0);
 
     @Inject
     private ModelConfig modelConfig;
@@ -353,6 +356,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         if (entity.disabled()) {
             return List.of();
         }
+
+        logger.info("Percent complete: " + ((float) COUNTER.incrementAndGet() / positionalEntity.total * 100) + "%");
 
         final List<RagDocumentContext<Void>> zenContext = getZenContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> slackContext = getSlackContext(positionalEntity, parsedArgs, prompt, context);
