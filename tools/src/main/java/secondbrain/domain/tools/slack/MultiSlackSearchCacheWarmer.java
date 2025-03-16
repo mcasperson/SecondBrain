@@ -25,6 +25,7 @@ import secondbrain.domain.yaml.YamlDeserializer;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
@@ -41,6 +42,8 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
     public static final String MULTI_SLACK_SEARCH_CACHE_WARMER_URL_ARG = "url";
     public static final String MULTI_SLACK_SEARCH_CACHE_WARMER_MAX_ENTITIES_ARG = "maxEntities";
     private static final int BATCH_SIZE = 10;
+
+    private static final AtomicInteger COUNTER = new AtomicInteger(0);
 
     @Inject
     private SlackSearch slackSearch;
@@ -137,6 +140,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
 
     private List<RagDocumentContext<Void>> getSlackKeywordContext(final PositionalEntity positionalEntity, final MultiSlackSearchCacheWarmerConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context, final String id) {
         logger.info("Getting Slack keywords for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.info("Percent complete: " + ((float) positionalEntity.total / COUNTER.incrementAndGet() * 100) + "%");
         return Try
                 .of(() -> List.of(new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true)))
                 // Search for the keywords
