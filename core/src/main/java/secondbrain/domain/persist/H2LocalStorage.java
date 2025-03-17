@@ -223,11 +223,11 @@ public class H2LocalStorage implements LocalStorage {
             }
 
             final Try<Integer> result = Try
-                    .of(() -> connection.prepareStatement("""
+                    .withResources(() -> connection.prepareStatement("""
                             DELETE FROM LOCAL_STORAGE
                             WHERE timestamp IS NOT NULL
                             AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
-                    .mapTry(PreparedStatement::executeUpdate)
+                    .of(PreparedStatement::executeUpdate)
                     .onFailure(ex -> totalFailures.incrementAndGet());
 
             return result
@@ -256,13 +256,13 @@ public class H2LocalStorage implements LocalStorage {
 
             totalReads.incrementAndGet();
 
-            final Try<String> result = Try.of(() -> connection.prepareStatement("""
+            final Try<String> result = Try.withResources(() -> connection.prepareStatement("""
                             SELECT response FROM LOCAL_STORAGE
                                             WHERE tool = ?
                                             AND source = ?
                                             AND prompt_hash = ?
                                             AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
-                    .mapTry(preparedStatement -> {
+                    .of(preparedStatement -> {
                         preparedStatement.setString(1, tool);
                         preparedStatement.setString(2, source);
                         preparedStatement.setString(3, promptHash);
@@ -383,10 +383,10 @@ public class H2LocalStorage implements LocalStorage {
                 resetConnection();
             }
 
-            final Try<PreparedStatement> result = Try.of(() -> connection.prepareStatement("""
+            final Try<PreparedStatement> result = Try.withResources(() -> connection.prepareStatement("""
                             INSERT INTO LOCAL_STORAGE (tool, source, prompt_hash, response, timestamp)
                             VALUES (?, ?, ?, ?, ?)""".stripIndent()))
-                    .mapTry(preparedStatement -> {
+                    .of(preparedStatement -> {
                         preparedStatement.setString(1, tool);
                         preparedStatement.setString(2, source);
                         preparedStatement.setString(3, promptHash);
