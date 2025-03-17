@@ -14,7 +14,10 @@ import secondbrain.domain.json.JsonDeserializer;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.Timestamp;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Optional;
@@ -262,12 +265,15 @@ public class H2LocalStorage implements LocalStorage {
                         preparedStatement.setString(1, tool);
                         preparedStatement.setString(2, source);
                         preparedStatement.setString(3, promptHash);
-                        final ResultSet resultSet = preparedStatement.executeQuery();
-                        if (resultSet.next()) {
-                            totalCacheHits.incrementAndGet();
-                            return resultSet.getString(1);
-                        }
-                        return null;
+                        return Try.withResources(preparedStatement::executeQuery)
+                                .of(resultSet -> {
+                                    if (resultSet.next()) {
+                                        totalCacheHits.incrementAndGet();
+                                        return resultSet.getString(1);
+                                    }
+                                    return null;
+                                }).get();
+
                     })
                     .onFailure(ex -> totalFailures.incrementAndGet())
                     .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
