@@ -136,9 +136,6 @@ public class H2LocalStorage implements LocalStorage {
 
     private void cleanConnection(final Connection connection) {
         if (connection != null) {
-            Try.run(() -> connection.createStatement().execute("SHUTDOWN"))
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
-
             Try.run(connection::close)
                     .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
         }
