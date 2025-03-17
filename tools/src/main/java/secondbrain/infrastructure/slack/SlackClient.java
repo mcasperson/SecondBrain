@@ -93,6 +93,11 @@ public class SlackClient {
                                 .token(accessToken)
                                 .channel(channelId)
                                 .oldest(oldest))
+                        .whenComplete((r, ex) -> {
+                            if (ex != null) {
+                                logger.warning("Failed to call Slack conversationsHistory");
+                            }
+                        })
                         .get())
                 .recover(SlackApiException.class, ex -> {
                     if (ex.getResponse().code() == 429) {
@@ -158,6 +163,11 @@ public class SlackClient {
         final Try<SearchAllResponse> result = Try
                 .of(() -> client.searchAll(r -> r.token(accessToken)
                                 .query(String.join(" ", keywords)))
+                        .whenComplete((r, ex) -> {
+                            if (ex != null) {
+                                logger.warning("Failed to call Slack searchAll");
+                            }
+                        })
                         .get())
                 .recover(ex -> searchFromApi(client, accessToken, keywords, retryCount + 1, apiDelay));
 
@@ -253,6 +263,11 @@ public class SlackClient {
                                 .types(List.of(ConversationType.PUBLIC_CHANNEL))
                                 .excludeArchived(true)
                                 .cursor(cursor))
+                        .whenComplete((r, ex) -> {
+                            if (ex != null) {
+                                logger.warning("Failed to call Slack conversationsList");
+                            }
+                        })
                         .get())
                 .recover(ex -> findConversationListFromApi(client, accessToken, cursor, retryCount + 1, apiDelay))
                 .get();
