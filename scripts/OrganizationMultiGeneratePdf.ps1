@@ -167,7 +167,7 @@ if ($GenerateTopicReports)
     {
         $topicIndex++
 
-        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 3 -ScriptBlock {
+        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 5 -ScriptBlock {
 
             # Offset the start of the execution by a few random seconds to avoid
             # all the threads printing their output at the same time.
