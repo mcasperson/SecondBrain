@@ -261,23 +261,21 @@ public class H2LocalStorage implements LocalStorage {
                                             AND source = ?
                                             AND prompt_hash = ?
                                             AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
-                    .of(preparedStatement ->
-                            Try.of(() -> {
-                                        preparedStatement.setString(1, tool);
-                                        preparedStatement.setString(2, source);
-                                        preparedStatement.setString(3, promptHash);
-                                        return preparedStatement;
-                                    })
-                                    .mapTry(PreparedStatement::executeQuery)
-                                    .mapTry(resultSet -> {
-                                        if (resultSet.next()) {
-                                            totalCacheHits.incrementAndGet();
-                                            return resultSet.getString(1);
-                                        }
-                                        return null;
-                                    })
-                                    .onFailure(ex -> totalFailures.incrementAndGet())
-                                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex))).get());
+                    .of(preparedStatement -> {
+                        preparedStatement.setString(1, tool);
+                        preparedStatement.setString(2, source);
+                        preparedStatement.setString(3, promptHash);
+                        return preparedStatement.executeQuery();
+                    })
+                    .mapTry(resultSet -> {
+                        if (resultSet.next()) {
+                            totalCacheHits.incrementAndGet();
+                            return resultSet.getString(1);
+                        }
+                        return null;
+                    })
+                    .onFailure(ex -> totalFailures.incrementAndGet())
+                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
             return result
                     .mapFailure(
@@ -388,22 +386,22 @@ public class H2LocalStorage implements LocalStorage {
             final Try<PreparedStatement> result = Try.withResources(() -> connection.prepareStatement("""
                             INSERT INTO LOCAL_STORAGE (tool, source, prompt_hash, response, timestamp)
                             VALUES (?, ?, ?, ?, ?)""".stripIndent()))
-                    .of(preparedStatement -> Try.of(() -> {
-                                preparedStatement.setString(1, tool);
-                                preparedStatement.setString(2, source);
-                                preparedStatement.setString(3, promptHash);
-                                preparedStatement.setString(4, response);
-                                preparedStatement.setTimestamp(5, ttlSeconds == 0
-                                        ? null
-                                        : Timestamp.from(ZonedDateTime
-                                        .now(ZoneOffset.UTC)
-                                        .plusSeconds(ttlSeconds)
-                                        .toInstant()));
-                                preparedStatement.executeUpdate();
-                                return preparedStatement;
-                            })
-                            .onFailure(ex -> totalFailures.incrementAndGet())
-                            .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex))).get());
+                    .of(preparedStatement -> {
+                        preparedStatement.setString(1, tool);
+                        preparedStatement.setString(2, source);
+                        preparedStatement.setString(3, promptHash);
+                        preparedStatement.setString(4, response);
+                        preparedStatement.setTimestamp(5, ttlSeconds == 0
+                                ? null
+                                : Timestamp.from(ZonedDateTime
+                                .now(ZoneOffset.UTC)
+                                .plusSeconds(ttlSeconds)
+                                .toInstant()));
+                        preparedStatement.executeUpdate();
+                        return preparedStatement;
+                    })
+                    .onFailure(ex -> totalFailures.incrementAndGet())
+                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
             result
                     .mapFailure(
