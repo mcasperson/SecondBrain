@@ -24,6 +24,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
+import static com.google.common.base.Predicates.instanceOf;
+
 /**
  * A very low effort caching solution that uses an H2 database to store the cache. It takes no additional configuration,
  * but H2 can be fickle, especially when running multiple clients simultaneously. The results store things like API
@@ -405,6 +407,7 @@ public class H2LocalStorage implements LocalStorage {
 
             result
                     .mapFailure(
+                            API.Case(API.$(instanceOf(LocalStorageFailure.class)), ex -> ex),
                             API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
                     )
                     .get();
