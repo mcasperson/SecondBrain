@@ -185,10 +185,7 @@ if ($GenerateTopicReports)
 
             # Let the first instance spin up, start the H2 database, and enable autoserver.
             # The others can connect after that.
-            if ($using:topicIndex -ne 1)
-            {
-                Start-Sleep -Seconds 20
-            }
+            Start-Sleep -Seconds (10 * ($using:topicIndex - 1))
 
             # We need to be tight with the sb.multislackzengoogle.keywordwindow value, as the default of 2000
             # characters was leading to whole google documents being included in the output, which was
