@@ -90,6 +90,7 @@ public class H2LocalStorage implements LocalStorage {
         synchronized (H2LocalStorage.class) {
             if (connection != null) {
                 cleanConnection(connection);
+                connection = null;
             }
         }
 
