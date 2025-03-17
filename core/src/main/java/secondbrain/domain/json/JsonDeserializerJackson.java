@@ -1,9 +1,11 @@
 package secondbrain.domain.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.MapType;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 import secondbrain.domain.exceptions.DeserializationFailed;
 import secondbrain.domain.exceptions.SerializationFailed;
 
@@ -14,24 +16,31 @@ import java.util.Map;
  */
 @ApplicationScoped
 public class JsonDeserializerJackson implements JsonDeserializer {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Inject
+    private Instance<SimpleModule> modules;
 
     @Override
     public String serialize(final Object object) {
-        return Try.of(() -> objectMapper.writeValueAsString(object))
+        return Try.of(ObjectMapper::new)
+                .mapTry(objectMapper -> objectMapper.writeValueAsString(object))
                 .getOrElseThrow(ex -> new SerializationFailed(ex));
     }
 
     @Override
     public <T> T deserialize(final String json, final Class<T> clazz) {
-        return Try.of(() -> objectMapper.readValue(json, clazz))
+        return Try.of(ObjectMapper::new)
+                .peek(objectMapper -> objectMapper.registerModules(modules))
+                .mapTry(objectMapper -> objectMapper.readValue(json, clazz))
                 .getOrElseThrow(ex -> new SerializationFailed(ex));
     }
 
     @Override
     public <U, V> Map<U, V> deserializeMap(final String json, final Class<U> key, final Class<V> value) {
-        final MapType type = objectMapper.getTypeFactory().constructMapType(Map.class, key, value);
-        return Try.of(() -> objectMapper.<Map<U, V>>readValue(json, type))
+        return Try.of(ObjectMapper::new)
+                .mapTry(objectMapper -> objectMapper.<Map<U, V>>readValue(
+                        json,
+                        objectMapper.getTypeFactory().constructMapType(Map.class, key, value)))
                 .getOrElseThrow(ex -> new DeserializationFailed(ex));
     }
 }
