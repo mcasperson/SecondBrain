@@ -341,19 +341,17 @@ public class H2LocalStorage implements LocalStorage {
                 .mapTry(r -> jsonDeserializer.deserialize(r, clazz))
                 // a cache miss means we call the API and then save the result in the cache
                 .recoverWith(ex -> Try.of(() -> {
-                                    logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                                    logger.info("Exception: " + exceptionHandler.getExceptionMessage(ex));
-                                    return generateValue.generate();
-                                })
-                                .map(r -> {
-                                    putString(
-                                            tool,
-                                            source,
-                                            promptHash,
-                                            ttlSeconds,
-                                            jsonDeserializer.serialize(r));
-                                    return r;
-                                })
+                            logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                            logger.info("Exception: " + exceptionHandler.getExceptionMessage(ex));
+                            final T value = generateValue.generate();
+                            putString(
+                                    tool,
+                                    source,
+                                    promptHash,
+                                    ttlSeconds,
+                                    jsonDeserializer.serialize(value));
+                            return value;
+                        })
                 )
                 /*
                     Exceptions are swallowed here because caching is just a best effort. But
