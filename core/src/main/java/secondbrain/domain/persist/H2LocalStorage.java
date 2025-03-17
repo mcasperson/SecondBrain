@@ -299,6 +299,8 @@ public class H2LocalStorage implements LocalStorage {
                 .of(() -> getString(tool, source, promptHash))
                 // a cache miss means the string is empty, so we throw an exception
                 .filter(StringUtils::isNotBlank)
+                // cache hit
+                .onSuccess(v -> logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 // recover from a cache miss by generating the value and saving it
                 .recover(result -> {
                     final String value = generateValue.generate();
