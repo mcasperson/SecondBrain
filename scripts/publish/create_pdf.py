@@ -157,9 +157,6 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             # Get file name without extension or the prefix
             title = raw_file[len(company_prefix):]
 
-            if high_activity:
-                title = title + " *"
-
             contents.append(
                 {'title': title, 'filename': filename, 'link': pdf.add_link(), 'high_activity': high_activity})
 
@@ -177,7 +174,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
         pdf.cell(0, 10, 'High Activity Customers', 0, 1, 'L')
         pdf.set_text_color(0, 0, 0)
 
-        for content in [content for content in contents if content['high_activity']]:
+        for content in [c for c in contents if c.get('high_activity', False)]:
             pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
 
         pdf.ln(10)
@@ -186,7 +183,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
         pdf.cell(0, 10, 'Low Activity Customers', 0, 1, 'L')
         pdf.set_text_color(0, 0, 0)
 
-        for content in [content for content in contents if not content['high_activity']]:
+        for content in [c for c in contents if not c.get('high_activity', False)]:
             pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
 
         pdf.ln(10)
