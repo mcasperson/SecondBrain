@@ -344,6 +344,7 @@ public class H2LocalStorage implements LocalStorage {
                 // a cache miss means we call the API and then save the result in the cache
                 .recoverWith(ex -> Try.of(() -> {
                             logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                            logger.info("Exception: " + exceptionHandler.getExceptionMessage(ex));
                             return generateValue.generate();
                         })
                         .onSuccess(r -> putString(
