@@ -182,7 +182,7 @@ public class SlackChannel implements Tool<Void> {
                     + "* [Slack Channel](https://app.slack.com/client/" + channelDetails.teamId() + "/" + channelDetails.channelId() + ")");
         }
 
-        final TrimResult messagesWithUsersReplaced = replaceIds(client, parsedArgs.getAccessToken(), messages.document())
+        final TrimResult messagesWithUsersReplaced = replaceIds(client, parsedArgs.getAccessToken(), messages.document(), parsedArgs)
                 .map(messages::replaceDocument)
                 .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
 
@@ -256,7 +256,7 @@ public class SlackChannel implements Tool<Void> {
     }
 
 
-    private Try<String> replaceIds(final AsyncMethodsClient client, final String token, final String messages) {
+    private Try<String> replaceIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
         final Pattern userPattern = Pattern.compile("<@(?<username>\\w+)>");
         final Pattern channelPattern = Pattern.compile("<#(?<channelname>\\w+)\\|?>");
 
@@ -267,7 +267,7 @@ public class SlackChannel implements Tool<Void> {
                  */
                 .map(results -> results._2().reduce(
                         results._1(),
-                        (m, match) -> m.replace(match.group(), getUsername(client, token, match.group("username")).get()),
+                        (m, match) -> m.replace(match.group(), slackClient.username(client, token, match.group("username"), parsedArgs.getApiDelay()).getUser().getName()),
                         (s, s2) -> s + s2))
                 /*
                 The string with user ids replaces is then mapped to a tuple with the original string and a list of regex
@@ -280,7 +280,7 @@ public class SlackChannel implements Tool<Void> {
                  */
                 .map(results -> results._2().reduce(
                         results._1(),
-                        (m, match) -> m.replace(match.group(), getChannel(client, token, match.group("channelname")).get()),
+                        (m, match) -> m.replace(match.group(), slackClient.channel(client, token, match.group("channelname"), parsedArgs.getApiDelay()).getChannel().getName()),
                         (s, s2) -> s + s2))
                 /*
                  If any of the previous steps failed, we return the original messages.

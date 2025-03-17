@@ -3,9 +3,13 @@ package secondbrain.infrastructure.slack;
 import com.slack.api.methods.AsyncMethodsClient;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
+import com.slack.api.methods.response.conversations.ConversationsInfoResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.methods.response.search.SearchAllResponse;
+import com.slack.api.methods.response.users.UsersInfoResponse;
+import com.slack.api.model.Conversation;
 import com.slack.api.model.ConversationType;
+import com.slack.api.model.User;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -107,6 +111,134 @@ public class SlackClient {
                     throw new ExternalFailure("Could not call searchAll", ex);
                 })
                 .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsHistory", ex)))
+                .get();
+    }
+
+    public UsersInfoResponse username(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String userId,
+            final int apiDelay) {
+
+        /*
+            The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
+            based on a hash of the channel name and the access token.
+         */
+        final String hash = DigestUtils.sha256Hex(userId);
+
+        return Try.withResources(SEMAPHORE_LENDER::lend)
+                .of(sem -> Try
+                        .of(() -> localStorage.getOrPutObject(
+                                SlackClient.class.getSimpleName(),
+                                "SlackAPIUserInfo",
+                                hash,
+                                UsersInfoResponse.class,
+                                () -> userFromApi(client, accessToken, userId, 0, apiDelay)))
+                        .get())
+                .get();
+    }
+
+    private UsersInfoResponse userFromApi(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String userId,
+            final int retryCount,
+            final int apiDelay) {
+        if (retryCount > RETRIES) {
+            throw new InternalFailure("Could not call usersInfo after " + RETRIES + " retries");
+        }
+
+        if (retryCount > 0) {
+            logger.info("Retrying Slack usersInfo");
+            Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
+        }
+
+        return Try.of(() -> client.usersInfo(r -> r.token(accessToken).user(userId))
+                        .whenComplete((r, ex) -> {
+                            if (ex != null) {
+                                logger.warning("Failed to call Slack usersInfo");
+                            }
+                        })
+                        .get())
+                .recover(SlackApiException.class, ex -> {
+                    if (ex.getResponse().code() == 429) {
+                        return userFromApi(client, accessToken, userId, retryCount + 1, apiDelay);
+                    }
+
+                    throw new ExternalFailure("Could not call usersInfo", ex);
+                })
+                .recover(ex -> {
+                    // Just return an empty user if we can't find the user
+                    final UsersInfoResponse userInfo = new UsersInfoResponse();
+                    final User user = new User();
+                    user.setName("Unknown user");
+                    userInfo.setUser(user);
+                    return userInfo;
+                })
+                .get();
+    }
+
+    public ConversationsInfoResponse channel(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channelId,
+            final int apiDelay) {
+
+        /*
+            The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
+            based on a hash of the channel name and the access token.
+         */
+        final String hash = DigestUtils.sha256Hex(channelId);
+
+        return Try.withResources(SEMAPHORE_LENDER::lend)
+                .of(sem -> Try
+                        .of(() -> localStorage.getOrPutObject(
+                                SlackClient.class.getSimpleName(),
+                                "SlackAPIConversationsInfo",
+                                hash,
+                                ConversationsInfoResponse.class,
+                                () -> channelFromApi(client, accessToken, channelId, 0, apiDelay)))
+                        .get())
+                .get();
+    }
+
+    private ConversationsInfoResponse channelFromApi(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channelId,
+            final int retryCount,
+            final int apiDelay) {
+        if (retryCount > RETRIES) {
+            throw new InternalFailure("Could not call channel after " + RETRIES + " retries");
+        }
+
+        if (retryCount > 0) {
+            logger.info("Retrying Slack channel");
+            Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
+        }
+
+        return Try.of(() -> client.conversationsInfo(r -> r.token(accessToken).channel(channelId))
+                        .whenComplete((r, ex) -> {
+                            if (ex != null) {
+                                logger.warning("Failed to call Slack channel");
+                            }
+                        })
+                        .get())
+                .recover(SlackApiException.class, ex -> {
+                    if (ex.getResponse().code() == 429) {
+                        return channelFromApi(client, accessToken, channelId, retryCount + 1, apiDelay);
+                    }
+
+                    throw new ExternalFailure("Could not call usersInfo", ex);
+                })
+                .recover(ex -> {
+                    // Just return an empty user if we can't find the channel
+                    final ConversationsInfoResponse conversationsInfo = new ConversationsInfoResponse();
+                    final Conversation conversation = new Conversation();
+                    conversation.setName("Unknown channel");
+                    conversationsInfo.setChannel(conversation);
+                    return conversationsInfo;
+                })
                 .get();
     }
 
