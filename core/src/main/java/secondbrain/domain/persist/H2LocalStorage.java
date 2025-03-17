@@ -277,8 +277,7 @@ public class H2LocalStorage implements LocalStorage {
                         return null;
                     })
                     .onFailure(ex -> totalFailures.incrementAndGet())
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
-                    .onSuccess(v -> logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash));
+                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
             return result
                     .mapFailure(
@@ -337,6 +336,7 @@ public class H2LocalStorage implements LocalStorage {
                 // a cache miss means the string is empty, so we throw an exception
                 .filter(StringUtils::isNotBlank)
                 // a cache hit means we deserialize the result
+                .onSuccess(v -> logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> jsonDeserializer.deserialize(r, clazz))
                 // a cache miss means we call the API and then save the result in the cache
                 .recoverWith(ex -> Try.of(generateValue::generate)
