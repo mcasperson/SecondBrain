@@ -113,19 +113,19 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     # Move the Executive Summary to the top
     if os.path.exists(os.path.join(directory, 'Executive Summary.md')):
         contents.append({'title': 'Executive Summary', 'filename': os.path.join(directory, 'Executive Summary.md'),
-                         'link': pdf.add_link()})
+                         'link': pdf.add_link(), 'type': 'summary'})
 
     # Then list common themes
     if os.path.exists(os.path.join(directory, 'Topics.md')):
         contents.append({'title': 'Common Themes', 'filename': os.path.join(directory, 'Topics.md'),
-                         'link': pdf.add_link()})
+                         'link': pdf.add_link(), 'type': 'summary'})
 
     # Find the topics in the first loop
     for filename in sorted(os.listdir(directory)):
         if filename.startswith(topic_prefix) and filename.endswith('.md'):
             # Get file name without extension or the prefix
             title = (os.path.splitext(filename)[0])[len(topic_prefix):]
-            contents.append({'title': title, 'filename': filename, 'link': pdf.add_link()})
+            contents.append({'title': title, 'filename': filename, 'link': pdf.add_link(), 'type': 'topic'})
 
     # Find the companies in the second loop
     print("Parsing companies...")
@@ -158,7 +158,8 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             title = raw_file[len(company_prefix):]
 
             contents.append(
-                {'title': title, 'filename': filename, 'link': pdf.add_link(), 'high_activity': high_activity})
+                {'title': title, 'filename': filename, 'link': pdf.add_link(), 'high_activity': high_activity,
+                 'type': 'customer'})
 
     # Add Table of Contents
     pdf.add_page()
@@ -169,24 +170,38 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     pdf.set_font('Roboto', '', 12)
     pdf.ln(10)
 
+    for content in [c for c in contents if c.get('type', '') == 'topic']:
+        pdf.cell(0, 10, f'{content['title']}', 0, 1, 'L', link=content['link'])
+
+    for content in [c for c in contents if c.get('type', '') == 'summary']:
+        pdf.cell(0, 10, f'{content['title']}', 0, 1, 'L', link=content['link'])
+
     if found_companies:
-        pdf.set_text_color(58, 0, 0)
-        pdf.cell(0, 10, 'High Activity Customers', 0, 1, 'L')
-        pdf.set_text_color(0, 0, 0)
+        high_activity_customers = [c for c in contents if
+                                   c.get('high_activity', False) and c.get('type',
+                                                                           '') == 'customer']
+        low_activity_customers = [c for c in contents if
+                                  not c.get('high_activity', False) and c.get('type', '') == 'customer']
 
-        for content in [c for c in contents if c.get('high_activity', False)]:
-            pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
+        if len(high_activity_customers) != 0:
+            pdf.set_text_color(58, 0, 0)
+            pdf.cell(0, 10, 'High Activity Customers', 0, 1, 'L')
+            pdf.set_text_color(0, 0, 0)
 
-        pdf.ln(10)
+            for content in high_activity_customers:
+                pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
 
-        pdf.set_text_color(58, 0, 0)
-        pdf.cell(0, 10, 'Low Activity Customers', 0, 1, 'L')
-        pdf.set_text_color(0, 0, 0)
+            pdf.ln(10)
 
-        for content in [c for c in contents if not c.get('high_activity', False)]:
-            pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
+        if len(low_activity_customers) != 0:
+            pdf.set_text_color(58, 0, 0)
+            pdf.cell(0, 10, 'Low Activity Customers', 0, 1, 'L')
+            pdf.set_text_color(0, 0, 0)
 
-        pdf.ln(10)
+            for content in low_activity_customers:
+                pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
+
+            pdf.ln(10)
 
     print("Converting markdown...")
     for content in contents:
