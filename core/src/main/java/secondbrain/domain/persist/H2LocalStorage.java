@@ -345,12 +345,15 @@ public class H2LocalStorage implements LocalStorage {
                             logger.info("Exception: " + exceptionHandler.getExceptionMessage(ex));
                             return generateValue.generate();
                         })
-                        .onSuccess(r -> putString(
+                        .map(r ->{
+                            putString(
                                 tool,
                                 source,
                                 promptHash,
                                 ttlSeconds,
-                                jsonDeserializer.serialize(r))))
+                                jsonDeserializer.serialize(r));
+                            return r;
+                        })
                 /*
                     Exceptions are swallowed here because caching is just a best effort. But
                     we still need to know if something went wrong.
