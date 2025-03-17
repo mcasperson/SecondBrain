@@ -303,6 +303,7 @@ public class H2LocalStorage implements LocalStorage {
                 .onSuccess(v -> logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 // recover from a cache miss by generating the value and saving it
                 .recover(result -> {
+                    logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                     final String value = generateValue.generate();
                     putString(tool, source, promptHash, ttlSeconds, value);
                     return value;
@@ -341,7 +342,10 @@ public class H2LocalStorage implements LocalStorage {
                 .onSuccess(v -> logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> jsonDeserializer.deserialize(r, clazz))
                 // a cache miss means we call the API and then save the result in the cache
-                .recoverWith(ex -> Try.of(generateValue::generate)
+                .recoverWith(ex -> Try.of(() -> {
+                            logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                            return generateValue.generate();
+                        })
                         .onSuccess(r -> putString(
                                 tool,
                                 source,
