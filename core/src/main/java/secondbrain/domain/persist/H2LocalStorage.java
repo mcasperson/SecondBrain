@@ -8,6 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.LoggerFactory;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
@@ -37,6 +38,7 @@ public class H2LocalStorage implements LocalStorage {
     private static final int MAX_RETRIES = 15;
     private static final int DELAY = 1000;
     private static final int MAX_FAILURES = 5;
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(H2LocalStorage.class);
 
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
@@ -98,6 +100,7 @@ public class H2LocalStorage implements LocalStorage {
 
     private void resetConnection() {
         synchronized (H2LocalStorage.class) {
+            log.warn("Resetting H2 connection");
             totalFailures.set(0);
             preDestroy();
             postConstruct();
