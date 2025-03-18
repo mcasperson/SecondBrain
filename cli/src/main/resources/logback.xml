@@ -16,4 +16,5 @@
     <logger name="org.jboss.logging" level="warn"/>
     <logger name="org.apache.pdfbox.pdmodel" level="error"/>
     <logger name="org.apache.fontbox" level="error"/>
+    <logger name="com.slack.api.methods.impl.AsyncRateLimitExecutor" level="error"/>
 </configuration>

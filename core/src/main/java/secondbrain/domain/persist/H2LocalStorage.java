@@ -8,6 +8,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.LoggerFactory;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
@@ -24,6 +25,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
+import static com.google.common.base.Predicates.instanceOf;
+
 /**
  * A very low effort caching solution that uses an H2 database to store the cache. It takes no additional configuration,
  * but H2 can be fickle, especially when running multiple clients simultaneously. The results store things like API
@@ -35,6 +38,7 @@ public class H2LocalStorage implements LocalStorage {
     private static final int MAX_RETRIES = 15;
     private static final int DELAY = 1000;
     private static final int MAX_FAILURES = 5;
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(H2LocalStorage.class);
 
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
@@ -86,6 +90,7 @@ public class H2LocalStorage implements LocalStorage {
         synchronized (H2LocalStorage.class) {
             if (connection != null) {
                 cleanConnection(connection);
+                connection = null;
             }
         }
 
@@ -96,6 +101,7 @@ public class H2LocalStorage implements LocalStorage {
 
     private void resetConnection() {
         synchronized (H2LocalStorage.class) {
+            log.warn("Resetting H2 connection");
             totalFailures.set(0);
             preDestroy();
             postConstruct();
@@ -136,9 +142,6 @@ public class H2LocalStorage implements LocalStorage {
 
     private void cleanConnection(final Connection connection) {
         if (connection != null) {
-            Try.run(() -> connection.createStatement().execute("SHUTDOWN"))
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
-
             Try.run(connection::close)
                     .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
         }
@@ -223,11 +226,11 @@ public class H2LocalStorage implements LocalStorage {
             }
 
             final Try<Integer> result = Try
-                    .of(() -> connection.prepareStatement("""
+                    .withResources(() -> connection.prepareStatement("""
                             DELETE FROM LOCAL_STORAGE
                             WHERE timestamp IS NOT NULL
                             AND timestamp < CURRENT_TIMESTAMP""".stripIndent()))
-                    .mapTry(PreparedStatement::executeUpdate)
+                    .of(PreparedStatement::executeUpdate)
                     .onFailure(ex -> totalFailures.incrementAndGet());
 
             return result
@@ -256,25 +259,25 @@ public class H2LocalStorage implements LocalStorage {
 
             totalReads.incrementAndGet();
 
-            final Try<String> result = Try.of(() -> connection.prepareStatement("""
+            final Try<String> result = Try.withResources(() -> connection.prepareStatement("""
                             SELECT response FROM LOCAL_STORAGE
                                             WHERE tool = ?
                                             AND source = ?
                                             AND prompt_hash = ?
                                             AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
-                    .mapTry(preparedStatement -> {
+                    .of(preparedStatement -> {
                         preparedStatement.setString(1, tool);
                         preparedStatement.setString(2, source);
                         preparedStatement.setString(3, promptHash);
-                        return preparedStatement;
-                    })
-                    .mapTry(PreparedStatement::executeQuery)
-                    .mapTry(resultSet -> {
-                        if (resultSet.next()) {
-                            totalCacheHits.incrementAndGet();
-                            return resultSet.getString(1);
-                        }
-                        return null;
+                        return Try.withResources(preparedStatement::executeQuery)
+                                .of(resultSet -> {
+                                    if (resultSet.next()) {
+                                        totalCacheHits.incrementAndGet();
+                                        return resultSet.getString(1);
+                                    }
+                                    return null;
+                                }).get();
+
                     })
                     .onFailure(ex -> totalFailures.incrementAndGet())
                     .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
@@ -303,6 +306,7 @@ public class H2LocalStorage implements LocalStorage {
                 .onSuccess(v -> logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 // recover from a cache miss by generating the value and saving it
                 .recover(result -> {
+                    logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                     final String value = generateValue.generate();
                     putString(tool, source, promptHash, ttlSeconds, value);
                     return value;
@@ -341,13 +345,19 @@ public class H2LocalStorage implements LocalStorage {
                 .onSuccess(v -> logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> jsonDeserializer.deserialize(r, clazz))
                 // a cache miss means we call the API and then save the result in the cache
-                .recoverWith(ex -> Try.of(generateValue::generate)
-                        .onSuccess(r -> putString(
-                                tool,
-                                source,
-                                promptHash,
-                                ttlSeconds,
-                                jsonDeserializer.serialize(r))))
+                .recoverWith(ex -> Try.of(() -> {
+                            logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                            logger.info("Exception: " + exceptionHandler.getExceptionMessage(ex));
+                            final T value = generateValue.generate();
+                            putString(
+                                    tool,
+                                    source,
+                                    promptHash,
+                                    ttlSeconds,
+                                    jsonDeserializer.serialize(value));
+                            return value;
+                        })
+                )
                 /*
                     Exceptions are swallowed here because caching is just a best effort. But
                     we still need to know if something went wrong.
@@ -378,10 +388,10 @@ public class H2LocalStorage implements LocalStorage {
                 resetConnection();
             }
 
-            final Try<PreparedStatement> result = Try.of(() -> connection.prepareStatement("""
+            final Try<PreparedStatement> result = Try.withResources(() -> connection.prepareStatement("""
                             INSERT INTO LOCAL_STORAGE (tool, source, prompt_hash, response, timestamp)
                             VALUES (?, ?, ?, ?, ?)""".stripIndent()))
-                    .mapTry(preparedStatement -> {
+                    .of(preparedStatement -> {
                         preparedStatement.setString(1, tool);
                         preparedStatement.setString(2, source);
                         preparedStatement.setString(3, promptHash);
@@ -400,6 +410,7 @@ public class H2LocalStorage implements LocalStorage {
 
             result
                     .mapFailure(
+                            API.Case(API.$(instanceOf(LocalStorageFailure.class)), ex -> ex),
                             API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
                     )
                     .get();

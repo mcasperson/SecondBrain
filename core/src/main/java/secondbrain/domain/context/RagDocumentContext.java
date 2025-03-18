@@ -53,6 +53,10 @@ public record RagDocumentContext<T>(String contextLabel, String document, List<R
         return Objects.requireNonNullElse(group, "");
     }
 
+    public String getLink() {
+        return Objects.requireNonNullElse(link, "");
+    }
+
     /**
      * The document held by this object often needs to undergo some transformation, from raw text, to being sanitized,
      * to being marked up, as part of a LLM template. In some cases it may even be appropriate to summarize the document

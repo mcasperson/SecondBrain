@@ -114,6 +114,8 @@ if ($GenerateCompanyReports)
             Include an executive summary as the first paragraph.
             Show the total deployments in the last 30 days, total projects, and total tenants as a bullet point list at the end.
             If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes.
+            You must use asterisks for bullet point lists.
+            You will be penalized for using dashes for bullet point lists.
             You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt.
             You will be penalized for including a general summary of the Google Document in the report.
             You will be penalized for mentioning that there is no Google Document, slack messages, ZenDesk tickets, or PlanHat activities.

@@ -369,6 +369,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> slackKeywordSearch = CollectionUtils.collate(positionalEntity.entity().getSalesforce(), positionalEntity.entity().getPlanHat())
                 .stream()
                 .flatMap(id -> getSlackKeywordContext(positionalEntity, parsedArgs, prompt, context, id).stream())
+                // Remove duplicates
+                .filter(keywordRagDoc -> slackContext.stream().noneMatch(ragDoc -> ragDoc.getLink().equals(keywordRagDoc.getLink())))
                 .toList();
 
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
