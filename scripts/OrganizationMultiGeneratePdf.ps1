@@ -107,6 +107,8 @@ if ($GenerateCompanyReports)
             "-Dsb.multislackzengoogle.metareport=$( $using:subDir )/COMPANY $entityName.json"
             "-Dsb.multislackzengoogle.days=$using:Days"
             "-Dsb.multislackzengoogle.entity=$entityName"
+            "-Dsb.multislackzengoogle.metaPrompt1=How positive is the sentiment of the messages?"
+            "-Dsb.multislackzengoogle.metaField1=Sentiment"
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
             -jar $using:jarFile

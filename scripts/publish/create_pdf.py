@@ -100,7 +100,8 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             with open(filepath, 'r', encoding='utf-8') as file:
                 try:
                     json_data = json.load(file)
-                    count = json_data.get('contextCount', 0)
+                    countMeta = [field for field in json_data if field.get("name", "") == "ContextCount"]
+                    count = countMeta[0].get("value", 0) if len(countMeta) > 0 else 0
                     if count > 0:
                         total_entities += 1
                         total_context += count

@@ -77,6 +77,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
     public static final String MULTI_SLACK_ZEN_META_REPORT_ARG = "metaReport";
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_1_ARG = "contextMetaField1";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_1_ARG = "contextMetaPrompt1";
     private static final int BATCH_SIZE = 10;
     private static final String INSTRUCTIONS = """
             You are helpful agent.
@@ -394,14 +396,40 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return filteredContext;
     }
 
+    private MetaIntResult getContextCount(final PositionalEntity positionalEntity, final List<RagDocumentContext<Void>> ragContext) {
+        return new MetaIntResult(
+                "ContextCount",
+                ragContext.size());
+    }
+
+    private List<MetaIntResult> getMetaResults(final List<RagDocumentContext<Void>> ragContext, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        final List<MetaIntResult> results = new ArrayList<MetaIntResult>();
+
+        if (StringUtils.isNotBlank(parsedArgs.getMetaField1()) && StringUtils.isNotBlank(parsedArgs.getMetaPrompt1())) {
+            final int value = Try.of(() -> ratingTool.call(
+                            Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, parsedArgs.getMetaPrompt1()),
+                            parsedArgs.getContextFilterQuestion(),
+                            List.of()).combinedDocument())
+                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
+                    // Meta fields are a best effort, and we default to 0
+                    .recover(InternalFailure.class, ex -> 0)
+                    .get();
+
+            results.add(new MetaIntResult(parsedArgs.getMetaField1(), value));
+        }
+
+        return results;
+    }
+
     private void saveMetaResult(final PositionalEntity positionalEntity, final List<RagDocumentContext<Void>> ragContext, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        final List<MetaIntResult> results = new ArrayList<MetaIntResult>();
+
         if (StringUtils.isNotBlank(parsedArgs.getMetaReport())) {
-            final MetaResult metaResult = new MetaResult(
-                    positionalEntity.entity().name(),
-                    ragContext.size());
+            results.add(getContextCount(positionalEntity, ragContext));
+            results.addAll(getMetaResults(ragContext, parsedArgs));
 
             Try.run(() -> Files.write(Paths.get(parsedArgs.getMetaReport()),
-                            jsonDeserializer.serialize(metaResult).getBytes(),
+                            jsonDeserializer.serialize(results).getBytes(),
                             StandardOpenOption.CREATE,
                             StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(ex -> logger.severe(exceptionHandler.getExceptionMessage(ex)));
@@ -766,6 +794,14 @@ class MultiSlackZenGoogleConfig {
     @ConfigProperty(name = "sb.multislackzengoogle.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
 
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.metaPrompt1")
+    private Optional<String> configMetaPrompt1;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.metaField1")
+    private Optional<String> configMetaField1;
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -812,6 +848,14 @@ class MultiSlackZenGoogleConfig {
 
     public Optional<String> getConfigMetaReport() {
         return configMetaReport;
+    }
+
+    public Optional<String> getConfigMetaPrompt1() {
+        return configMetaPrompt1;
+    }
+
+    public Optional<String> getConfigMetaField1() {
+        return configMetaField1;
     }
 
     public class LocalArguments {
@@ -958,6 +1002,28 @@ class MultiSlackZenGoogleConfig {
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_REPORT_ARG,
                             "multislackzengoogle_meta_report",
+                            "")
+                    .value();
+        }
+
+        public String getMetaField1() {
+            return getArgsAccessor().getArgument(
+                            getConfigMetaField1()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_1_ARG,
+                            "multislackzengoogle_meta_field_1",
+                            "")
+                    .value();
+        }
+
+        public String getMetaPrompt1() {
+            return getArgsAccessor().getArgument(
+                            getConfigMetaPrompt1()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_1_ARG,
+                            "multislackzengoogle_meta_prompt_1",
                             "")
                     .value();
         }
