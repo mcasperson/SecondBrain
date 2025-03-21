@@ -142,6 +142,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             metadata = os.path.join(directory, raw_file + ".json")
 
             high_activity = False
+            sentiment = 5
             if os.path.exists(metadata):
                 print(f"Parsing {metadata}...")
                 with open(metadata, 'r', encoding='utf-8') as file:
@@ -150,8 +151,13 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
                         # Flag those with above average touch points, but at least 6 if the average is less than 6
                         # Note that we expect all companies to have at least 3 touch points including things
                         # like deployment, project, and tenant stats
-                        if json_data.get('contextCount', 0) >= max(average_context, 6):
+                        countMeta = [field for field in json_data if field.get("name", "") == "ContextCount"]
+                        count = countMeta[0].get("value", 0) if len(countMeta) > 0 else 0
+                        if count >= max(average_context, 6):
                             high_activity = True
+
+                        sentimentMeta = [field for field in json_data if field.get("name", "") == "Sentiment"]
+                        sentiment = sentimentMeta[0].get("value", 0) if len(countMeta) > 0 else 0
                     except:
                         pass
 
@@ -160,7 +166,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
 
             contents.append(
                 {'title': title, 'filename': filename, 'link': pdf.add_link(), 'high_activity': high_activity,
-                 'type': 'customer'})
+                 'type': 'customer', 'sentiment': sentiment})
 
     # Add Table of Contents
     pdf.add_page()
