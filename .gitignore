@@ -36,3 +36,5 @@ out
 *.backup.3
 *.backup.4
 *.backup.5
+
+report.json
