@@ -405,7 +405,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private List<MetaIntResult> getMetaResults(final List<RagDocumentContext<Void>> ragContext, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
         final List<MetaIntResult> results = new ArrayList<MetaIntResult>();
 
-        if (StringUtils.isNotBlank(parsedArgs.getMetaField1()) && StringUtils.isNotBlank(parsedArgs.getMetaPrompt1())) {
+        if (StringUtils.isNotBlank(parsedArgs.getMetaField1()) && StringUtils.isNotBlank(parsedArgs.getMetaPrompt1()) && !ragContext.isEmpty()) {
             final int value = Try.of(() -> ratingTool.call(
                             Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, parsedArgs.getMetaPrompt1()),
                             parsedArgs.getContextFilterQuestion(),
