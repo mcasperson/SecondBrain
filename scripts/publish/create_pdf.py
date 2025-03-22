@@ -195,7 +195,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             pdf.set_text_color(0, 0, 0)
 
             for content in high_activity_customers:
-                sentiment = " 😀" if content['sentiment'] >= 8 else "" if content['sentiment'] > 2 else " 😭"
+                sentiment = " 😀" if content['sentiment'] >= 8 else "" if content['sentiment'] > 3 else " 😭"
                 pdf.cell(0, 10, f'  {content['title']}{sentiment}', 0, 1, 'L', link=content['link'])
 
             pdf.ln(10)
@@ -206,7 +206,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             pdf.set_text_color(0, 0, 0)
 
             for content in low_activity_customers:
-                sentiment = " 😀" if content['sentiment'] >= 8 else "" if content['sentiment'] > 2 else " 😭"
+                sentiment = " 😀" if content['sentiment'] >= 8 else "" if content['sentiment'] > 3 else " 😭"
                 pdf.cell(0, 10, f'  {content['title']}{sentiment}', 0, 1, 'L', link=content['link'])
 
             pdf.ln(10)
