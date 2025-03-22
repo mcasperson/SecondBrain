@@ -406,9 +406,19 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<MetaIntResult> results = new ArrayList<MetaIntResult>();
 
         if (StringUtils.isNotBlank(parsedArgs.getMetaField1()) && StringUtils.isNotBlank(parsedArgs.getMetaPrompt1()) && !ragContext.isEmpty()) {
+            final RagMultiDocumentContext<Void> multiRagDoc = new RagMultiDocumentContext<>(
+                    ragContext.stream()
+                            .map(ragDoc -> promptBuilderSelector
+                                    .getPromptBuilder("plain")
+                                    .buildContextPrompt(
+                                            ragDoc.contextLabel(),
+                                            ragDoc.document()))
+                            .collect(Collectors.joining("\n")),
+                    ragContext);
+
             final int value = Try.of(() -> ratingTool.call(
-                            Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, parsedArgs.getMetaPrompt1()),
-                            parsedArgs.getContextFilterQuestion(),
+                            Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, multiRagDoc.combinedDocument()),
+                            parsedArgs.getMetaPrompt1(),
                             List.of()).combinedDocument())
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
                     // Meta fields are a best effort, and we default to 0
