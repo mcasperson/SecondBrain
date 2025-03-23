@@ -313,6 +313,8 @@ if ($GenerateExecutiveSummary)
                 Select-Object -First 1 |
                 Select-Object -ExpandProperty value
 
+        echo "Context Count: $contextCount"
+
         $summaryFile = if ($contextCount -gt $averageInteractions -and $contextCount -gt 6)
         {
             "High Volume Customers Executive Summary.md"
