@@ -264,7 +264,8 @@ if ($GenerateExecutiveSummary)
 
     $ExecutiveSummaryLog = "/tmp/pdfgenerate Executive Summary $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
-    # Start by working out the high volume customers
+    # Start by working out the high volume customers. These are customers whose interaction counts are above the
+    # average and above a certain threshold.
     $totalInteractions = 0
     $totalCompanies = 0
     foreach ($file in $files)
@@ -285,7 +286,7 @@ if ($GenerateExecutiveSummary)
                 Select-Object -First 1 |
                 Select-Object -ExpandProperty value
 
-        if ($contextCount -ne 0)
+        if ($null -ne $contextCount -and $contextCount -ne 0)
         {
             $totalInteractions += $contextCount
             $totalCompanies++
@@ -312,9 +313,12 @@ if ($GenerateExecutiveSummary)
                 Select-Object -First 1 |
                 Select-Object -ExpandProperty value
 
-        $summaryFile = if ($contextCount -gt $averageInteractions -and $contextCount -gt 6) {
+        $summaryFile = if ($contextCount -gt $averageInteractions -and $contextCount -gt 6)
+        {
             "High Volume Customers Executive Summary.md"
-        } else {
+        }
+        else
+        {
             "Low Volume Customers Executive Summary.md"
         }
 
