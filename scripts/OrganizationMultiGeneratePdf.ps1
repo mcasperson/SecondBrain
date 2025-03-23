@@ -315,7 +315,7 @@ if ($GenerateExecutiveSummary)
 
         echo "Context Count: $contextCount"
 
-        $summaryFile = if ($contextCount -gt $averageInteractions -and $contextCount -gt 6)
+        $summaryFile = if ($contextCount -gt $averageInteractions -and $contextCount -ge 6)
         {
             "High Volume Customers Executive Summary.md"
         }
