@@ -256,12 +256,43 @@ if ($GenerateTopicReports)
 if ($GenerateExecutiveSummary)
 {
     # Delete the executie summary file
-    Remove-Item "$subDir/Executive Summary.md" | Out-Null
+    Remove-Item "$subDir/High Volume Customers Executive Summary.md" | Out-Null
+    Remove-Item "$subDir/Low Volume Customers Executive Summary.md" | Out-Null
 
     # Get all files in the directory
     $files = Get-ChildItem -Path $subDir
 
     $ExecutiveSummaryLog = "/tmp/pdfgenerate Executive Summary $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
+
+    # Start by working out the high volume customers
+    $totalInteractions = 0
+    $totalCompanies = 0
+    foreach ($file in $files)
+    {
+        if (-not (Test-Path -Path $file -PathType Leaf))
+        {
+            continue
+        }
+
+        if (-not ($file.Name.StartsWith("COMPANY ") -and $file.Name.EndsWith(".json")))
+        {
+            continue
+        }
+
+        $contextCount = Get-Content -Path $file -Raw |
+                ConvertFrom-Json |
+                ? { $_.name -eq "ContextCount" } |
+                Select-Object -First 1 |
+                Select-Object -ExpandProperty value
+
+        if ($contextCount -ne 0)
+        {
+            $totalInteractions += $contextCount
+            $totalCompanies++
+        }
+    }
+
+    $averageInteractions = $totalInteractions / $totalCompanies
 
     foreach ($file in $files)
     {
@@ -273,6 +304,18 @@ if ($GenerateExecutiveSummary)
         if (-not ($file.Name.StartsWith("COMPANY ") -and $file.Name.EndsWith(".md")))
         {
             continue
+        }
+
+        $contextCount = Get-Content -Path ($subDir + "/" + $file.BaseName) -Raw |
+                ConvertFrom-Json |
+                ? { $_.name -eq "ContextCount" } |
+                Select-Object -First 1 |
+                Select-Object -ExpandProperty value
+
+        $summaryFile = if ($contextCount -gt $averageInteractions -and $contextCount -gt 6) {
+            "High Volume Customers Executive Summary.md"
+        } else {
+            "Low Volume Customers Executive Summary.md"
         }
 
         Write-Host "Processing file: $( $file.Name )"
@@ -297,7 +340,7 @@ if ($GenerateExecutiveSummary)
         You will be penalized for including details about how you have adhered to the instructions."
 "@)
         $result = Invoke-CustomCommand java $arguments
-        Add-Content -Path "$subDir/Executive Summary.md" -Value "$( $result.StdOut )`n`n"
+        Add-Content -Path "$subDir/$summaryFile"  -Value "$( $result.StdOut )`n`n"
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdOut
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdErr
     }

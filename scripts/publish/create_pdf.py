@@ -111,8 +111,12 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
         average_context = total_context / total_entities
 
     # Move the Executive Summary to the top
-    if os.path.exists(os.path.join(directory, 'Executive Summary.md')):
-        contents.append({'title': 'Executive Summary', 'filename': os.path.join(directory, 'Executive Summary.md'),
+    if os.path.exists(os.path.join(directory, 'High Volume Customers Executive Summary.md')):
+        contents.append({'title': 'High Volume Customers Executive Summary', 'filename': os.path.join(directory, 'High Volume Customers Executive Summary.md'),
+                         'link': pdf.add_link(), 'type': 'summary'})
+
+    if os.path.exists(os.path.join(directory, 'Low Volume Customers Executive Summary.md')):
+        contents.append({'title': 'Low Volume Customers Executive Summary', 'filename': os.path.join(directory, 'Low Volume Customers Executive Summary.md'),
                          'link': pdf.add_link(), 'type': 'summary'})
 
     # Then list common themes
