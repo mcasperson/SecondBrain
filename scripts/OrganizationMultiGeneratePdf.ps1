@@ -15,6 +15,13 @@ $ModulePath = "$PSScriptRoot\SharedFunctions.psm1"
 
 Import-Module $ModulePath
 
+# The PDF file is often generated with a date in the name.
+# Bash generates a date with a command like: date +'%Y-%m-%d'
+# Perecent signs are special characters in a crontab file, and need to be esacped.
+# However, I found myself copying and pasting the crontab line as a way of quickly testing PDF generation.
+# So, we remove an forward slashes from the PDF file name to make it easier to copy and paste.
+$PdfFile = $PdfFile -replace '/', ''
+
 # Powershell has to be set to parse the output of an executable as UTF8
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
