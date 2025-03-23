@@ -19,8 +19,12 @@ Import-Module $ModulePath
 # Bash generates a date with a command like: date +'%Y-%m-%d'
 # Perecent signs are special characters in a crontab file, and need to be esacped.
 # However, I found myself copying and pasting the crontab line as a way of quickly testing PDF generation.
-# So, we remove an forward slashes from the PDF file name to make it easier to copy and paste.
-$PdfFile = $PdfFile -replace '/', ''
+# So, we remove an back slashes from the PDF file name to make it easier to copy and paste.
+$os = Get-CimInstance -ClassName Win32_OperatingSystem
+if (-not $os.Caption -match "Windows")
+{
+    $PdfFile = $PdfFile -replace '\', ''
+}
 
 Write-Host "Generating $PdfFile"
 
