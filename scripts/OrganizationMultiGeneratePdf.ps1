@@ -22,7 +22,7 @@ Import-Module $ModulePath
 # So, we remove an back slashes from the PDF file name to make it easier to copy and paste.
 if (-not $IsWindows)
 {
-    $PdfFile = $PdfFile -replace '\', ''
+    $PdfFile = $PdfFile -replace '\\', ''
 }
 
 Write-Host "Generating $PdfFile"
