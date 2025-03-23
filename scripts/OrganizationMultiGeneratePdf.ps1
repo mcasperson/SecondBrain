@@ -22,6 +22,8 @@ Import-Module $ModulePath
 # So, we remove an forward slashes from the PDF file name to make it easier to copy and paste.
 $PdfFile = $PdfFile -replace '/', ''
 
+Write-Host "Generating $PdfFile"
+
 # Powershell has to be set to parse the output of an executable as UTF8
 # Java will print to std out as UTF 8 by passing -Dstdout.encoding=UTF-8
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
