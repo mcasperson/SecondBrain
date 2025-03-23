@@ -44,7 +44,8 @@ $toolModel = "llama3.1"
 #$model = "llama3.3"
 #$model = "gemma2:27b"
 #$model = "mistral-small"
-$model = "qwen2.5:32b"
+$model = "gemma3:27b"
+#$model = "qwen2.5:32b"
 
 # 128K tokens can be just a bit too much when using a 70B model
 #$contextWindow = "32768"
