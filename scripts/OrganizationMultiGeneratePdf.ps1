@@ -321,7 +321,7 @@ if ($GenerateExecutiveSummary)
             continue
         }
 
-        $contextCount = Get-Content -Path ($subDir + "/" + $file.BaseName) -Raw |
+        $contextCount = Get-Content -Path ($subDir + "/" + $file.BaseName + ".json") -Raw |
                 ConvertFrom-Json |
                 ? { $_.name -eq "ContextCount" } |
                 Select-Object -First 1 |
