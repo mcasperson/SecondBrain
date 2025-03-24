@@ -367,6 +367,8 @@ if ($GenerateExecutiveSummary)
 
     Write-Host "Generating topics"
 
+    Get-Content "$subDir/High Volume Customers Executive Summary.md", "$subDir/Low Volume Customers Executive Summary.md" | Set-Content Executive Summary.md
+
     $arguments = Get-SplitTrimmedAndJoinedString(@"
     "-Dstdout.encoding=UTF-8"
     "-Dsb.tools.force=PublicWeb"
