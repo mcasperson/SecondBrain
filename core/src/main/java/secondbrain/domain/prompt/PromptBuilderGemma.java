@@ -12,7 +12,7 @@ public class PromptBuilderGemma implements PromptBuilder {
 
     @Override
     public String modelRegex() {
-        return "^gemma\\d+.*$";
+        return "^(hf.co/unsloth/)?gemma-?\\d+.*$";
     }
 
     @Override
