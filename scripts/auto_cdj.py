@@ -15,8 +15,6 @@ def extract_company_names_and_call_ids(json_data):
         Dictionary mapping company names to lists of call IDs
     """
     company_to_calls = {}
-    company_to_ids = {}
-    call_to_details = {}
 
     # Process each call in the data
     for call in json_data.get("calls", []):
@@ -36,23 +34,16 @@ def extract_company_names_and_call_ids(json_data):
 
                                 # Add to the mapping
                                 if company_name not in company_to_calls:
-                                    company_to_calls[company_name] = []
+                                    company_to_calls[company_name] = {"id": obj.get("objectId"), "calls": []}
 
                                 if call_id not in company_to_calls[company_name]:
-                                    company_to_calls[company_name].append(call_id)
+                                    company_to_calls[company_name]["calls"].append(
+                                        {"id": call_id, "date": parser.parse(date)})
 
-                                call_to_details[call_id] = {"date": parser.parse(date)}
+    for company in company_to_calls:
+        company_to_calls[company]["calls"] = sorted(company_to_calls[company]["calls"], key=lambda x: x["date"])
 
-                                company_id = obj.get("objectId")
-                                if company_id not in company_to_ids:
-                                    company_to_ids[company_name] = company_id
-
-    sorted_call_details = {call_id: details for call_id, details in
-                           sorted(call_to_details.items(),
-                                  key=lambda item: item[1]["date"],
-                                  reverse=True)}
-
-    return company_to_calls, company_to_ids, sorted_call_details
+    return company_to_calls
 
 
 def main():
@@ -61,22 +52,16 @@ def main():
         data = json.load(file)
 
     # Extract company names and map to call IDs
-    company_to_calls, company_to_ids, call_to_details = extract_company_names_and_call_ids(data)
+    company_to_calls = extract_company_names_and_call_ids(data)
 
     # Print the results
     print("Company to Call IDs mapping:")
     pprint.pprint(company_to_calls)
 
-    print("Company to IDs mapping:")
-    pprint.pprint(company_to_ids)
-
-    print("Calls to Call Data mapping:")
-    pprint.pprint(call_to_details, sort_dicts=False)
-
     # Print summary
     print("\nSummary:")
     for company, calls in company_to_calls.items():
-        print(f"{company} ({company_to_ids[company]}): {len(calls)} call(s)")
+        print(f"{company} ({calls["id"]}): {len(calls["calls"])} call(s)")
 
     print(f"\nTotal companies: {len(company_to_calls)}")
     total_calls = sum(len(calls) for calls in company_to_calls.values())
