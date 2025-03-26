@@ -167,8 +167,8 @@ public class Gong implements Tool<GongCallExtensive> {
 
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        if (StringUtils.isBlank(parsedArgs.getCompany())) {
-            throw new InternalFailure("You must provide a company to query");
+        if (StringUtils.isBlank(parsedArgs.getCompany()) && StringUtils.isBlank(parsedArgs.getCallId())) {
+            throw new InternalFailure("You must provide a company or call ID to query");
         }
 
         final Try<RagMultiDocumentContext<GongCallExtensive>> result = Try.of(() -> contextList)
@@ -370,15 +370,19 @@ class GongConfig {
                     context,
                     Gong.DAYS_ARG,
                     "gong_days",
-                    "30").value();
+                    "0").value();
 
             return Try.of(() -> Integer.parseInt(stringValue))
-                    .recover(throwable -> 30)
+                    .recover(throwable -> 0)
                     .map(i -> Math.max(0, i))
                     .get();
         }
 
         public String getStartDate() {
+            if (getDays() == 0) {
+                return null;
+            }
+
             return OffsetDateTime.now(ZoneId.systemDefault())
                     // truncate to the day to increase the chances of getting a cache hit
                     .truncatedTo(ChronoUnit.DAYS)
@@ -388,6 +392,10 @@ class GongConfig {
         }
 
         public String getEndDate() {
+            if (getDays() == 0) {
+                return null;
+            }
+
             return OffsetDateTime.now(ZoneId.systemDefault())
                     // truncate to the day to increase the chances of getting a cache hit
                     .truncatedTo(ChronoUnit.DAYS)

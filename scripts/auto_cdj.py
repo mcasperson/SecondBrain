@@ -191,6 +191,10 @@ def main():
     jar_file = '/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar'
 
     for company, calls in company_to_calls.items():
+
+        with open(os.path.join(tmp_dir, f"{company}.md"), 'w', encoding='utf-8') as f:
+            f.write(f"#{company}")
+
         for call in calls["calls"]:
             stdout, stderr, exit_code = run_external_command([
                 'java',
@@ -198,6 +202,7 @@ def main():
                 '-Dsb.ollama.contextwindow=65536',
                 '-Dsb.exceptions.printstacktrace=false',
                 "-Dsb.cache.path=/home/matthew",
+                "-Dsb.ollama.model=qwen2.5:32b",
                 "-Dsb.tools.force=Gong",
                 f"-Dsb.gong.callId={call["id"]}",
                 '-jar',
@@ -205,15 +210,16 @@ def main():
                 'Generate technical call notes that include: which people were included in the call and their job titles; what dates were mentioned and why they are important; the names of any internal products; any business initiatives that were identified; which technologies, programming languages, and platforms are used; what cloud platforms (like AWS, Azure, or Google Cloud) are used; what build servers or Continuous Integration (CI) servers (like Jenkins, Azure Devops, Bamboo, TeamCity, GitHub Actions) are used; whether they deploy to virtual machines (VMs) or cloud platforms; which version control system (VCS) they use (like github, bitbucket, gitlab); any description of their existing build and deployment processes; what pain points or points of friction they identified; what metrics they identified; if there was any mention of scaling the business or deployment processes; any next steps that were identified'
             ])
 
+            print(stderr)
+
             # Check for errors
             if exit_code != 0:
                 print(f"Error processing call {calls["id"]}:")
-                print(stderr)
                 continue
 
             # Write output to file
             with open(os.path.join(tmp_dir, f"{company}.md"), 'w', encoding='utf-8') as f:
-                f.write(stdout)
+                f.write("\n\n## " + call['date'].strftime('%Y-%m-%d') + "\n\n" + stdout)
 
 
 if __name__ == "__main__":
