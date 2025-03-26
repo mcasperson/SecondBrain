@@ -81,6 +81,9 @@ public class GongClient {
                 () -> getCallTranscriptApi(client, id, username, password));
     }
 
+    /**
+     * https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/extensive
+     */
     private GongCallsExtensive getCallsExtensiveApi(
             final Client client,
             final String fromDateTime,
@@ -104,6 +107,9 @@ public class GongClient {
                 .getOrElseThrow(e -> new RuntimeException("Failed to get calls from Gong API", e));
     }
 
+    /**
+     * https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/transcript
+     */
     private GongCallTranscript getCallTranscriptApi(
             final Client client,
             final String id,
