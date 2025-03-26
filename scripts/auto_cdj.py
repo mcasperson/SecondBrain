@@ -1,7 +1,76 @@
-import json
+import base64
+import os
 import pprint
+from datetime import datetime, timedelta
 
+import pytz
+import requests
 from dateutil import parser
+
+
+def get_date_weeks_ago(weeks):
+    # Get current date in UTC
+    now = datetime.now(pytz.UTC)
+
+    # Calculate date 6 weeks ago
+    six_weeks_ago = now - timedelta(weeks=weeks)
+
+    # Convert to Australia/Sydney timezone (UTC+10)
+    sydney_tz = pytz.timezone('Australia/Sydney')
+    six_weeks_ago_sydney = six_weeks_ago.astimezone(sydney_tz)
+
+    # Format the date
+    formatted_date = six_weeks_ago_sydney.strftime("%Y-%m-%dT%H:%M:%S+10:00")
+
+    return formatted_date
+
+
+def get_calls_from_gong(username, password, from_date, user_ids):
+    """
+    Make an HTTP call to the Gong API using basic authentication.
+
+    Args:
+        username: Username for basic auth
+        password: Password for basic auth
+        from_date: Start date for call filtering
+        user_ids: List of user IDs to filter by (defaults to ["7758652272323866443"])
+
+    Returns:
+        The JSON response from the API or None if the request failed
+    """
+    url = "https://api.gong.io/v2/calls/extensive"
+
+    # Prepare basic auth credentials
+    auth_str = f"{username}:{password}"
+    auth_bytes = auth_str.encode('ascii')
+    auth_b64 = base64.b64encode(auth_bytes).decode('ascii')
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Basic {auth_b64}"
+    }
+
+    # Prepare the request payload
+    payload = {
+        "filter": {
+            "fromDateTime": from_date,
+            "primaryUserIds": user_ids
+        },
+        "contentSelector": {
+            "context": "Extended",
+            "contextTiming": ["Now", "TimeOfCall"]
+        }
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()  # Raise exception for 4XX/5XX responses
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error making API call: {e}")
+        print(f"Response status code: {getattr(e.response, 'status_code', 'N/A')}")
+        print(f"Response content: {getattr(e.response, 'text', 'N/A')}")
+        return None
 
 
 def extract_company_names_and_call_ids(json_data):
@@ -48,9 +117,12 @@ def extract_company_names_and_call_ids(json_data):
 
 
 def main():
-    # Load the JSON data from file
-    with open('/home/matthew/.config/JetBrains/IntelliJIdea2024.3/scratches/scratch_24.json', 'r') as file:
-        data = json.load(file)
+    # Get the list of calls
+    data = get_calls_from_gong(
+        os.environ.get('SB_GONG_ACCESSKEY'),
+        os.environ.get('SB_GONG_ACCESSSECRETKEY'),
+        get_date_weeks_ago(6),
+        ["7758652272323866443"])
 
     # Extract company names and map to call IDs
     company_to_calls = extract_company_names_and_call_ids(data)
