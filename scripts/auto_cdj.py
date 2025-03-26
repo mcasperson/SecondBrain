@@ -198,6 +198,7 @@ def main():
             stdout, stderr, exit_code = run_external_command([
                 'java',
                 '-Dstdout.encoding=UTF-8',
+                '-Dsb.cache.writeonly=true',
                 '-Dsb.ollama.contextwindow=65536',
                 '-Dsb.exceptions.printstacktrace=false',
                 "-Dsb.cache.path=/home/matthew",
