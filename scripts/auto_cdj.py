@@ -186,12 +186,14 @@ def main():
     total_calls = sum(len(calls) for calls in company_to_calls.values())
     print(f"Total mapped calls: {total_calls}")
 
-    tmp_dir = create_temp_directory()
+    # destination = create_temp_directory()
+    destination = os.environ['SB_AUTOCDJ_DIR']
+
     jar_file = '/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar'
 
     for company, calls in company_to_calls.items():
 
-        with open(os.path.join(tmp_dir, f"{company}.md"), 'w', encoding='utf-8') as f:
+        with open(os.path.join(destination, f"{company}.md"), 'w', encoding='utf-8') as f:
             f.write(f"#{company}")
 
         for call in calls["calls"]:
@@ -214,14 +216,14 @@ def main():
 
             # Check for errors
             if exit_code != 0:
-                print(f"Error processing call {calls["id"]}:")
+                print(f"Error processing call {call["id"]}:")
                 continue
 
             # Write output to file
-            with open(os.path.join(tmp_dir, f"{company}.md"), 'w', encoding='utf-8') as f:
+            with open(os.path.join(destination, f"{company}.md"), 'w', encoding='utf-8') as f:
                 f.write("\n\n## " + call['date'].strftime('%Y-%m-%d') + "\n\n" + stdout)
 
-    print(f"Created temporary directory: {tmp_dir}")
+    print(f"Created temporary directory: {destination}")
 
 
 if __name__ == "__main__":
