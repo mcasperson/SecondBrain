@@ -41,7 +41,8 @@ def extract_company_names_and_call_ids(json_data):
                                         {"id": call_id, "date": parser.parse(date)})
 
     for company in company_to_calls:
-        company_to_calls[company]["calls"] = sorted(company_to_calls[company]["calls"], key=lambda x: x["date"])
+        company_to_calls[company]["calls"] = sorted(company_to_calls[company]["calls"], key=lambda x: x["date"],
+                                                    reverse=True)
 
     return company_to_calls
 
