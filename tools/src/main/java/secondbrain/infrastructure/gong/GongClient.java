@@ -94,7 +94,8 @@ public class GongClient {
 
         final GongCallExtensiveQuery body = new GongCallExtensiveQuery(
                 new GongCallExtensiveQueryFiler(fromDateTime, toDateTime, null, null),
-                new GongCallExtensiveQueryContentSelector("Extended", List.of("Now", "TimeOfCall"))
+                new GongCallExtensiveQueryContentSelector("Extended", List.of("Now", "TimeOfCall")),
+                null
         );
 
         return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
