@@ -50,6 +50,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 public class Gong implements Tool<GongCallExtensive> {
     public static final String DAYS_ARG = "days";
     public static final String COMPANY_ARG = "company";
+    public static final String CALLID_ARG = "callId";
     public static final String GONG_KEYWORD_ARG = "keywords";
     public static final String GONG_DISABLELINKS_ARG = "disableLinks";
     public static final String GONG_KEYWORD_WINDOW_ARG = "keywordWindow";
@@ -116,6 +117,7 @@ public class Gong implements Tool<GongCallExtensive> {
                                 gongClient.getCallsExtensive(
                                         client,
                                         parsedArgs.getCompany(),
+                                        parsedArgs.getCallId(),
                                         parsedArgs.getAccessKey(),
                                         parsedArgs.getAccessSecretKey(),
                                         parsedArgs.getStartDate(),
@@ -230,6 +232,10 @@ class GongConfig {
     private Optional<String> configCompany;
 
     @Inject
+    @ConfigProperty(name = "sb.gong.callId")
+    private Optional<String> configCallId;
+
+    @Inject
     @ConfigProperty(name = "sb.gong.disablelinks")
     private Optional<String> configDisableLinks;
 
@@ -290,6 +296,10 @@ class GongConfig {
         return configKeywordWindow;
     }
 
+    public Optional<String> getConfigCallId() {
+        return configCallId;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -340,6 +350,16 @@ class GongConfig {
                     context,
                     Gong.COMPANY_ARG,
                     "gong_company",
+                    "").value();
+        }
+
+        public String getCallId() {
+            return getArgsAccessor().getArgument(
+                    getConfigCallId()::get,
+                    arguments,
+                    context,
+                    Gong.CALLID_ARG,
+                    "gong_call_id",
                     "").value();
         }
 

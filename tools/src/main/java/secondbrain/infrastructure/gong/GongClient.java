@@ -7,6 +7,7 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.constants.Constants;
@@ -34,6 +35,7 @@ public class GongClient {
     public List<GongCallExtensive> getCallsExtensive(
             final Client client,
             final String company,
+            final String callId,
             final String username,
             final String password,
             final String fromDateTime,
@@ -48,7 +50,7 @@ public class GongClient {
                 "GongAPICallsExtensive",
                 DigestUtils.sha256Hex(fromDateTime + toDateTime),
                 GongCallsExtensive.class,
-                () -> getCallsExtensiveApi(client, fromDateTime, toDateTime, username, password));
+                () -> getCallsExtensiveApi(client, fromDateTime, toDateTime, callId, username, password));
 
         if (calls == null) {
             return List.of();
@@ -58,11 +60,13 @@ public class GongClient {
                 .filter(call -> Objects.requireNonNullElse(call.context(), List.<GongCallExtensiveContext>of())
                         .stream()
                         .anyMatch(c ->
-                                // One of the call context object must be for Salesforce
-                                "Salesforce".equals(c.system()) &&
-                                        // And one of the objects must be an account that matches the company id
-                                        c.objects().stream().anyMatch(o ->
-                                                company.equals(o.objectId()) && "Account".equals(o.objectType()))))
+                                // The company can be blank
+                                StringUtils.isBlank(company) ||
+                                        // Or one of the call context object must be for Salesforce
+                                        "Salesforce".equals(c.system()) &&
+                                                // And one of the objects must be an account that matches the company id
+                                                c.objects().stream().anyMatch(o ->
+                                                        company.equals(o.objectId()) && "Account".equals(o.objectType()))))
                 .toList();
 
     }
@@ -88,12 +92,15 @@ public class GongClient {
             final Client client,
             final String fromDateTime,
             final String toDateTime,
+            final String callId,
             final String username,
             final String password) {
         final String target = url + "/v2/calls/extensive";
 
+        final List<String> callIds = StringUtils.isBlank(callId) ? null : List.of(callId);
+
         final GongCallExtensiveQuery body = new GongCallExtensiveQuery(
-                new GongCallExtensiveQueryFiler(fromDateTime, toDateTime, null, null),
+                new GongCallExtensiveQueryFiler(fromDateTime, toDateTime, null, callIds),
                 new GongCallExtensiveQueryContentSelector("Extended", List.of("Now", "TimeOfCall")),
                 null
         );

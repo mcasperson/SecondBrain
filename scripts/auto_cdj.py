@@ -1,11 +1,60 @@
 import base64
 import os
 import pprint
+import subprocess
+import tempfile
 from datetime import datetime, timedelta
 
 import pytz
 import requests
 from dateutil import parser
+
+
+def create_temp_directory():
+    """
+    Create a temporary directory and return its path.
+
+    Returns:
+        str: Path to the created temporary directory
+    """
+    try:
+        # Create a temporary directory
+        temp_dir = tempfile.mkdtemp()
+        print(f"Created temporary directory: {temp_dir}")
+        return temp_dir
+    except Exception as e:
+        print(f"Error creating temporary directory: {e}")
+        return None
+
+
+def run_external_command(command, shell=False):
+    """
+    Run an external command and return its output.
+
+    Args:
+        command: Command to run (list of strings or single string if shell=True)
+        shell: Whether to use shell execution
+
+    Returns:
+        Tuple of (stdout, stderr, return_code)
+    """
+    try:
+        # Run the command
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            shell=shell,
+            text=True
+        )
+
+        # Get output
+        stdout, stderr = process.communicate()
+        return_code = process.returncode
+
+        return stdout, stderr, return_code
+    except Exception as e:
+        return "", str(e), -1
 
 
 def get_date_weeks_ago(weeks):
@@ -133,12 +182,38 @@ def main():
 
     # Print summary
     print("\nSummary:")
-    for company, calls in company_to_calls.items():
-        print(f"{company} ({calls["id"]}): {len(calls["calls"])} call(s)")
 
     print(f"\nTotal companies: {len(company_to_calls)}")
     total_calls = sum(len(calls) for calls in company_to_calls.values())
     print(f"Total mapped calls: {total_calls}")
+
+    tmp_dir = create_temp_directory()
+    jar_file = '/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar'
+
+    for company, calls in company_to_calls.items():
+        for call in calls["calls"]:
+            stdout, stderr, exit_code = run_external_command([
+                'java',
+                '-Dstdout.encoding=UTF-8',
+                '-Dsb.ollama.contextwindow=65536',
+                '-Dsb.exceptions.printstacktrace=false',
+                "-Dsb.cache.path=/home/matthew",
+                "-Dsb.tools.force=Gong",
+                f"-Dsb.gong.callId={call["id"]}",
+                '-jar',
+                jar_file,
+                'Generate technical call notes that include: which people were included in the call and their job titles; what dates were mentioned and why they are important; the names of any internal products; any business initiatives that were identified; which technologies, programming languages, and platforms are used; what cloud platforms (like AWS, Azure, or Google Cloud) are used; what build servers or Continuous Integration (CI) servers (like Jenkins, Azure Devops, Bamboo, TeamCity, GitHub Actions) are used; whether they deploy to virtual machines (VMs) or cloud platforms; which version control system (VCS) they use (like github, bitbucket, gitlab); any description of their existing build and deployment processes; what pain points or points of friction they identified; what metrics they identified; if there was any mention of scaling the business or deployment processes; any next steps that were identified'
+            ])
+
+            # Check for errors
+            if exit_code != 0:
+                print(f"Error processing call {calls["id"]}:")
+                print(stderr)
+                continue
+
+            # Write output to file
+            with open(os.path.join(tmp_dir, f"{company}.md"), 'w', encoding='utf-8') as f:
+                f.write(stdout)
 
 
 if __name__ == "__main__":
