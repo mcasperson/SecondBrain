@@ -48,7 +48,7 @@ public class GongClient {
         final GongCallsExtensive calls = localStorage.getOrPutObject(
                 GongClient.class.getSimpleName(),
                 "GongAPICallsExtensive",
-                DigestUtils.sha256Hex(fromDateTime + toDateTime),
+                DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
                 GongCallsExtensive.class,
                 () -> getCallsExtensiveApi(client, fromDateTime, toDateTime, callId, username, password));
 
