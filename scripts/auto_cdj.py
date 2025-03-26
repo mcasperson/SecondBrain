@@ -20,7 +20,6 @@ def create_temp_directory():
     try:
         # Create a temporary directory
         temp_dir = tempfile.mkdtemp()
-        print(f"Created temporary directory: {temp_dir}")
         return temp_dir
     except Exception as e:
         print(f"Error creating temporary directory: {e}")
@@ -220,6 +219,8 @@ def main():
             # Write output to file
             with open(os.path.join(tmp_dir, f"{company}.md"), 'w', encoding='utf-8') as f:
                 f.write("\n\n## " + call['date'].strftime('%Y-%m-%d') + "\n\n" + stdout)
+
+    print(f"Created temporary directory: {tmp_dir}")
 
 
 if __name__ == "__main__":
