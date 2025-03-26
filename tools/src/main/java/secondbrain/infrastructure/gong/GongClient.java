@@ -90,7 +90,7 @@ public class GongClient {
         final String target = url + "/v2/calls/extensive";
 
         final GongCallExtensiveQuery body = new GongCallExtensiveQuery(
-                new GongCallExtensiveQueryFiler(fromDateTime, toDateTime),
+                new GongCallExtensiveQueryFiler(fromDateTime, toDateTime, null, null),
                 new GongCallExtensiveQueryContentSelector("Extended", List.of("Now", "TimeOfCall"))
         );
 
