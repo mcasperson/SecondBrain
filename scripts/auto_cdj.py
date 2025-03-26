@@ -193,7 +193,12 @@ def main():
 
     for company, calls in company_to_calls.items():
 
-        with open(os.path.join(destination, f"{company}.md"), 'w', encoding='utf-8') as f:
+        company_file = os.path.join(destination, f"{company}.md")
+
+        if os.path.exists(company_file):
+            os.remove(company_file)
+
+        with open(company_file, 'w', encoding='utf-8') as f:
             f.write(f"#{company}")
 
         for call in calls["calls"]:
@@ -220,7 +225,7 @@ def main():
                 continue
 
             # Write output to file
-            with open(os.path.join(destination, f"{company}.md"), 'w', encoding='utf-8') as f:
+            with open(company_file, 'w', encoding='utf-8') as f:
                 f.write("\n\n## " + call['date'].strftime('%Y-%m-%d') + "\n\n" + stdout)
 
     print(f"Created temporary directory: {destination}")
