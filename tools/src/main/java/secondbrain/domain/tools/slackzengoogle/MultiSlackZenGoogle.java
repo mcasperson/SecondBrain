@@ -10,6 +10,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
@@ -79,6 +80,14 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String MULTI_SLACK_ZEN_META_FIELD_1_ARG = "contextMetaField1";
     public static final String MULTI_SLACK_ZEN_META_PROMPT_1_ARG = "contextMetaPrompt1";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_2_ARG = "contextMetaField2";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_2_ARG = "contextMetaPrompt2";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_3_ARG = "contextMetaField3";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_3_ARG = "contextMetaPrompt3";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_4_ARG = "contextMetaField4";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_4_ARG = "contextMetaPrompt4";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_5_ARG = "contextMetaField5";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_5_ARG = "contextMetaPrompt5";
     private static final int BATCH_SIZE = 10;
     private static final String INSTRUCTIONS = """
             You are helpful agent.
@@ -405,27 +414,38 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private List<MetaIntResult> getMetaResults(final List<RagDocumentContext<Void>> ragContext, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
         final List<MetaIntResult> results = new ArrayList<MetaIntResult>();
 
-        if (StringUtils.isNotBlank(parsedArgs.getMetaField1()) && StringUtils.isNotBlank(parsedArgs.getMetaPrompt1()) && !ragContext.isEmpty()) {
-            final RagMultiDocumentContext<Void> multiRagDoc = new RagMultiDocumentContext<>(
-                    ragContext.stream()
-                            .map(ragDoc -> promptBuilderSelector
-                                    .getPromptBuilder("plain")
-                                    .buildContextPrompt(
-                                            ragDoc.contextLabel(),
-                                            ragDoc.document()))
-                            .collect(Collectors.joining("\n")),
-                    ragContext);
+        final List<Pair<String, String>> metaFields = List.of(
+                Pair.of(parsedArgs.getMetaField1(), parsedArgs.getMetaPrompt1()),
+                Pair.of(parsedArgs.getMetaField2(), parsedArgs.getMetaPrompt2()),
+                Pair.of(parsedArgs.getMetaField3(), parsedArgs.getMetaPrompt3()),
+                Pair.of(parsedArgs.getMetaField4(), parsedArgs.getMetaPrompt4()),
+                Pair.of(parsedArgs.getMetaField5(), parsedArgs.getMetaPrompt5())
+        );
 
-            final int value = Try.of(() -> ratingTool.call(
-                            Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, multiRagDoc.combinedDocument()),
-                            parsedArgs.getMetaPrompt1(),
-                            List.of()).combinedDocument())
-                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
-                    // Meta fields are a best effort, and we default to 0
-                    .recover(InternalFailure.class, ex -> 0)
-                    .get();
+        for (final Pair<String, String> metaField : metaFields) {
 
-            results.add(new MetaIntResult(parsedArgs.getMetaField1(), value));
+            if (StringUtils.isNotBlank(metaField.getLeft()) && StringUtils.isNotBlank(metaField.getRight()) && !ragContext.isEmpty()) {
+                final RagMultiDocumentContext<Void> multiRagDoc = new RagMultiDocumentContext<>(
+                        ragContext.stream()
+                                .map(ragDoc -> promptBuilderSelector
+                                        .getPromptBuilder("plain")
+                                        .buildContextPrompt(
+                                                ragDoc.contextLabel(),
+                                                ragDoc.document()))
+                                .collect(Collectors.joining("\n")),
+                        ragContext);
+
+                final int value = Try.of(() -> ratingTool.call(
+                                Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, multiRagDoc.combinedDocument()),
+                                metaField.getRight(),
+                                List.of()).combinedDocument())
+                        .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
+                        // Meta fields are a best effort, and we default to 0
+                        .recover(InternalFailure.class, ex -> 0)
+                        .get();
+
+                results.add(new MetaIntResult(metaField.getLeft(), value));
+            }
         }
 
         return results;
@@ -812,6 +832,38 @@ class MultiSlackZenGoogleConfig {
     @ConfigProperty(name = "sb.multislackzengoogle.metaField1")
     private Optional<String> configMetaField1;
 
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.metaPrompt2")
+    private Optional<String> configMetaPrompt2;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.metaField2")
+    private Optional<String> configMetaField2;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.metaPrompt3")
+    private Optional<String> configMetaPrompt3;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.metaField3")
+    private Optional<String> configMetaField3;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.metaPrompt4")
+    private Optional<String> configMetaPrompt4;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.metaField4")
+    private Optional<String> configMetaField4;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.metaPrompt5")
+    private Optional<String> configMetaPrompt5;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.metaField5")
+    private Optional<String> configMetaField5;
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -866,6 +918,38 @@ class MultiSlackZenGoogleConfig {
 
     public Optional<String> getConfigMetaField1() {
         return configMetaField1;
+    }
+
+    public Optional<String> getConfigMetaPrompt2() {
+        return configMetaPrompt2;
+    }
+
+    public Optional<String> getConfigMetaField2() {
+        return configMetaField2;
+    }
+
+    public Optional<String> getConfigMetaPrompt3() {
+        return configMetaPrompt3;
+    }
+
+    public Optional<String> getConfigMetaField3() {
+        return configMetaField3;
+    }
+
+    public Optional<String> getConfigMetaPrompt4() {
+        return configMetaPrompt4;
+    }
+
+    public Optional<String> getConfigMetaField4() {
+        return configMetaField4;
+    }
+
+    public Optional<String> getConfigMetaPrompt5() {
+        return configMetaPrompt5;
+    }
+
+    public Optional<String> getConfigMetaField5() {
+        return configMetaField5;
     }
 
     public class LocalArguments {
@@ -1034,6 +1118,94 @@ class MultiSlackZenGoogleConfig {
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_1_ARG,
                             "multislackzengoogle_meta_prompt_1",
+                            "")
+                    .value();
+        }
+
+        public String getMetaField2() {
+            return getArgsAccessor().getArgument(
+                            getConfigMetaField2()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_2_ARG,
+                            "multislackzengoogle_meta_field_2",
+                            "")
+                    .value();
+        }
+
+        public String getMetaPrompt2() {
+            return getArgsAccessor().getArgument(
+                            getConfigMetaPrompt2()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_2_ARG,
+                            "multislackzengoogle_meta_prompt_2",
+                            "")
+                    .value();
+        }
+
+        public String getMetaField3() {
+            return getArgsAccessor().getArgument(
+                            getConfigMetaField3()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_3_ARG,
+                            "multislackzengoogle_meta_field_3",
+                            "")
+                    .value();
+        }
+
+        public String getMetaPrompt3() {
+            return getArgsAccessor().getArgument(
+                            getConfigMetaPrompt3()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_3_ARG,
+                            "multislackzengoogle_meta_prompt_3",
+                            "")
+                    .value();
+        }
+
+        public String getMetaField4() {
+            return getArgsAccessor().getArgument(
+                            getConfigMetaField4()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_4_ARG,
+                            "multislackzengoogle_meta_field_4",
+                            "")
+                    .value();
+        }
+
+        public String getMetaPrompt4() {
+            return getArgsAccessor().getArgument(
+                            getConfigMetaPrompt4()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_4_ARG,
+                            "multislackzengoogle_meta_prompt_4",
+                            "")
+                    .value();
+        }
+
+        public String getMetaField5() {
+            return getArgsAccessor().getArgument(
+                            getConfigMetaField5()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_5_ARG,
+                            "multislackzengoogle_meta_field_5",
+                            "")
+                    .value();
+        }
+
+        public String getMetaPrompt5() {
+            return getArgsAccessor().getArgument(
+                            getConfigMetaPrompt5()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_5_ARG,
+                            "multislackzengoogle_meta_prompt_5",
                             "")
                     .value();
         }
