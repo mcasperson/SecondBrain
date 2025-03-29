@@ -60,6 +60,11 @@ class PDF(FPDF):
         """Add a legend item with an image and text"""
         self.image(image_path, x=x, y=self.y, w=6, h=6)
         self.cell(0, 10, text, 0, 1, 'C')
+        
+    def add_icon_if_threshold_met(self, script_dir, icon_value, threshold, icon_name, x_position):
+        """Add an icon if the value meets or exceeds the threshold"""
+        if icon_value >= threshold:
+            self.image(os.path.join(script_dir, f"images/{icon_name}.png"), x=x_position, y=self.y, w=6, h=6)
 
 
 def extract_metadata_value(json_data, name, default=0):
@@ -239,38 +244,22 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
         low_activity_customers = [c for c in contents if
                                   not c.get('high_activity', False) and c.get('type', '') == 'customer']
 
-        def add_icons():
+        def add_icons(content):
             if content['sentiment'] >= 8:
                 pdf.image(os.path.join(script_dir, "images/smile.png"), x=100, y=pdf.y, w=6, h=6)
             elif content['sentiment'] <= 3:
                 pdf.image(os.path.join(script_dir, "images/cry.png"), x=100, y=pdf.y, w=6, h=6)
 
-            if content['aws'] >= 5:
-                pdf.image(os.path.join(script_dir, "images/aws.png"), x=108, y=pdf.y, w=6, h=6)
-
-            if content['azure'] >= 5:
-                pdf.image(os.path.join(script_dir, "images/azure.png"), x=116, y=pdf.y, w=6, h=6)
-
-            if content['costs'] >= 5:
-                pdf.image(os.path.join(script_dir, "images/costs.png"), x=124, y=pdf.y, w=6, h=6)
-
-            if content['k8s'] >= 5:
-                pdf.image(os.path.join(script_dir, "images/k8s.png"), x=132, y=pdf.y, w=6, h=6)
-
-            if content['github'] >= 5:
-                pdf.image(os.path.join(script_dir, "images/github.png"), x=140, y=pdf.y, w=6, h=6)
-
-            if content['migration'] >= 5:
-                pdf.image(os.path.join(script_dir, "images/migration.png"), x=148, y=pdf.y, w=6, h=6)
-
-            if content['terraform'] >= 5:
-                pdf.image(os.path.join(script_dir, "images/terraform.png"), x=156, y=pdf.y, w=6, h=6)
-
-            if content['performance'] >= 5:
-                pdf.image(os.path.join(script_dir, "images/performance.png"), x=164, y=pdf.y, w=6, h=6)
-
-            if content['security'] >= 5:
-                pdf.image(os.path.join(script_dir, "images/security.png"), x=172, y=pdf.y, w=6, h=6)
+            # Use the new function for each icon
+            pdf.add_icon_if_threshold_met(script_dir, content['aws'], 5, "aws", 108)
+            pdf.add_icon_if_threshold_met(script_dir, content['azure'], 5, "azure", 116)
+            pdf.add_icon_if_threshold_met(script_dir, content['costs'], 5, "costs", 124)
+            pdf.add_icon_if_threshold_met(script_dir, content['k8s'], 5, "k8s", 132)
+            pdf.add_icon_if_threshold_met(script_dir, content['github'], 5, "github", 140)
+            pdf.add_icon_if_threshold_met(script_dir, content['migration'], 5, "migration", 148)
+            pdf.add_icon_if_threshold_met(script_dir, content['terraform'], 5, "terraform", 156)
+            pdf.add_icon_if_threshold_met(script_dir, content['performance'], 5, "performance", 164)
+            pdf.add_icon_if_threshold_met(script_dir, content['security'], 5, "security", 172)
 
         if len(high_activity_customers) != 0:
             pdf.set_text_color(58, 0, 0)
@@ -278,7 +267,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             pdf.set_text_color(0, 0, 0)
 
             for content in high_activity_customers:
-                add_icons()
+                add_icons(content)
                 pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
 
             pdf.ln(10)
@@ -289,7 +278,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             pdf.set_text_color(0, 0, 0)
 
             for content in low_activity_customers:
-                add_icons()
+                add_icons(content)
                 pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
 
             pdf.ln(10)
