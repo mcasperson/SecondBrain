@@ -112,11 +112,13 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
 
     # Move the Executive Summary to the top
     if os.path.exists(os.path.join(directory, 'High Volume Customers Executive Summary.md')):
-        contents.append({'title': 'High Volume Customers Executive Summary', 'filename': os.path.join(directory, 'High Volume Customers Executive Summary.md'),
+        contents.append({'title': 'High Volume Customers Executive Summary',
+                         'filename': os.path.join(directory, 'High Volume Customers Executive Summary.md'),
                          'link': pdf.add_link(), 'type': 'summary'})
 
     if os.path.exists(os.path.join(directory, 'Low Volume Customers Executive Summary.md')):
-        contents.append({'title': 'Low Volume Customers Executive Summary', 'filename': os.path.join(directory, 'Low Volume Customers Executive Summary.md'),
+        contents.append({'title': 'Low Volume Customers Executive Summary',
+                         'filename': os.path.join(directory, 'Low Volume Customers Executive Summary.md'),
                          'link': pdf.add_link(), 'type': 'summary'})
 
     # Then list common themes
@@ -160,7 +162,34 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
                             high_activity = True
 
                         sentimentMeta = [field for field in json_data if field.get("name", "") == "Sentiment"]
-                        sentiment = sentimentMeta[0].get("value", 0) if len(countMeta) > 0 else 0
+                        sentiment = sentimentMeta[0].get("value", 0) if len(sentimentMeta) > 0 else 0
+
+                        awsMeta = [field for field in json_data if field.get("name", "") == "AWS"]
+                        aws = awsMeta[0].get("value", 0) if len(awsMeta) > 0 else 0
+
+                        azureMeta = [field for field in json_data if field.get("name", "") == "Azure"]
+                        azure = awsMeta[0].get("value", 0) if len(azureMeta) > 0 else 0
+
+                        costsMeta = [field for field in json_data if field.get("name", "") == "Costs"]
+                        costs = awsMeta[0].get("value", 0) if len(costsMeta) > 0 else 0
+
+                        k8sMeta = [field for field in json_data if field.get("name", "") == "Kubernetes"]
+                        k8s = awsMeta[0].get("value", 0) if len(k8sMeta) > 0 else 0
+
+                        gitHubMeta = [field for field in json_data if field.get("name", "") == "Github"]
+                        github = awsMeta[0].get("value", 0) if len(gitHubMeta) > 0 else 0
+
+                        migrationMeta = [field for field in json_data if field.get("name", "") == "Migration"]
+                        migration = awsMeta[0].get("value", 0) if len(migrationMeta) > 0 else 0
+
+                        terraformMeta = [field for field in json_data if field.get("name", "") == "Terraform"]
+                        terraform = awsMeta[0].get("value", 0) if len(terraformMeta) > 0 else 0
+
+                        performanceMeta = [field for field in json_data if field.get("name", "") == "Performance"]
+                        performance = awsMeta[0].get("value", 0) if len(performanceMeta) > 0 else 0
+
+                        securityMeta = [field for field in json_data if field.get("name", "") == "Security"]
+                        security = awsMeta[0].get("value", 0) if len(securityMeta) > 0 else 0
                     except:
                         pass
 
@@ -169,7 +198,9 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
 
             contents.append(
                 {'title': title, 'filename': filename, 'link': pdf.add_link(), 'high_activity': high_activity,
-                 'type': 'customer', 'sentiment': sentiment})
+                 'type': 'customer', 'sentiment': sentiment, 'aws': aws, 'azure': azure, 'costs': costs, 'k8s': k8s,
+                 'github': github, 'migration': migration, 'terraform': terraform, 'performance': performance,
+                 'security': security})
 
     # Add Table of Contents
     pdf.add_page()
@@ -193,17 +224,46 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
         low_activity_customers = [c for c in contents if
                                   not c.get('high_activity', False) and c.get('type', '') == 'customer']
 
+        def add_icons():
+            if content['sentiment'] >= 8:
+                pdf.image(os.path.join(script_dir, "images/smile.png"), x=150, y=pdf.y, w=6, h=6)
+            elif content['sentiment'] <= 3:
+                pdf.image(os.path.join(script_dir, "images/cry.png"), x=150, y=pdf.y, w=6, h=6)
+
+            if content['aws'] >= 8:
+                pdf.image(os.path.join(script_dir, "images/aws.png"), x=158, y=pdf.y, w=6, h=6)
+
+            if content['azure'] >= 8:
+                pdf.image(os.path.join(script_dir, "images/azure.png"), x=166, y=pdf.y, w=6, h=6)
+
+            if content['costs'] >= 8:
+                pdf.image(os.path.join(script_dir, "images/costs.png"), x=174, y=pdf.y, w=6, h=6)
+
+            if content['k8s'] >= 8:
+                pdf.image(os.path.join(script_dir, "images/k8s.png"), x=182, y=pdf.y, w=6, h=6)
+
+            if content['github'] >= 8:
+                pdf.image(os.path.join(script_dir, "images/github.png"), x=190, y=pdf.y, w=6, h=6)
+
+            if content['migration'] >= 8:
+                pdf.image(os.path.join(script_dir, "images/migration.png"), x=198, y=pdf.y, w=6, h=6)
+
+            if content['terraform'] >= 8:
+                pdf.image(os.path.join(script_dir, "images/terraform.png"), x=206, y=pdf.y, w=6, h=6)
+
+            if content['performance'] >= 8:
+                pdf.image(os.path.join(script_dir, "images/performance.png"), x=214, y=pdf.y, w=6, h=6)
+
+            if content['security'] >= 8:
+                pdf.image(os.path.join(script_dir, "images/security.png"), x=222, y=pdf.y, w=6, h=6)
+
         if len(high_activity_customers) != 0:
             pdf.set_text_color(58, 0, 0)
             pdf.cell(0, 10, 'High Activity Customers', 0, 1, 'L')
             pdf.set_text_color(0, 0, 0)
 
             for content in high_activity_customers:
-                if content['sentiment'] >= 8:
-                    pdf.image(os.path.join(script_dir, "images/smile.png"), x=150, y=pdf.y, w=6, h=6)
-                elif content['sentiment'] <= 3:
-                    pdf.image(os.path.join(script_dir, "images/cry.png"), x=150, y=pdf.y, w=6, h=6)
-
+                add_icons()
                 pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
 
             pdf.ln(10)
@@ -214,11 +274,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             pdf.set_text_color(0, 0, 0)
 
             for content in low_activity_customers:
-                if content['sentiment'] >= 8:
-                    pdf.image(os.path.join(script_dir, "images/smile.png"), x=150, y=pdf.y, w=6, h=6)
-                elif content['sentiment'] <= 3:
-                    pdf.image(os.path.join(script_dir, "images/cry.png"), x=150, y=pdf.y, w=6, h=6)
-
+                add_icons()
                 pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
 
             pdf.ln(10)
