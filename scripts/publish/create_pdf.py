@@ -1,8 +1,9 @@
 import argparse
 import json
-import markdown2
 import os
 import re
+
+import markdown2
 from fpdf.enums import XPos, YPos
 from fpdf.fpdf import FPDF
 
@@ -168,28 +169,28 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
                         aws = awsMeta[0].get("value", 0) if len(awsMeta) > 0 else 0
 
                         azureMeta = [field for field in json_data if field.get("name", "") == "Azure"]
-                        azure = awsMeta[0].get("value", 0) if len(azureMeta) > 0 else 0
+                        azure = azureMeta[0].get("value", 0) if len(azureMeta) > 0 else 0
 
                         costsMeta = [field for field in json_data if field.get("name", "") == "Costs"]
-                        costs = awsMeta[0].get("value", 0) if len(costsMeta) > 0 else 0
+                        costs = costsMeta[0].get("value", 0) if len(costsMeta) > 0 else 0
 
                         k8sMeta = [field for field in json_data if field.get("name", "") == "Kubernetes"]
-                        k8s = awsMeta[0].get("value", 0) if len(k8sMeta) > 0 else 0
+                        k8s = k8sMeta[0].get("value", 0) if len(k8sMeta) > 0 else 0
 
                         gitHubMeta = [field for field in json_data if field.get("name", "") == "Github"]
-                        github = awsMeta[0].get("value", 0) if len(gitHubMeta) > 0 else 0
+                        github = gitHubMeta[0].get("value", 0) if len(gitHubMeta) > 0 else 0
 
                         migrationMeta = [field for field in json_data if field.get("name", "") == "Migration"]
-                        migration = awsMeta[0].get("value", 0) if len(migrationMeta) > 0 else 0
+                        migration = migrationMeta[0].get("value", 0) if len(migrationMeta) > 0 else 0
 
                         terraformMeta = [field for field in json_data if field.get("name", "") == "Terraform"]
-                        terraform = awsMeta[0].get("value", 0) if len(terraformMeta) > 0 else 0
+                        terraform = terraformMeta[0].get("value", 0) if len(terraformMeta) > 0 else 0
 
                         performanceMeta = [field for field in json_data if field.get("name", "") == "Performance"]
-                        performance = awsMeta[0].get("value", 0) if len(performanceMeta) > 0 else 0
+                        performance = performanceMeta[0].get("value", 0) if len(performanceMeta) > 0 else 0
 
                         securityMeta = [field for field in json_data if field.get("name", "") == "Security"]
-                        security = awsMeta[0].get("value", 0) if len(securityMeta) > 0 else 0
+                        security = securityMeta[0].get("value", 0) if len(securityMeta) > 0 else 0
                     except:
                         pass
 
