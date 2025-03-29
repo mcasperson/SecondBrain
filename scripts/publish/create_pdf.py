@@ -212,37 +212,36 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     pdf.set_font('Roboto', '', 12)
     pdf.ln(10)
 
-    pdf.cell(0, 10, 'Sentiment', 0, 1, 'C')
     pdf.image(os.path.join(script_dir, "images/smile.png"), x=50, y=pdf.y, w=6, h=6)
+    pdf.cell(0, 10, 'Sentiment', 0, 1, 'C')
 
-    pdf.cell(0, 10, 'AWS', 0, 1, 'C')
     pdf.image(os.path.join(script_dir, "images/aws.png"), x=50, y=pdf.y, w=6, h=6)
+    pdf.cell(0, 10, 'AWS', 0, 1, 'C')
 
-    pdf.cell(0, 10, 'Azure', 0, 1, 'C')
     pdf.image(os.path.join(script_dir, "images/azure.png"), x=50, y=pdf.y, w=6, h=6)
+    pdf.cell(0, 10, 'Azure', 0, 1, 'C')
 
-    pdf.cell(0, 10, 'Costs/Licensing', 0, 1, 'C')
     pdf.image(os.path.join(script_dir, "images/costs.png"), x=50, y=pdf.y, w=6, h=6)
+    pdf.cell(0, 10, 'Costs/Licensing', 0, 1, 'C')
 
-    pdf.cell(0, 10, 'Kubernetes', 0, 1, 'C')
     pdf.image(os.path.join(script_dir, "images/k8s.png"), x=50, y=pdf.y, w=6, h=6)
+    pdf.cell(0, 10, 'Kubernetes', 0, 1, 'C')
 
-    pdf.cell(0, 10, 'GitHub', 0, 1, 'C')
     pdf.image(os.path.join(script_dir, "images/github.png"), x=50, y=pdf.y, w=6, h=6)
+    pdf.cell(0, 10, 'GitHub', 0, 1, 'C')
 
-    pdf.cell(0, 10, 'Migration', 0, 1, 'C')
     pdf.image(os.path.join(script_dir, "images/migration.png"), x=50, y=pdf.y, w=6, h=6)
+    pdf.cell(0, 10, 'Migration', 0, 1, 'C')
 
-    pdf.cell(0, 10, 'Terraform', 0, 1, 'C')
     pdf.image(os.path.join(script_dir, "images/terraform.png"), x=50, y=pdf.y, w=6, h=6)
+    pdf.cell(0, 10, 'Terraform', 0, 1, 'C')
 
-    pdf.cell(0, 10, 'Performance', 0, 1, 'C')
     pdf.image(os.path.join(script_dir, "images/performance.png"), x=50, y=pdf.y, w=6, h=6)
+    pdf.cell(0, 10, 'Performance', 0, 1, 'C')
 
-    pdf.cell(0, 10, 'Security', 0, 1, 'C')
     pdf.image(os.path.join(script_dir, "images/security.png"), x=50, y=pdf.y, w=6, h=6)
-
-
+    pdf.cell(0, 10, 'Security', 0, 1, 'C')
+    
     for content in [c for c in contents if c.get('type', '') == 'topic']:
         pdf.cell(0, 10, f'{content['title']}', 0, 1, 'L', link=content['link'])
 
