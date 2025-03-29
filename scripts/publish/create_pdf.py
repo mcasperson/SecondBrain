@@ -57,6 +57,12 @@ class PDF(FPDF):
         self.ln()
 
 
+def extract_metadata_value(json_data, name, default=0):
+    """Extract metadata value from JSON data based on field name"""
+    metadata_fields = [field for field in json_data if field.get("name", "") == name]
+    return metadata_fields[0].get("value", default) if len(metadata_fields) > 0 else default
+
+
 def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_page):
     print(f"Converting {directory} to {output_pdf}...")
 
@@ -100,8 +106,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             with open(filepath, 'r', encoding='utf-8') as file:
                 try:
                     json_data = json.load(file)
-                    countMeta = [field for field in json_data if field.get("name", "") == "ContextCount"]
-                    count = countMeta[0].get("value", 0) if len(countMeta) > 0 else 0
+                    count = extract_metadata_value(json_data, "ContextCount")
                     if count > 0:
                         total_entities += 1
                         total_context += count
@@ -149,6 +154,16 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
 
             high_activity = False
             sentiment = 5
+            aws = 0
+            azure = 0
+            costs = 0
+            k8s = 0
+            github = 0
+            migration = 0
+            terraform = 0
+            performance = 0
+            security = 0
+            
             if os.path.exists(metadata):
                 print(f"Parsing {metadata}...")
                 with open(metadata, 'r', encoding='utf-8') as file:
@@ -157,40 +172,20 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
                         # Flag those with above average touch points, but at least 6 if the average is less than 6
                         # Note that we expect all companies to have at least 3 touch points including things
                         # like deployment, project, and tenant stats
-                        countMeta = [field for field in json_data if field.get("name", "") == "ContextCount"]
-                        count = countMeta[0].get("value", 0) if len(countMeta) > 0 else 0
+                        count = extract_metadata_value(json_data, "ContextCount")
                         if count >= max(average_context, 6):
                             high_activity = True
 
-                        sentimentMeta = [field for field in json_data if field.get("name", "") == "Sentiment"]
-                        sentiment = sentimentMeta[0].get("value", 0) if len(sentimentMeta) > 0 else 0
-
-                        awsMeta = [field for field in json_data if field.get("name", "") == "AWS"]
-                        aws = awsMeta[0].get("value", 0) if len(awsMeta) > 0 else 0
-
-                        azureMeta = [field for field in json_data if field.get("name", "") == "Azure"]
-                        azure = azureMeta[0].get("value", 0) if len(azureMeta) > 0 else 0
-
-                        costsMeta = [field for field in json_data if field.get("name", "") == "Costs"]
-                        costs = costsMeta[0].get("value", 0) if len(costsMeta) > 0 else 0
-
-                        k8sMeta = [field for field in json_data if field.get("name", "") == "Kubernetes"]
-                        k8s = k8sMeta[0].get("value", 0) if len(k8sMeta) > 0 else 0
-
-                        gitHubMeta = [field for field in json_data if field.get("name", "") == "Github"]
-                        github = gitHubMeta[0].get("value", 0) if len(gitHubMeta) > 0 else 0
-
-                        migrationMeta = [field for field in json_data if field.get("name", "") == "Migration"]
-                        migration = migrationMeta[0].get("value", 0) if len(migrationMeta) > 0 else 0
-
-                        terraformMeta = [field for field in json_data if field.get("name", "") == "Terraform"]
-                        terraform = terraformMeta[0].get("value", 0) if len(terraformMeta) > 0 else 0
-
-                        performanceMeta = [field for field in json_data if field.get("name", "") == "Performance"]
-                        performance = performanceMeta[0].get("value", 0) if len(performanceMeta) > 0 else 0
-
-                        securityMeta = [field for field in json_data if field.get("name", "") == "Security"]
-                        security = securityMeta[0].get("value", 0) if len(securityMeta) > 0 else 0
+                        sentiment = extract_metadata_value(json_data, "Sentiment", 5)
+                        aws = extract_metadata_value(json_data, "AWS")
+                        azure = extract_metadata_value(json_data, "Azure")
+                        costs = extract_metadata_value(json_data, "Costs")
+                        k8s = extract_metadata_value(json_data, "Kubernetes")
+                        github = extract_metadata_value(json_data, "Github")
+                        migration = extract_metadata_value(json_data, "Migration")
+                        terraform = extract_metadata_value(json_data, "Terraform")
+                        performance = extract_metadata_value(json_data, "Performance")
+                        security = extract_metadata_value(json_data, "Security")
                     except:
                         pass
 
