@@ -241,7 +241,9 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
 
     pdf.image(os.path.join(script_dir, "images/security.png"), x=50, y=pdf.y, w=6, h=6)
     pdf.cell(0, 10, 'Security', 0, 1, 'C')
-    
+
+    pdf.ln(20)
+
     for content in [c for c in contents if c.get('type', '') == 'topic']:
         pdf.cell(0, 10, f'{content['title']}', 0, 1, 'L', link=content['link'])
 
