@@ -230,31 +230,31 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             elif content['sentiment'] <= 3:
                 pdf.image(os.path.join(script_dir, "images/cry.png"), x=150, y=pdf.y, w=6, h=6)
 
-            if content['aws'] >= 8:
+            if content['aws'] >= 5:
                 pdf.image(os.path.join(script_dir, "images/aws.png"), x=158, y=pdf.y, w=6, h=6)
 
-            if content['azure'] >= 8:
+            if content['azure'] >= 5:
                 pdf.image(os.path.join(script_dir, "images/azure.png"), x=166, y=pdf.y, w=6, h=6)
 
-            if content['costs'] >= 8:
+            if content['costs'] >= 5:
                 pdf.image(os.path.join(script_dir, "images/costs.png"), x=174, y=pdf.y, w=6, h=6)
 
-            if content['k8s'] >= 8:
+            if content['k8s'] >= 5:
                 pdf.image(os.path.join(script_dir, "images/k8s.png"), x=182, y=pdf.y, w=6, h=6)
 
-            if content['github'] >= 8:
+            if content['github'] >= 5:
                 pdf.image(os.path.join(script_dir, "images/github.png"), x=190, y=pdf.y, w=6, h=6)
 
-            if content['migration'] >= 8:
+            if content['migration'] >= 5:
                 pdf.image(os.path.join(script_dir, "images/migration.png"), x=198, y=pdf.y, w=6, h=6)
 
-            if content['terraform'] >= 8:
+            if content['terraform'] >= 5:
                 pdf.image(os.path.join(script_dir, "images/terraform.png"), x=206, y=pdf.y, w=6, h=6)
 
-            if content['performance'] >= 8:
+            if content['performance'] >= 5:
                 pdf.image(os.path.join(script_dir, "images/performance.png"), x=214, y=pdf.y, w=6, h=6)
 
-            if content['security'] >= 8:
+            if content['security'] >= 5:
                 pdf.image(os.path.join(script_dir, "images/security.png"), x=222, y=pdf.y, w=6, h=6)
 
         if len(high_activity_customers) != 0:
