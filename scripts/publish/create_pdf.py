@@ -55,6 +55,11 @@ class PDF(FPDF):
         self.set_text_color(0, 0, 0)
         self.write_html(body, ul_bullet_char="•", li_prefix_color=(0, 0, 0))
         self.ln()
+        
+    def add_legend_item(self, image_path, text, x=50):
+        """Add a legend item with an image and text"""
+        self.image(image_path, x=x, y=self.y, w=6, h=6)
+        self.cell(0, 10, text, 0, 1, 'C')
 
 
 def extract_metadata_value(json_data, name, default=0):
@@ -207,35 +212,17 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     pdf.set_font('Roboto', '', 12)
     pdf.ln(10)
 
-    pdf.image(os.path.join(script_dir, "images/smile.png"), x=50, y=pdf.y, w=6, h=6)
-    pdf.cell(0, 10, 'Sentiment', 0, 1, 'C')
-
-    pdf.image(os.path.join(script_dir, "images/aws.png"), x=50, y=pdf.y, w=6, h=6)
-    pdf.cell(0, 10, 'AWS', 0, 1, 'C')
-
-    pdf.image(os.path.join(script_dir, "images/azure.png"), x=50, y=pdf.y, w=6, h=6)
-    pdf.cell(0, 10, 'Azure', 0, 1, 'C')
-
-    pdf.image(os.path.join(script_dir, "images/costs.png"), x=50, y=pdf.y, w=6, h=6)
-    pdf.cell(0, 10, 'Costs/Licensing', 0, 1, 'C')
-
-    pdf.image(os.path.join(script_dir, "images/k8s.png"), x=50, y=pdf.y, w=6, h=6)
-    pdf.cell(0, 10, 'Kubernetes', 0, 1, 'C')
-
-    pdf.image(os.path.join(script_dir, "images/github.png"), x=50, y=pdf.y, w=6, h=6)
-    pdf.cell(0, 10, 'GitHub', 0, 1, 'C')
-
-    pdf.image(os.path.join(script_dir, "images/migration.png"), x=50, y=pdf.y, w=6, h=6)
-    pdf.cell(0, 10, 'Migration', 0, 1, 'C')
-
-    pdf.image(os.path.join(script_dir, "images/terraform.png"), x=50, y=pdf.y, w=6, h=6)
-    pdf.cell(0, 10, 'Terraform', 0, 1, 'C')
-
-    pdf.image(os.path.join(script_dir, "images/performance.png"), x=50, y=pdf.y, w=6, h=6)
-    pdf.cell(0, 10, 'Performance', 0, 1, 'C')
-
-    pdf.image(os.path.join(script_dir, "images/security.png"), x=50, y=pdf.y, w=6, h=6)
-    pdf.cell(0, 10, 'Security', 0, 1, 'C')
+    # Add legend items using the new helper function
+    pdf.add_legend_item(os.path.join(script_dir, "images/smile.png"), 'Sentiment')
+    pdf.add_legend_item(os.path.join(script_dir, "images/aws.png"), 'AWS')
+    pdf.add_legend_item(os.path.join(script_dir, "images/azure.png"), 'Azure')
+    pdf.add_legend_item(os.path.join(script_dir, "images/costs.png"), 'Costs/Licensing')
+    pdf.add_legend_item(os.path.join(script_dir, "images/k8s.png"), 'Kubernetes')
+    pdf.add_legend_item(os.path.join(script_dir, "images/github.png"), 'GitHub')
+    pdf.add_legend_item(os.path.join(script_dir, "images/migration.png"), 'Migration')
+    pdf.add_legend_item(os.path.join(script_dir, "images/terraform.png"), 'Terraform')
+    pdf.add_legend_item(os.path.join(script_dir, "images/performance.png"), 'Performance')
+    pdf.add_legend_item(os.path.join(script_dir, "images/security.png"), 'Security')
 
     pdf.ln(20)
 
