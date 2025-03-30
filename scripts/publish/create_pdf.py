@@ -7,6 +7,9 @@ import markdown2
 from fpdf.enums import XPos, YPos
 from fpdf.fpdf import FPDF
 
+company_prefix = 'COMPANY '
+topic_prefix = 'TOPIC '
+
 
 class PDF(FPDF):
     def header(self):
@@ -55,16 +58,24 @@ class PDF(FPDF):
         self.set_text_color(0, 0, 0)
         self.write_html(body, ul_bullet_char="•", li_prefix_color=(0, 0, 0))
         self.ln()
-        
+
     def add_legend_item(self, image_path, text, x=50):
         """Add a legend item with an image and text"""
         self.image(image_path, x=x, y=self.y, w=6, h=6)
         self.cell(0, 10, text, 0, 1, 'C')
-        
+
     def add_icon_if_threshold_met(self, script_dir, icon_value, threshold, icon_name, x_position):
         """Add an icon if the value meets or exceeds the threshold"""
         if icon_value >= threshold:
             self.image(os.path.join(script_dir, f"images/{icon_name}.png"), x=x_position, y=self.y, w=6, h=6)
+
+    def load_fonts(self, script_dir):
+        """Load fonts for the PDF"""
+        font_dir = os.path.join(script_dir, 'fonts', 'roboto')
+        self.add_font('Roboto', '', os.path.join(font_dir, 'Roboto-Regular.ttf'))
+        self.add_font('Roboto', 'B', os.path.join(font_dir, 'Roboto-Bold.ttf'))
+        self.add_font('Roboto', 'I', os.path.join(font_dir, 'Roboto-Italic.ttf'))
+        self.add_font('Roboto', 'BI', os.path.join(font_dir, 'Roboto-BoldItalic.ttf'))
 
 
 def extract_metadata_value(json_data, name, default=0):
@@ -73,18 +84,7 @@ def extract_metadata_value(json_data, name, default=0):
     return metadata_fields[0].get("value", default) if len(metadata_fields) > 0 else default
 
 
-def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_page):
-    print(f"Converting {directory} to {output_pdf}...")
-
-    # Get the directory of the current script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-
-    pdf = PDF()
-    pdf.add_font('Roboto', '', os.path.join(script_dir, 'fonts/roboto/Roboto-Regular.ttf'))
-    pdf.add_font('Roboto', 'B', os.path.join(script_dir, 'fonts/roboto/Roboto-Bold.ttf'))
-    pdf.add_font('Roboto', 'I', os.path.join(script_dir, 'fonts/roboto/Roboto-Italic.ttf'))
-    pdf.add_font('Roboto', 'BI', os.path.join(script_dir, 'fonts/roboto/Roboto-BoldItalic.ttf'))
-
+def add_front_page(pdf, title, date_from, date_to, script_dir, cover_page):
     pdf.add_page()
     pdf.image(os.path.join(script_dir, cover_page), x=0, y=0, w=pdf.w, h=pdf.h)
     pdf.frontage_title('AI of Sauron')
@@ -93,6 +93,8 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     pdf.frontage_dates(f'{date_from} to {date_to}')
     pdf.frontage_slack()
 
+
+def add_instructions_page(pdf, title):
     pdf.add_page()
     pdf.chapter_title("Introduction")
     pdf.chapter_body(f"""
@@ -101,11 +103,8 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     <p>Because it is AI generated, mistakes may occur. Please verify the information before taking any action.</p>
     """)
 
-    company_prefix = 'COMPANY '
-    topic_prefix = 'TOPIC '
-    contents = []
 
-    # Parse the metadata
+def find_average_context(directory, company_prefix):
     print("Parsing metadata...")
     total_context = 0
     total_entities = 0
@@ -126,36 +125,45 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     if total_entities > 0:
         average_context = total_context / total_entities
 
-    # Move the Executive Summary to the top
+    return average_context
+
+
+def get_high_vol_summary(pdf, directory):
     if os.path.exists(os.path.join(directory, 'High Volume Customers Executive Summary.md')):
-        contents.append({'title': 'High Volume Customers Executive Summary',
-                         'filename': os.path.join(directory, 'High Volume Customers Executive Summary.md'),
-                         'link': pdf.add_link(), 'type': 'summary'})
+        return {'title': 'High Volume Customers Executive Summary',
+                'filename': os.path.join(directory, 'High Volume Customers Executive Summary.md'),
+                'link': pdf.add_link(), 'type': 'summary'}
 
+
+def get_low_vol_summary(pdf, directory):
     if os.path.exists(os.path.join(directory, 'Low Volume Customers Executive Summary.md')):
-        contents.append({'title': 'Low Volume Customers Executive Summary',
-                         'filename': os.path.join(directory, 'Low Volume Customers Executive Summary.md'),
-                         'link': pdf.add_link(), 'type': 'summary'})
+        return {'title': 'Low Volume Customers Executive Summary',
+                'filename': os.path.join(directory, 'Low Volume Customers Executive Summary.md'),
+                'link': pdf.add_link(), 'type': 'summary'}
 
-    # Then list common themes
+
+def get_common_themes(pdf, directory):
     if os.path.exists(os.path.join(directory, 'Topics.md')):
-        contents.append({'title': 'Common Themes', 'filename': os.path.join(directory, 'Topics.md'),
-                         'link': pdf.add_link(), 'type': 'summary'})
+        return {'title': 'Common Themes', 'filename': os.path.join(directory, 'Topics.md'),
+                'link': pdf.add_link(), 'type': 'summary'}
 
-    # Find the topics in the first loop
-    for filename in sorted(os.listdir(directory)):
-        if filename.startswith(topic_prefix) and filename.endswith('.md'):
-            # Get file name without extension or the prefix
-            title = (os.path.splitext(filename)[0])[len(topic_prefix):]
-            contents.append({'title': title, 'filename': filename, 'link': pdf.add_link(), 'type': 'topic'})
 
-    # Find the companies in the second loop
+def get_topics(pdf, directory, topic_prefix):
+    def get_title(filename):
+        # Get file name without extension or the prefix
+        title = (os.path.splitext(filename)[0])[len(topic_prefix):]
+        return title
+
+    return [{'title': get_title(filename), 'filename': filename, 'link': pdf.add_link(), 'type': 'topic'} for filename
+            in
+            sorted(os.listdir(directory)) if filename.startswith(topic_prefix) and filename.endswith('.md')]
+
+
+def get_companies(pdf, directory, company_prefix, average_context):
     print("Parsing companies...")
-    found_companies = False
+    contents = []
     for filename in sorted(os.listdir(directory)):
         if filename.startswith(company_prefix) and filename.endswith('.md'):
-            found_companies = True
-
             # Get the filename with extension
             raw_file = os.path.splitext(filename)[0]
 
@@ -173,7 +181,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             terraform = 0
             performance = 0
             security = 0
-            
+
             if os.path.exists(metadata):
                 print(f"Parsing {metadata}...")
                 with open(metadata, 'r', encoding='utf-8') as file:
@@ -208,7 +216,10 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
                  'github': github, 'migration': migration, 'terraform': terraform, 'performance': performance,
                  'security': security})
 
-    # Add Table of Contents
+    return contents
+
+
+def add_toc(pdf, script_dir, contents, companies):
     pdf.add_page()
     pdf.set_text_color(0, 0, 0)
     pdf.set_font('Roboto', 'B', 16)
@@ -227,7 +238,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     pdf.add_legend_item(os.path.join(script_dir, "images/migration.png"), 'Migration')
     pdf.add_legend_item(os.path.join(script_dir, "images/terraform.png"), 'Terraform')
     pdf.add_legend_item(os.path.join(script_dir, "images/performance.png"), 'Performance')
-    pdf.add_legend_item(os.path.join(script_dir, "images/security.png"), 'Security')
+    pdf.add_legend_item(os.path.join(script_dir, "images/security.png"), 'Security/Compliance')
 
     pdf.ln(20)
 
@@ -237,7 +248,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     for content in [c for c in contents if c.get('type', '') == 'summary']:
         pdf.cell(0, 10, f'{content['title']}', 0, 1, 'L', link=content['link'])
 
-    if found_companies:
+    if len(companies) != 0:
         high_activity_customers = [c for c in contents if
                                    c.get('high_activity', False) and c.get('type',
                                                                            '') == 'customer']
@@ -283,6 +294,20 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
 
             pdf.ln(10)
 
+
+def sanitize_html(html_content):
+    # The generated HTML will often have nested lists with structures like this
+    # <li><p><strong>License Management:</strong></p>
+    # <ul>
+    # <li>whatever</li>
+    # </ul></li>
+    # This doesn't render well, so we need to get rid of the paragraph tag
+    html_content = re.sub(r'<li><p>(.*?)</p>', r'<li>\1', html_content)
+    html_content = re.sub(r'<li><p>(.*?)</p></li>', r'<li>\1</li>', html_content, flags=re.DOTALL)
+    return html_content
+
+
+def add_pages(pdf, contents, directory):
     print("Converting markdown...")
     for content in contents:
         filepath = os.path.join(directory, content['filename'])
@@ -292,18 +317,40 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
             md_content = file.read()
             html_content = markdown2.markdown(md_content)
 
-            # The generated HTML will often have nested lists with structures like this
-            # <li><p><strong>License Management:</strong></p>
-            # <ul>
-            # <li>whatever</li>
-            # </ul></li>
-            # This doesn't render well, so we need to get rid of the paragraph tag
-
-            html_content = re.sub(r'<li><p>(.*?)</p>', r'<li>\1', html_content)
-            html_content = re.sub(r'<li><p>(.*?)</p></li>', r'<li>\1</li>', html_content, flags=re.DOTALL)
+            html_content = sanitize_html(html_content)
 
             pdf.chapter_title(content['title'])
             pdf.chapter_body(html_content)
+
+
+def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_page):
+    print(f"Converting {directory} to {output_pdf}...")
+
+    # Get the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    pdf = PDF()
+    pdf.load_fonts(script_dir)
+
+    add_front_page(pdf, title, date_from, date_to, script_dir, cover_page)
+    add_instructions_page(pdf, title)
+
+    # Parse the metadata
+    average_context = find_average_context(directory, company_prefix)
+
+    companies = get_companies(pdf, directory, company_prefix, average_context)
+
+    contents = [
+        get_high_vol_summary(pdf, directory),
+        get_low_vol_summary(pdf, directory),
+        get_common_themes(pdf, directory),
+        *get_topics(pdf, directory, topic_prefix),
+        *companies
+    ]
+
+    add_toc(pdf, script_dir, contents, companies)
+
+    add_pages(pdf, contents, directory)
 
     pdf.output(output_pdf)
 
