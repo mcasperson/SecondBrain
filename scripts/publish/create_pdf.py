@@ -1,9 +1,8 @@
 import argparse
 import json
+import markdown2
 import os
 import re
-
-import markdown2
 from fpdf.enums import XPos, YPos
 from fpdf.fpdf import FPDF
 
@@ -130,7 +129,7 @@ def find_average_context(directory, company_prefix):
 
 def get_high_vol_summary(pdf, directory):
     if os.path.exists(os.path.join(directory, 'High Volume Customers Executive Summary.md')):
-        return [{'title': 'High Volume Customers Executive Summary',
+        return [{'title': 'High Volume/ARR Customers Executive Summary',
                  'filename': os.path.join(directory, 'High Volume Customers Executive Summary.md'),
                  'link': pdf.add_link(), 'type': 'summary'}]
 
@@ -163,6 +162,14 @@ def get_topics(pdf, directory, topic_prefix):
     return [{'title': get_title(filename), 'filename': filename, 'link': pdf.add_link(), 'type': 'topic'} for filename
             in
             sorted(os.listdir(directory)) if filename.startswith(topic_prefix) and filename.endswith('.md')]
+
+
+def parse_int(value, default=0):
+    """Parse an integer from a string, returning 0 if parsing fails."""
+    try:
+        return int(value)
+    except ValueError:
+        return default
 
 
 def get_companies(pdf, directory, company_prefix, average_context):
@@ -210,6 +217,7 @@ def get_companies(pdf, directory, company_prefix, average_context):
                         terraform = extract_metadata_value(json_data, "Terraform")
                         performance = extract_metadata_value(json_data, "Performance")
                         security = extract_metadata_value(json_data, "Security")
+                        arr = parse_int(extract_metadata_value(json_data, "ARR (SFDC)"))
                     except:
                         pass
 
@@ -217,10 +225,11 @@ def get_companies(pdf, directory, company_prefix, average_context):
             title = raw_file[len(company_prefix):]
 
             contents.append(
-                {'title': title, 'filename': filename, 'link': pdf.add_link(), 'high_activity': high_activity,
+                {'title': title, 'filename': filename, 'link': pdf.add_link(),
+                 'high_activity': high_activity or arr >= 50000,
                  'type': 'customer', 'sentiment': sentiment, 'aws': aws, 'azure': azure, 'costs': costs, 'k8s': k8s,
                  'github': github, 'migration': migration, 'terraform': terraform, 'performance': performance,
-                 'security': security})
+                 'security': security, 'arr': arr})
 
     return contents
 
@@ -280,7 +289,7 @@ def add_toc(pdf, script_dir, contents, companies):
 
         if len(high_activity_customers) != 0:
             pdf.set_text_color(58, 0, 0)
-            pdf.cell(0, 10, 'High Activity Customers', 0, 1, 'L')
+            pdf.cell(0, 10, 'High Volume/ARR Customers', 0, 1, 'L')
             pdf.set_text_color(0, 0, 0)
 
             for content in high_activity_customers:
@@ -291,7 +300,7 @@ def add_toc(pdf, script_dir, contents, companies):
 
         if len(low_activity_customers) != 0:
             pdf.set_text_color(58, 0, 0)
-            pdf.cell(0, 10, 'Low Activity Customers', 0, 1, 'L')
+            pdf.cell(0, 10, 'Low Volume Customers', 0, 1, 'L')
             pdf.set_text_color(0, 0, 0)
 
             for content in low_activity_customers:
