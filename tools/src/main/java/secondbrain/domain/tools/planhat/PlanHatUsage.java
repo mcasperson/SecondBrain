@@ -6,6 +6,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -39,6 +40,7 @@ import static com.google.common.base.Predicates.instanceOf;
 public class PlanHatUsage implements Tool<Company> {
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String COMPANY_ID_ARGS = "companyId";
+    public static final String PLANHAT_CUSTOM_1_ARG = "custom1";
     public static final String PLANHAT_USAGE_ID_1_ARG = "usageId1";
     public static final String PLANHAT_USAGE_ID_2_ARG = "usageId2";
     public static final String PLANHAT_USAGE_ID_3_ARG = "usageId3";
@@ -112,7 +114,7 @@ public class PlanHatUsage implements Tool<Company> {
                         parsedArgs.getSearchTTL()))
                 .get();
 
-        return Stream.of(
+        final List<RagDocumentContext<Company>> usageContext = Stream.of(
                         Pair.of(parsedArgs.getUsageName1(), parsedArgs.getUsageId1()),
                         Pair.of(parsedArgs.getUsageName2(), parsedArgs.getUsageId2()),
                         Pair.of(parsedArgs.getUsageName3(), parsedArgs.getUsageId3()),
@@ -128,6 +130,20 @@ public class PlanHatUsage implements Tool<Company> {
                         null,
                         List.of()))
                 .toList();
+
+        final List<RagDocumentContext<Company>> customContext = Stream.of(parsedArgs.getCustom1())
+                .filter(StringUtils::isNotBlank)
+                .map(custom -> new RagDocumentContext<>(
+                        getContextLabel() + " " + company.name() + " " + custom,
+                        company.custom().getOrDefault(custom, "").toString(),
+                        List.of(),
+                        company.id() + ":" + custom,
+                        company,
+                        null,
+                        List.of()))
+                .toList();
+
+        return ListUtils.union(usageContext, customContext);
     }
 
     @Override
@@ -196,6 +212,10 @@ class PlanHatUsageConfig {
     @Inject
     @ConfigProperty(name = "sb.planhat.disablelinks")
     private Optional<String> configDisableLinks;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.custom1")
+    private Optional<String> configCustom1;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.usageid1")
@@ -307,6 +327,10 @@ class PlanHatUsageConfig {
         return configUsageName5;
     }
 
+    public Optional<String> getConfigCustom1() {
+        return configCustom1;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -363,6 +387,16 @@ class PlanHatUsageConfig {
                     "false");
 
             return BooleanUtils.toBoolean(argument.value());
+        }
+
+        public String getCustom1() {
+            return getArgsAccessor().getArgument(
+                    getConfigCustom1()::get,
+                    arguments,
+                    context,
+                    PlanHatUsage.PLANHAT_CUSTOM_1_ARG,
+                    "planhat_custom1",
+                    "").value();
         }
 
         public String getUsageId1() {
