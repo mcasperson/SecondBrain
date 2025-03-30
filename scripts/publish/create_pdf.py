@@ -241,7 +241,7 @@ def add_toc(pdf, script_dir, contents, companies):
     pdf.add_legend_item(os.path.join(script_dir, "images/costs.png"), 'Costs/Licensing')
     pdf.add_legend_item(os.path.join(script_dir, "images/k8s.png"), 'Kubernetes')
     pdf.add_legend_item(os.path.join(script_dir, "images/github.png"), 'GitHub')
-    pdf.add_legend_item(os.path.join(script_dir, "images/migration.png"), 'Migration')
+    pdf.add_legend_item(os.path.join(script_dir, "images/migration.png"), 'Migration/Upgrade')
     pdf.add_legend_item(os.path.join(script_dir, "images/terraform.png"), 'Terraform')
     pdf.add_legend_item(os.path.join(script_dir, "images/performance.png"), 'Performance')
     pdf.add_legend_item(os.path.join(script_dir, "images/security.png"), 'Security/Compliance')

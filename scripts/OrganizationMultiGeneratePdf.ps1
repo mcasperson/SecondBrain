@@ -133,7 +133,7 @@ if ($GenerateCompanyReports)
             "-Dsb.multislackzengoogle.metaField5=Kubernetes"
             "-Dsb.multislackzengoogle.metaPrompt6=Do the messages mention Github?"
             "-Dsb.multislackzengoogle.metaField6=Github"
-            "-Dsb.multislackzengoogle.metaPrompt7=Do the messages mention migrations?"
+            "-Dsb.multislackzengoogle.metaPrompt7=Do the messages mention migrations or upgrades?"
             "-Dsb.multislackzengoogle.metaField7=Migration"
             "-Dsb.multislackzengoogle.metaPrompt8=Do the messages mention Terraform?"
             "-Dsb.multislackzengoogle.metaField8=Terraform"
