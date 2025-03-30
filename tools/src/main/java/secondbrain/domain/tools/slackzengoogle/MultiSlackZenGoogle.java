@@ -24,6 +24,7 @@ import secondbrain.domain.exceptions.*;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
+import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -228,6 +229,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     @Override
+    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+        return List.of();
+    }
+
+    @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
@@ -402,27 +408,33 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         retValue.addAll(planHatContext);
         retValue.addAll(gongContext);
 
+        final List<MetaObjectResult> metadata = new ArrayList<>();
+
         // Only proceed with these details if we have enough context to include this entity in the response.
         if (!validateSufficientContext(retValue, parsedArgs).isEmpty()) {
             final List<RagDocumentContext<Void>> planHatUsageContext = getPlanhatUsageContext(positionalEntity, parsedArgs, prompt, context);
             retValue.addAll(planHatUsageContext);
+
+            final List<MetaObjectResult> planHatMetadata = planHatUsage.getMetadata(context, prompt, List.of(
+                    new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, positionalEntity.entity.planhat().getFirst(), true)));
+            metadata.addAll(planHatMetadata);
         }
 
         final List<RagDocumentContext<Void>> filteredContext = contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
 
-        saveMetaResult(positionalEntity, filteredContext, parsedArgs);
+        saveMetaResult(positionalEntity, filteredContext, parsedArgs, metadata);
 
         return filteredContext;
     }
 
-    private MetaIntResult getContextCount(final PositionalEntity positionalEntity, final List<RagDocumentContext<Void>> ragContext) {
-        return new MetaIntResult(
+    private MetaObjectResult getContextCount(final PositionalEntity positionalEntity, final List<RagDocumentContext<Void>> ragContext) {
+        return new MetaObjectResult(
                 "ContextCount",
                 ragContext.size());
     }
 
-    private List<MetaIntResult> getMetaResults(final List<RagDocumentContext<Void>> ragContext, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
-        final List<MetaIntResult> results = new ArrayList<MetaIntResult>();
+    private List<MetaObjectResult> getMetaResults(final List<RagDocumentContext<Void>> ragContext, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        final List<MetaObjectResult> results = new ArrayList<MetaObjectResult>();
 
         final List<Pair<String, String>> metaFields = List.of(
                 Pair.of(parsedArgs.getMetaField1(), parsedArgs.getMetaPrompt1()),
@@ -459,19 +471,24 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .recover(InternalFailure.class, ex -> 0)
                         .get();
 
-                results.add(new MetaIntResult(metaField.getLeft(), value));
+                results.add(new MetaObjectResult(metaField.getLeft(), value));
             }
         }
 
         return results;
     }
 
-    private void saveMetaResult(final PositionalEntity positionalEntity, final List<RagDocumentContext<Void>> ragContext, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
-        final List<MetaIntResult> results = new ArrayList<MetaIntResult>();
+    private void saveMetaResult(
+            final PositionalEntity positionalEntity,
+            final List<RagDocumentContext<Void>> ragContext,
+            final MultiSlackZenGoogleConfig.LocalArguments parsedArgs,
+            final List<MetaObjectResult> additionalMetadata) {
+        final List<MetaObjectResult> results = new ArrayList<MetaObjectResult>();
 
         if (StringUtils.isNotBlank(parsedArgs.getMetaReport())) {
             results.add(getContextCount(positionalEntity, ragContext));
             results.addAll(getMetaResults(ragContext, parsedArgs));
+            results.addAll(additionalMetadata);
 
             Try.run(() -> Files.write(Paths.get(parsedArgs.getMetaReport()),
                             jsonDeserializer.serialize(results).getBytes(),

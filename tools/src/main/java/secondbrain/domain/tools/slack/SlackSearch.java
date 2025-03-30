@@ -31,6 +31,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -153,6 +154,11 @@ public class SlackSearch implements Tool<MatchedItem> {
                 .filter(ragDoc -> validateString.isNotEmpty(ragDoc.document()))
                 .toList();
 
+    }
+
+    @Override
+    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+        return List.of();
     }
 
     @Override

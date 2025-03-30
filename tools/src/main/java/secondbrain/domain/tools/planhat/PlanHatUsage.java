@@ -20,6 +20,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -144,6 +145,28 @@ public class PlanHatUsage implements Tool<Company> {
                 .toList();
 
         return ListUtils.union(usageContext, customContext);
+    }
+
+    @Override
+    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+        final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        if (StringUtils.isBlank(parsedArgs.getCompany())) {
+            throw new InternalFailure("You must provide a company ID to query");
+        }
+
+        final Company company = Try.withResources(ClientBuilder::newClient)
+                .of(client -> planHatClient.getCompany(
+                        client,
+                        parsedArgs.getCompany(),
+                        parsedArgs.getToken(),
+                        parsedArgs.getSearchTTL()))
+                .get();
+
+        return Stream.of(parsedArgs.getCustom1())
+                .filter(StringUtils::isNotBlank)
+                .map(custom -> new MetaObjectResult(custom, company.custom().getOrDefault(custom, "").toString()))
+                .toList();
     }
 
     @Override

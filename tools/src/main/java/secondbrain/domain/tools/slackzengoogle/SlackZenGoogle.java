@@ -14,6 +14,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.*;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -163,6 +164,11 @@ public class SlackZenGoogle implements Tool<Void> {
         retValue.addAll(zenContext);
         retValue.addAll(planHatContext);
         return retValue;
+    }
+
+    @Override
+    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+        return List.of();
     }
 
     @Override

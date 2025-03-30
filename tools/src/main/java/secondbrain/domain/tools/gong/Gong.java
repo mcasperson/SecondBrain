@@ -26,6 +26,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -135,6 +136,11 @@ public class Gong implements Tool<GongCallExtensive> {
                 .map(pair -> getDocumentContext(pair.getLeft(), pair.getRight(), parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
                 .toList();
+    }
+
+    @Override
+    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+        return List.of();
     }
 
     private RagDocumentContext<GongCallExtensive> getDocumentContext(final GongCallExtensive call, final GongCallTranscript transcript, final GongConfig.LocalArguments parsedArgs) {

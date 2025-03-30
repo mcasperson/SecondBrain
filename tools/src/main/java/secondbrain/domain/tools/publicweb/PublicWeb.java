@@ -26,6 +26,7 @@ import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
+import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -137,6 +138,11 @@ public class PublicWeb implements Tool<Void> {
                 .map(List::of)
                 .recover(ex -> List.of())
                 .get();
+    }
+
+    @Override
+    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+        return List.of();
     }
 
     @Override

@@ -37,6 +37,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -187,6 +188,11 @@ public class GoogleDocs implements Tool<Void> {
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Google API", ex)))
                 .get();
+    }
+
+    @Override
+    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+        return List.of();
     }
 
     @Override

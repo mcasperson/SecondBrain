@@ -1,4 +1,4 @@
-package secondbrain.domain.tools.slackzengoogle;
+package secondbrain.domain.tooldefs;
 
 /**
  * Defines some meta details about the context collected for the entity.
