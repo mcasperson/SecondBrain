@@ -163,6 +163,10 @@ public class PlanHatUsage implements Tool<Company> {
                         parsedArgs.getSearchTTL()))
                 .get();
 
+        if (company.custom() == null) {
+            return List.of();
+        }
+
         return Stream.of(parsedArgs.getCustom1())
                 .filter(StringUtils::isNotBlank)
                 .map(custom -> new MetaObjectResult(custom, company.custom().getOrDefault(custom, "").toString()))
