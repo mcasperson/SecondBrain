@@ -130,22 +130,28 @@ def find_average_context(directory, company_prefix):
 
 def get_high_vol_summary(pdf, directory):
     if os.path.exists(os.path.join(directory, 'High Volume Customers Executive Summary.md')):
-        return {'title': 'High Volume Customers Executive Summary',
-                'filename': os.path.join(directory, 'High Volume Customers Executive Summary.md'),
-                'link': pdf.add_link(), 'type': 'summary'}
+        return [{'title': 'High Volume Customers Executive Summary',
+                 'filename': os.path.join(directory, 'High Volume Customers Executive Summary.md'),
+                 'link': pdf.add_link(), 'type': 'summary'}]
+
+    return []
 
 
 def get_low_vol_summary(pdf, directory):
     if os.path.exists(os.path.join(directory, 'Low Volume Customers Executive Summary.md')):
-        return {'title': 'Low Volume Customers Executive Summary',
-                'filename': os.path.join(directory, 'Low Volume Customers Executive Summary.md'),
-                'link': pdf.add_link(), 'type': 'summary'}
+        return [{'title': 'Low Volume Customers Executive Summary',
+                 'filename': os.path.join(directory, 'Low Volume Customers Executive Summary.md'),
+                 'link': pdf.add_link(), 'type': 'summary'}]
+
+    return []
 
 
 def get_common_themes(pdf, directory):
     if os.path.exists(os.path.join(directory, 'Topics.md')):
-        return {'title': 'Common Themes', 'filename': os.path.join(directory, 'Topics.md'),
-                'link': pdf.add_link(), 'type': 'summary'}
+        return [{'title': 'Common Themes', 'filename': os.path.join(directory, 'Topics.md'),
+                 'link': pdf.add_link(), 'type': 'summary'}]
+
+    return []
 
 
 def get_topics(pdf, directory, topic_prefix):
@@ -341,9 +347,9 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     companies = get_companies(pdf, directory, company_prefix, average_context)
 
     contents = [
-        get_high_vol_summary(pdf, directory),
-        get_low_vol_summary(pdf, directory),
-        get_common_themes(pdf, directory),
+        *get_high_vol_summary(pdf, directory),
+        *get_low_vol_summary(pdf, directory),
+        *get_common_themes(pdf, directory),
         *get_topics(pdf, directory, topic_prefix),
         *companies
     ]
