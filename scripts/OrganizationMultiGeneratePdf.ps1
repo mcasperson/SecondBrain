@@ -127,7 +127,7 @@ if ($GenerateCompanyReports)
             "-Dsb.multislackzengoogle.metaField2=AWS"
             "-Dsb.multislackzengoogle.metaPrompt3=Do the messages mention Azure?"
             "-Dsb.multislackzengoogle.metaField3=Azure"
-            "-Dsb.multislackzengoogle.metaPrompt4=Do the messages mention costs, pricing, invoices, payments, budgets, or licenses?"
+            "-Dsb.multislackzengoogle.metaPrompt4=Do the messages mention renewals, costs, pricing, invoices, payments, budgets, or licenses?"
             "-Dsb.multislackzengoogle.metaField4=Costs"
             "-Dsb.multislackzengoogle.metaPrompt5=Do the messages mention Kubernetes or any related technologies?"
             "-Dsb.multislackzengoogle.metaField5=Kubernetes"
