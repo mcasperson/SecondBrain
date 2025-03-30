@@ -148,7 +148,7 @@ public class PlanHatUsage implements Tool<Company> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
@@ -174,7 +174,7 @@ public class PlanHatUsage implements Tool<Company> {
     }
 
     @Override
-    public RagMultiDocumentContext<Company> call(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Company> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final List<RagDocumentContext<Company>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
