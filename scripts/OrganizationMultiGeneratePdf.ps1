@@ -346,6 +346,9 @@ if ($GenerateExecutiveSummary)
         {
             continue
         }
+        
+        # Json looks like this:
+        # [{"name":"ContextCount","value":8},{"name":"Sentiment","value":3},{"name":"ARR (SFDC)","value":"123456"}]
 
         $contextCount = Get-Content -Path ($subDir + "/" + $file.BaseName + ".json") -Raw |
                 ConvertFrom-Json |
