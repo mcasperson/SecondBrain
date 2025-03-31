@@ -4,6 +4,21 @@ $global:stdErr = [System.Text.StringBuilder]::new()
 $global:stdOut = [System.Text.StringBuilder]::new()
 $global:myprocessrunning = $true
 
+function ConvertTo-IntWithDefault
+{
+    param(
+        [string]$String,
+        [int]$Default = 0
+    )
+
+    [int]$Result = $Default
+    if ( [int]::TryParse($String, [ref]$Result))
+    {
+        return $Result
+    }
+    return $Default
+}
+
 Function New-TempDir
 {
     # Create a temporary file

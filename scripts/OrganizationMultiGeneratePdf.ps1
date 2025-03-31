@@ -346,11 +346,13 @@ if ($GenerateExecutiveSummary)
                 Select-Object -First 1 |
                 Select-Object -ExpandProperty value
 
-        $arr = Get-Content -Path ($subDir + "/" + $file.BaseName + ".json") -Raw |
+        $arrString = Get-Content -Path ($subDir + "/" + $file.BaseName + ".json") -Raw |
                 ConvertFrom-Json |
                 ? { $_.name -eq "ARR (SFDC)" } |
                 Select-Object -First 1 |
                 Select-Object -ExpandProperty value
+
+        $arr = ConvertTo-IntWithDefault($arrString, 0)
 
         echo "Context Count: $contextCount"
         echo "ARR: $arr"
