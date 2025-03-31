@@ -346,9 +346,19 @@ if ($GenerateExecutiveSummary)
                 Select-Object -First 1 |
                 Select-Object -ExpandProperty value
 
-        echo "Context Count: $contextCount"
+        $arr = Get-Content -Path ($subDir + "/" + $file.BaseName + ".json") -Raw |
+                ConvertFrom-Json |
+                ? { $_.name -eq "ARR (SFDC)" } |
+                Select-Object -First 1 |
+                Select-Object -ExpandProperty value
 
-        $summaryFile = if ($contextCount -gt $averageInteractions -and $contextCount -ge 6)
+        echo "Context Count: $contextCount"
+        echo "ARR: $arr"
+
+        $summaryFile = if (($contextCount -gt $averageInteractions -and $contextCount -ge 6) -or ($arr -gt 50000))
+        {
+            "High Volume Customers Executive Summary.md"
+        }
         {
             "High Volume Customers Executive Summary.md"
         }
