@@ -326,7 +326,14 @@ if ($GenerateExecutiveSummary)
         }
     }
 
-    $averageInteractions = $totalInteractions / $totalCompanies
+    $averageInteractions = if ($totalCompanies > 0)
+    {
+        $totalInteractions / $totalCompanies
+    }
+    else
+    {
+        0
+    }
 
     foreach ($file in $files)
     {
