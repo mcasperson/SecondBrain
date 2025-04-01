@@ -386,7 +386,7 @@ if ($GenerateExecutiveSummary)
             "0"
         }
 
-        $arr = ConvertTo-IntWithDefault($arrString, 0)
+        $arr = ConvertTo-IntWithDefault $arrString 0
 
         echo "Context Count: $contextCount"
         echo "ARR: $arr"
