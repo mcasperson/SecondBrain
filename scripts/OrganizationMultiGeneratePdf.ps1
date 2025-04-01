@@ -357,7 +357,7 @@ if ($GenerateExecutiveSummary)
         # Json looks like this:
         # [{"name":"ContextCount","value":8},{"name":"Sentiment","value":3},{"name":"ARR (SFDC)","value":"123456"}]
 
-        $jsonFile = subDir + "/" + $file.BaseName + ".json"
+        $jsonFile = $subDir + "/" + $file.BaseName + ".json"
 
         $contextCount = if (Test-Path -Path $jsonFile -PathType Leaf)
         {
