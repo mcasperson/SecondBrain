@@ -1,8 +1,9 @@
 import argparse
 import json
-import markdown2
 import os
 import re
+
+import markdown2
 from fpdf.enums import XPos, YPos
 from fpdf.fpdf import FPDF
 
@@ -234,16 +235,7 @@ def get_companies(pdf, directory, company_prefix, average_context):
     return contents
 
 
-def add_toc(pdf, script_dir, contents, companies):
-    pdf.add_page()
-    pdf.set_text_color(0, 0, 0)
-    pdf.set_font('Roboto', 'B', 16)
-    pdf.cell(0, 10, 'Table of Contents', 0, 1, 'C')
-    pdf.ln(10)
-    pdf.set_font('Roboto', '', 12)
-    pdf.ln(10)
-
-    # Add legend items using the new helper function
+def add_toc_categories(pdf, script_dir):
     pdf.add_legend_item(os.path.join(script_dir, "images/smile.png"), 'Sentiment')
     pdf.add_legend_item(os.path.join(script_dir, "images/aws.png"), 'AWS')
     pdf.add_legend_item(os.path.join(script_dir, "images/azure.png"), 'Azure')
@@ -254,6 +246,20 @@ def add_toc(pdf, script_dir, contents, companies):
     pdf.add_legend_item(os.path.join(script_dir, "images/terraform.png"), 'Terraform')
     pdf.add_legend_item(os.path.join(script_dir, "images/performance.png"), 'Performance')
     pdf.add_legend_item(os.path.join(script_dir, "images/security.png"), 'Security/Compliance')
+
+
+def add_toc(pdf, script_dir, contents, companies):
+    pdf.add_page()
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font('Roboto', 'B', 16)
+    pdf.cell(0, 10, 'Table of Contents', 0, 1, 'C')
+    pdf.ln(10)
+    pdf.set_font('Roboto', '', 12)
+    pdf.ln(10)
+
+    # Add legend items using the new helper function
+    if len(companies) != 0:
+        add_toc_categories(pdf, script_dir)
 
     pdf.ln(20)
 
