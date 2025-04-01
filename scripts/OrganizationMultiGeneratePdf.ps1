@@ -98,6 +98,12 @@ if ($GenerateCompanyReports)
 
             $entityName = ($using:entity).name
 
+            # Ignore the NPS entity, as it is not a customer.
+            if ($entityName -eq "NPS")
+            {
+                return
+            }
+
             $EntityLog = "/tmp/pdfgenerate $entityName $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
             Get-Module
@@ -243,6 +249,7 @@ if ($GenerateTopicReports)
             "-Dsb.multislackzengoogle.keywordwindow=350"
             "-Dsb.multislackzengoogle.contextFilterQuestion=$( ($using:topic).filterQuestion )"
             "-Dsb.multislackzengoogle.contextFilterMinimumRating=$( ($using:topic).filterThreshold )"
+            "-Dsb.multislackzengoogle.entity=$( ($using:topic).entityName )"
             "-Dsb.multislackzengoogle.disablelinks=false"
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
