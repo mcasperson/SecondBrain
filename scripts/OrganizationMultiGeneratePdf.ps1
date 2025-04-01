@@ -388,9 +388,6 @@ if ($GenerateExecutiveSummary)
         {
             "High Volume Customers Executive Summary.md"
         }
-        {
-            "High Volume Customers Executive Summary.md"
-        }
         else
         {
             "Low Volume Customers Executive Summary.md"
