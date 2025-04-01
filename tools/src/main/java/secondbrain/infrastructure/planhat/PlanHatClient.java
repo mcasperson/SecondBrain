@@ -59,7 +59,7 @@ public class PlanHatClient {
         return localStorage.getOrPutObject(
                 PlanHatClient.class.getSimpleName(),
                 "PlanHatAPICompany",
-                DigestUtils.sha256Hex(company),
+                DigestUtils.sha256Hex(company + "V2"),
                 ttlSeconds,
                 Company.class,
                 () -> getCompanyApi(client, company, token));
