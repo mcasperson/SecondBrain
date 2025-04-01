@@ -346,21 +346,38 @@ if ($GenerateExecutiveSummary)
         {
             continue
         }
-        
+
         # Json looks like this:
         # [{"name":"ContextCount","value":8},{"name":"Sentiment","value":3},{"name":"ARR (SFDC)","value":"123456"}]
 
-        $contextCount = Get-Content -Path ($subDir + "/" + $file.BaseName + ".json") -Raw |
-                ConvertFrom-Json |
-                ? { $_.name -eq "ContextCount" } |
-                Select-Object -First 1 |
-                Select-Object -ExpandProperty value
+        $jsonFile = subDir + "/" + $file.BaseName + ".json"
 
-        $arrString = Get-Content -Path ($subDir + "/" + $file.BaseName + ".json") -Raw |
-                ConvertFrom-Json |
-                ? { $_.name -eq "ARR (SFDC)" } |
-                Select-Object -First 1 |
-                Select-Object -ExpandProperty value
+        $contextCount = if (Test-Path -Path $jsonFile -PathType Leaf)
+        {
+            Get-Content -Path $jsonFile -Raw |
+                    ConvertFrom-Json |
+                    ? { $_.name -eq "ContextCount" } |
+                    Select-Object -First 1 |
+                    Select-Object -ExpandProperty value
+        }
+        else
+        {
+            0
+        }
+
+        $arrString = if (Test-Path -Path $jsonFile -PathType Leaf)
+        {
+
+            Get-Content -Path $jsonFile -Raw |
+                    ConvertFrom-Json |
+                    ? { $_.name -eq "ARR (SFDC)" } |
+                    Select-Object -First 1 |
+                    Select-Object -ExpandProperty value
+        }
+        else
+        {
+            "0"
+        }
 
         $arr = ConvertTo-IntWithDefault($arrString, 0)
 
