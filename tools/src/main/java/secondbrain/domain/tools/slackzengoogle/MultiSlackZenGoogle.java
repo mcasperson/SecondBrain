@@ -415,8 +415,12 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final List<RagDocumentContext<Void>> planHatUsageContext = getPlanhatUsageContext(positionalEntity, parsedArgs, prompt, context);
             retValue.addAll(planHatUsageContext);
 
-            final List<MetaObjectResult> planHatMetadata = planHatUsage.getMetadata(context, prompt, List.of(
-                    new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, positionalEntity.entity.planhat().getFirst(), true)));
+            final List<MetaObjectResult> planHatMetadata = positionalEntity.entity.getPlanHat()
+                    .stream()
+                    .limit(1)
+                    .flatMap(planHatId -> planHatUsage.getMetadata(context, prompt, List.of(
+                            new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, planHatId, true))).stream())
+                    .toList();
             metadata.addAll(planHatMetadata);
         }
 
