@@ -154,6 +154,7 @@ if ($GenerateCompanyReports)
             "Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName.
             Include an executive summary as the first paragraph.
             Show the total deployments in the last 30 days, total projects, and total tenants as a bullet point list at the end.
+            List the company's ARR at the end of the report.
             If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes.
             You must use asterisks for bullet point lists.
             You will be penalized for using dashes for bullet point lists.
@@ -414,6 +415,7 @@ if ($GenerateExecutiveSummary)
         -jar $jarFile
         "Summarize the document as a single paragraph.
         Write the company name as a level 2 markdown header and then write the summary as plain text.
+        Include the company's ARR in the summary.
         You will be penalized for using 'Octopus Deploy', 'Octopus', 'OCTOPUS', 'OCTOPUS DEPLOY PTY LTD', 'OD', or 'Company Name' as the company name.
         You will be penalized for including a 'End of Summary' heading.
         You will be penalized for inlucding links or references.
