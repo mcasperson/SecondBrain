@@ -385,20 +385,19 @@ if ($GenerateExecutiveSummary)
         You will be penalized for including details about how you have adhered to the instructions."
 "@)
         $result = Invoke-CustomCommand java $arguments
-        Add-Content -Path "$subDir/$($file.BaseName.Replace("COMPANY", "EXECUTIVE SUMMARY"))"  -Value "$( $result.StdOut )`n`n"
+        Add-Content -Path "$subDir/$($file.BaseName.Replace("COMPANY", "EXECUTIVE SUMMARY"))"  -Value "$( $result.StdOut )"
+        Add-Content -Path "$subDir/Combined Execuitve Summaries.md"  -Value "$( $result.StdOut )`n`n"
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdOut
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdErr
     }
 
     Write-Host "Generating topics"
 
-    Get-Content "$subDir/High Volume Customers Executive Summary.md", "$subDir/Low Volume Customers Executive Summary.md" | Set-Content "$subDir/Executive Summary.md"
-
     $arguments = Get-SplitTrimmedAndJoinedString(@"
     "-Dstdout.encoding=UTF-8"
     "-Dsb.tools.force=PublicWeb"
     "-Dsb.publicweb.disablelinks=true"
-    "-Dsb.publicweb.url=$subDir/Executive Summary.md"
+    "-Dsb.publicweb.url=$subDir/Combined Execuitve Summaries.md"
     "-Dsb.ollama.contextwindow=$contextWindow"
     "-Dsb.exceptions.printstacktrace=false"
     "-Dsb.ollama.toolmodel=$toolModel"
