@@ -340,7 +340,7 @@ def add_executive_summaries(pdf, companies, directory, toc_link, high_activity_l
     for executive_summary_types in [{'title': 'High Volume/ARR Customers', 'high_activity': True, 'link': high_activity_link},
                                      {'title': 'Low Volume Customers', 'high_activity': False, 'link': low_activity_link}]:
 
-        customers = [company for company in companies if company.get('high_activity', False) == executive_summary_types['high_activity'] and company.get('type', '') == 'customer']
+        customers = [company for company in companies if company.get('high_activity', False) == executive_summary_types['high_activity'] and company.get('type', '') == 'customer' and company.get('executive_summary')]
 
         if len(customers) != 0:
             pdf.add_page()
