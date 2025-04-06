@@ -254,7 +254,6 @@ def add_toc(pdf, script_dir, contents, companies):
     low_activity_link = None
 
     pdf.add_page()
-    toc_link = pdf.add_link()
     pdf.set_text_color(0, 0, 0)
     pdf.set_font('Roboto', 'B', 16)
     pdf.cell(0, 10, 'Table of Contents', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.C)
@@ -267,6 +266,8 @@ def add_toc(pdf, script_dir, contents, companies):
         add_toc_categories(pdf, script_dir)
 
     pdf.ln(20)
+
+    toc_link = pdf.add_link(y=pdf.y)
 
     for content in [c for c in contents if c.get('type', '') == 'topic']:
         pdf.cell(0, 10, f'{content['title']}', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=content['link'])
