@@ -23,6 +23,7 @@ import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -31,8 +32,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.gong.GongCallExtensive;
-import secondbrain.infrastructure.gong.GongCallTranscript;
+import secondbrain.infrastructure.gong.GongCallDetails;
 import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
@@ -48,7 +48,7 @@ import static com.google.common.base.Predicates.instanceOf;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
-public class Gong implements Tool<GongCallExtensive> {
+public class Gong implements Tool<GongCallDetails> {
     public static final String DAYS_ARG = "days";
     public static final String COMPANY_ARG = "company";
     public static final String CALLID_ARG = "callId";
@@ -69,6 +69,7 @@ public class Gong implements Tool<GongCallExtensive> {
     private GongConfig config;
 
     @Inject
+    @Preferred
     private GongClient gongClient;
 
     @Inject
@@ -108,12 +109,12 @@ public class Gong implements Tool<GongCallExtensive> {
     }
 
     @Override
-    public List<RagDocumentContext<GongCallExtensive>> getContext(
+    public List<RagDocumentContext<GongCallDetails>> getContext(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
 
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final List<Pair<GongCallExtensive, GongCallTranscript>> calls = Try.withResources(ClientBuilder::newClient)
+        final List<Pair<GongCallDetails, String>> calls = Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() ->
                                 gongClient.getCallsExtensive(
                                         client,
@@ -126,7 +127,7 @@ public class Gong implements Tool<GongCallExtensive> {
                         .map(c -> c.stream()
                                 .map(call -> Pair.of(
                                         call,
-                                        gongClient.getCallTranscript(client, parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), call.metaData().id())))
+                                        gongClient.getCallTranscript(client, parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), call.id())))
                                 .toList())
                         .onFailure(ex -> System.err.println("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                         .get())
@@ -143,8 +144,8 @@ public class Gong implements Tool<GongCallExtensive> {
         return List.of();
     }
 
-    private RagDocumentContext<GongCallExtensive> getDocumentContext(final GongCallExtensive call, final GongCallTranscript transcript, final GongConfig.LocalArguments parsedArgs) {
-        final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(transcript.getTranscript(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
+    private RagDocumentContext<GongCallDetails> getDocumentContext(final GongCallDetails call, final String transcript, final GongConfig.LocalArguments parsedArgs) {
+        final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(transcript, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
 
         if (parsedArgs.getDisableLinks()) {
             return new RagDocumentContext<>(
@@ -153,23 +154,23 @@ public class Gong implements Tool<GongCallExtensive> {
         }
 
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
-                .map(sentences -> new RagDocumentContext<GongCallExtensive>(
+                .map(sentences -> new RagDocumentContext<GongCallDetails>(
                         getContextLabel(),
                         trimmedConversationResult.document(),
                         sentences.stream()
                                 .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
                                 .collect(Collectors.toList()),
-                        call.metaData().id(),
+                        call.id(),
                         call,
-                        "[Gong " + call.metaData().id() + "](" + call.metaData().url() + ")",
+                        "[Gong " + call.id() + "](" + call.url() + ")",
                         trimmedConversationResult.keywordMatches()))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }
 
     @Override
-    public RagMultiDocumentContext<GongCallExtensive> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final List<RagDocumentContext<GongCallExtensive>> contextList = getContext(environmentSettings, prompt, arguments);
+    public RagMultiDocumentContext<GongCallDetails> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final List<RagDocumentContext<GongCallDetails>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -177,7 +178,7 @@ public class Gong implements Tool<GongCallExtensive> {
             throw new InternalFailure("You must provide a company or call ID to query");
         }
 
-        final Try<RagMultiDocumentContext<GongCallExtensive>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<GongCallDetails>> result = Try.of(() -> contextList)
                 .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
                 .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
                         .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
@@ -201,7 +202,7 @@ public class Gong implements Tool<GongCallExtensive> {
                 .get();
     }
 
-    private RagMultiDocumentContext<GongCallExtensive> mergeContext(final List<RagDocumentContext<GongCallExtensive>> context, final String customModel) {
+    private RagMultiDocumentContext<GongCallDetails> mergeContext(final List<RagDocumentContext<GongCallDetails>> context, final String customModel) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(ragDoc -> promptBuilderSelector

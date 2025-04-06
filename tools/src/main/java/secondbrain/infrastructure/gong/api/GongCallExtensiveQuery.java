@@ -1,4 +1,4 @@
-package secondbrain.infrastructure.gong;
+package secondbrain.infrastructure.gong.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.jspecify.annotations.Nullable;
