@@ -389,7 +389,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     # Parse the metadata
     average_context = find_average_context(directory, company_prefix)
 
-    companies = get_companies(pdf, directory, company_prefix, average_context)
+    companies = get_companies(pdf, directory, company_prefix, executive_summary_prefix, average_context)
 
     contents = [
         *get_common_themes(pdf, directory),
