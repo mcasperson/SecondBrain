@@ -304,8 +304,7 @@ if ($GenerateTopicReports)
 if ($GenerateExecutiveSummary)
 {
     # Delete the executie summary file
-    Remove-Item "$subDir/High Volume Customers Executive Summary.md" | Out-Null
-    Remove-Item "$subDir/Low Volume Customers Executive Summary.md" | Out-Null
+    Remove-Item "$subDir/Combined Execuitve Summaries.md" | Out-Null
 
     # Get all files in the directory
     $files = Get-ChildItem -Path $subDir
@@ -411,7 +410,7 @@ if ($GenerateExecutiveSummary)
     Add-Content -Path $ExecutiveSummaryLog -Value $result.StdErr
 }
 
-Compress-Archive -Path $subDir -DestinationPath "$PdfFile.source.zip"
+Compress-Archive -Path $subDir -DestinationPath "$PdfFile.source.zip" -Update
 
 if ($GeneratePDF)
 {
