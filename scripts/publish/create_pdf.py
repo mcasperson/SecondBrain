@@ -369,6 +369,7 @@ def add_executive_summaries(pdf, companies, directory, toc_link, high_activity_l
                     pdf.cell(0, 10, 'Back to TOC', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=toc_link)
                     pdf.set_text_color(0, 0, 0)
                     pdf.chapter_body(html_content)
+                    pdf.ln(10)
 
 
 def add_pages(pdf, contents, directory, toc_link):
