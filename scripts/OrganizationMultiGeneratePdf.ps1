@@ -346,7 +346,7 @@ if ($GenerateExecutiveSummary)
         You will be penalized for including details about how you have adhered to the instructions."
 "@)
         $result = Invoke-CustomCommand java $arguments
-        Add-Content -Path "$subDir/$($file.BaseName.Replace("COMPANY", "EXECUTIVE SUMMARY"))/md"  -Value "$( $result.StdOut )"
+        Add-Content -Path "$subDir/$($file.BaseName.Replace("COMPANY", "EXECUTIVE SUMMARY")).md"  -Value "$( $result.StdOut )"
         Add-Content -Path "$subDir/Combined Execuitve Summaries.md"  -Value "$( $result.StdOut )`n`n"
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdOut
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdErr
