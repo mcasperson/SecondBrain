@@ -347,8 +347,8 @@ def sanitize_html(html_content):
 def add_executive_summaries(pdf, companies, directory, toc_link, high_activity_link, low_activity_link):
     print("Adding executive summaries...")
 
-    for executive_summary_types in [{'title': 'High Volume/ARR Customers', 'high_activity': True, 'link': high_activity_link},
-                                     {'title': 'Low Volume Customers', 'high_activity': False, 'link': low_activity_link}]:
+    for executive_summary_types in [{'title': 'High Volume/ARR Customers Executive Summary', 'high_activity': True, 'link': high_activity_link},
+                                     {'title': 'Low Volume Customers Executive Summary', 'high_activity': False, 'link': low_activity_link}]:
 
         customers = [company for company in companies if company.get('high_activity', False) == executive_summary_types['high_activity'] and company.get('type', '') == 'customer' and company.get('executive_summary')]
 
