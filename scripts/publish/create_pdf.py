@@ -300,25 +300,31 @@ def add_toc(pdf, script_dir, contents, companies):
 
         if len(high_activity_customers) != 0:
             high_activity_link = pdf.add_link()
+            pdf.cell(0, 10, 'High Volume/ARR Customers Executive Summary', 0, 1, 'L')
+
+        if len(low_activity_customers) != 0:
+            low_activity_link = pdf.add_link()
+            pdf.cell(0, 10, 'Low Volume Customers Executive Summary', 0, 1, 'L')
+
+        if len(high_activity_customers) != 0:
             pdf.set_text_color(58, 0, 0)
             pdf.cell(0, 10, 'High Volume/ARR Customers', 0, 1, 'L')
             pdf.set_text_color(0, 0, 0)
 
             for content in high_activity_customers:
                 add_icons(content)
-                pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', high_activity_link)
+                pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
 
             pdf.ln(10)
 
         if len(low_activity_customers) != 0:
-            low_activity_link = pdf.add_link()
             pdf.set_text_color(58, 0, 0)
             pdf.cell(0, 10, 'Low Volume Customers', 0, 1, 'L')
             pdf.set_text_color(0, 0, 0)
 
             for content in low_activity_customers:
                 add_icons(content)
-                pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', low_activity_link)
+                pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
 
             pdf.ln(10)
 
@@ -357,7 +363,7 @@ def add_executive_summaries(pdf, companies, directory, toc_link, high_activity_l
                     html_content = markdown2.markdown(md_content)
                     html_content = sanitize_html(html_content)
                     pdf.set_font('Roboto', '', 12)
-                    pdf.cell(0, 10, 'Back to TOC', 0, 1, 'L', toc_link)
+                    pdf.cell(0, 10, 'Back to TOC', 0, 1, 'L', link=toc_link)
                     pdf.chapter_body(html_content)
 
 
@@ -374,7 +380,7 @@ def add_pages(pdf, contents, directory, toc_link):
             html_content = sanitize_html(html_content)
 
             pdf.set_font('Roboto', '', 12)
-            pdf.cell(0, 10, 'Back to TOC', 0, 1, 'L', toc_link)
+            pdf.cell(0, 10, 'Back to TOC', 0, 1, 'L', link=toc_link)
             pdf.chapter_title(content['title'])
             pdf.chapter_body(html_content)
 
