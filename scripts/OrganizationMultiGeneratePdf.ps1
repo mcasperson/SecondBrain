@@ -304,7 +304,9 @@ if ($GenerateTopicReports)
 if ($GenerateExecutiveSummary)
 {
     # Delete the executie summary file
-    Remove-Item "$subDir/Combined Execuitve Summaries.md" | Out-Null
+    if (Test-Path "$subDir/Combined Executive Summaries.md") {
+        Remove-Item "$subDir/Combined Executive Summaries.md" | Out-Null
+    }
 
     # Get all files in the directory
     $files = Get-ChildItem -Path $subDir
