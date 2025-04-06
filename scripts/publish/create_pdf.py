@@ -334,21 +334,21 @@ def sanitize_html(html_content):
     return html_content
 
 
-def add_executive_summaries(pdf, contents, directory, toc_link, high_activity_link, low_activity_link):
+def add_executive_summaries(pdf, companies, directory, toc_link, high_activity_link, low_activity_link):
     print("Adding executive summaries...")
 
     for executive_summary_types in [{'title': 'High Volume/ARR Customers', 'high_activity': True, 'link': high_activity_link},
                                      {'title': 'Low Volume Customers', 'high_activity': False, 'link': low_activity_link}]:
 
-        customers = [content for content in contents if content.get('high_activity', False) == executive_summary_types['high_activity'] and content.get('type', '') == 'customer']
+        customers = [company for company in companies if company.get('high_activity', False) == executive_summary_types['high_activity'] and company.get('type', '') == 'customer']
 
         if len(customers) != 0:
             pdf.add_page()
             pdf.set_link(executive_summary_types['link'])
             pdf.chapter_title(executive_summary_types['title'])
 
-            for customer in customers:
-                filepath = os.path.join(directory, customer['executive_summary'])
+            for company in customers:
+                filepath = os.path.join(directory, company['executive_summary'])
                 with open(filepath, 'r', encoding='utf-8') as file:
                     md_content = file.read()
                     html_content = markdown2.markdown(md_content)
@@ -399,7 +399,7 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
 
     toc_link, high_activity_link, low_activity_link = add_toc(pdf, script_dir, contents, companies)
 
-    add_executive_summaries(pdf, contents, directory, toc_link, high_activity_link, low_activity_link)
+    add_executive_summaries(pdf, companies, directory, toc_link, high_activity_link, low_activity_link)
 
     add_pages(pdf, contents, directory, toc_link)
 
