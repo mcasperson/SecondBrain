@@ -10,6 +10,7 @@ from fpdf.fpdf import FPDF
 company_prefix = 'COMPANY '
 topic_prefix = 'TOPIC '
 executive_summary_prefix = 'EXECUTIVE SUMMARY '
+arr_limit = 100000
 
 
 class PDF(FPDF):
@@ -219,7 +220,7 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                  'filename': filename,
                  'executive_summary' : executive_summary if executive_summary_exists else None,
                  'link': pdf.add_link(),
-                 'high_activity': high_activity or arr >= 50000,
+                 'high_activity': high_activity or arr >= arr_limit,
                  'type': 'customer',
                  'sentiment': sentiment,
                  'aws': aws,
