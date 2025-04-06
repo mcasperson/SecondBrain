@@ -63,7 +63,7 @@ class PDF(FPDF):
     def add_legend_item(self, image_path, text, x=50):
         """Add a legend item with an image and text"""
         self.image(image_path, x=x, y=self.y, w=6, h=6)
-        self.cell(0, 10, text, 0, 1, 'C')
+        self.cell(0, 10, text, 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.C)
 
     def add_icon_if_threshold_met(self, script_dir, icon_value, threshold, icon_name, x_position):
         """Add an icon if the value meets or exceeds the threshold"""
@@ -257,7 +257,7 @@ def add_toc(pdf, script_dir, contents, companies):
     toc_link = pdf.add_link()
     pdf.set_text_color(0, 0, 0)
     pdf.set_font('Roboto', 'B', 16)
-    pdf.cell(0, 10, 'Table of Contents', 0, 1, 'C')
+    pdf.cell(0, 10, 'Table of Contents', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.C)
     pdf.ln(10)
     pdf.set_font('Roboto', '', 12)
     pdf.ln(10)
@@ -363,7 +363,9 @@ def add_executive_summaries(pdf, companies, directory, toc_link, high_activity_l
                     html_content = markdown2.markdown(md_content)
                     html_content = sanitize_html(html_content)
                     pdf.set_font('Roboto', '', 12)
+                    pdf.set_text_color(0, 96, 223)
                     pdf.cell(0, 10, 'Back to TOC', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=toc_link)
+                    pdf.set_text_color(0, 0, 0)
                     pdf.chapter_body(html_content)
 
 
@@ -380,7 +382,9 @@ def add_pages(pdf, contents, directory, toc_link):
             html_content = sanitize_html(html_content)
 
             pdf.set_font('Roboto', '', 12)
+            pdf.set_text_color(0, 96, 223)
             pdf.cell(0, 10, 'Back to TOC', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=toc_link)
+            pdf.set_text_color(0, 0, 0)
             pdf.chapter_title(content['title'])
             pdf.chapter_body(html_content)
 
