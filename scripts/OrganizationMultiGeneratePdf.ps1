@@ -90,11 +90,6 @@ if ($GenerateCompanyReports)
 
             $entityName = ($using:entity).name
 
-            if ($entityName -ne "Commonwealth Bank")
-            {
-                return
-            }
-
             # Ignore the NPS entity, as it is not a customer.
             if ($entityName -eq "NPS")
             {
