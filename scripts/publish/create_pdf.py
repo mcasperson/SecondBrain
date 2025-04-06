@@ -356,6 +356,7 @@ def add_executive_summaries(pdf, companies, directory, toc_link, high_activity_l
                     md_content = file.read()
                     html_content = markdown2.markdown(md_content)
                     html_content = sanitize_html(html_content)
+                    pdf.set_font('Roboto', '', 12)
                     pdf.cell(0, 10, 'Back to TOC', 0, 1, 'L', toc_link)
                     pdf.chapter_body(html_content)
 
@@ -372,6 +373,7 @@ def add_pages(pdf, contents, directory, toc_link):
 
             html_content = sanitize_html(html_content)
 
+            pdf.set_font('Roboto', '', 12)
             pdf.cell(0, 10, 'Back to TOC', 0, 1, 'L', toc_link)
             pdf.chapter_title(content['title'])
             pdf.chapter_body(html_content)
