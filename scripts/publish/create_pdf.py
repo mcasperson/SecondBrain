@@ -304,7 +304,6 @@ def add_toc(pdf, script_dir, contents, companies):
             pdf.cell(0, 10, 'High Volume/ARR Customers Executive Summary', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=high_activity_link)
 
         if len(low_activity_customers) != 0:
-            page = 5 if len(high_activity_customers) != 0 else 4
             low_activity_link = pdf.add_link()
             pdf.cell(0, 10, 'Low Volume Customers Executive Summary', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=low_activity_link)
 
