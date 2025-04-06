@@ -86,6 +86,21 @@ if ($GenerateCompanyReports)
         # We can have thousands of entities to process, so we need to use threads to process them in parallel.
         $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 20 -ScriptBlock {
 
+            Import-Module $using:ModulePath
+
+            $entityName = ($using:entity).name
+
+            if ($entityName -ne "Commonwealth Bank")
+            {
+                return
+            }
+
+            # Ignore the NPS entity, as it is not a customer.
+            if ($entityName -eq "NPS")
+            {
+                return
+            }
+
             # Delay subsequent topics by 1 min to allow the first run to pupulate the cache.
             # The API access to external systems are often configured to return all the available results across the
             # specified time range, cache them, and then have each entity pick their own data from the cache. This
@@ -94,16 +109,6 @@ if ($GenerateCompanyReports)
             if (($using:index) -gt 1)
             {
                 Start-Sleep -m (1000 * 60)
-            }
-
-            Import-Module $using:ModulePath
-
-            $entityName = ($using:entity).name
-
-            # Ignore the NPS entity, as it is not a customer.
-            if ($entityName -eq "NPS")
-            {
-                return
             }
 
             $EntityLog = "/tmp/pdfgenerate $entityName $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
@@ -357,52 +362,6 @@ if ($GenerateExecutiveSummary)
             continue
         }
 
-        # Json looks like this:
-        # [{"name":"ContextCount","value":8},{"name":"Sentiment","value":3},{"name":"ARR (SFDC)","value":"123456"}]
-
-        $jsonFile = $subDir + "/" + $file.BaseName + ".json"
-
-        $contextCount = if (Test-Path -Path $jsonFile -PathType Leaf)
-        {
-            Get-Content -Path $jsonFile -Raw |
-                    ConvertFrom-Json |
-                    ? { $_.name -eq "ContextCount" } |
-                    Select-Object -First 1 |
-                    Select-Object -ExpandProperty value
-        }
-        else
-        {
-            0
-        }
-
-        $arrString = if (Test-Path -Path $jsonFile -PathType Leaf)
-        {
-
-            Get-Content -Path $jsonFile -Raw |
-                    ConvertFrom-Json |
-                    ? { $_.name -eq "ARR (SFDC)" } |
-                    Select-Object -First 1 |
-                    Select-Object -ExpandProperty value
-        }
-        else
-        {
-            "0"
-        }
-
-        $arr = ConvertTo-IntWithDefault $arrString 0
-
-        echo "Context Count: $contextCount"
-        echo "ARR: $arr"
-
-        $summaryFile = if (($contextCount -gt $averageInteractions -and $contextCount -ge 6) -or ($arr -gt 50000))
-        {
-            "High Volume Customers Executive Summary.md"
-        }
-        else
-        {
-            "Low Volume Customers Executive Summary.md"
-        }
-
         Write-Host "Processing file: $( $file.Name )"
 
         $arguments = Get-SplitTrimmedAndJoinedString(@"
@@ -426,7 +385,7 @@ if ($GenerateExecutiveSummary)
         You will be penalized for including details about how you have adhered to the instructions."
 "@)
         $result = Invoke-CustomCommand java $arguments
-        Add-Content -Path "$subDir/$summaryFile"  -Value "$( $result.StdOut )`n`n"
+        Add-Content -Path "$subDir/$($file.BaseName.Replace("COMPANY", "EXECUTIVE SUMMARY"))"  -Value "$( $result.StdOut )`n`n"
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdOut
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdErr
     }

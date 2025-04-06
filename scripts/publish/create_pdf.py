@@ -9,6 +9,7 @@ from fpdf.fpdf import FPDF
 
 company_prefix = 'COMPANY '
 topic_prefix = 'TOPIC '
+executive_summary_prefix = 'EXECUTIVE SUMMARY '
 
 
 class PDF(FPDF):
@@ -128,24 +129,6 @@ def find_average_context(directory, company_prefix):
     return average_context
 
 
-def get_high_vol_summary(pdf, directory):
-    if os.path.exists(os.path.join(directory, 'High Volume Customers Executive Summary.md')):
-        return [{'title': 'High Volume/ARR Customers Executive Summary',
-                 'filename': os.path.join(directory, 'High Volume Customers Executive Summary.md'),
-                 'link': pdf.add_link(), 'type': 'summary'}]
-
-    return []
-
-
-def get_low_vol_summary(pdf, directory):
-    if os.path.exists(os.path.join(directory, 'Low Volume Customers Executive Summary.md')):
-        return [{'title': 'Low Volume Customers Executive Summary',
-                 'filename': os.path.join(directory, 'Low Volume Customers Executive Summary.md'),
-                 'link': pdf.add_link(), 'type': 'summary'}]
-
-    return []
-
-
 def get_common_themes(pdf, directory):
     if os.path.exists(os.path.join(directory, 'Topics.md')):
         return [{'title': 'Common Themes', 'filename': os.path.join(directory, 'Topics.md'),
@@ -173,7 +156,7 @@ def parse_int(value, default=0):
         return default
 
 
-def get_companies(pdf, directory, company_prefix, average_context):
+def get_companies(pdf, directory, company_prefix, executive_summary_prefix, average_context):
     print("Parsing companies...")
     contents = []
     for filename in sorted(os.listdir(directory)):
@@ -225,12 +208,27 @@ def get_companies(pdf, directory, company_prefix, average_context):
             # Get file name without extension or the prefix
             title = raw_file[len(company_prefix):]
 
+            executive_summary = filename.replace(company_prefix, executive_summary_prefix)
+            executive_summary_exists = os.path.exists(os.path.join(directory, executive_summary))
+
             contents.append(
-                {'title': title, 'filename': filename, 'link': pdf.add_link(),
+                {'title': title,
+                 'filename': filename,
+                 'executive_summary' : executive_summary if executive_summary_exists else None,
+                 'link': pdf.add_link(),
                  'high_activity': high_activity or arr >= 50000,
-                 'type': 'customer', 'sentiment': sentiment, 'aws': aws, 'azure': azure, 'costs': costs, 'k8s': k8s,
-                 'github': github, 'migration': migration, 'terraform': terraform, 'performance': performance,
-                 'security': security, 'arr': arr})
+                 'type': 'customer',
+                 'sentiment': sentiment,
+                 'aws': aws,
+                 'azure': azure,
+                 'costs': costs,
+                 'k8s': k8s,
+                 'github': github,
+                 'migration': migration,
+                 'terraform': terraform,
+                 'performance': performance,
+                 'security': security,
+                 'arr': arr})
 
     return contents
 
@@ -249,7 +247,11 @@ def add_toc_categories(pdf, script_dir):
 
 
 def add_toc(pdf, script_dir, contents, companies):
+    high_activity_link = None
+    low_activity_link = None
+
     pdf.add_page()
+    toc_link = pdf.add_link()
     pdf.set_text_color(0, 0, 0)
     pdf.set_font('Roboto', 'B', 16)
     pdf.cell(0, 10, 'Table of Contents', 0, 1, 'C')
@@ -294,26 +296,30 @@ def add_toc(pdf, script_dir, contents, companies):
             pdf.add_icon_if_threshold_met(script_dir, content['security'], 5, "security", 172)
 
         if len(high_activity_customers) != 0:
+            high_activity_link = pdf.add_link()
             pdf.set_text_color(58, 0, 0)
             pdf.cell(0, 10, 'High Volume/ARR Customers', 0, 1, 'L')
             pdf.set_text_color(0, 0, 0)
 
             for content in high_activity_customers:
                 add_icons(content)
-                pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
+                pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', high_activity_link)
 
             pdf.ln(10)
 
         if len(low_activity_customers) != 0:
+            low_activity_link = pdf.add_link()
             pdf.set_text_color(58, 0, 0)
             pdf.cell(0, 10, 'Low Volume Customers', 0, 1, 'L')
             pdf.set_text_color(0, 0, 0)
 
             for content in low_activity_customers:
                 add_icons(content)
-                pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', link=content['link'])
+                pdf.cell(0, 10, f'  {content['title']}', 0, 1, 'L', low_activity_link)
 
             pdf.ln(10)
+
+    return toc_link, high_activity_link, low_activity_link
 
 
 def sanitize_html(html_content):
@@ -328,7 +334,30 @@ def sanitize_html(html_content):
     return html_content
 
 
-def add_pages(pdf, contents, directory):
+def add_executive_summaries(pdf, contents, directory, toc_link, high_activity_link, low_activity_link):
+    print("Adding executive summaries...")
+
+    for executive_summary_types in [{'title': 'High Volume/ARR Customers', 'high_activity': True, 'link': high_activity_link},
+                                     {'title': 'Low Volume Customers', 'high_activity': False, 'link': low_activity_link}]:
+
+        customers = [content for content in contents if content.get('high_activity', False) == executive_summary_types['high_activity'] and content.get('type', '') == 'customer']
+
+        if len(customers) != 0:
+            pdf.add_page()
+            pdf.set_link(executive_summary_types['link'])
+            pdf.chapter_title(executive_summary_types['title'])
+
+            for customer in customers:
+                filepath = os.path.join(directory, customer['executive_summary'])
+                with open(filepath, 'r', encoding='utf-8') as file:
+                    md_content = file.read()
+                    html_content = markdown2.markdown(md_content)
+                    html_content = sanitize_html(html_content)
+                    pdf.cell(0, 10, 'Back to TOC', 0, 1, 'L', toc_link)
+                    pdf.chapter_body(html_content)
+
+
+def add_pages(pdf, contents, directory, toc_link):
     print("Converting markdown...")
     for content in contents:
         filepath = os.path.join(directory, content['filename'])
@@ -340,6 +369,7 @@ def add_pages(pdf, contents, directory):
 
             html_content = sanitize_html(html_content)
 
+            pdf.cell(0, 10, 'Back to TOC', 0, 1, 'L', toc_link)
             pdf.chapter_title(content['title'])
             pdf.chapter_body(html_content)
 
@@ -362,16 +392,16 @@ def convert_md_to_pdf(directory, output_pdf, title, date_from, date_to, cover_pa
     companies = get_companies(pdf, directory, company_prefix, average_context)
 
     contents = [
-        *get_high_vol_summary(pdf, directory),
-        *get_low_vol_summary(pdf, directory),
         *get_common_themes(pdf, directory),
         *get_topics(pdf, directory, topic_prefix),
         *companies
     ]
 
-    add_toc(pdf, script_dir, contents, companies)
+    toc_link, high_activity_link, low_activity_link = add_toc(pdf, script_dir, contents, companies)
 
-    add_pages(pdf, contents, directory)
+    add_executive_summaries(pdf, contents, directory, toc_link, high_activity_link, low_activity_link)
+
+    add_pages(pdf, contents, directory, toc_link)
 
     pdf.output(output_pdf)
 
