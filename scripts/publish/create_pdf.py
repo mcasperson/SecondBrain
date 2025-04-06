@@ -209,7 +209,10 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
             title = raw_file[len(company_prefix):]
 
             executive_summary = filename.replace(company_prefix, executive_summary_prefix)
-            executive_summary_exists = os.path.exists(os.path.join(directory, executive_summary))
+            executive_summary_file = os.path.exists(os.path.join(directory, executive_summary))
+            executive_summary_exists = os.path.exists(executive_summary_file)
+
+            print (f'{executive_summary_file} exists: {executive_summary_exists}')
 
             contents.append(
                 {'title': title,
