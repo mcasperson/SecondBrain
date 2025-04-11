@@ -1,16 +1,15 @@
 import argparse
 import json
+import markdown2
 import os
 import re
-
-import markdown2
 from fpdf.enums import XPos, YPos, Align
 from fpdf.fpdf import FPDF
 
 company_prefix = 'COMPANY '
 topic_prefix = 'TOPIC '
 executive_summary_prefix = 'EXECUTIVE SUMMARY '
-arr_limit = 100000
+arr_limit = 75000
 
 
 class PDF(FPDF):
@@ -213,12 +212,12 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
             executive_summary_file = os.path.join(directory, executive_summary)
             executive_summary_exists = os.path.exists(executive_summary_file)
 
-            print (f'{executive_summary_file} exists: {executive_summary_exists}')
+            print(f'{executive_summary_file} exists: {executive_summary_exists}')
 
             contents.append(
                 {'title': title,
                  'filename': filename,
-                 'executive_summary' : executive_summary if executive_summary_exists else None,
+                 'executive_summary': executive_summary if executive_summary_exists else None,
                  'link': pdf.add_link(),
                  'high_activity': high_activity or arr >= arr_limit,
                  'type': 'customer',
@@ -271,10 +270,12 @@ def add_toc(pdf, script_dir, contents, companies):
     toc_link = pdf.add_link(y=pdf.y)
 
     for content in [c for c in contents if c.get('type', '') == 'topic']:
-        pdf.cell(0, 10, f'{content['title']}', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=content['link'])
+        pdf.cell(0, 10, f'{content['title']}', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L,
+                 link=content['link'])
 
     for content in [c for c in contents if c.get('type', '') == 'summary']:
-        pdf.cell(0, 10, f'{content['title']}', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=content['link'])
+        pdf.cell(0, 10, f'{content['title']}', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L,
+                 link=content['link'])
 
     if len(companies) != 0:
         high_activity_customers = [c for c in contents if
@@ -302,11 +303,13 @@ def add_toc(pdf, script_dir, contents, companies):
 
         if len(high_activity_customers) != 0:
             high_activity_link = pdf.add_link()
-            pdf.cell(0, 10, 'High Volume/ARR Customers Executive Summary', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=high_activity_link)
+            pdf.cell(0, 10, 'High Volume/ARR Customers Executive Summary', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT,
+                     align=Align.L, link=high_activity_link)
 
         if len(low_activity_customers) != 0:
             low_activity_link = pdf.add_link()
-            pdf.cell(0, 10, 'Low Volume Customers Executive Summary', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=low_activity_link)
+            pdf.cell(0, 10, 'Low Volume Customers Executive Summary', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT,
+                     align=Align.L, link=low_activity_link)
 
         if len(high_activity_customers) != 0:
             pdf.set_text_color(58, 0, 0)
@@ -315,7 +318,8 @@ def add_toc(pdf, script_dir, contents, companies):
 
             for content in high_activity_customers:
                 add_icons(content)
-                pdf.cell(0, 10, f'  {content['title']}', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=content['link'])
+                pdf.cell(0, 10, f'  {content['title']}', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L,
+                         link=content['link'])
 
             pdf.ln(10)
 
@@ -326,7 +330,8 @@ def add_toc(pdf, script_dir, contents, companies):
 
             for content in low_activity_customers:
                 add_icons(content)
-                pdf.cell(0, 10, f'  {content['title']}', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L, link=content['link'])
+                pdf.cell(0, 10, f'  {content['title']}', 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=Align.L,
+                         link=content['link'])
 
             pdf.ln(10)
 
@@ -348,10 +353,13 @@ def sanitize_html(html_content):
 def add_executive_summaries(pdf, companies, directory, toc_link, high_activity_link, low_activity_link):
     print("Adding executive summaries...")
 
-    for executive_summary_types in [{'title': 'High Volume/ARR Customers Executive Summary', 'high_activity': True, 'link': high_activity_link},
-                                     {'title': 'Low Volume Customers Executive Summary', 'high_activity': False, 'link': low_activity_link}]:
+    for executive_summary_types in [
+        {'title': 'High Volume/ARR Customers Executive Summary', 'high_activity': True, 'link': high_activity_link},
+        {'title': 'Low Volume Customers Executive Summary', 'high_activity': False, 'link': low_activity_link}]:
 
-        customers = [company for company in companies if company.get('high_activity', False) == executive_summary_types['high_activity'] and company.get('type', '') == 'customer' and company.get('executive_summary')]
+        customers = [company for company in companies if
+                     company.get('high_activity', False) == executive_summary_types['high_activity'] and company.get(
+                         'type', '') == 'customer' and company.get('executive_summary')]
 
         if len(customers) != 0:
             pdf.add_page()
