@@ -99,6 +99,26 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_META_PROMPT_9_ARG = "contextMetaPrompt9";
     public static final String MULTI_SLACK_ZEN_META_FIELD_10_ARG = "contextMetaField10";
     public static final String MULTI_SLACK_ZEN_META_PROMPT_10_ARG = "contextMetaPrompt10";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_11_ARG = "contextMetaField11";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_11_ARG = "contextMetaPrompt11";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_12_ARG = "contextMetaField12";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_12_ARG = "contextMetaPrompt12";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_13_ARG = "contextMetaField13";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_13_ARG = "contextMetaPrompt13";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_14_ARG = "contextMetaField14";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_14_ARG = "contextMetaPrompt14";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_15_ARG = "contextMetaField15";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_15_ARG = "contextMetaPrompt15";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_16_ARG = "contextMetaField16";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_16_ARG = "contextMetaPrompt16";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_17_ARG = "contextMetaField17";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_17_ARG = "contextMetaPrompt17";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_18_ARG = "contextMetaField18";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_18_ARG = "contextMetaPrompt18";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_19_ARG = "contextMetaField19";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_19_ARG = "contextMetaPrompt19";
+    public static final String MULTI_SLACK_ZEN_META_FIELD_20_ARG = "contextMetaField20";
+    public static final String MULTI_SLACK_ZEN_META_PROMPT_20_ARG = "contextMetaPrompt20";
     private static final int BATCH_SIZE = 10;
     private static final String INSTRUCTIONS = """
             You are helpful agent.
