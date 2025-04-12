@@ -201,6 +201,9 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                         terraform = extract_metadata_value(json_data, "Terraform")
                         performance = extract_metadata_value(json_data, "Performance")
                         security = extract_metadata_value(json_data, "Security")
+                        windows = extract_metadata_value(json_data, "Windows")
+                        linux = extract_metadata_value(json_data, "Linux")
+                        tenants = extract_metadata_value(json_data, "Tenants")
                         arr = parse_int(extract_metadata_value(json_data, "ARR (SFDC)"))
                     except:
                         pass
@@ -231,6 +234,9 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                  'terraform': terraform,
                  'performance': performance,
                  'security': security,
+                 'windows': windows,
+                 'linux': linux,
+                 'tenants': tenants,
                  'arr': arr})
 
     return contents
@@ -247,6 +253,9 @@ def add_toc_categories(pdf, script_dir):
     pdf.add_legend_item(os.path.join(script_dir, "images/terraform.png"), 'Terraform')
     pdf.add_legend_item(os.path.join(script_dir, "images/performance.png"), 'Performance')
     pdf.add_legend_item(os.path.join(script_dir, "images/security.png"), 'Security/Compliance')
+    pdf.add_legend_item(os.path.join(script_dir, "images/linux.png"), 'Linux')
+    pdf.add_legend_item(os.path.join(script_dir, "images/windows.png"), 'Windows')
+    pdf.add_legend_item(os.path.join(script_dir, "images/tenants.png"), 'tenants')
 
 
 def add_toc(pdf, script_dir, contents, companies):
@@ -300,6 +309,9 @@ def add_toc(pdf, script_dir, contents, companies):
             pdf.add_icon_if_threshold_met(script_dir, content['terraform'], 5, "terraform", 156)
             pdf.add_icon_if_threshold_met(script_dir, content['performance'], 5, "performance", 164)
             pdf.add_icon_if_threshold_met(script_dir, content['security'], 5, "security", 172)
+            pdf.add_icon_if_threshold_met(script_dir, content['tenants'], 5, "tenants", 180)
+            pdf.add_icon_if_threshold_met(script_dir, content['windows'], 5, "windows", 188)
+            pdf.add_icon_if_threshold_met(script_dir, content['linux'], 5, "linux", 196)
 
         if len(high_activity_customers) != 0:
             high_activity_link = pdf.add_link()
