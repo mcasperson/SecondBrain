@@ -150,6 +150,12 @@ if ($GenerateCompanyReports)
             "-Dsb.multislackzengoogle.metaField9=Performance"
             "-Dsb.multislackzengoogle.metaPrompt10=Do the messages mention security or compliance?"
             "-Dsb.multislackzengoogle.metaField10=Security"
+            "-Dsb.multislackzengoogle.metaPrompt11=Do the messages mention Linux?"
+            "-Dsb.multislackzengoogle.metaField11=Linux"
+            "-Dsb.multislackzengoogle.metaPrompt12=Do the messages mention Windows?"
+            "-Dsb.multislackzengoogle.metaField12=Windows"
+            "-Dsb.multislackzengoogle.metaPrompt13=Do the messages mention Tenants?"
+            "-Dsb.multislackzengoogle.metaField13=Tenants"
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
             -jar $using:jarFile
@@ -299,7 +305,8 @@ if ($GenerateTopicReports)
 if ($GenerateExecutiveSummary)
 {
     # Delete the executie summary file
-    if (Test-Path "$subDir/Combined Executive Summaries.md") {
+    if (Test-Path "$subDir/Combined Executive Summaries.md")
+    {
         Remove-Item "$subDir/Combined Executive Summaries.md" | Out-Null
     }
 
@@ -343,7 +350,7 @@ if ($GenerateExecutiveSummary)
         You will be penalized for including details about how you have adhered to the instructions."
 "@)
         $result = Invoke-CustomCommand java $arguments
-        Add-Content -Path "$subDir/$($file.BaseName.Replace("COMPANY", "EXECUTIVE SUMMARY")).md"  -Value "$( $result.StdOut )"
+        Add-Content -Path "$subDir/$($file.BaseName.Replace("COMPANY", "EXECUTIVE SUMMARY") ).md"  -Value "$( $result.StdOut )"
         Add-Content -Path "$subDir/Combined Execuitve Summaries.md"  -Value "$( $result.StdOut )`n`n"
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdOut
         Add-Content -Path $ExecutiveSummaryLog -Value $result.StdErr
