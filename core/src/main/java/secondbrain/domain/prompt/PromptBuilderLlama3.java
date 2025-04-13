@@ -18,6 +18,10 @@ public class PromptBuilderLlama3 implements PromptBuilder {
         on the preferred format (or lack thereof) for RAG context.
         */
 
+        if (StringUtils.isBlank(prompt)) {
+            return "";
+        }
+
         if (StringUtils.isBlank(title)) {
             return "<|start_header_id|>system<|end_header_id|>\n"
                     + prompt
@@ -32,6 +36,16 @@ public class PromptBuilderLlama3 implements PromptBuilder {
 
     @Override
     public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
+        if (StringUtils.isBlank(instructions)) {
+            return "<|begin_of_text|>\n"
+                    + context
+                    + "\n<|start_header_id|>user<|end_header_id|>\n"
+                    + prompt
+                    + "\n<|eot_id|>\n"
+                    + "<|start_header_id|>assistant<|end_header_id|>";
+        }
+
+
         return "<|begin_of_text|>\n"
                 + "<|start_header_id|>system<|end_header_id|>\n"
                 + instructions
