@@ -26,6 +26,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -103,6 +104,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     private OllamaClient ollamaClient;
 
     @Inject
+    @Preferred
     private ZenDeskClient zenDeskClient;
 
     @Inject
