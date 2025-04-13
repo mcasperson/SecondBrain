@@ -9,6 +9,7 @@ import secondbrain.domain.injection.Preferred;
 /**
  * Produces a GongClient instance based on the configuration.
  */
+@ApplicationScoped
 public class GongClientProducer {
 
     @Inject

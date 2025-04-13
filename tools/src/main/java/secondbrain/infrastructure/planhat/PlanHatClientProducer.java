@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import secondbrain.domain.config.MockConfig;
 import secondbrain.domain.injection.Preferred;
 
+@ApplicationScoped
 public class PlanHatClientProducer {
     @Inject
     private MockConfig mockConfig;
