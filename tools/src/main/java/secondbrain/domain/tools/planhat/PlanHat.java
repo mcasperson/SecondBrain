@@ -35,8 +35,8 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.planhat.api.Conversation;
 import secondbrain.infrastructure.planhat.PlanHatClient;
+import secondbrain.infrastructure.planhat.api.Conversation;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
