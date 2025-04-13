@@ -17,6 +17,10 @@ public class PromptBuilderPhi implements PromptBuilder {
 
     @Override
     public String buildContextPrompt(final String title, final String prompt) {
+        if (StringUtils.isBlank(prompt)) {
+            return "";
+        }
+
         if (StringUtils.isBlank(title)) {
             return "<|system|>\n"
                     + prompt

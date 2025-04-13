@@ -16,6 +16,10 @@ public class PromptBuilderPlain implements PromptBuilder {
 
     @Override
     public String buildContextPrompt(final String title, final String prompt) {
+        if (StringUtils.isBlank(prompt)) {
+            return "";
+        }
+
         if (StringUtils.isBlank(title)) {
             return prompt + "\n";
         }
