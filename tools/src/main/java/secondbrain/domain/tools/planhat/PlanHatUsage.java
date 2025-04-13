@@ -26,7 +26,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.planhat.Company;
+import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 
 import java.util.List;

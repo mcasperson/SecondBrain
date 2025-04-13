@@ -14,6 +14,8 @@ import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.infrastructure.planhat.api.Company;
+import secondbrain.infrastructure.planhat.api.Conversation;
 
 import java.net.URLEncoder;
 import java.nio.charset.Charset;

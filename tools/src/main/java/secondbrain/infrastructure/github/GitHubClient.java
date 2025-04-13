@@ -9,6 +9,8 @@ import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.infrastructure.github.api.GitHubCommitAndDiff;
+import secondbrain.infrastructure.github.api.GitHubCommitResponse;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

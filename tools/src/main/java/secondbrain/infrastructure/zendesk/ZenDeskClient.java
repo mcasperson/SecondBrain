@@ -11,6 +11,7 @@ import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.infrastructure.zendesk.api.*;
 
 import java.util.Arrays;
 import java.util.List;

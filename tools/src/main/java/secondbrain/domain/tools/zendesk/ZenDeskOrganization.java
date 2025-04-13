@@ -39,6 +39,7 @@ import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.*;
+import secondbrain.infrastructure.zendesk.api.*;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;

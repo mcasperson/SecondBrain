@@ -30,7 +30,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.github.GitHubClient;
-import secondbrain.infrastructure.github.GitHubCommitAndDiff;
+import secondbrain.infrastructure.github.api.GitHubCommitAndDiff;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.time.ZoneOffset;

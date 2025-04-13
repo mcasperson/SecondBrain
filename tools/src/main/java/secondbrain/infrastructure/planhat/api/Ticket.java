@@ -1,4 +1,4 @@
-package secondbrain.infrastructure.planhat;
+package secondbrain.infrastructure.planhat.api;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
