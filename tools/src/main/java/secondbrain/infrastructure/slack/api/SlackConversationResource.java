@@ -1,4 +1,4 @@
-package secondbrain.domain.tools.slack.model;
+package secondbrain.infrastructure.slack.api;
 
 public record SlackConversationResource(String channelName) {
 }

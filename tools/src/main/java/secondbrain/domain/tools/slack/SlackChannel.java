@@ -34,10 +34,10 @@ import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.tools.slack.model.SlackChannelResource;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.slack.SlackClient;
+import secondbrain.infrastructure.slack.api.SlackChannelResource;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;

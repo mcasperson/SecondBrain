@@ -23,10 +23,10 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tools.slack.ChannelDetails;
-import secondbrain.domain.tools.slack.model.SlackChannelResource;
-import secondbrain.domain.tools.slack.model.SlackConversationResource;
-import secondbrain.domain.tools.slack.model.SlackSearchResultResource;
 import secondbrain.domain.validate.ValidateString;
+import secondbrain.infrastructure.slack.api.SlackChannelResource;
+import secondbrain.infrastructure.slack.api.SlackConversationResource;
+import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 
 import java.util.List;
 import java.util.NoSuchElementException;

@@ -36,7 +36,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.slack.SlackClient;
-import secondbrain.domain.tools.slack.model.SlackSearchResultResource;
+import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
