@@ -26,6 +26,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -90,6 +91,7 @@ public class SlackChannel implements Tool<Void> {
     private PromptBuilderSelector promptBuilderSelector;
 
     @Inject
+    @Preferred
     private SlackClient slackClient;
 
     @Inject

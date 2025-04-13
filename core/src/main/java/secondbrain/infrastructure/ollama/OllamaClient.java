@@ -13,11 +13,13 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.answer.AnswerFormatter;
 import secondbrain.domain.concurrency.SemaphoreLender;
+import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
 import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.response.ResponseValidation;
 
 import java.util.Optional;
@@ -45,6 +47,12 @@ public class OllamaClient {
 
     @Inject
     private LocalStorage localStorage;
+
+    @Inject
+    private PromptBuilderSelector promptBuilderSelector;
+
+    @Inject
+    private ModelConfig modelConfig;
 
     /**
      * Call Ollama with the given body. This method is thread-safe, and only allows one call at a time.
@@ -88,6 +96,15 @@ public class OllamaClient {
                 body.stream(),
                 new OllamaGenerateBodyOptions(body.contextWindow())));
         return body.prompt().updateDocument(response.response());
+    }
+
+    public String callOllamaSimple(final String prompt) {
+        return callOllama(new RagMultiDocumentContext<Void>(
+                        promptBuilderSelector.getPromptBuilder(modelConfig.getModel())
+                                .buildFinalPrompt("", "", prompt)),
+                modelConfig.getModel(),
+                2048)
+                .combinedDocument();
     }
 
     public <T> RagMultiDocumentContext<T> callOllama(

@@ -26,6 +26,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -87,6 +88,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     private DateParser dateParser;
 
     @Inject
+    @Preferred
     private SlackClient slackClient;
 
     @Override
