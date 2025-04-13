@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @ApplicationScoped
-public class ZenDeskClientLive {
+public class ZenDeskClientLive implements ZenDeskClient {
 
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
 
@@ -37,6 +37,7 @@ public class ZenDeskClientLive {
      * attempt to retry a few times with a delay.
      */
     @Retry(delay = 30000, maxRetries = 10)
+    @Override
     public List<ZenDeskResultsResponse> getTickets(
             final Client client,
             final String authorization,
@@ -57,14 +58,14 @@ public class ZenDeskClientLive {
      * This method is synchronized to have one tool populate the cache and let the others read from it.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    synchronized private List<ZenDeskResultsResponse> getTickets(
-            final Client client,
-            final String authorization,
-            final String url,
-            final String query,
-            final int page,
-            final int maxPage,
-            final int ttlSeconds) {
+    public List<ZenDeskResultsResponse> getTickets(
+            Client client,
+            String authorization,
+            String url,
+            String query,
+            int page,
+            int maxPage,
+            int ttlSeconds) {
 
         final ZenDeskResultsResponse[] value = localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
@@ -150,6 +151,7 @@ public class ZenDeskClientLive {
      * attempt to retry a few times with a delay.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
+    @Override
     public ZenDeskCommentsResponse getComments(
             final Client client,
             final String authorization,
@@ -201,6 +203,7 @@ public class ZenDeskClientLive {
                 .get();
     }
 
+    @Override
     public ZenDeskOrganizationItemResponse getOrganization(
             final Client client,
             final String authorization,
@@ -247,6 +250,7 @@ public class ZenDeskClientLive {
                 .get();
     }
 
+    @Override
     public ZenDeskUserItemResponse getUser(
             final Client client,
             final String authorization,
@@ -264,4 +268,6 @@ public class ZenDeskClientLive {
                 ZenDeskUserResponse.class,
                 () -> getUserFromApi(client, authorization, url, userId)).user();
     }
+
+
 }

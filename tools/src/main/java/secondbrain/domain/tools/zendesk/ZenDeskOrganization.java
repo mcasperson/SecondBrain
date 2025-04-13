@@ -38,7 +38,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.zendesk.ZenDeskClientLive;
+import secondbrain.infrastructure.zendesk.ZenDeskClient;
 import secondbrain.infrastructure.zendesk.api.*;
 
 import java.time.OffsetDateTime;
@@ -103,7 +103,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     private OllamaClient ollamaClient;
 
     @Inject
-    private ZenDeskClientLive zenDeskClient;
+    private ZenDeskClient zenDeskClient;
 
     @Inject
     private ListLimiter listLimiter;
