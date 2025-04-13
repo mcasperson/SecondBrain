@@ -1,4 +1,4 @@
-package secondbrain.infrastructure.gong;
+package secondbrain.domain.tools.gong.model;
 
 /**
  * This class represents the contract between a tool and the Gong API.

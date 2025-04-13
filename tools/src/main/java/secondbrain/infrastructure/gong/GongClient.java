@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.gong;
 
 import jakarta.ws.rs.client.Client;
+import secondbrain.domain.tools.gong.model.GongCallDetails;
 
 import java.util.List;
 

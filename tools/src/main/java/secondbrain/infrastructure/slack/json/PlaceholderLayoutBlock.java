@@ -1,4 +1,4 @@
-package secondbrain.infrastructure.slack;
+package secondbrain.infrastructure.slack.json;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.slack.api.model.block.LayoutBlock;

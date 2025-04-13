@@ -1,4 +1,4 @@
-package secondbrain.infrastructure.slack;
+package secondbrain.infrastructure.slack.json;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;

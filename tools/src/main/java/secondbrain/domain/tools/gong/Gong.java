@@ -31,8 +31,8 @@ import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.gong.GongCallDetails;
 import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.ollama.OllamaClient;
 

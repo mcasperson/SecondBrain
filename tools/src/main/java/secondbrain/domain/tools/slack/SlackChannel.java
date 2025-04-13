@@ -2,8 +2,6 @@ package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
 import com.slack.api.methods.AsyncMethodsClient;
-import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
-import com.slack.api.model.Message;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.Tuple;
@@ -36,6 +34,7 @@ import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.slack.model.SlackChannelResource;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.slack.SlackClient;
@@ -148,7 +147,7 @@ public class SlackChannel implements Tool<Void> {
         // you can get this instance via ctx.client() in a Bolt app
         final AsyncMethodsClient client = Slack.getInstance().methodsAsync();
 
-        final ChannelDetails channelDetails = Try.of(() -> slackClient.findChannelId(
+        final SlackChannelResource channel = Try.of(() -> slackClient.findChannelId(
                         client,
                         parsedArgs.getAccessToken(),
                         parsedArgs.getChannel(),
@@ -158,11 +157,10 @@ public class SlackChannel implements Tool<Void> {
         final Try<TrimResult> messagesTry = Try.of(() -> slackClient.conversationHistory(
                         client,
                         parsedArgs.getAccessToken(),
-                        channelDetails.channelId(),
+                        channel.channelId(),
                         oldest,
                         parsedArgs.getSearchTTL(),
                         parsedArgs.getApiDelay()))
-                .map(this::conversationsToText)
                 .map(document -> documentTrimmer.trimDocumentToKeywords(
                         document,
                         parsedArgs.getKeywords(),
@@ -180,14 +178,14 @@ public class SlackChannel implements Tool<Void> {
         if (StringUtils.length(messages.document()) < MINIMUM_MESSAGE_LENGTH) {
             throw new InternalFailure("Not enough messages found in channel " + parsedArgs.getChannel()
                     + System.lineSeparator() + System.lineSeparator()
-                    + "* [Slack Channel](https://app.slack.com/client/" + channelDetails.teamId() + "/" + channelDetails.channelId() + ")");
+                    + "* [Slack Channel](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")");
         }
 
         final TrimResult messagesWithUsersReplaced = replaceIds(client, parsedArgs.getAccessToken(), messages.document(), parsedArgs)
                 .map(messages::replaceDocument)
                 .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
 
-        return List.of(getDocumentContext(messagesWithUsersReplaced, channelDetails, parsedArgs));
+        return List.of(getDocumentContext(messagesWithUsersReplaced, channel, parsedArgs));
     }
 
     @Override
@@ -231,7 +229,7 @@ public class SlackChannel implements Tool<Void> {
                 .get();
     }
 
-    private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final ChannelDetails channelDetails, final SlackChannelConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final SlackChannelResource channelDetails, final SlackChannelConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getDisableLinks()) {
             return new RagDocumentContext<>(getContextLabel(), trimResult.document(), List.of());
         }
@@ -253,15 +251,6 @@ public class SlackChannel implements Tool<Void> {
                 .get();
     }
 
-
-    private String conversationsToText(final ConversationsHistoryResponse conversation) {
-        return conversation.getMessages()
-                .stream()
-                .map(Message::getText)
-                .reduce("", (a, b) -> a + "\n" + b);
-    }
-
-
     private Try<String> replaceIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
         final Pattern userPattern = Pattern.compile("<@(?<username>\\w+)>");
         final Pattern channelPattern = Pattern.compile("<#(?<channelname>\\w+)\\|?>");
@@ -273,7 +262,7 @@ public class SlackChannel implements Tool<Void> {
                  */
                 .map(results -> results._2().reduce(
                         results._1(),
-                        (m, match) -> m.replace(match.group(), slackClient.username(client, token, match.group("username"), parsedArgs.getApiDelay()).getUser().getName()),
+                        (m, match) -> m.replace(match.group(), slackClient.username(client, token, match.group("username"), parsedArgs.getApiDelay())),
                         (s, s2) -> s + s2))
                 /*
                 The string with user ids replaces is then mapped to a tuple with the original string and a list of regex
@@ -286,7 +275,7 @@ public class SlackChannel implements Tool<Void> {
                  */
                 .map(results -> results._2().reduce(
                         results._1(),
-                        (m, match) -> m.replace(match.group(), slackClient.channel(client, token, match.group("channelname"), parsedArgs.getApiDelay()).getChannel().getName()),
+                        (m, match) -> m.replace(match.group(), slackClient.channel(client, token, match.group("channelname"), parsedArgs.getApiDelay()).channelName()),
                         (s, s2) -> s + s2))
                 /*
                  If any of the previous steps failed, we return the original messages.
@@ -318,7 +307,7 @@ public class SlackChannel implements Tool<Void> {
                 .recover(error -> "Unknown channel");
     }
 
-    private String matchToUrl(final ChannelDetails channel) {
+    private String matchToUrl(final SlackChannelResource channel) {
         return "[Slack " + channel.channelName() + "](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")";
     }
 }

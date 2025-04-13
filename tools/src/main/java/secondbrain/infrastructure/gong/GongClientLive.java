@@ -13,6 +13,7 @@ import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.infrastructure.gong.api.*;
 
 import java.util.Base64;

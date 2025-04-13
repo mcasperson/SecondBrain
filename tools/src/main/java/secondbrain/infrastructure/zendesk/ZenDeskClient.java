@@ -11,7 +11,6 @@ import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
-import secondbrain.infrastructure.slack.SlackClient;
 
 import java.util.Arrays;
 import java.util.List;
@@ -67,7 +66,7 @@ public class ZenDeskClient {
             final int ttlSeconds) {
 
         final ZenDeskResultsResponse[] value = localStorage.getOrPutObject(
-                SlackClient.class.getSimpleName(),
+                ZenDeskClient.class.getSimpleName(),
                 "ZenDeskApiTickets",
                 "Global",
                 ttlSeconds,

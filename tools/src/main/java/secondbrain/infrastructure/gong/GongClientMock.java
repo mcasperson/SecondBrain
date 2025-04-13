@@ -6,6 +6,7 @@ import jakarta.ws.rs.client.Client;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.List;

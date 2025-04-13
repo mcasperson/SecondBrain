@@ -1,8 +1,6 @@
 package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
-import com.slack.api.methods.response.search.SearchAllResponse;
-import com.slack.api.model.MatchedItem;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
@@ -38,6 +36,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.slack.SlackClient;
+import secondbrain.domain.tools.slack.model.SlackSearchResultResource;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -47,7 +46,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
-public class SlackSearch implements Tool<MatchedItem> {
+public class SlackSearch implements Tool<SlackSearchResultResource> {
     public static final String SLACK_SEARCH_DAYS_ARG = "days";
     public static final String SLACK_SEARCH_KEYWORDS_ARG = "searchKeywords";
     public static final String SLACK_SEARCH_FILTER_KEYWORDS_ARG = "keywords";
@@ -86,6 +85,7 @@ public class SlackSearch implements Tool<MatchedItem> {
     @Inject
     @Identifier("unix")
     private DateParser dateParser;
+
     @Inject
     private SlackClient slackClient;
 
@@ -112,7 +112,7 @@ public class SlackSearch implements Tool<MatchedItem> {
     }
 
     @Override
-    public List<RagDocumentContext<MatchedItem>> getContext(
+    public List<RagDocumentContext<SlackSearchResultResource>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -124,7 +124,7 @@ public class SlackSearch implements Tool<MatchedItem> {
             return List.of();
         }
 
-        final SearchAllResponse searchResult = Try.of(() -> slackClient.search(
+        final List<SlackSearchResultResource> searchResult = Try.of(() -> slackClient.search(
                         Slack.getInstance().methodsAsync(),
                         parsedArgs.getAccessToken(),
                         parsedArgs.getSearchKeywords(),
@@ -133,18 +133,16 @@ public class SlackSearch implements Tool<MatchedItem> {
                 .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not search messages", ex)))
                 .get();
 
-        if (searchResult == null || searchResult.getMessages() == null || CollectionUtils.isEmpty(searchResult.getMessages().getMatches())) {
+        if (searchResult == null || CollectionUtils.isEmpty(searchResult)) {
             return List.of();
         }
 
         return searchResult
-                .getMessages()
-                .getMatches()
                 .stream()
-                .filter(matchedItem -> parsedArgs.getDays() == 0 || dateParser.parseDate(matchedItem.getTs()).isAfter(parsedArgs.getFromDate()))
+                .filter(matchedItem -> parsedArgs.getDays() == 0 || dateParser.parseDate(matchedItem.timestamp()).isAfter(parsedArgs.getFromDate()))
                 .filter(matchedItem -> parsedArgs.getIgnoreChannels()
                         .stream()
-                        .noneMatch(matchedItem.getChannel().getName()::equalsIgnoreCase))
+                        .noneMatch(matchedItem.channelName()::equalsIgnoreCase))
                 .map(matchedItem -> getDocumentContext(matchedItem, parsedArgs))
                 .map(ragDoc -> ragDoc.updateDocument(
                         documentTrimmer.trimDocumentToKeywords(
@@ -162,14 +160,14 @@ public class SlackSearch implements Tool<MatchedItem> {
     }
 
     @Override
-    public RagMultiDocumentContext<MatchedItem> call(
+    public RagMultiDocumentContext<SlackSearchResultResource> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<MatchedItem>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<SlackSearchResultResource>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<MatchedItem>> result = Try.of(() -> mergeContext(contextList, environmentSettings))
+        final Try<RagMultiDocumentContext<SlackSearchResultResource>> result = Try.of(() -> mergeContext(contextList, environmentSettings))
                 .map(ragContext -> ragContext.updateDocument(
                         promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings)).buildFinalPrompt(
                                 INSTRUCTIONS,
@@ -193,37 +191,40 @@ public class SlackSearch implements Tool<MatchedItem> {
 
     }
 
-    private RagDocumentContext<MatchedItem> getDocumentContext(final MatchedItem meta, final SlackSearchConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<SlackSearchResultResource> getDocumentContext(final SlackSearchResultResource meta, final SlackSearchConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), meta.getText(), List.of());
+            return new RagDocumentContext<>(getContextLabel(), meta.text(), List.of());
         }
 
-        return Try.of(() -> sentenceSplitter.splitDocument(meta.getText(), 10))
+        return Try.of(() -> sentenceSplitter.splitDocument(meta.text(), 10))
                 .map(sentences -> new RagDocumentContext<>(
                         getContextLabel(),
-                        meta.getText(),
+                        meta.text(),
                         sentences.stream()
                                 .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
                                 .collect(Collectors.toList()),
-                        meta.getId(),
+                        meta.id(),
                         meta,
                         matchToUrl(meta)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }
 
-    private String matchToUrl(final MatchedItem matchedItem) {
-        return "[" + StringUtils.substring(matchedItem.getText()
+    private String matchToUrl(final SlackSearchResultResource matchedItem) {
+        return "[" + StringUtils.substring(matchedItem.text()
                         .replaceAll(":.*?:", "")
                         .replaceAll("[^A-Za-z0-9-._ ]", " ")
                         .trim(),
-                0, 75) + "](" + matchedItem.getPermalink() + ")";
+                0, 75) + "](" + matchedItem.permalink() + ")";
     }
 
-    private RagMultiDocumentContext<MatchedItem> mergeContext(final List<RagDocumentContext<MatchedItem>> ragContext, Map<String, String> context) {
+    private RagMultiDocumentContext<SlackSearchResultResource> mergeContext(final List<RagDocumentContext<SlackSearchResultResource>> ragContext, final Map<String, String> context) {
         return new RagMultiDocumentContext<>(
                 ragContext.stream()
-                        .map(ragDoc -> promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(context)).buildContextPrompt(getContextLabel(), ragDoc.document()))
+                        .map(ragDoc ->
+                                promptBuilderSelector.getPromptBuilder(
+                                                modelConfig.getCalculatedModel(context))
+                                        .buildContextPrompt(getContextLabel(), ragDoc.document()))
                         .collect(Collectors.joining("\n")),
                 ragContext);
     }
