@@ -35,6 +35,15 @@ public class PromptBuilderQwen2 implements PromptBuilder {
 
     @Override
     public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
+        if (StringUtils.isBlank(instructions)) {
+            return StringUtils.trim(context)
+                    + "\n<|im_end|>\n"
+                    + "\n<|im_start|>user\n"
+                    + prompt
+                    + "\n<|im_end|>"
+                    + "\n<|im_start|>assistant";
+        }
+
         return "<|im_start|>system\n"
                 + StringUtils.trim(instructions)
                 + "\n"
