@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @ApplicationScoped
-public class ZenDeskClient {
+public class ZenDeskClientLive {
 
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
 
@@ -67,7 +67,7 @@ public class ZenDeskClient {
             final int ttlSeconds) {
 
         final ZenDeskResultsResponse[] value = localStorage.getOrPutObject(
-                ZenDeskClient.class.getSimpleName(),
+                ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskApiTickets",
                 "Global",
                 ttlSeconds,
@@ -122,7 +122,7 @@ public class ZenDeskClient {
      * attempt to retry a few times with a delay.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    public ZenDeskTicketResponse getTicket(
+    private ZenDeskTicketResponse getTicketFromApi(
             final Client client,
             final String authorization,
             final String url,
@@ -178,7 +178,7 @@ public class ZenDeskClient {
      * attempt to retry a few times with a delay.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    public ZenDeskOrganizationResponse getOrganization(
+    private ZenDeskOrganizationResponse getOrganizationFromApi(
             final Client client,
             final String authorization,
             final String url,
@@ -201,7 +201,7 @@ public class ZenDeskClient {
                 .get();
     }
 
-    public ZenDeskOrganizationItemResponse getOrganizationCached(
+    public ZenDeskOrganizationItemResponse getOrganization(
             final Client client,
             final String authorization,
             final String url,
@@ -212,11 +212,11 @@ public class ZenDeskClient {
         }
 
         return localStorage.getOrPutObject(
-                ZenDeskClient.class.getSimpleName(),
+                ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskAPIOrganizations",
                 orgId,
                 ZenDeskOrganizationResponse.class,
-                () -> getOrganization(client, authorization, url, orgId)).organization();
+                () -> getOrganizationFromApi(client, authorization, url, orgId)).organization();
     }
 
     /**
@@ -224,7 +224,7 @@ public class ZenDeskClient {
      * attempt to retry a few times with a delay.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    public ZenDeskUserResponse getUser(
+    private ZenDeskUserResponse getUserFromApi(
             final Client client,
             final String authorization,
             final String url,
@@ -247,7 +247,7 @@ public class ZenDeskClient {
                 .get();
     }
 
-    public ZenDeskUserItemResponse getUserCached(
+    public ZenDeskUserItemResponse getUser(
             final Client client,
             final String authorization,
             final String url,
@@ -258,10 +258,10 @@ public class ZenDeskClient {
         }
 
         return localStorage.getOrPutObject(
-                ZenDeskClient.class.getSimpleName(),
+                ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskAPIUsers",
                 userId,
                 ZenDeskUserResponse.class,
-                () -> getUser(client, authorization, url, userId)).user();
+                () -> getUserFromApi(client, authorization, url, userId)).user();
     }
 }

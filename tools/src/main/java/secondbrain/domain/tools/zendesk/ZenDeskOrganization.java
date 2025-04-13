@@ -38,7 +38,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.zendesk.*;
+import secondbrain.infrastructure.zendesk.ZenDeskClientLive;
 import secondbrain.infrastructure.zendesk.api.*;
 
 import java.time.OffsetDateTime;
@@ -103,7 +103,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     private OllamaClient ollamaClient;
 
     @Inject
-    private ZenDeskClient zenDeskClient;
+    private ZenDeskClientLive zenDeskClient;
 
     @Inject
     private ListLimiter listLimiter;
@@ -259,12 +259,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> meta.subject().replaceAll("\\r\\n|\\r|\\n", " ") + " - "
                         // Best effort to get the organization name, but don't treat this as a failure
-                        + Try.of(() -> zenDeskClient.getOrganizationCached(client, authHeader, url, meta.organization_id()))
+                        + Try.of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
                         .map(ZenDeskOrganizationItemResponse::name)
                         .getOrElse("Unknown Organization")
                         + " - "
                         // Best effort to get the username, but don't treat this as a failure
-                        + Try.of(() -> zenDeskClient.getUserCached(client, authHeader, url, meta.assignee_id()))
+                        + Try.of(() -> zenDeskClient.getUser(client, authHeader, url, meta.assignee_id()))
                         .map(ZenDeskUserItemResponse::name)
                         .getOrElse("Unknown User")
                         + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
@@ -275,7 +275,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     private String getOrganizationName(final ZenDeskResultsResponse meta, final String authHeader, final String url) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try
-                        .of(() -> zenDeskClient.getOrganizationCached(client, authHeader, url, meta.organization_id()))
+                        .of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
                         .map(ZenDeskOrganizationItemResponse::name)
                         .get())
                 // Do a best effort here - we don't want to fail the whole process because we can't get the organization name
