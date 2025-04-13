@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.slack;
 
 import com.slack.api.methods.AsyncMethodsClient;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.slack.api.SlackChannelResource;
@@ -13,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
 
+@ApplicationScoped
 public class SlackClientMock implements SlackClient {
     @Inject
     private OllamaClient ollamaClient;

@@ -1,5 +1,6 @@
 package secondbrain.infrastructure.zendesk;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import secondbrain.infrastructure.ollama.OllamaClient;
@@ -9,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@ApplicationScoped
 public class ZenDeskClientMock implements ZenDeskClient {
     @Inject
     private OllamaClient ollamaClient;

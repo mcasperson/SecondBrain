@@ -26,6 +26,7 @@ import secondbrain.domain.date.DateParser;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -75,6 +76,7 @@ public class PlanHat implements Tool<Conversation> {
     private PlanHatConfig config;
 
     @Inject
+    @Preferred
     private PlanHatClient planHatClient;
 
     @Inject

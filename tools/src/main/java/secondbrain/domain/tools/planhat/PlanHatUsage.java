@@ -19,6 +19,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
@@ -67,6 +68,7 @@ public class PlanHatUsage implements Tool<Company> {
     private PlanHatUsageConfig config;
 
     @Inject
+    @Preferred
     private PlanHatClient planHatClient;
 
     @Inject

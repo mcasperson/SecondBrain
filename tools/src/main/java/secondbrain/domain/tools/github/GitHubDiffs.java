@@ -21,6 +21,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.ListUtilsEx;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -73,22 +74,32 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
             """;
     @Inject
     private ModelConfig modelConfig;
+
     @Inject
     private GitHubDiffConfig config;
+
     @Inject
     private DebugToolArgs debugToolArgs;
+
     @Inject
+    @Preferred
     private GitHubClient gitHubClient;
+
     @Inject
     private OllamaClient ollamaClient;
+
     @Inject
     private ListLimiter listLimiter;
+
     @Inject
     private PromptBuilderSelector promptBuilderSelector;
+
     @Inject
     private ValidateString validateString;
+
     @Inject
     private SentenceSplitter sentenceSplitter;
+
     @Inject
     private SentenceVectorizer sentenceVectorizer;
 
