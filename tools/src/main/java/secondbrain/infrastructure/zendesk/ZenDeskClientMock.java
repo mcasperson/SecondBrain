@@ -42,7 +42,8 @@ public class ZenDeskClientMock implements ZenDeskClient {
             final Client client,
             final String authorization,
             final String url,
-            final String ticketId) {
+            final String ticketId,
+            final int ttlSeconds) {
         List<ZenDeskCommentResponse> comments = new ArrayList<>();
 
         for (int i = 0; i < 3; i++) {

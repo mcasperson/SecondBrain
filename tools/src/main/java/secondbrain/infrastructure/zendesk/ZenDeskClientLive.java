@@ -156,6 +156,27 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final Client client,
             final String authorization,
             final String url,
+            final String ticketId,
+            int ttlSeconds) {
+
+        if (StringUtils.isBlank(ticketId)) {
+            throw new IllegalArgumentException("Ticket ID is required");
+        }
+
+        return localStorage.getOrPutObject(
+                ZenDeskClientLive.class.getSimpleName(),
+                "ZenDeskApiComments",
+                ticketId,
+                0,
+                ZenDeskCommentsResponse.class,
+                () -> getCommentsFromApi(client, authorization, url, ticketId));
+    }
+
+    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
+    private ZenDeskCommentsResponse getCommentsFromApi(
+            final Client client,
+            final String authorization,
+            final String url,
             final String ticketId) {
 
         if (StringUtils.isBlank(ticketId)) {
