@@ -43,7 +43,7 @@ def convert_md_to_pdf(input_dir, output_pdf, cover_image):
     pdf.set_font("Roboto", "B", 24)
     pdf.set_text_color(255, 255, 255)  # White text
     pdf.cell(0, 40, "AI of Sauron", 0, 1, "C")
-    pdf.set_font("Roboto", "", 14)
+    pdf.set_font("Roboto", "B", 24)
     pdf.cell(0, 10, f"AutoCDJ", 0, 1, "C")
 
     # Add TOC page
