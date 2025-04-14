@@ -29,7 +29,8 @@ public interface ZenDeskClient {
             Client client,
             String authorization,
             String url,
-            String ticketId);
+            String ticketId,
+            int ttlSeconds);
 
     ZenDeskOrganizationItemResponse getOrganization(
             Client client,

@@ -368,7 +368,13 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 // Get the context associated with the ticket
                 .map(ticket -> new IndividualContext<>(
                         ticket.id(),
-                        ticketToBody(zenDeskClient.getComments(client, authorization, parsedArgs.getZenDeskUrl(), ticket.id()), numComments),
+                        ticketToBody(zenDeskClient.getComments(
+                                        client,
+                                        authorization,
+                                        parsedArgs.getZenDeskUrl(),
+                                        ticket.id(),
+                                        parsedArgs.getSearchTTL()),
+                                numComments),
                         ticket))
                 // Get the comment body as a LLM context string
                 .map(comments -> comments.updateContext(
