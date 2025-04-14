@@ -169,7 +169,7 @@ def main():
         os.environ.get('SB_GONG_ACCESSKEY'),
         os.environ.get('SB_GONG_ACCESSSECRETKEY'),
         get_date_weeks_ago(6),
-        ["7758652272323866443", "2083010447769355032", "7587365656119659709"])
+        ["7758652272323866443", "2083010447769355032", "7512452954157429519"])
 
     # Extract company names and map to call IDs
     company_to_calls = extract_company_names_and_call_ids(data)
