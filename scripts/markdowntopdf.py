@@ -4,7 +4,7 @@ import tempfile
 import subprocess
 from pathlib import Path
 import argparse
-from fpdf import FPDF
+from fpdf import FPDF, XPos, YPos
 import markdown
 from bs4 import BeautifulSoup
 import re
@@ -42,15 +42,15 @@ def convert_md_to_pdf(input_dir, output_pdf, cover_image):
     pdf.image(cover_image, x=0, y=0, w=210, h=297)  # A4 size
     pdf.set_font("Roboto", "B", 24)
     pdf.set_text_color(255, 255, 255)  # White text
-    pdf.cell(0, 40, "AI of Sauron", 0, 1, "C")
+    pdf.cell(0, 40, "AI of Sauron", 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.set_font("Roboto", "B", 24)
-    pdf.cell(0, 10, f"AutoCDJ", 0, 1, "C")
+    pdf.cell(0, 10, f"AutoCDJ", 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
 
     # Add TOC page
     pdf.add_page()
     pdf.set_font("Roboto", "B", 16)
     pdf.set_text_color(0, 0, 0)  # Black text
-    pdf.cell(0, 20, "Table of Contents", 0, 1, "C")
+    pdf.cell(0, 20, "Table of Contents", 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.set_font("Roboto", "", 12)
     pdf.set_y(40)  # Position after the TOC title
 
@@ -63,7 +63,7 @@ def convert_md_to_pdf(input_dir, output_pdf, cover_image):
         link = pdf.add_link()
         links[title] = {'link': link}
 
-        pdf.cell(0, 10, f"{title}", 0, 1, link=link)
+        pdf.cell(0, 10, f"{title}", 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, link=link)
 
     # Add content and create link destinations
     pdf.set_text_color(0, 0, 0)  # Black text
@@ -86,7 +86,7 @@ def convert_md_to_pdf(input_dir, output_pdf, cover_image):
 
         # Add title
         pdf.set_font("Roboto", "B", 16)
-        pdf.cell(0, 15, title, 0, 1, "L")
+        pdf.cell(0, 15, title, 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="L")
         pdf.line(10, pdf.get_y(), 200, pdf.get_y())
         pdf.ln(5)
 
@@ -98,7 +98,7 @@ def convert_md_to_pdf(input_dir, output_pdf, cover_image):
             if element.name.startswith('h'):
                 level = int(element.name[1])
                 pdf.set_font("Roboto", "B", 16 - level)
-                pdf.cell(0, 10, element.get_text(), 0, 1)
+                pdf.cell(0, 10, element.get_text(), 0, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
                 pdf.ln(2)
             elif element.name == 'p':
                 pdf.set_font("Roboto", "", 12)
@@ -107,7 +107,7 @@ def convert_md_to_pdf(input_dir, output_pdf, cover_image):
             elif element.name in ['ul', 'ol']:
                 pdf.set_font("Roboto", "", 12)
                 for li in element.find_all('li'):
-                    pdf.cell(10, 6, "•", 0, 0)
+                    pdf.cell(10, 6, "•", 0, new_x=XPos.RIGHT, new_y=YPos.TOP)
                     pdf.multi_cell(pdf.w - 30, 6, li.get_text().strip())
                     pdf.ln(1)
 
