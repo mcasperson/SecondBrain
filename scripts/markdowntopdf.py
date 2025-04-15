@@ -82,7 +82,6 @@ def convert_md_to_pdf(input_dir, output_pdf, cover_image):
         pdf.add_page()
         
         # Create a link anchor at the start of each chapter
-        links[title] = {'link': pdf.add_link()}
         pdf.set_link(links[title]['link'])
 
         # Add title
