@@ -52,31 +52,21 @@ def convert_md_to_pdf(input_dir, output_pdf, cover_image):
     pdf.set_text_color(0, 0, 0)  # Black text
     pdf.cell(0, 20, "Table of Contents", 0, 1, "C")
     pdf.set_font("Roboto", "", 12)
+    pdf.set_y(40)  # Position after the TOC title
 
     # Create links dictionary to store page numbers and link objects
     links = {}
-    current_page = 3  # Start after cover and TOC pages
 
-    # First pass: determine page numbers for TOC
+    pdf.set_text_color(0, 0, 255)  # Blue text for links
     for md_file in md_files:
-        file_name = os.path.basename(md_file)
         title = Path(md_file).stem
+        link = pdf.add_link()
+        links[title] = {'link': link}
 
-        # Parse markdown to estimate page count
-        with open(md_file, 'r', encoding='utf-8') as f:
-            md_content = f.read()
+        pdf.cell(0, 10, f"{title}", 0, 1, link=link)
 
-        html = markdown.markdown(md_content)
-        soup = BeautifulSoup(html, 'html.parser')
-        text_content = soup.get_text()
-
-        # Rough estimate: 2000 characters per page
-        pages_estimate = max(1, len(text_content) // 2000)
-
-        links[title] = {'page': current_page, 'link': None}
-        current_page += pages_estimate
-
-    # Second pass: add content and create link destinations
+    # Add content and create link destinations
+    pdf.set_text_color(0, 0, 0)  # Black text
     for md_file in md_files:
         with open(md_file, 'r', encoding='utf-8') as f:
             md_content = f.read()
@@ -92,7 +82,7 @@ def convert_md_to_pdf(input_dir, output_pdf, cover_image):
         pdf.add_page()
         
         # Create a link anchor at the start of each chapter
-        links[title]['link'] = pdf.add_link()
+        links[title] = {'link': pdf.add_link()}
         pdf.set_link(links[title]['link'])
 
         # Add title
@@ -123,18 +113,6 @@ def convert_md_to_pdf(input_dir, output_pdf, cover_image):
                     pdf.ln(1)
 
         pdf.ln(5)
-
-    # Go back to TOC page and add clickable entries
-    pdf.page = 2  # TOC page
-    pdf.set_font("Roboto", "", 12)
-    pdf.set_y(40)  # Position after the TOC title
-    
-    for md_file in md_files:
-        title = Path(md_file).stem
-        pdf.set_text_color(0, 0, 255)  # Blue text for links
-        pdf.cell(0, 10, f"{title}", 0, 1, link=links[title]['link'])
-        pdf.set_text_color(0, 0, 0)  # Black text
-        pdf.cell(0, 2, f"Page {links[title]['page']}", 0, 1, "R")
 
     # Save PDF
     pdf.output(output_pdf)
