@@ -1,12 +1,12 @@
+import argparse
 import base64
 import os
 import pprint
+import pytz
+import requests
 import subprocess
 import tempfile
 from datetime import datetime, timedelta
-
-import pytz
-import requests
 from dateutil import parser
 
 
@@ -165,12 +165,20 @@ def extract_company_names_and_call_ids(json_data):
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Convert markdown files to PDF with cover page and TOC')
+    parser.add_argument('--user_ids', required=True, help='A comma separated list of user IDs to filter by')
+    parser.add_argument('--output_dir', required=True, help='Output directory where the markdown files will be saved')
+
+    args = parser.parse_args()
+
+    user_ids = args.user_ids.split(',')
+
     # Get the list of calls
     data = get_calls_from_gong(
         os.environ.get('SB_GONG_ACCESSKEY'),
         os.environ.get('SB_GONG_ACCESSSECRETKEY'),
         get_date_weeks_ago(6),
-        ["7758652272323866443", "2083010447769355032"])
+        user_ids)
 
     # Extract company names and map to call IDs
     company_to_calls = extract_company_names_and_call_ids(data)
