@@ -255,7 +255,7 @@ def add_toc_categories(pdf, script_dir):
     pdf.add_legend_item(os.path.join(script_dir, "images/security.png"), 'Security/Compliance')
     pdf.add_legend_item(os.path.join(script_dir, "images/linux.png"), 'Linux')
     pdf.add_legend_item(os.path.join(script_dir, "images/windows.png"), 'Windows')
-    pdf.add_legend_item(os.path.join(script_dir, "images/tenants.png"), 'tenants')
+    pdf.add_legend_item(os.path.join(script_dir, "images/tenants.png"), 'Tenants')
 
 
 def add_toc(pdf, script_dir, contents, companies):
