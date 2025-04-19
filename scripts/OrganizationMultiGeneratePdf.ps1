@@ -154,7 +154,7 @@ if ($GenerateCompanyReports)
             "-Dsb.multislackzengoogle.metaField11=Linux"
             "-Dsb.multislackzengoogle.metaPrompt12=Do the messages mention Windows?"
             "-Dsb.multislackzengoogle.metaField12=Windows"
-            "-Dsb.multislackzengoogle.metaPrompt13=Do the messages mention Tenants?"
+            "-Dsb.multislackzengoogle.metaPrompt13=Do the messages mention the use of Octopus Tenants? You must only report on mentions of the Tenats feature as it is used in Octopus. You will be penalized for reporting general metions of tenants."
             "-Dsb.multislackzengoogle.metaField13=Tenants"
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
@@ -342,6 +342,7 @@ if ($GenerateExecutiveSummary)
         "Summarize the document as a single paragraph.
         Write the company name as a level 2 markdown header and then write the summary as plain text.
         Include the company's Annual Recuring Revenue (ARR) in the summary.
+        If there is no mention of "deployments in the last 30 days", "total projects", or "total tenants", then do not include them in the summary.
         You will be penalized for using 'Octopus Deploy', 'Octopus', 'OCTOPUS', 'OCTOPUS DEPLOY PTY LTD', 'OD', or 'Company Name' as the company name.
         You will be penalized for including a 'End of Summary' heading.
         You will be penalized for inlucding links or references.
