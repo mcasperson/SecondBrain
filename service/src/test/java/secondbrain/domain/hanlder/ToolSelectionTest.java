@@ -39,7 +39,12 @@ import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.validate.Llama32ValidateInputs;
 import secondbrain.domain.validate.ValidateListEmptyOrNull;
 import secondbrain.domain.validate.ValidateStringBlank;
+import secondbrain.infrastructure.github.GitHubClientProducer;
+import secondbrain.infrastructure.gong.GongClientProducer;
 import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.planhat.PlanHatClientProducer;
+import secondbrain.infrastructure.slack.SlackClientProducer;
+import secondbrain.infrastructure.zendesk.ZenDeskClientProducer;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -92,6 +97,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @AddBeanClasses(SanitizeEmail.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(DocumentTrimmerExactKeywords.class)
+@AddBeanClasses(ZenDeskClientProducer.class)
+@AddBeanClasses(SlackClientProducer.class)
+@AddBeanClasses(PlanHatClientProducer.class)
+@AddBeanClasses(GongClientProducer.class)
+@AddBeanClasses(GitHubClientProducer.class)
 public class ToolSelectionTest {
 
     final @Container
