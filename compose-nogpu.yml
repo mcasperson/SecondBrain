@@ -34,6 +34,8 @@ services:
       SB_CACHE_PATH: /cache
       # Autoserver is not supported by docker
       SB_CACHE_AUTOSERVER: false
+      # Set to true to return mock data from the data sources
+      SB_INFRASTRUCTURE_MOCK: false
     pull_policy: always
     volumes:
       - cache:/cache
