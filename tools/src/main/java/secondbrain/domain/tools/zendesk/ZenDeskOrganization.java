@@ -12,6 +12,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
@@ -164,31 +165,29 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final String authHeader = "Basic " + new String(Try.of(() -> new Base64().encode(
-                (parsedArgs.getUser() + "/token:" + parsedArgs.getToken()).getBytes(UTF_8))).get(), UTF_8);
-
         final List<String> query = new ArrayList<>();
         query.add("type:ticket");
         query.add("created>" + parsedArgs.getStartDate());
 
+        // We can have multiple ZenDesk servers
+        final List<Pair<String, String>> zenServers = List.of(
+                        Pair.ofNonNull(parsedArgs.getAuthHeader(), parsedArgs.getUrl()),
+                        Pair.ofNonNull(parsedArgs.getAuthHeader2(), parsedArgs.getUrl2()))
+                .stream()
+                .filter(pair -> StringUtils.isNotBlank(pair.getLeft()) && StringUtils.isNotBlank(pair.getRight()))
+                .toList();
+
         final Try<List<RagDocumentContext<ZenDeskResultsResponse>>> result = Try.withResources(ClientBuilder::newClient)
-                .of(client -> Try.of(() -> zenDeskClient.getTickets(client, authHeader, parsedArgs.getUrl(), String.join(" ", query), parsedArgs.getSearchTTL()))
-                        // Filter out any tickets based on the submitter and assignee
-                        .map(response -> filterResponse(response, parsedArgs.getOrganization(), true, parsedArgs.getExcludedSubmitters(), parsedArgs.getExcludedOrganization(), parsedArgs.getRecipient()))
-                        // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
-                        .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
-                        // Get the ticket comments (i.e. the initial email)
-                        .map(response -> ticketToComments(response, client, authHeader, parsedArgs.getNumComments(), parsedArgs))
-                        .map(tickets -> trimTickets(tickets, parsedArgs))
-                        /*
-                            Take the raw ticket comments and summarize them with individual calls to the LLM.
-                            The individual ticket summaries are then combined into a single context.
-                            This was necessary because the private LLMs didn't do a very good job of summarising
-                            raw tickets. The reality is that even LLMs with a context length of 128k tokens mostly fixated
-                            one a small number of tickets.
-                         */
-                        .map(tickets -> summariseTickets(tickets, environmentSettings))
-                        .get());
+                .of(client -> zenServers
+                        .stream()
+                        .flatMap(pair -> getContext(
+                                parsedArgs,
+                                environmentSettings,
+                                pair.getLeft(),
+                                pair.getRight(),
+                                String.join(" ", query),
+                                client).stream())
+                        .toList());
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -199,6 +198,48 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call ZenDesk API", ex)))
                 .get();
 
+    }
+
+    private List<RagDocumentContext<ZenDeskResultsResponse>> getContext(
+            final ZenDeskConfig.LocalArguments parsedArgs,
+            final Map<String, String> environmentSettings,
+            final String auth,
+            final String url,
+            final String query,
+            final Client client) {
+        return Try.of(() -> zenDeskClient.getTickets(
+                        client,
+                        auth,
+                        url,
+                        String.join(" ", query),
+                        parsedArgs.getSearchTTL()))
+                // Filter out any tickets based on the submitter and assignee
+                .map(response -> filterResponse(
+                        response,
+                        parsedArgs.getOrganization(),
+                        true,
+                        parsedArgs.getExcludedSubmitters(),
+                        parsedArgs.getExcludedOrganization(),
+                        parsedArgs.getRecipient()))
+                // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
+                .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
+                // Get the ticket comments (i.e., the initial email)
+                .map(response -> ticketToComments(
+                        response,
+                        client,
+                        parsedArgs.getAuthHeader(),
+                        parsedArgs.getNumComments(),
+                        parsedArgs))
+                .map(tickets -> trimTickets(tickets, parsedArgs))
+                /*
+                    Take the raw ticket comments and summarize them with individual calls to the LLM.
+                    The individual ticket summaries are then combined into a single context.
+                    This was necessary because the private LLMs didn't do a very good job of summarizing
+                    raw tickets. The reality is that even LLMs with a context length of 128k tokens mostly fixated
+                    one a small number of tickets.
+                 */
+                .map(tickets -> summariseTickets(tickets, environmentSettings))
+                .get();
     }
 
     @Override
@@ -441,6 +482,18 @@ class ZenDeskConfig {
     private Optional<String> configZenDeskUrl;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.accesstoken2")
+    private Optional<String> configZenDeskAccessToken2;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.user2")
+    private Optional<String> configZenDeskUser2;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.url2")
+    private Optional<String> configZenDeskUrl2;
+
+    @Inject
     @ConfigProperty(name = "sb.zendesk.excludedorgs")
     private Optional<String> configZenExcludedOrgs;
 
@@ -584,6 +637,18 @@ class ZenDeskConfig {
         return configHistoryttl;
     }
 
+    public Optional<String> getConfigZenDeskAccessToken2() {
+        return configZenDeskAccessToken2;
+    }
+
+    public Optional<String> getConfigZenDeskUser2() {
+        return configZenDeskUser2;
+    }
+
+    public Optional<String> getConfigZenDeskUrl2() {
+        return configZenDeskUrl2;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -620,7 +685,7 @@ class ZenDeskConfig {
         }
 
         public String getOrganization() {
-            // Organization is just a name or number. If organization is an email address, it was mixed up for the receipt.
+            // Organization is just a name or number. If the organization is an email address, it was mixed up for the receipt.
             if (EmailValidator.getInstance().isValid(getSanitizeEmail().sanitize(getRawOrganization(), prompt)) && StringUtils.isBlank(getRecipient())) {
                 return "";
             }
@@ -739,6 +804,11 @@ class ZenDeskConfig {
                     .get();
         }
 
+        public String getAuthHeader() {
+            return "Basic " + new String(Try.of(() -> new Base64().encode(
+                    (getUser() + "/token:" + getToken()).getBytes(UTF_8))).get(), UTF_8);
+        }
+
         public String getToken() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
@@ -776,6 +846,46 @@ class ZenDeskConfig {
             }
 
             return user.get();
+        }
+
+        public String getAuthHeader2() {
+            return "Basic " + new String(Try.of(() -> new Base64().encode(
+                    (getUser2() + "/token:" + getToken2()).getBytes(UTF_8))).get(), UTF_8);
+        }
+
+        public String getToken2() {
+            // Try to decrypt the value, otherwise assume it is a plain text value, and finally
+            // fall back to the value defined in the local configuration.
+            final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_access_token2")))
+                    .recover(e -> context.get("zendesk_access_token2"))
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recoverWith(e -> Try.of(() -> getConfigZenDeskAccessToken2().get()));
+
+            if (token.isFailure() || StringUtils.isBlank(token.get())) {
+                throw new InternalFailure("Failed to get Zendesk access token 2");
+            }
+
+            return token.get();
+        }
+
+        public String getUrl2() {
+            return getArgsAccessor().getArgument(
+                    getConfigZenDeskUrl2()::get,
+                    arguments,
+                    context,
+                    "url2",
+                    "zendesk_url2",
+                    "").value();
+        }
+
+        public String getUser2() {
+            return getArgsAccessor().getArgument(
+                    getConfigZenDeskUser2()::get,
+                    arguments,
+                    context,
+                    "user2",
+                    "zendesk_user2",
+                    "").value();
         }
 
         public String getStartDate() {
