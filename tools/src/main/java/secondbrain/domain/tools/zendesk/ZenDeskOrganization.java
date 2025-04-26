@@ -170,10 +170,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         query.add("created>" + parsedArgs.getStartDate());
 
         // We can have multiple ZenDesk servers
-        final List<Pair<String, String>> zenServers = List.of(
+        final List<Pair<String, String>> zenServers = Stream.of(
                         Pair.ofNonNull(parsedArgs.getAuthHeader(), parsedArgs.getUrl()),
                         Pair.ofNonNull(parsedArgs.getAuthHeader2(), parsedArgs.getUrl2()))
-                .stream()
                 .filter(pair -> StringUtils.isNotBlank(pair.getLeft()) && StringUtils.isNotBlank(pair.getRight()))
                 .toList();
 
