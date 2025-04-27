@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -131,20 +132,29 @@ public class PlanHat implements Tool<Conversation> {
     }
 
     @Override
-    public List<RagDocumentContext<Conversation>> getContext(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<RagDocumentContext<Conversation>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
             throw new InternalFailure("You must provide a company ID to query");
         }
 
-        final List<Conversation> conversations = Try.withResources(ClientBuilder::newClient)
-                .of(client -> planHatClient.getConversations(
-                        client,
-                        "",
-                        parsedArgs.getToken(),
-                        parsedArgs.getSearchTTL()))
-                .get();
+        // We can process multiple planhat instances
+        final List<String> tokens = Stream.of(parsedArgs.getToken(), parsedArgs.getToken2())
+                .filter(StringUtils::isNotBlank)
+                .toList();
+
+        final List<Conversation> conversations = tokens
+                .stream()
+                .flatMap(token -> Try.withResources(ClientBuilder::newClient)
+                        .of(client -> planHatClient.getConversations(
+                                client,
+                                "",
+                                token,
+                                parsedArgs.getSearchTTL()))
+                        .get()
+                        .stream())
+                .toList();
 
         return conversations.stream()
                 .filter(conversation -> parsedArgs.getCompany().equals(conversation.companyId()))
@@ -267,6 +277,10 @@ class PlanHatConfig {
     private Optional<String> configToken;
 
     @Inject
+    @ConfigProperty(name = "sb.planhat.accesstoken2")
+    private Optional<String> configToken2;
+
+    @Inject
     @ConfigProperty(name = "sb.planhat.searchttl")
     private Optional<String> configSearchTtl;
 
@@ -298,6 +312,10 @@ class PlanHatConfig {
 
     public Optional<String> getConfigToken() {
         return configToken;
+    }
+
+    public Optional<String> getConfigToken2() {
+        return configToken2;
     }
 
     public Optional<String> getConfigSearchTtl() {
@@ -364,6 +382,16 @@ class PlanHatConfig {
             return Try.of(getConfigToken()::get)
                     .mapTry(getValidateString()::throwIfEmpty)
                     .recover(e -> context.get("planhat_token"))
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> "")
+                    .get();
+        }
+
+
+        public String getToken2() {
+            return Try.of(getConfigToken2()::get)
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> context.get("planhat_token2"))
                     .mapTry(getValidateString()::throwIfEmpty)
                     .recover(e -> "")
                     .get();
