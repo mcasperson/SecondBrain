@@ -848,6 +848,10 @@ class ZenDeskConfig {
         }
 
         public String getAuthHeader2() {
+            if (StringUtils.isBlank(getToken2())) {
+                return "";
+            }
+
             return "Basic " + new String(Try.of(() -> new Base64().encode(
                     (getUser2() + "/token:" + getToken2()).getBytes(UTF_8))).get(), UTF_8);
         }
