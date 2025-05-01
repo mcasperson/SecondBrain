@@ -861,7 +861,7 @@ class ZenDeskConfig {
                     .recoverWith(e -> Try.of(() -> getConfigZenDeskAccessToken2().get()));
 
             if (token.isFailure() || StringUtils.isBlank(token.get())) {
-                throw new InternalFailure("Failed to get Zendesk access token 2");
+                return "";
             }
 
             return token.get();
