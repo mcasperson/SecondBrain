@@ -8,11 +8,11 @@ import org.apache.commons.lang3.StringUtils;
  * for the template format.
  */
 @ApplicationScoped
-public class PromptBuilderQwen2 implements PromptBuilder {
+public class PromptBuilderQwen implements PromptBuilder {
 
     @Override
     public String modelRegex() {
-        return "^(qwq|qwen2).*$";
+        return "^(qwq|qwen\\d(\\.\\d)?).*$";
     }
 
     @Override
