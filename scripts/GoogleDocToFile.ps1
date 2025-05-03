@@ -16,7 +16,7 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
 #$model = "mistral-nemo:12b-instruct-2407-q8_0"
-$model = "qwen2.5:32b"
+$model = "qwen3:32b"
 $toolModel = "llama3.1"
 $contextWindow = "32768"
 

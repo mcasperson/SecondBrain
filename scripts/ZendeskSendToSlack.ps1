@@ -9,7 +9,7 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 #$jarFile = "C:\Apps\secondbrain-cli-1.0-SNAPSHOT.jar"
 $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
-$model = "qwen2.5:32b"
+$model = "qwen3:32b"
 $toolModel = "llama3.1"
 $contextLength = "32768"
 
