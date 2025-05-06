@@ -113,6 +113,7 @@ public class PlanHatUsage implements Tool<Company> {
                 .of(client -> planHatClient.getCompany(
                         client,
                         parsedArgs.getCompany(),
+                        parsedArgs.getUrl(),
                         parsedArgs.getToken(),
                         parsedArgs.getSearchTTL()))
                 .get();
@@ -161,6 +162,7 @@ public class PlanHatUsage implements Tool<Company> {
                 .of(client -> planHatClient.getCompany(
                         client,
                         parsedArgs.getCompany(),
+                        parsedArgs.getUrl(),
                         parsedArgs.getToken(),
                         parsedArgs.getSearchTTL()))
                 .get();
@@ -229,6 +231,10 @@ class PlanHatUsageConfig {
     @Inject
     @ConfigProperty(name = "sb.planhat.company")
     private Optional<String> configCompany;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.url", defaultValue = "https://api-us4.planhat.com")
+    private Optional<String> configUrl;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.accesstoken")
@@ -360,6 +366,10 @@ class PlanHatUsageConfig {
         return configCustom1;
     }
 
+    public Optional<String> getConfigUrl() {
+        return configUrl;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -381,6 +391,15 @@ class PlanHatUsageConfig {
                     PlanHatUsage.COMPANY_ID_ARGS,
                     "planhat_usage_company",
                     "").value();
+        }
+
+        public String getUrl() {
+            return Try.of(getConfigUrl()::get)
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> context.get("planhat_url"))
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> "")
+                    .get();
         }
 
         public String getToken() {
