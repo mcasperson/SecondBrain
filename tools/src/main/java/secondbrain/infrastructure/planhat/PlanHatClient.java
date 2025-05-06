@@ -10,12 +10,14 @@ public interface PlanHatClient {
     List<Conversation> getConversations(
             Client client,
             String company,
+            String url,
             String token,
             int ttlSeconds);
 
     Company getCompany(
             Client client,
             String company,
+            String url,
             String token,
             int ttlSeconds);
 }
