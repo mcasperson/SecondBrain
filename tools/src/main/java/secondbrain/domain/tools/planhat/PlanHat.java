@@ -140,17 +140,20 @@ public class PlanHat implements Tool<Conversation> {
         }
 
         // We can process multiple planhat instances
-        final List<String> tokens = Stream.of(parsedArgs.getToken(), parsedArgs.getToken2())
-                .filter(StringUtils::isNotBlank)
+        final List<Pair<String, String>> tokens = Stream.of(
+                        Pair.of(parsedArgs.getUrl(), parsedArgs.getToken()),
+                        Pair.of(parsedArgs.getUrl2(), parsedArgs.getToken2()))
+                .filter(pair -> StringUtils.isNotBlank(pair.getRight()) && StringUtils.isNotBlank(pair.getLeft()))
                 .toList();
 
         final List<Conversation> conversations = tokens
                 .stream()
-                .flatMap(token -> Try.withResources(ClientBuilder::newClient)
+                .flatMap(pair -> Try.withResources(ClientBuilder::newClient)
                         .of(client -> planHatClient.getConversations(
                                 client,
                                 "",
-                                token,
+                                pair.getLeft(),
+                                pair.getRight(),
                                 parsedArgs.getSearchTTL()))
                         .get()
                         .stream())
@@ -277,8 +280,16 @@ class PlanHatConfig {
     private Optional<String> configToken;
 
     @Inject
+    @ConfigProperty(name = "sb.planhat.url", defaultValue = "https://api-us4.planhat.com")
+    private Optional<String> configUrl;
+
+    @Inject
     @ConfigProperty(name = "sb.planhat.accesstoken2")
     private Optional<String> configToken2;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.url", defaultValue = "https://api.planhat.com")
+    private Optional<String> configUrl2;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.searchttl")
@@ -342,6 +353,14 @@ class PlanHatConfig {
         return configKeywordWindow;
     }
 
+    public Optional<String> getConfigUrl() {
+        return configUrl;
+    }
+
+    public Optional<String> getConfigUrl2() {
+        return configUrl2;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -387,11 +406,28 @@ class PlanHatConfig {
                     .get();
         }
 
+        public String getUrl() {
+            return Try.of(getConfigUrl()::get)
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> context.get("planhat_url"))
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> "")
+                    .get();
+        }
 
         public String getToken2() {
             return Try.of(getConfigToken2()::get)
                     .mapTry(getValidateString()::throwIfEmpty)
                     .recover(e -> context.get("planhat_token2"))
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> "")
+                    .get();
+        }
+
+        public String getUrl2() {
+            return Try.of(getConfigUrl2()::get)
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> context.get("planhat_url2"))
                     .mapTry(getValidateString()::throwIfEmpty)
                     .recover(e -> "")
                     .get();

@@ -8,7 +8,6 @@ import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.constants.Constants;
@@ -29,16 +28,13 @@ public class PlanHatClientLive implements PlanHatClient {
     private ResponseValidation responseValidation;
 
     @Inject
-    @ConfigProperty(name = "sb.planhat.url", defaultValue = "https://api-us4.planhat.com")
-    private String url;
-
-    @Inject
     private LocalStorage localStorage;
 
     @Override
     public List<Conversation> getConversations(
             final Client client,
             final String company,
+            final String url,
             final String token,
             final int ttlSeconds) {
         final Conversation[] conversations = localStorage.getOrPutObject(
@@ -47,7 +43,7 @@ public class PlanHatClientLive implements PlanHatClient {
                 DigestUtils.sha256Hex(company),
                 ttlSeconds,
                 Conversation[].class,
-                () -> getConversationsApi(client, company, token));
+                () -> getConversationsApi(client, company, url, token));
 
         return conversations == null
                 ? List.of()
@@ -58,6 +54,7 @@ public class PlanHatClientLive implements PlanHatClient {
     public Company getCompany(
             final Client client,
             final String company,
+            final String url,
             final String token,
             final int ttlSeconds) {
         return localStorage.getOrPutObject(
@@ -66,11 +63,11 @@ public class PlanHatClientLive implements PlanHatClient {
                 DigestUtils.sha256Hex(company + "V2"),
                 ttlSeconds,
                 Company.class,
-                () -> getCompanyApi(client, company, token));
+                () -> getCompanyApi(client, company, url, token));
     }
 
     @Retry
-    private Conversation[] getConversationsApi(final Client client, final String company, final String token) {
+    private Conversation[] getConversationsApi(final Client client, final String company, final String url, final String token) {
         final String target = url + "/conversations";
 
         // https://docs.planhat.com/#get_conversation_list
@@ -90,7 +87,7 @@ public class PlanHatClientLive implements PlanHatClient {
     }
 
     @Retry
-    private Company getCompanyApi(final Client client, final String company, final String token) {
+    private Company getCompanyApi(final Client client, final String company, final String url, final String token) {
         final String target = url + "/companies/" + URLEncoder.encode(company, Charset.defaultCharset());
 
         return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)

@@ -20,7 +20,7 @@ public class PlanHatClientMock implements PlanHatClient {
     private OllamaClient ollamaClient;
 
     @Override
-    public List<Conversation> getConversations(Client client, String company, String token, int ttlSeconds) {
+    public List<Conversation> getConversations(Client client, String company, String url, String token, int ttlSeconds) {
         // Create a list of mock conversations
         return List.of(
                 createMockConversation(),
@@ -30,7 +30,7 @@ public class PlanHatClientMock implements PlanHatClient {
     }
 
     @Override
-    public Company getCompany(Client client, String company, String token, int ttlSeconds) {
+    public Company getCompany(Client client, String company, String url, String token, int ttlSeconds) {
         // Generate a mock company
         String companyId = UUID.randomUUID().toString();
         String companyName = ollamaClient.callOllamaSimple("Generate a company name. Return only the name, nothing else.");
