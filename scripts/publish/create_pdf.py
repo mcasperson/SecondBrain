@@ -178,6 +178,7 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
             terraform = 0
             performance = 0
             security = 0
+            arr = 0
 
             if os.path.exists(metadata):
                 print(f"Parsing {metadata}...")
