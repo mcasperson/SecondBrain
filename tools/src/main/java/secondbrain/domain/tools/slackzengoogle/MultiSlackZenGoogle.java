@@ -48,6 +48,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
@@ -440,8 +441,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final List<MetaObjectResult> planHatMetadata = positionalEntity.entity.getPlanHat()
                     .stream()
                     .limit(1)
-                    .flatMap(planHatId -> planHatUsage.getMetadata(context, prompt, List.of(
-                            new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, planHatId, true))).stream())
+                    .flatMap(planHatId -> Try.of(() -> planHatUsage.getMetadata(
+                                            context,
+                                            prompt,
+                                            List.of(new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, planHatId, true)))
+                                    .stream())
+                            .onFailure(ex -> log.warning("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                            .getOrElse(Stream::of))
                     .toList();
             metadata.addAll(planHatMetadata);
         }
@@ -631,8 +637,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ex -> log.warning("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
