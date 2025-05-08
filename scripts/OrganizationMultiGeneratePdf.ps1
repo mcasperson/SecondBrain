@@ -188,10 +188,10 @@ if ($GenerateCompanyReports)
 "@)
             $result = Invoke-CustomCommand java $arguments
 
-            Write-Host "StdOut"
+            Write-Host "Final StdOut"
             Write-Host $result.StdOut
 
-            #Write-Host "StdErr"
+            #Write-Host "Final StdErr"
             #Write-Host $result.StdErr
 
             Add-Content -Path $EntityLog -Value "$( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ) Entity: $entityName $( $using:index ) of $( ($using:database).entities.Count )`n"
