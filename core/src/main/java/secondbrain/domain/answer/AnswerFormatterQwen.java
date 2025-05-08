@@ -4,7 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.poi.util.StringUtil;
 
 /**
- * A formatter to remove the thinking part of the Deepseek response from the deepseek-r1 model.
+ * A formatter to remove the thinking part of the Qwen response from the qwen3 model.
  */
 @ApplicationScoped
 public class AnswerFormatterQwen implements AnswerFormatter {
