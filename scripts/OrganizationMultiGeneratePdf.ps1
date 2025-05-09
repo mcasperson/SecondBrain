@@ -50,8 +50,8 @@ $toolModel = "llama3.1"
 #$model = "hf.co/unsloth/gemma-3-27b-it-GGUF:Q4_K_M"
 #$model = "qwen2.5:32b"
 #$model = "qwen2.5:14b"
-#$model = "qwen3:32b"
-$model = "qwen3:14b"
+$model = "qwen3:32b"
+#$model = "qwen3:14b"
 
 # 128K tokens can be just a bit too much when using a 70B model
 $contextWindow = "32768"
@@ -117,6 +117,7 @@ if ($GenerateCompanyReports)
             $arguments = Get-SplitTrimmedAndJoinedString(@"
             "-Dstdout.encoding=UTF-8"
             "-Dsb.slack.apidelay=120000"
+            "-Dsb.cache.writeonly=true"
             "-Dsb.ollama.contextwindow=$using:contextWindow"
             "-Dsb.exceptions.printstacktrace=false"
             "-Dsb.planhat.custom1=ARR (SFDC)"
