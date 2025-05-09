@@ -509,8 +509,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 metaField.getRight(),
                                 List.of()).combinedDocument())
                         .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
-                        // Meta fields are a best effort, and we default to 0
-                        .recover(InternalFailure.class, ex -> 0)
+                        .onFailure(ex -> logger.warning("Rating tool failed for " + metaField.getLeft() + ": " + exceptionHandler.getExceptionMessage(ex)))
+                        // Meta-fields are a best effort, and we default to 0
+                        .recover(ex -> 0)
                         .get();
 
                 results.add(new MetaObjectResult(metaField.getLeft(), value));
