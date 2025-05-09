@@ -94,7 +94,7 @@ if ($GenerateCompanyReports)
             $entityName = ($using:entity).name
 
             # Ignore the NPS entity, as it is not a customer.
-            if ($entityName -ne "Beazley Management Ltd")
+            if ($entityName -eq "NPS")
             {
                 return
             }
