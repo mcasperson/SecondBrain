@@ -50,14 +50,20 @@ public class Main {
     }
 
     public void entry(final String[] args) {
-        final String response = promptHandler.handlePrompt(Map.of(), getPrompt(args));
-        final String content = args.length > 1 && "markdn".equals(args[1])
-                ? markdnParser.printMarkDn(response)
-                : response;
-        
-        System.out.println(content);
+        final boolean markdownParsing = args.length > 1 && "markdn".equals(args[1]);
+        Try.of(() -> promptHandler.handlePrompt(Map.of(), getPrompt(args)))
+                .map(response -> markdownParsing ? markdnParser.printMarkDn(response) : response)
+                .onSuccess(System.out::println)
+                .onSuccess(this::writeOutput)
+                .onFailure(e -> System.err.println("Failed to process prompt: " + e.getMessage()));
+    }
 
-        file.ifPresent(s -> Try.run(() -> Files.write(Paths.get(s), content.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
-                .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage())));
+    private void writeOutput(final String content) {
+        if (file.isEmpty()) {
+            return;
+        }
+
+        Try.run(() -> Files.write(Paths.get(file.get()), content.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+                .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
     }
 }
