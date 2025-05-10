@@ -42,6 +42,8 @@ Write-Host "Working in $subDir"
 
 $toolModel = "llama3.1"
 
+$throttleLimit = 20
+
 #$model = "mistral-nemo:12b-instruct-2407-q8_0"
 #$model = "llama3.3"
 #$model = "gemma2:27b"
@@ -49,15 +51,15 @@ $toolModel = "llama3.1"
 #$model = "gemma3:27b"
 #$model = "gemma3:12b"
 #$model = "gemma3:27b-it-qat"
-#$model = "hf.co/unsloth/gemma-3-27b-it-GGUF:Q4_K_M"
 #$model = "qwen2.5:32b"
 #$model = "qwen2.5:14b"
 $model = "qwen3:32b"
+#$model = "qwen3:30b-a3b"
 #$model = "qwen3:14b"
 
-# 128K tokens can be just a bit too much when using a 70B model
-$contextWindow = "32768"
-#$contextWindow = "65536"
+#$contextWindow = "32768"
+$contextWindow = "40000"
+#$contextWindow = "655361"
 #$contextWindow = "131072"
 
 $from = (Get-Date).AddDays(-$Days).ToString("yyyy-MM-dd")
@@ -89,11 +91,13 @@ if ($GenerateCompanyReports)
         }
 
         # We can have thousands of entities to process, so we need to use threads to process them in parallel.
-        $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 20 -ScriptBlock {
+        $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit $throttleLimit -ScriptBlock {
 
             Import-Module $using:ModulePath
 
             $entityName = ($using:entity).name
+
+
 
             # Ignore the NPS entity, as it is not a customer.
             if ($entityName -eq "NPS")
@@ -117,9 +121,9 @@ if ($GenerateCompanyReports)
             Write-Host "Processing $entityName in $using:subDir $( $using:index ) of $( ($using:database).entities.Count )"
 
             $arguments = Get-SplitTrimmedAndJoinedString(@"
+            "-Dh2.maxCompactTime=60000"
             "-Dstdout.encoding=UTF-8"
             "-Dsb.slack.apidelay=120000"
-            "-Dsb.cache.writeonly=true"
             "-Dsb.ollama.contextwindow=$using:contextWindow"
             "-Dsb.exceptions.printstacktrace=false"
             "-Dsb.planhat.custom1=ARR (SFDC)"
@@ -132,7 +136,6 @@ if ($GenerateCompanyReports)
             "-Dsb.zendesk.accesstoken2=$env:SB_ZENDESK_ACCESSTOKEN_CODEFRESH"
             "-Dsb.zendesk.user2=$env:SB_ZENDESK_USER_CODEFRESH"
             "-Dsb.zendesk.url2=$env:SB_ZENDESK_URL_CODEFREH"
-            "-Dsb.cache.backup=$( $using:index % 100 -eq 1 )"
             "-Dsb.cache.path=/home/matthew"
             "-Dsb.tools.force=MultiSlackZenGoogle"
             "-Dsb.multislackzengoogle.minTimeBasedContext=1"
@@ -157,6 +160,7 @@ if ($GenerateCompanyReports)
             "-Dsb.multislackzengoogle.metaField8=Terraform"
             "-Dsb.multislackzengoogle.metaPrompt9=Do the messages mention performance?"
             "-Dsb.multislackzengoogle.metaField9=Performance"
+            "-Dsb.multislackzengoogle.metaPrompt10=Do the messages mention security or compliance?"
             "-Dsb.multislackzengoogle.metaPrompt10=Do the messages mention security or compliance?"
             "-Dsb.multislackzengoogle.metaField10=Security"
             "-Dsb.multislackzengoogle.metaPrompt11=Do the messages mention Linux?"
@@ -228,7 +232,7 @@ if ($GenerateTopicReports)
     {
         $topicIndex++
 
-        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 20 -ScriptBlock {
+        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit $throttleLimit -ScriptBlock {
 
             # Offset the start of the execution by a few random seconds to avoid
             # all the threads printing their output at the same time.

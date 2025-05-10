@@ -4,6 +4,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
@@ -70,7 +71,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         final ZenDeskResultsResponse[] value = localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskApiTickets",
-                "Global",
+                DigestUtils.sha256Hex(url),
                 ttlSeconds,
                 ZenDeskResultsResponse[].class,
                 () -> getTicketsApi(client, authorization, url, query, page, maxPage));
@@ -166,7 +167,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         return localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskApiComments",
-                ticketId,
+                DigestUtils.sha256Hex(ticketId + url),
                 0,
                 ZenDeskCommentsResponse.class,
                 () -> getCommentsFromApi(client, authorization, url, ticketId));
@@ -238,7 +239,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         return localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskAPIOrganizations",
-                orgId,
+                DigestUtils.sha256Hex(orgId + url),
                 ZenDeskOrganizationResponse.class,
                 () -> getOrganizationFromApi(client, authorization, url, orgId)).organization();
     }
@@ -285,10 +286,8 @@ public class ZenDeskClientLive implements ZenDeskClient {
         return localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskAPIUsers",
-                userId,
+                DigestUtils.sha256Hex(userId + url),
                 ZenDeskUserResponse.class,
                 () -> getUserFromApi(client, authorization, url, userId)).user();
     }
-
-
 }

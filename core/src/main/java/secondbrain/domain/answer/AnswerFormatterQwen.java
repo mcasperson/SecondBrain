@@ -22,6 +22,7 @@ public class AnswerFormatterQwen implements AnswerFormatter {
         return answer
                 .replaceAll("(?s)<think>.*?</think>", "")
                 // Sometimes the start tag is not present
-                .replaceAll("(?s)^.*?</think>", "");
+                .replaceAll("(?s)^.*?</think>", "")
+                .trim();
     }
 }

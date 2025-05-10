@@ -39,7 +39,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
 
     public RagStringContext vectorize(final String text, final @Nullable String hiddenText) {
         if (predictor == null) {
-            throw new RuntimeException("Predictor is not initialized");
+            throw new InternalFailure("Predictor is not initialized");
         }
 
         final String prefix = hiddenText == null ? "" : hiddenText + " ";

@@ -75,7 +75,7 @@ public class PromptHandlerOllama implements PromptHandler {
         return Try.of(() -> toolSelector.getTool(prompt, context))
                 .map(toolCall -> callTool(toolCall, context, prompt))
                 /*
-                    Internal errors are not resolved with retires, so we capture the error message
+                    Internal errors are not resolved with retries, so we capture the error message
                     and return it to the user.
                  */
                 .recover(InternalFailure.class, exceptionHandler::getExceptionMessage)

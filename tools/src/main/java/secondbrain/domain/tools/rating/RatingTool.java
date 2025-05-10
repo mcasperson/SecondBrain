@@ -99,7 +99,12 @@ public class RatingTool implements Tool<Void> {
                         ragDoc,
                         modelConfig.getCalculatedModel(environmentSettings),
                         getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)));
+                        modelConfig.getCalculatedContextWindow(environmentSettings)))
+                /*
+                 We expect a single value, but might get some whitespace from a thinking model that had the
+                 thinking response removed.
+                 */
+                .map(ragDoc -> ragDoc.updateDocument(ragDoc.getCombinedDocument().trim()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411

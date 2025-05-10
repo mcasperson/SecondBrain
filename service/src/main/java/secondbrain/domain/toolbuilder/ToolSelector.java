@@ -8,6 +8,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.json.JsonDeserializer;
@@ -24,6 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 @ApplicationScoped
@@ -39,6 +41,10 @@ public class ToolSelector {
     @Inject
     @ConfigProperty(name = "sb.tools.force")
     private Optional<String> force;
+
+    @Inject
+    @ConfigProperty(name = "sb.ollama.timeout", defaultValue = "10")
+    private Optional<String> timeout;
 
     @Inject
     @Any
@@ -108,7 +114,10 @@ public class ToolSelector {
     }
 
     private OllamaResponse callOllama(final String llmPrompt) {
-        return Try.withResources(ClientBuilder::newClient)
+        return Try.withResources(() -> ClientBuilder
+                        .newBuilder()
+                        .readTimeout(NumberUtils.toInt(timeout.orElse("10"), 10), TimeUnit.MINUTES)
+                        .build())
                 .of(client ->
                         ollamaClient.callOllama(
                                 client,
