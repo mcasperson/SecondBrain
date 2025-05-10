@@ -178,6 +178,7 @@ if ($GenerateCompanyReports)
             List the company's Annual Recuring Revenue (ARR) at the end of the report.
             If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes.
             You must use asterisks for bullet point lists.
+            You will be penalized for talking about "limited engagement" or "limited communication".
             You will be penalized for using dashes for bullet point lists.
             You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt.
             You will be penalized for including a general summary of the Google Document in the report.
@@ -358,6 +359,7 @@ if ($GenerateExecutiveSummary)
         If there is no mention of "deployments in the last 30 days", "total projects", or "total tenants", then do not include them in the summary.
         You will be penalized for using 'Octopus Deploy', 'Octopus', 'OCTOPUS', 'OCTOPUS DEPLOY PTY LTD', 'OD', or 'Company Name' as the company name.
         You will be penalized for including a 'End of Summary' heading.
+        You will be penalized for talking about "limited engagement" or "limited communication".
         You will be penalized for inlucding links or references.
         You will be penalized for outputing tokens lke '<|end|>'.
         You will be penalized for including number in square brackets, like [1], in the output.
