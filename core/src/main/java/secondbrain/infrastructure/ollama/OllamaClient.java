@@ -9,6 +9,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
@@ -23,6 +24,7 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.response.ResponseValidation;
 
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -32,6 +34,11 @@ import static io.vavr.control.Try.of;
 @ApplicationScoped
 public class OllamaClient {
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
+
+    /**
+     * Common error messages that we don't want to cache.
+     */
+    private static final String[] ERRORS = {"Predictor is not initialized"};
 
     @Inject
     @ConfigProperty(name = "sb.ollama.ttldays", defaultValue = "30")
@@ -137,7 +144,8 @@ public class OllamaClient {
                 NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
                 () -> {
             final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
-            return response.combinedDocument();
+            final String responseText = response.combinedDocument();
+            return CollectionUtils.containsAny(Arrays.asList(ERRORS), responseText.trim()) ? null : responseText;
         });
 
         return ragDoc.updateDocument(result);
