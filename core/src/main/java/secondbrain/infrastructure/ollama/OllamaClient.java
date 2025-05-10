@@ -145,10 +145,27 @@ public class OllamaClient {
                 () -> {
             final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
             final String responseText = response.combinedDocument();
-            return CollectionUtils.containsAny(Arrays.asList(ERRORS), responseText.trim()) ? null : responseText;
+
+            // Don't cache errors
+            return resultOrDefaultOnError(responseText, null);
         });
 
-        return ragDoc.updateDocument(result);
+        // Don't return cached errors
+        return valueOrDefaultOnError(result,
+                ragDoc.updateDocument(result),
+                ragDoc.updateDocument(callOllama(ragDoc, model, contextWindow).combinedDocument()));
+    }
+
+    private boolean resultIsError(final String result) {
+        return CollectionUtils.containsAny(Arrays.asList(ERRORS), result.trim());
+    }
+
+    private <T> T valueOrDefaultOnError(final String result, final T value, final T defaultValue) {
+        return resultIsError(result) ? defaultValue : value;
+    }
+
+    private String resultOrDefaultOnError(final String result, final String defaultValue) {
+        return resultIsError(result) ? defaultValue : result;
     }
 
     private String formatResponse(final String model, final String response) {
