@@ -10,6 +10,7 @@ company_prefix = 'COMPANY '
 topic_prefix = 'TOPIC '
 executive_summary_prefix = 'EXECUTIVE SUMMARY '
 arr_limit = 75000
+high_activity_count = 6
 
 
 class PDF(FPDF):
@@ -192,7 +193,7 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                         # Note that we expect all companies to have at least 3 touch points including things
                         # like deployment, project, and tenant stats
                         count = extract_metadata_value(json_data, "ContextCount")
-                        if count >= max(average_context, 6):
+                        if count >= max(average_context, high_activity_count):
                             high_activity = True
 
                         sentiment = extract_metadata_value(json_data, "Sentiment", 5)
