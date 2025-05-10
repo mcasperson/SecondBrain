@@ -130,7 +130,6 @@ if ($GenerateCompanyReports)
             "-Dsb.zendesk.accesstoken2=$env:SB_ZENDESK_ACCESSTOKEN_CODEFRESH"
             "-Dsb.zendesk.user2=$env:SB_ZENDESK_USER_CODEFRESH"
             "-Dsb.zendesk.url2=$env:SB_ZENDESK_URL_CODEFREH"
-            "-Dsb.cache.backup=$( $using:index % 100 -eq 1 )"
             "-Dsb.cache.path=/home/matthew"
             "-Dsb.tools.force=MultiSlackZenGoogle"
             "-Dsb.multislackzengoogle.minTimeBasedContext=1"
