@@ -167,7 +167,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         return localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskApiComments",
-                ticketId,
+                DigestUtils.sha256Hex(ticketId + url),
                 0,
                 ZenDeskCommentsResponse.class,
                 () -> getCommentsFromApi(client, authorization, url, ticketId));
@@ -239,7 +239,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         return localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskAPIOrganizations",
-                orgId,
+                DigestUtils.sha256Hex(orgId + url),
                 ZenDeskOrganizationResponse.class,
                 () -> getOrganizationFromApi(client, authorization, url, orgId)).organization();
     }
@@ -286,10 +286,8 @@ public class ZenDeskClientLive implements ZenDeskClient {
         return localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskAPIUsers",
-                userId,
+                DigestUtils.sha256Hex(userId + url),
                 ZenDeskUserResponse.class,
                 () -> getUserFromApi(client, authorization, url, userId)).user();
     }
-
-
 }
