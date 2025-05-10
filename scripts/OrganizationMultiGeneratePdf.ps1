@@ -115,6 +115,7 @@ if ($GenerateCompanyReports)
             Write-Host "Processing $entityName in $using:subDir $( $using:index ) of $( ($using:database).entities.Count )"
 
             $arguments = Get-SplitTrimmedAndJoinedString(@"
+            "-Dh2.maxCompactTime=60000"
             "-Dstdout.encoding=UTF-8"
             "-Dsb.slack.apidelay=120000"
             "-Dsb.cache.writeonly=true"
