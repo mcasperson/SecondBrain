@@ -9,6 +9,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.answer.AnswerFormatter;
@@ -31,6 +32,10 @@ import static io.vavr.control.Try.of;
 @ApplicationScoped
 public class OllamaClient {
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
+
+    @Inject
+    @ConfigProperty(name = "sb.ollama.ttldays", defaultValue = "30")
+    private String ttlDays;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.url", defaultValue = "http://localhost:11434")
@@ -125,7 +130,12 @@ public class OllamaClient {
             @Nullable final Integer contextWindow) {
         final String promptHash = DigestUtils.sha256Hex(ragDoc.combinedDocument() + model + contextWindow);
 
-        final String result = localStorage.getOrPutString(tool, "LLM", promptHash, () -> {
+        final String result = localStorage.getOrPutString(
+                tool,
+                "LLM",
+                promptHash,
+                NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
+                () -> {
             final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
             return response.combinedDocument();
         });
