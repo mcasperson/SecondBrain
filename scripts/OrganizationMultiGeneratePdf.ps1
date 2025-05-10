@@ -40,7 +40,7 @@ Write-Host "Working in $subDir"
 
 $toolModel = "llama3.1"
 
-$throttleLimit = 10
+$throttleLimit = 20
 
 #$model = "mistral-nemo:12b-instruct-2407-q8_0"
 #$model = "llama3.3"
@@ -56,7 +56,8 @@ $throttleLimit = 10
 $model = "qwen3:14b"
 
 #$contextWindow = "32768"
-$contextWindow = "65536"
+$contextWindow = "40000"
+#$contextWindow = "655361"
 #$contextWindow = "131072"
 
 $from = (Get-Date).AddDays(-$Days).ToString("yyyy-MM-dd")
