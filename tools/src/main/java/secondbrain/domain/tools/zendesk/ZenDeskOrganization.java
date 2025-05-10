@@ -48,6 +48,7 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -128,6 +129,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 
     @Inject
     private DocumentTrimmer documentTrimmer;
+
+    @Inject
+    private Logger log;
 
     @Override
     public String getName() {
@@ -238,6 +242,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                     one a small number of tickets.
                  */
                 .map(tickets -> summariseTickets(tickets, environmentSettings))
+                // Don't let one failed instance block the others
+                .onFailure(throwable -> log.warning("Failed to get tickets: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                .recover(throwable -> List.of())
                 .get();
     }
 
