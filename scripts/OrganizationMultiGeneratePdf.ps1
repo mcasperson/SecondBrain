@@ -93,6 +93,8 @@ if ($GenerateCompanyReports)
 
             $entityName = ($using:entity).name
 
+
+
             # Ignore the NPS entity, as it is not a customer.
             if ($entityName -eq "NPS")
             {
@@ -118,7 +120,6 @@ if ($GenerateCompanyReports)
             "-Dh2.maxCompactTime=60000"
             "-Dstdout.encoding=UTF-8"
             "-Dsb.slack.apidelay=120000"
-            "-Dsb.cache.writeonly=true"
             "-Dsb.ollama.contextwindow=$using:contextWindow"
             "-Dsb.exceptions.printstacktrace=false"
             "-Dsb.planhat.custom1=ARR (SFDC)"
