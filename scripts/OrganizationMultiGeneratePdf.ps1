@@ -40,6 +40,8 @@ Write-Host "Working in $subDir"
 
 $toolModel = "llama3.1"
 
+$throttleLimit = 10
+
 #$model = "mistral-nemo:12b-instruct-2407-q8_0"
 #$model = "llama3.3"
 #$model = "gemma2:27b"
@@ -87,7 +89,7 @@ if ($GenerateCompanyReports)
         }
 
         # We can have thousands of entities to process, so we need to use threads to process them in parallel.
-        $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 20 -ScriptBlock {
+        $jobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit $throttleLimit -ScriptBlock {
 
             Import-Module $using:ModulePath
 
@@ -227,7 +229,7 @@ if ($GenerateTopicReports)
     {
         $topicIndex++
 
-        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit 20 -ScriptBlock {
+        $topicJobs += Start-ThreadJob -StreamingHost $Host -ThrottleLimit $throttleLimit -ScriptBlock {
 
             # Offset the start of the execution by a few random seconds to avoid
             # all the threads printing their output at the same time.
