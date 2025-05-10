@@ -4,6 +4,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
@@ -70,7 +71,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         final ZenDeskResultsResponse[] value = localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskApiTickets",
-                "Global",
+                DigestUtils.sha256Hex(url),
                 ttlSeconds,
                 ZenDeskResultsResponse[].class,
                 () -> getTicketsApi(client, authorization, url, query, page, maxPage));
