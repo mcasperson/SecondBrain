@@ -55,9 +55,8 @@ $throttleLimit = 10
 #$model = "qwen3:32b"
 $model = "qwen3:14b"
 
-# 128K tokens can be just a bit too much when using a 70B model
-$contextWindow = "32768"
-#$contextWindow = "65536"
+#$contextWindow = "32768"
+$contextWindow = "65536"
 #$contextWindow = "131072"
 
 $from = (Get-Date).AddDays(-$Days).ToString("yyyy-MM-dd")
