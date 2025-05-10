@@ -13,6 +13,8 @@ Param (
 
 $ModulePath = "$PSScriptRoot\SharedFunctions.psm1"
 
+$ProgressPreference = 'SilentlyContinue'
+
 Import-Module $ModulePath
 
 # The PDF file is often generated with a date in the name.
