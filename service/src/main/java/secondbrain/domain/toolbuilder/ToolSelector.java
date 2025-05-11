@@ -114,10 +114,7 @@ public class ToolSelector {
     }
 
     private OllamaResponse callOllama(final String llmPrompt) {
-        return Try.withResources(() -> ClientBuilder
-                        .newBuilder()
-                        .readTimeout(NumberUtils.toInt(timeout.orElse("10"), 10), TimeUnit.MINUTES)
-                        .build())
+        return Try.withResources(ClientBuilder::newClient)
                 .of(client ->
                         ollamaClient.callOllama(
                                 client,
