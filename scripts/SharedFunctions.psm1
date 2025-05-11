@@ -44,7 +44,7 @@ Function Invoke-CustomCommand
         $commandArguments,
         $workingDir = (Get-Location),
         $path = @(),
-        $processTimeout = 1000 * 60 * 90
+        $processTimeout = 1000 * 60 * 240
     )
 
     $remainingTimeout = $processTimeout
