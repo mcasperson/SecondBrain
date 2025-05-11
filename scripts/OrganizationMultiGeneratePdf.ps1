@@ -53,8 +53,8 @@ $throttleLimit = 20
 #$model = "gemma3:27b-it-qat"
 #$model = "qwen2.5:32b"
 #$model = "qwen2.5:14b"
-$model = "qwen3:32b"
-#$model = "qwen3:30b-a3b"
+#$model = "qwen3:32b"
+$model = "qwen3:30b-a3b"
 #$model = "qwen3:14b"
 
 #$contextWindow = "32768"
