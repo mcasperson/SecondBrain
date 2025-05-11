@@ -22,6 +22,7 @@ import java.util.Objects;
 
 @ApplicationScoped
 public class GongClientLive implements GongClient {
+    private static final int TTL = 60 * 60 * 24 * 31;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
 
     @Inject
@@ -52,6 +53,7 @@ public class GongClientLive implements GongClient {
                 GongClientLive.class.getSimpleName(),
                 "GongAPICallsExtensive",
                 DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
+                TTL,
                 GongCallsExtensive.class,
                 () -> getCallsExtensiveApi(client, fromDateTime, toDateTime, callId, username, password));
 
