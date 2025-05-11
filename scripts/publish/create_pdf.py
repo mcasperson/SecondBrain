@@ -10,7 +10,7 @@ company_prefix = 'COMPANY '
 topic_prefix = 'TOPIC '
 executive_summary_prefix = 'EXECUTIVE SUMMARY '
 arr_limit = 75000
-high_activity_count = 6
+high_activity_count = 7
 
 
 class PDF(FPDF):
