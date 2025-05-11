@@ -57,6 +57,7 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String GONG_DISABLELINKS_ARG = "disableLinks";
     public static final String GONG_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String GONG_ENTITY_NAME_CONTEXT_ARG = "entityName";
+    public static final String GONG_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of call transcripts from Gong.
@@ -140,7 +141,7 @@ public class Gong implements Tool<GongCallDetails> {
                             raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
                             call transcripts.
                          */
-                        .map(transcripts -> summariseCalls(transcripts, environmentSettings))
+                        .map(transcripts -> parsedArgs.getSummarizeTranscript() ? summariseCalls(transcripts, environmentSettings) : transcripts)
                         .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                         .get())
                 .get();
@@ -296,6 +297,10 @@ class GongConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
+    @ConfigProperty(name = "sb.gong.summarizetranscript", defaultValue="false")
+    private Optional<String> configSummarizeTranscript;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -346,6 +351,10 @@ class GongConfig {
 
     public Optional<String> getConfigCallId() {
         return configCallId;
+    }
+
+    public Optional<String> getConfigSummarizeTranscript() {
+        return configSummarizeTranscript;
     }
 
     public class LocalArguments {
@@ -495,6 +504,18 @@ class GongConfig {
                     null,
                     Gong.GONG_ENTITY_NAME_CONTEXT_ARG,
                     "").value();
+        }
+
+        public boolean getSummarizeTranscript() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigSummarizeTranscript()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_SUMMARIZE_TRANSCRIPT_ARG,
+                    "gong_summarizetranscript",
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
         }
     }
 }
