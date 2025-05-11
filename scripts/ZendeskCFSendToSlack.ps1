@@ -13,7 +13,8 @@ $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSH
 #$model = "qwen3:14b"
 $model = "qwen3:30b-a3b"
 $toolModel = "llama3.1"
-$contextLength = "32768"
+#$contextWindow = "32768"
+$contextWindow = "40000"
 
 $ticketResult = Invoke-CustomCommand java Get-SplitTrimmedAndJoinedString(@"
 "-Dsb.zendesk.user=$( $env:SB_ZENDESK_USER_CF )"
