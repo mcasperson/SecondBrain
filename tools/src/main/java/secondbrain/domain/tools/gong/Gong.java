@@ -42,6 +42,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.instanceOf;
@@ -93,6 +94,9 @@ public class Gong implements Tool<GongCallDetails> {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private Logger logger;
+
     @Override
     public String getName() {
         return Gong.class.getSimpleName();
@@ -129,7 +133,15 @@ public class Gong implements Tool<GongCallDetails> {
                                         call,
                                         gongClient.getCallTranscript(client, parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), call.id())))
                                 .toList())
-                        .onFailure(ex -> System.err.println("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
+                        /*
+                            Take the raw transcript and summarize them with individual calls to the LLM.
+                            The transcripts are then combined into a single context.
+                            This was necessary because the private LLMs didn't do a very good job of summarizing
+                            raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
+                            call transcripts.
+                         */
+                        .map(transcripts -> summariseCalls(transcripts, environmentSettings))
+                        .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                         .get())
                 .get();
 
@@ -217,6 +229,35 @@ public class Gong implements Tool<GongCallDetails> {
     @Override
     public String getContextLabel() {
         return "Gong Call";
+    }
+
+    /**
+     * Summarise the calls by passing them through the LLM
+     */
+    private List<Pair<GongCallDetails, String>> summariseCalls(final List<Pair<GongCallDetails, String>> tickets, final Map<String, String> context) {
+        return tickets.stream()
+                .map(pair -> Pair.of(pair.getLeft(), getCallSummary(pair.getRight(), context)))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Summarise an individual ticket
+     */
+    private String getCallSummary(final String transcript, final Map<String, String> environmentSettings) {
+        final String ticketContext = promptBuilderSelector
+                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
+                .buildContextPrompt("Gong Transcript", transcript);
+
+        final String prompt = promptBuilderSelector
+                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
+                .buildFinalPrompt("You are a helpful agent", ticketContext, "Summarise the Gong call transcript in three paragraphs");
+
+        return ollamaClient.callOllamaWithCache(
+                new RagMultiDocumentContext<>(prompt),
+                modelConfig.getCalculatedModel(environmentSettings),
+                getName(),
+                modelConfig.getCalculatedContextWindow(environmentSettings)
+        ).combinedDocument();
     }
 }
 
