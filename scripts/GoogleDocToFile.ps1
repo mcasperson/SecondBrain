@@ -16,9 +16,12 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 $jarFile = "/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar"
 
 #$model = "mistral-nemo:12b-instruct-2407-q8_0"
-$model = "qwen3:32b"
+#$model = "qwen3:32b"
+#$model = "qwen3:14b"
+$model = "qwen3:30b-a3b"
 $toolModel = "llama3.1"
-$contextWindow = "32768"
+#$contextWindow = "32768"
+$contextWindow = "40000"
 
 $companyNames -split "," | ForEach-Object {
     $split = $_ -split ":"

@@ -44,7 +44,7 @@ Function Invoke-CustomCommand
         $commandArguments,
         $workingDir = (Get-Location),
         $path = @(),
-        $processTimeout = 1000 * 60 * 30
+        $processTimeout = 1000 * 60 * 240
     )
 
     $remainingTimeout = $processTimeout
@@ -151,18 +151,20 @@ Function Invoke-CustomCommand
     {
         $p.Kill($true)
         $output = ""
+        $errOutput = "Killed process"
         $exitCode = -1
         Write-Host "Killed process"
     }
     else
     {
         $output = $p.StandardOutput.ReadToEnd()
+        $errOutput = $global:stdErr.ToString()
         $exitCode = $p.ExitCode
     }
 
     $executionResults = [pscustomobject]@{
         StdOut = $output
-        StdErr = $global:stdErr.ToString()
+        StdErr = $errOutput
         ExitCode = $exitCode
     }
 

@@ -48,6 +48,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
@@ -174,9 +175,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private ExceptionHandler exceptionHandler;
 
     @Inject
-    private Logger log;
-
-    @Inject
     private Logger logger;
 
     @Inject
@@ -285,6 +283,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
+                        API.Case(API.$(instanceOf(MissingResponse.class)), throwable -> new InternalFailure(throwable)),
+                        API.Case(API.$(instanceOf(InvalidResponse.class)), throwable -> new ExternalFailure(throwable)),
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("Some content was empty (this is probably a bug...)")),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
@@ -438,8 +438,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final List<MetaObjectResult> planHatMetadata = positionalEntity.entity.getPlanHat()
                     .stream()
                     .limit(1)
-                    .flatMap(planHatId -> planHatUsage.getMetadata(context, prompt, List.of(
-                            new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, planHatId, true))).stream())
+                    .flatMap(planHatId -> Try.of(() -> planHatUsage.getMetadata(
+                                            context,
+                                            prompt,
+                                            List.of(new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, planHatId, true)))
+                                    .stream())
+                            .onFailure(ex -> logger.warning("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                            .getOrElse(Stream::of))
                     .toList();
             metadata.addAll(planHatMetadata);
         }
@@ -501,8 +506,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 metaField.getRight(),
                                 List.of()).combinedDocument())
                         .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
-                        // Meta fields are a best effort, and we default to 0
-                        .recover(InternalFailure.class, ex -> 0)
+                        .onFailure(ex -> logger.warning("Rating tool failed for " + metaField.getLeft() + ": " + exceptionHandler.getExceptionMessage(ex)))
+                        // Meta-fields are a best effort, and we default to 0
+                        .recover(ex -> 0)
                         .get();
 
                 results.add(new MetaObjectResult(metaField.getLeft(), value));
@@ -551,8 +557,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         prompt,
                         args))
                 // We continue on even if one tool fails, so log and swallow the exception
-                .onFailure(InternalFailure.class, ex -> log.info("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                .onFailure(ExternalFailure.class, ex -> log.warning("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(InternalFailure.class, ex -> logger.info("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(ExternalFailure.class, ex -> logger.warning("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                 // If anything fails, get an empty list
                 .getOrElse(List::of)
                 // Post-process the rag context
@@ -579,8 +585,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.info("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> logger.warning("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -606,8 +612,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.info("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> logger.warning("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -629,8 +635,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ex -> logger.warning("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -655,8 +660,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.info("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> logger.warning("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -682,8 +687,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.info("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name
@@ -709,8 +714,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> log.info("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                        .onFailure(ExternalFailure.class, ex -> log.warning("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.info("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> logger.warning("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name

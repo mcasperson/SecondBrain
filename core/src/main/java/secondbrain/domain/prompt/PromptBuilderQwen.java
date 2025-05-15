@@ -1,7 +1,11 @@
 package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
+import java.util.Optional;
 
 /**
  * See <a href="https://ollama.com/library/qwen2/blobs/62fbfd9ed093">qwen2</a>
@@ -9,6 +13,10 @@ import org.apache.commons.lang3.StringUtils;
  */
 @ApplicationScoped
 public class PromptBuilderQwen implements PromptBuilder {
+
+    @Inject
+    @ConfigProperty(name = "sb.qwen.thinking", defaultValue = "false")
+    private Optional<String> thinking;
 
     @Override
     public String modelRegex() {
@@ -52,6 +60,16 @@ public class PromptBuilderQwen implements PromptBuilder {
                 + "\n<|im_start|>user\n"
                 + prompt
                 + "\n<|im_end|>"
+                + getThinking()
                 + "\n<|im_start|>assistant";
+    }
+
+    private String getThinking() {
+        return !Boolean.parseBoolean(thinking.orElse("false"))
+                ? """
+                <|im_start|>system
+                \\no_think
+                <|im_end|>""".stripIndent()
+        : "";
     }
 }

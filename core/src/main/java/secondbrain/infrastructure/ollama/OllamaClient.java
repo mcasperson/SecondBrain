@@ -9,6 +9,8 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.answer.AnswerFormatter;
@@ -22,6 +24,7 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.response.ResponseValidation;
 
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -31,6 +34,15 @@ import static io.vavr.control.Try.of;
 @ApplicationScoped
 public class OllamaClient {
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
+
+    /**
+     * Common error messages that we don't want to cache.
+     */
+    private static final String[] ERRORS = {"Predictor is not initialized"};
+
+    @Inject
+    @ConfigProperty(name = "sb.ollama.ttldays", defaultValue = "30")
+    private String ttlDays;
 
     @Inject
     @ConfigProperty(name = "sb.ollama.url", defaultValue = "http://localhost:11434")
@@ -125,12 +137,35 @@ public class OllamaClient {
             @Nullable final Integer contextWindow) {
         final String promptHash = DigestUtils.sha256Hex(ragDoc.combinedDocument() + model + contextWindow);
 
-        final String result = localStorage.getOrPutString(tool, "LLM", promptHash, () -> {
+        final String result = localStorage.getOrPutString(
+                tool,
+                "LLM",
+                promptHash,
+                NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
+                () -> {
             final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
-            return response.combinedDocument();
+            final String responseText = response.combinedDocument();
+
+            // Don't cache errors
+            return resultOrDefaultOnError(responseText, null);
         });
 
-        return ragDoc.updateDocument(result);
+        // Don't return cached errors
+        return valueOrDefaultOnError(result,
+                ragDoc.updateDocument(result),
+                ragDoc.updateDocument(callOllama(ragDoc, model, contextWindow).combinedDocument()));
+    }
+
+    private boolean resultIsError(final String result) {
+        return CollectionUtils.containsAny(Arrays.asList(ERRORS), result.trim());
+    }
+
+    private <T> T valueOrDefaultOnError(final String result, final T value, final T defaultValue) {
+        return resultIsError(result) ? defaultValue : value;
+    }
+
+    private String resultOrDefaultOnError(final String result, final String defaultValue) {
+        return resultIsError(result) ? defaultValue : result;
     }
 
     private String formatResponse(final String model, final String response) {

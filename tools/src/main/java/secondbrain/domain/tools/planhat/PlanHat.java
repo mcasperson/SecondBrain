@@ -44,6 +44,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -107,6 +108,9 @@ public class PlanHat implements Tool<Conversation> {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private Logger log;
+
     @Override
     public String getName() {
         return PlanHat.class.getSimpleName();
@@ -155,6 +159,9 @@ public class PlanHat implements Tool<Conversation> {
                                 pair.getLeft(),
                                 pair.getRight(),
                                 parsedArgs.getSearchTTL()))
+                        // Don't let the failure of one instance affect the other
+                        .onFailure(throwable -> log.warning("Failed to get conversations: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                        .recover(ex -> List.of())
                         .get()
                         .stream())
                 .toList();
@@ -288,7 +295,7 @@ class PlanHatConfig {
     private Optional<String> configToken2;
 
     @Inject
-    @ConfigProperty(name = "sb.planhat.url", defaultValue = "https://api.planhat.com")
+    @ConfigProperty(name = "sb.planhat.url2", defaultValue = "https://api.planhat.com")
     private Optional<String> configUrl2;
 
     @Inject

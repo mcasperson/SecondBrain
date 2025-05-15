@@ -40,7 +40,7 @@ public class PlanHatClientLive implements PlanHatClient {
         final Conversation[] conversations = localStorage.getOrPutObject(
                 PlanHatClientLive.class.getSimpleName(),
                 "PlanHatAPIConversations",
-                DigestUtils.sha256Hex(company),
+                DigestUtils.sha256Hex(company + url),
                 ttlSeconds,
                 Conversation[].class,
                 () -> getConversationsApi(client, company, url, token));
@@ -60,7 +60,7 @@ public class PlanHatClientLive implements PlanHatClient {
         return localStorage.getOrPutObject(
                 PlanHatClientLive.class.getSimpleName(),
                 "PlanHatAPICompany",
-                DigestUtils.sha256Hex(company + "V2"),
+                DigestUtils.sha256Hex(company + url),
                 ttlSeconds,
                 Company.class,
                 () -> getCompanyApi(client, company, url, token));

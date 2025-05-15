@@ -10,6 +10,7 @@ company_prefix = 'COMPANY '
 topic_prefix = 'TOPIC '
 executive_summary_prefix = 'EXECUTIVE SUMMARY '
 arr_limit = 75000
+high_activity_count = 7
 
 
 class PDF(FPDF):
@@ -178,6 +179,10 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
             terraform = 0
             performance = 0
             security = 0
+            arr = 0
+            windows = 0
+            linux = 0
+            tenants = 0
 
             if os.path.exists(metadata):
                 print(f"Parsing {metadata}...")
@@ -188,22 +193,22 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                         # Note that we expect all companies to have at least 3 touch points including things
                         # like deployment, project, and tenant stats
                         count = extract_metadata_value(json_data, "ContextCount")
-                        if count >= max(average_context, 6):
+                        if count >= max(average_context, high_activity_count):
                             high_activity = True
 
                         sentiment = extract_metadata_value(json_data, "Sentiment", 5)
-                        aws = extract_metadata_value(json_data, "AWS")
-                        azure = extract_metadata_value(json_data, "Azure")
-                        costs = extract_metadata_value(json_data, "Costs")
-                        k8s = extract_metadata_value(json_data, "Kubernetes")
-                        github = extract_metadata_value(json_data, "Github")
-                        migration = extract_metadata_value(json_data, "Migration")
-                        terraform = extract_metadata_value(json_data, "Terraform")
-                        performance = extract_metadata_value(json_data, "Performance")
-                        security = extract_metadata_value(json_data, "Security")
-                        windows = extract_metadata_value(json_data, "Windows")
-                        linux = extract_metadata_value(json_data, "Linux")
-                        tenants = extract_metadata_value(json_data, "Tenants")
+                        aws = extract_metadata_value(json_data, "AWS", 0)
+                        azure = extract_metadata_value(json_data, "Azure", 0)
+                        costs = extract_metadata_value(json_data, "Costs", 0)
+                        k8s = extract_metadata_value(json_data, "Kubernetes", 0)
+                        github = extract_metadata_value(json_data, "Github", 0)
+                        migration = extract_metadata_value(json_data, "Migration", 0)
+                        terraform = extract_metadata_value(json_data, "Terraform", 0)
+                        performance = extract_metadata_value(json_data, "Performance", 0)
+                        security = extract_metadata_value(json_data, "Security", 0)
+                        windows = extract_metadata_value(json_data, "Windows", 0)
+                        linux = extract_metadata_value(json_data, "Linux", 0)
+                        tenants = extract_metadata_value(json_data, "Tenants", 0)
                         arr = parse_int(extract_metadata_value(json_data, "ARR (SFDC)"))
                         arr2 = parse_int(extract_metadata_value(json_data, "ARR Amount"))
                     except:
