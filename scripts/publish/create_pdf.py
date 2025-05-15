@@ -209,6 +209,7 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                         windows = extract_metadata_value(json_data, "Windows", 0)
                         linux = extract_metadata_value(json_data, "Linux", 0)
                         tenants = extract_metadata_value(json_data, "Tenants", 0)
+                        argocd = extract_metadata_value(json_data, "ArgoCD", 0)
                         arr = parse_int(extract_metadata_value(json_data, "ARR (SFDC)"))
                         arr2 = parse_int(extract_metadata_value(json_data, "ARR Amount"))
                     except:
@@ -243,6 +244,7 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                  'windows': windows,
                  'linux': linux,
                  'tenants': tenants,
+                 'argocd': argocd,
                  'arr': arr,
                  'arr2': arr2})
 
@@ -263,6 +265,7 @@ def add_toc_categories(pdf, script_dir):
     pdf.add_legend_item(os.path.join(script_dir, "images/linux.png"), 'Linux')
     pdf.add_legend_item(os.path.join(script_dir, "images/windows.png"), 'Windows')
     pdf.add_legend_item(os.path.join(script_dir, "images/tenants.png"), 'Tenants')
+    pdf.add_legend_item(os.path.join(script_dir, "images/argocd.png"), 'ArgoCD')
 
 
 def add_toc(pdf, script_dir, contents, companies):
@@ -302,11 +305,12 @@ def add_toc(pdf, script_dir, contents, companies):
 
         def add_icons(content):
             if content['sentiment'] >= 8:
-                pdf.image(os.path.join(script_dir, "images/smile.png"), x=100, y=pdf.y, w=6, h=6)
+                pdf.image(os.path.join(script_dir, "images/smile.png"), x=92, y=pdf.y, w=6, h=6)
             elif content['sentiment'] <= 3:
-                pdf.image(os.path.join(script_dir, "images/cry.png"), x=100, y=pdf.y, w=6, h=6)
+                pdf.image(os.path.join(script_dir, "images/cry.png"), x=92, y=pdf.y, w=6, h=6)
 
             # Use the new function for each icon
+            pdf.add_icon_if_threshold_met(script_dir, content['argocd'], 5, "argocd", 100)
             pdf.add_icon_if_threshold_met(script_dir, content['aws'], 5, "aws", 108)
             pdf.add_icon_if_threshold_met(script_dir, content['azure'], 5, "azure", 116)
             pdf.add_icon_if_threshold_met(script_dir, content['costs'], 5, "costs", 124)
