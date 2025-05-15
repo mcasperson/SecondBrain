@@ -177,6 +177,8 @@ if ($GenerateCompanyReports)
             Include an executive summary as the first paragraph.
             Show the total deployments in the last 30 days, total projects, and total tenants as a bullet point list at the end.
             List the company's Annual Recuring Revenue (ARR) at the end of the report.
+            If the ARR is not available, show the value as 'N/A'.
+            You will be penalized for including an ARR value if it was not supplied.
             If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes.
             You must use asterisks for bullet point lists.
             You will be penalized for talking about "limited engagement" or "limited communication".
