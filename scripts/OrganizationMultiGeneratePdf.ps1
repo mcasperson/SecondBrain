@@ -119,6 +119,7 @@ if ($GenerateCompanyReports)
             "-Dsb.ollama.contextwindow=$using:contextWindow"
             "-Dsb.exceptions.printstacktrace=false"
             "-Dsb.planhat.custom1=ARR (SFDC)"
+            "-Dsb.planhat.custom2=ARR Amount"
             "-Dsb.planhat.usagename1=Deployments in the last 30 days"
             "-Dsb.planhat.usageid1=676130db81b2485640f92c2e"
             "-Dsb.planhat.usagename2=Total Projects"

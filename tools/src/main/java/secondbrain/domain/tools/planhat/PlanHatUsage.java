@@ -43,6 +43,7 @@ public class PlanHatUsage implements Tool<Company> {
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String COMPANY_ID_ARGS = "companyId";
     public static final String PLANHAT_CUSTOM_1_ARG = "custom1";
+    public static final String PLANHAT_CUSTOM_2_ARG = "custom2";
     public static final String PLANHAT_USAGE_ID_1_ARG = "usageId1";
     public static final String PLANHAT_USAGE_ID_2_ARG = "usageId2";
     public static final String PLANHAT_USAGE_ID_3_ARG = "usageId3";
@@ -135,7 +136,10 @@ public class PlanHatUsage implements Tool<Company> {
                         List.of()))
                 .toList();
 
-        final List<RagDocumentContext<Company>> customContext = Stream.of(parsedArgs.getCustom1())
+        final List<RagDocumentContext<Company>> customContext = Stream.of(
+                        parsedArgs.getCustom1(),
+                        parsedArgs.getCustom2()
+                )
                 .filter(StringUtils::isNotBlank)
                 .map(custom -> new RagDocumentContext<>(
                         getContextLabel() + " " + company.name() + " " + custom,
@@ -253,6 +257,10 @@ class PlanHatUsageConfig {
     private Optional<String> configCustom1;
 
     @Inject
+    @ConfigProperty(name = "sb.planhat.custom2")
+    private Optional<String> configCustom2;
+
+    @Inject
     @ConfigProperty(name = "sb.planhat.usageid1")
     private Optional<String> configUsageId1;
 
@@ -366,6 +374,10 @@ class PlanHatUsageConfig {
         return configCustom1;
     }
 
+    public Optional<String> getConfigCustom2() {
+        return configCustom2;
+    }
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -444,6 +456,16 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_CUSTOM_1_ARG,
                     "planhat_custom1",
+                    "").value();
+        }
+
+        public String getCustom2() {
+            return getArgsAccessor().getArgument(
+                    getConfigCustom2()::get,
+                    arguments,
+                    context,
+                    PlanHatUsage.PLANHAT_CUSTOM_2_ARG,
+                    "planhat_custom2",
                     "").value();
         }
 

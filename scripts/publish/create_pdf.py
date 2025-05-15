@@ -205,6 +205,7 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                         linux = extract_metadata_value(json_data, "Linux")
                         tenants = extract_metadata_value(json_data, "Tenants")
                         arr = parse_int(extract_metadata_value(json_data, "ARR (SFDC)"))
+                        arr2 = parse_int(extract_metadata_value(json_data, "ARR Amount"))
                     except:
                         pass
 
@@ -222,7 +223,7 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                  'filename': filename,
                  'executive_summary': executive_summary if executive_summary_exists else None,
                  'link': pdf.add_link(),
-                 'high_activity': high_activity or arr >= arr_limit,
+                 'high_activity': high_activity or arr >= arr_limit or arr2 >= arr_limit,
                  'type': 'customer',
                  'sentiment': sentiment,
                  'aws': aws,
@@ -237,7 +238,8 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                  'windows': windows,
                  'linux': linux,
                  'tenants': tenants,
-                 'arr': arr})
+                 'arr': arr,
+                 'arr2': arr2})
 
     return contents
 
