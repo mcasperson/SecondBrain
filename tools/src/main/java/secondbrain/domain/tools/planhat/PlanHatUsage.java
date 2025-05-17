@@ -110,14 +110,34 @@ public class PlanHatUsage implements Tool<Company> {
             throw new InternalFailure("You must provide a company ID to query");
         }
 
-        final Company company = Try.withResources(ClientBuilder::newClient)
-                .of(client -> planHatClient.getCompany(
-                        client,
-                        parsedArgs.getCompany(),
-                        parsedArgs.getUrl(),
-                        parsedArgs.getToken(),
-                        parsedArgs.getSearchTTL()))
+        // We can process multiple planhat instances
+        final List<Pair<String, String>> tokens = Stream.of(
+                        Pair.of(parsedArgs.getUrl(), parsedArgs.getToken()),
+                        Pair.of(parsedArgs.getUrl2(), parsedArgs.getToken2()))
+                .filter(pair -> StringUtils.isNotBlank(pair.getRight()) && StringUtils.isNotBlank(pair.getLeft()))
+                .toList();
+
+        // Find the first Planhat instance to return company details
+        final Optional<Company> firstCompany = Try.withResources(ClientBuilder::newClient)
+                .of(client -> tokens
+                        .stream()
+                        .map(pair -> Try.of(() -> planHatClient.getCompany(
+                                client,
+                                parsedArgs.getCompany(),
+                                pair.getLeft(),
+                                pair.getRight(),
+                                parsedArgs.getSearchTTL())))
+                        .filter(Try::isSuccess)
+                        .map(Try::get)
+                        .findFirst()
+                )
                 .get();
+
+        if (firstCompany.isEmpty()) {
+            throw new InternalFailure("Could not find company " + parsedArgs.getCompany());
+        }
+
+        final Company company = firstCompany.get();
 
         final List<RagDocumentContext<Company>> usageContext = Stream.of(
                         Pair.of(parsedArgs.getUsageName1(), parsedArgs.getUsageId1()),
@@ -241,8 +261,16 @@ class PlanHatUsageConfig {
     private Optional<String> configUrl;
 
     @Inject
+    @ConfigProperty(name = "sb.planhat.url2", defaultValue = "https://api.planhat.com")
+    private Optional<String> configUrl2;
+
+    @Inject
     @ConfigProperty(name = "sb.planhat.accesstoken")
     private Optional<String> configToken;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.accesstoken2")
+    private Optional<String> configToken2;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.searchttl")
@@ -314,6 +342,10 @@ class PlanHatUsageConfig {
         return configToken;
     }
 
+    public Optional<String> getConfigToken2() {
+        return configToken2;
+    }
+
     public Optional<String> getConfigSearchTtl() {
         return configSearchTtl;
     }
@@ -382,6 +414,10 @@ class PlanHatUsageConfig {
         return configUrl;
     }
 
+    public Optional<String> getConfigUrl2() {
+        return configUrl2;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -418,6 +454,24 @@ class PlanHatUsageConfig {
             return Try.of(getConfigToken()::get)
                     .mapTry(getValidateString()::throwIfEmpty)
                     .recover(e -> context.get("planhat_usage_token"))
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> "")
+                    .get();
+        }
+
+        public String getToken2() {
+            return Try.of(getConfigToken2()::get)
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> context.get("planhat_token2"))
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> "")
+                    .get();
+        }
+
+        public String getUrl2() {
+            return Try.of(getConfigUrl2()::get)
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recover(e -> context.get("planhat_url2"))
                     .mapTry(getValidateString()::throwIfEmpty)
                     .recover(e -> "")
                     .get();
