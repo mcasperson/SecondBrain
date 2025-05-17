@@ -9,8 +9,8 @@ from fpdf.fpdf import FPDF
 company_prefix = 'COMPANY '
 topic_prefix = 'TOPIC '
 executive_summary_prefix = 'EXECUTIVE SUMMARY '
-arr_limit = 75000
-high_activity_count = 7
+arr_limit = 100000
+high_activity_count = 8
 
 
 class PDF(FPDF):
