@@ -183,7 +183,7 @@ if ($GenerateCompanyReports)
             You will be penalized for including an ARR value if it was not supplied.
             If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes.
             You must use asterisks for bullet point lists.
-            You will be penalized for talking about "limited engagement" or "limited communication".
+            You will be penalized for talking about 'limited engagement' or 'limited communication'.
             You will be penalized for using dashes for bullet point lists.
             You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt.
             You will be penalized for including a general summary of the Google Document in the report.
