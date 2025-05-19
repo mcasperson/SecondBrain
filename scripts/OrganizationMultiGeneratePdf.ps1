@@ -403,7 +403,16 @@ if ($GeneratePDF)
 {
     $PdfGenerateLog = "/tmp/pdfgenerate PDF $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
-    $pdfResult = Invoke-CustomCommand python3 "`"/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py`" --directory `"$subDir`" --pdf `"$PdfFile`" --title `"$PdfTitle`" --date_from `"$from`" --date_to `"$now`" --cover_page `"$CoverPage`""
+    $arguments = Get-SplitTrimmedAndJoinedString(@"
+    "/home/matthew/Code/SecondBrain/scripts/publish/create_pdf.py"
+    --directory "$subDir"
+    --pdf "$PdfFile"
+    --title "$PdfTitle"
+    --date_from "$from"
+    --date_to "$now"
+    --cover_page "$CoverPage"
+"@)
+    $pdfResult = Invoke-CustomCommand python3 $arguments
     Add-Content -Path $PdfGenerateLog -Value $pdfResult.StdOut
     Add-Content -Path $PdfGenerateLog -Value $pdfResult.StdErr
 
