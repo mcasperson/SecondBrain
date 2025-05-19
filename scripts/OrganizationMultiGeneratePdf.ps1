@@ -97,7 +97,11 @@ if ($GenerateCompanyReports)
 
             $entityName = ($using:entity).name
 
-
+            # This is a quick way to test a single customer
+#            if ($entityName -ne "Intel")
+#            {
+#                return
+#            }
 
             # Ignore the NPS entity, as it is not a customer.
             if ($entityName -eq "NPS")
@@ -177,6 +181,7 @@ if ($GenerateCompanyReports)
             -jar $using:jarFile
             "Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName.
             Include an executive summary as the first paragraph.
+            Include subheadings for the major topics discussed in the report.
             Show the total deployments in the last 30 days, total projects, and total tenants as a bullet point list at the end.
             List the company's Annual Recuring Revenue (ARR) at the end of the report.
             If the ARR is not available, show the value as 'N/A'.
