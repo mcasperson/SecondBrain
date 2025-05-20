@@ -179,7 +179,7 @@ if ($GenerateCompanyReports)
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
             -jar $using:jarFile
-            "Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, and PlanHat activities associated with $entityName.
+            "Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, PlanHat activities, and Gong calls associated with $entityName.
             Include an executive summary as the first paragraph.
             Include subheadings for the major topics discussed in the report.
             Show the total deployments in the last 30 days, total projects, and total tenants as a bullet point list at the end.
