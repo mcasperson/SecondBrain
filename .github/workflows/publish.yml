@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - 'release/*'
+    paths-ignore:
       - 'action.yml'
       - '.github/workflows/*'
 
