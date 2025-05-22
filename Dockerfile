@@ -31,6 +31,7 @@ RUN nohup bash -c "ollama serve &" \
     && wait4x http http://127.0.0.1:11434 \
     && ollama pull qwen2.5-coder \
     && ollama pull llama3.2:3b \
+    && ollama pull qwen3:30b-a3b \
     && ollama list
 
 COPY --from=build /usr/src/app/cli/target/secondbrain-cli-*.jar /usr/local/bin/secondbrain-cli.jar
