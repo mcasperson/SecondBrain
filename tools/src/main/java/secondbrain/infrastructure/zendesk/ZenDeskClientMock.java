@@ -25,8 +25,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
         return generateMockTickets(3);
     }
 
-    @Override
-    public List<ZenDeskResultsResponse> getTickets(
+    private List<ZenDeskResultsResponse> getTickets(
             final Client client,
             final String authorization,
             final String url,
