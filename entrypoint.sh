@@ -1,5 +1,7 @@
 #!/bin/bash -l
 
+env
+
 # Start Ollama
 nohup bash -c "ollama serve &"
 wait4x http http://127.0.0.1:11434
