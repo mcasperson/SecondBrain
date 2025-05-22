@@ -28,6 +28,7 @@ ollama list
 # Run SecondBrain CLI. Note the context window needs to be be reasonably small,
 # as the hosted GitHub runners only have around 18GB of memory free.
 java \
+  -Dstdout.encoding=UTF-8 \
   -Dsb.tools.force=$1 \
   -Dsb.ollama.url=http://127.0.0.1:11434 \
   -Dsb.ollama.toolmodel=llama3.2:3b \
