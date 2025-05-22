@@ -5,48 +5,67 @@ branding:
   icon: 'box'
   color: 'green'
 inputs:
+  tool:
+    description: 'The tool to use'
+    required: true
+    default: 'GitHubDiffs'
   prompt:
     description: 'The LLM prompt'
     required: true
     default: 'Provide a summary of the changes from the git diffs. Use plain language. You will be penalized for offering code suggestions. You will be penalized for sounding excited about the changes.'
   token:
     description: 'GitHub access token'
-    required: true
+    required: false
   owner:
     description: 'GitHub repo owner'
-    required: true
+    required: false
     default: ${{ github.repository_owner }}
   repo:
     description: 'GitHub repo'
-    required: true
+    required: false
     default: ${{ github.event.repository.name }}
   sha:
     description: 'Git commit SHA'
-    required: true
+    required: false
   summarizeIndividualDiffs:
     description: 'Whether to summarize individual diffs'
-    required: true
+    required: false
     default: 'true'
   gitDiffModel:
     description: 'The model used to create git diffs'
-    required: true
+    required: false
     default: 'qwen2.5-coder'
   model:
     description: 'The model used to answer the prompt'
     required: true
     default: 'llama3.2:3b'
+  zenDeskToken:
+    description: 'The ZenDesk Access Token'
+    required: false
+    default: ''
+  zenDeskUser:
+    description: 'The ZenDesk User'
+    required: false
+    default: ''
+  zenDeskUrl:
+    description: 'The ZenDesk URL'
+    required: false
+    default: ''
 outputs:
   response:
     description: 'The LLM response'
 runs:
   using: 'docker'
   image: 'docker://ghcr.io/mcasperson/secondbrainaction:latest'
-  args:
-    - ${{ inputs.model }}
-    - ${{ inputs.gitDiffModel }}
-    - ${{ inputs.summarizeIndividualDiffs }}
-    - ${{ inputs.token }}
-    - ${{ inputs.owner }}
-    - ${{ inputs.repo }}
-    - ${{ inputs.sha }}
-    - ${{ inputs.prompt }}
+  env:
+    "sb.tools.force": ${{ inputs.tool }}
+    "sb.ollama.gitdiffmodel": ${{ inputs.gitDiffModel }}
+    "sb.ollama.model": ${{ inputs.model }}
+    "sb.ollama.summarizeindividualdiffs": ${{ inputs.summarizeIndividualDiffs }}
+    "sb.github.accesstoken": ${{ inputs.token }}
+    "sb.github.owner": ${{ inputs.owner }}"
+    "sb.github.repo": ${{ inputs.repo }}
+    "sb.github.sha": ${{ inputs.sha }}"
+    "sb.zendesk.accesstoken": ${{ inputs.zenDeskToken }}
+    "sb.zendesk.user": ${{ inputs.zenDeskUser }}
+    "sb.zendesk.url": ${{ inputs.zenDeskUrl }}

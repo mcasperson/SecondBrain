@@ -19,8 +19,8 @@ until ollama --version && ollama ps; do
 done
 
 # If the models are not baked into the Docker image, pull them down
-ollama pull "$1"
 ollama pull "$2"
+ollama pull "$3"
 
 # List the available models
 ollama list
@@ -28,19 +28,12 @@ ollama list
 # Run SecondBrain CLI. Note the context window needs to be be reasonably small,
 # as the hosted GitHub runners only have around 18GB of memory free.
 java \
-  -Dsb.tools.force=GitHubDiffs \
+  -Dsb.tools.force=$1 \
   -Dsb.ollama.url=http://127.0.0.1:11434 \
-  -Dsb.ollama.gitdiffmodel="$2" \
   -Dsb.ollama.toolmodel=llama3.2:3b \
-  -Dsb.ollama.model="$1" \
-  -Dsb.ollama.summarizeindividualdiffs="$3" \
   -Dsb.ollama.contextwindow=8192 \
   -Dsb.ollama.diffcontextwindow=8192 \
-  -Dsb.github.accesstoken="$4" \
-  -Dsb.github.owner="$5" \
-  -Dsb.github.repo="$6" \
-  -Dsb.github.sha="$7" \
-  -jar /usr/local/bin/secondbrain-cli.jar "$8" >> /tmp/secondbrain-cli.log
+  -jar /usr/local/bin/secondbrain-cli.jar "$12" >> /tmp/secondbrain-cli.log
 
 cat /tmp/secondbrain-cli.log
 
