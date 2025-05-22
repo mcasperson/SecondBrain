@@ -19,8 +19,8 @@ until ollama --version && ollama ps; do
 done
 
 # If the models are not baked into the Docker image, pull them down
-ollama pull "${sb.ollama.gitdiffmodel}"
-ollama pull "${sb.ollama.model}"
+ollama pull "${INPUT_GITDIFFMODEL}"
+ollama pull "${INPUT_MODEL}"
 
 # List the available models
 ollama list
