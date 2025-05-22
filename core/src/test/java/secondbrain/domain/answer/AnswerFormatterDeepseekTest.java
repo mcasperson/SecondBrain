@@ -19,7 +19,7 @@ public class AnswerFormatterDeepseekTest {
     public void testFormatAnswer_RemovesEndTag() {
         AnswerFormatterDeepseek formatter = new AnswerFormatterDeepseek();
         String input = "This is a test remove this\n</think> string.";
-        String expected = " string.";
+        String expected = "string.";
         String actual = formatter.formatAnswer(input);
         assertEquals(expected, actual);
     }
