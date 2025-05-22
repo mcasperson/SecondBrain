@@ -2,22 +2,15 @@ name: Summarize the commit
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - 'release/*'
+#  push:
+#    branches:
+#      - main
+#      - 'release/*'
 
 jobs:
   summarize:
     runs-on: ubuntu-latest
     steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-          # Leave this to "false" to leave common tools
-          tool-cache: false
-          dotnet: false
-          
       - name: SecondBrainAction
         id: secondbrain
         uses: mcasperson/SecondBrain@main
