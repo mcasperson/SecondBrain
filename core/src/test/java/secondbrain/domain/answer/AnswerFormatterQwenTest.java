@@ -19,7 +19,7 @@ public class AnswerFormatterQwenTest {
     public void testFormatAnswer_RemovesEndTag() {
         AnswerFormatterQwen formatter = new AnswerFormatterQwen();
         String input = "This is a test remove this\n</think> string.";
-        String expected = " string.";
+        String expected = "string.";
         String actual = formatter.formatAnswer(input);
         assertEquals(expected, actual);
     }
