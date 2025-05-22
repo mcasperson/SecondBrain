@@ -55,6 +55,10 @@ inputs:
     description: 'The number of days worth of tickets to summarize'
     required: false
     default: '30'
+  zenDeskOrganization:
+    description: 'The organization to summarize'
+    required: false
+    default: ''
 outputs:
   response:
     description: 'The LLM response'
@@ -75,3 +79,4 @@ runs:
     "sb.zendesk.url": ${{ inputs.zenDeskUrl }}
     "sb.zendesk.days": ${{ inputs.zenDeskDays }}
     "sb.zendesk.numcomments": 10
+    "sb.zendesk.organization": ${{ inputs.zenDeskOrganization }}
