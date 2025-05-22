@@ -63,7 +63,7 @@ inputs:
     description: 'The size of the context window'
     required: false
     default: '8192'
-  diffcontextwindow:
+  diffContextWindow:
     description: 'The size of the diff context window'
     required: false
     default: '8192'
@@ -91,4 +91,4 @@ runs:
     "sb.zendesk.numcomments": 10
     "sb.zendesk.organization": ${{ inputs.zenDeskOrganization }}
     "sb.ollama.contextwindow": ${{ inputs.contextWindow }}
-    "sb.ollama.diffcontextwindow": ${{ inputs.diffcontextwindow }}
+    "sb.ollama.diffcontextwindow": ${{ inputs.diffContextWindow }}
