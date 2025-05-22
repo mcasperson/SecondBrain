@@ -19,8 +19,8 @@ until ollama --version && ollama ps; do
 done
 
 # If the models are not baked into the Docker image, pull them down
-ollama pull "$sb.ollama.gitdiffmodel"
-ollama pull "$sb.ollama.model"
+ollama pull "${sb.ollama.gitdiffmodel}"
+ollama pull "${sb.ollama.model}"
 
 # List the available models
 ollama list
@@ -31,8 +31,6 @@ java \
   -Dstdout.encoding=UTF-8 \
   -Dsb.ollama.url=http://127.0.0.1:11434 \
   -Dsb.ollama.toolmodel=llama3.2:3b \
-  -Dsb.ollama.contextwindow=8192 \
-  -Dsb.ollama.diffcontextwindow=8192 \
   -jar /usr/local/bin/secondbrain-cli.jar "$1" >> /tmp/secondbrain-cli.log
 
 cat /tmp/secondbrain-cli.log

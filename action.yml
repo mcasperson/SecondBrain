@@ -59,6 +59,14 @@ inputs:
     description: 'The organization to summarize'
     required: false
     default: ''
+  contextWindow:
+    description: 'The size of the context window'
+    required: false
+    default: '8192'
+  diffcontextwindow:
+    description: 'The size of the diff context window'
+    required: false
+    default: '8192'
 outputs:
   response:
     description: 'The LLM response'
@@ -82,3 +90,5 @@ runs:
     "sb.zendesk.days": ${{ inputs.zenDeskDays }}
     "sb.zendesk.numcomments": 10
     "sb.zendesk.organization": ${{ inputs.zenDeskOrganization }}
+    "sb.ollama.contextwindow": ${{ inputs.contextWindow }}
+    "sb.ollama.diffcontextwindow": ${{ inputs.diffcontextwindow }}
