@@ -83,7 +83,7 @@ runs:
     "sb.github.accesstoken": "${{ inputs.token }}"
     "sb.github.owner": "${{ inputs.owner }}"
     "sb.github.repo": "${{ inputs.repo }}"
-    "sb.github.sha": "${{ inputs.sha }}"""
+    "sb.github.sha": "${{ inputs.sha }}"
     "sb.zendesk.accesstoken": "${{ inputs.zenDeskToken }}"
     "sb.zendesk.user": "${{ inputs.zenDeskUser }}"
     "sb.zendesk.url": "${{ inputs.zenDeskUrl }}"
