@@ -1,4 +1,4 @@
-#!/bin/sh -l
+#!/bin/bash -l
 
 # Start Ollama
 nohup bash -c "ollama serve &"

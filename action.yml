@@ -76,19 +76,19 @@ runs:
   args:
     - ${{ inputs.prompt }}
   env:
-    "sb.tools.force": ${{ inputs.tool }}
-    "sb.ollama.gitdiffmodel": ${{ inputs.gitDiffModel }}
-    "sb.ollama.model": ${{ inputs.model }}
-    "sb.ollama.summarizeindividualdiffs": ${{ inputs.summarizeIndividualDiffs }}
-    "sb.github.accesstoken": ${{ inputs.token }}
-    "sb.github.owner": ${{ inputs.owner }}"
-    "sb.github.repo": ${{ inputs.repo }}
-    "sb.github.sha": ${{ inputs.sha }}"
-    "sb.zendesk.accesstoken": ${{ inputs.zenDeskToken }}
-    "sb.zendesk.user": ${{ inputs.zenDeskUser }}
-    "sb.zendesk.url": ${{ inputs.zenDeskUrl }}
-    "sb.zendesk.days": ${{ inputs.zenDeskDays }}
+    "sb.tools.force": "${{ inputs.tool }}"
+    "sb.ollama.gitdiffmodel": "${{ inputs.gitDiffModel }}"
+    "sb.ollama.model": "${{ inputs.model }}"
+    "sb.ollama.summarizeindividualdiffs": "${{ inputs.summarizeIndividualDiffs }}"
+    "sb.github.accesstoken": "${{ inputs.token }}"
+    "sb.github.owner": "${{ inputs.owner }}"
+    "sb.github.repo": "${{ inputs.repo }}"
+    "sb.github.sha": "${{ inputs.sha }}"""
+    "sb.zendesk.accesstoken": "${{ inputs.zenDeskToken }}"
+    "sb.zendesk.user": "${{ inputs.zenDeskUser }}"
+    "sb.zendesk.url": "${{ inputs.zenDeskUrl }}"
+    "sb.zendesk.days": "${{ inputs.zenDeskDays }}"
     "sb.zendesk.numcomments": 10
-    "sb.zendesk.organization": ${{ inputs.zenDeskOrganization }}
-    "sb.ollama.contextwindow": ${{ inputs.contextWindow }}
-    "sb.ollama.diffcontextwindow": ${{ inputs.diffContextWindow }}
+    "sb.zendesk.organization": "${{ inputs.zenDeskOrganization }}"
+    "sb.ollama.contextwindow": "${{ inputs.contextWindow }}"
+    "sb.ollama.diffcontextwindow": "${{ inputs.diffContextWindow }}"
