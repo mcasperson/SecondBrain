@@ -52,7 +52,7 @@ class PDF(FPDF):
     def frontage_slack(self):
         self.set_font('Roboto', 'B', 32)
         self.set_text_color(255, 255, 0)
-        self.cell(0, 0, "#topic-solutions-engineeing", 0, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
+        self.cell(0, 0, "#topic-solutions-engineering", 0, align='L', new_x=XPos.RIGHT, new_y=YPos.TOP)
         self.ln(10)
 
     def chapter_body(self, body):
