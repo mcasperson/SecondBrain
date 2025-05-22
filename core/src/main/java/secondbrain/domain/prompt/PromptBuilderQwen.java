@@ -65,11 +65,11 @@ public class PromptBuilderQwen implements PromptBuilder {
     }
 
     private String getThinking() {
-        return !Boolean.parseBoolean(thinking.orElse("false"))
+        return thinking != null && !Boolean.parseBoolean(thinking.orElse("false"))
                 ? """
                 <|im_start|>system
                 \\no_think
                 <|im_end|>""".stripIndent()
-        : "";
+                : "";
     }
 }
