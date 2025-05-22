@@ -16,15 +16,6 @@ public interface ZenDeskClient {
             String query,
             int ttlSeconds);
 
-    List<ZenDeskResultsResponse> getTickets(
-            Client client,
-            String authorization,
-            String url,
-            String query,
-            int page,
-            int maxPage,
-            int ttlSeconds);
-
     ZenDeskCommentsResponse getComments(
             Client client,
             String authorization,

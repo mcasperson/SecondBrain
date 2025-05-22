@@ -59,7 +59,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * This method is synchronized to have one tool populate the cache and let the others read from it.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    public List<ZenDeskResultsResponse> getTickets(
+    private List<ZenDeskResultsResponse> getTickets(
             Client client,
             String authorization,
             String url,
@@ -71,7 +71,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         final ZenDeskResultsResponse[] value = localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskApiTickets",
-                DigestUtils.sha256Hex(url),
+                DigestUtils.sha256Hex(url + query),
                 ttlSeconds,
                 ZenDeskResultsResponse[].class,
                 () -> getTicketsApi(client, authorization, url, query, page, maxPage));
