@@ -756,14 +756,18 @@ class ZenDeskConfig {
                     .collect(Collectors.toList());
         }
 
-        public int getRawHours() {
-            final String stringValue = getArgsAccessor().getArgument(
+        private Argument getHoursArgument() {
+            return getArgsAccessor().getArgument(
                     getConfigZenDeskHours()::get,
                     arguments,
                     context,
                     ZenDeskOrganization.HOURS_ARG,
                     "zendesk_hours",
-                    "0").value();
+                    "0");
+        }
+
+        public int getRawHours() {
+            final String stringValue = getHoursArgument().value();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
@@ -771,14 +775,18 @@ class ZenDeskConfig {
                     .get();
         }
 
-        public int getRawDays() {
-            final String stringValue = getArgsAccessor().getArgument(
+        private Argument getDaysArgument() {
+            return getArgsAccessor().getArgument(
                     getConfigZenDeskDays()::get,
                     arguments,
                     context,
                     ZenDeskOrganization.DAYS_ARG,
                     "zendesk_days",
-                    "0").value();
+                    "0");
+        }
+
+        public int getRawDays() {
+            final String stringValue = getDaysArgument().value();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
@@ -787,10 +795,18 @@ class ZenDeskConfig {
         }
 
         public int getHours() {
+            if (getHoursArgument().trusted() && getDaysArgument().trusted()) {
+                return getRawHours();
+            }
+
             return switchArguments(prompt, getRawHours(), getRawDays(), "hour", "day");
         }
 
         public int getDays() {
+            if (getHoursArgument().trusted() && getDaysArgument().trusted()) {
+                return getRawDays();
+            }
+
             return switchArguments(prompt, getRawDays(), getRawHours(), "day", "hour");
         }
 
