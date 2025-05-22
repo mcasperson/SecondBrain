@@ -34,7 +34,7 @@ inputs:
   gitDiffModel:
     description: 'The model used to create git diffs'
     required: false
-    default: 'qwen2.5-coder'
+    default: 'qwen3:30b-a3b'
   model:
     description: 'The model used to answer the prompt'
     required: true
