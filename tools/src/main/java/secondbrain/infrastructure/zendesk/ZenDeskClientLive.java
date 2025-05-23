@@ -71,7 +71,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         final ZenDeskResultsResponse[] value = localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskApiTickets",
-                DigestUtils.sha256Hex(url + query),
+                DigestUtils.sha256Hex(url + query + MAX_PAGES),
                 ttlSeconds,
                 ZenDeskResultsResponse[].class,
                 () -> getTicketsApi(client, authorization, url, query, page, maxPage));
