@@ -25,7 +25,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
     /*
         Don't recurse forever, because LLMs can't deal with large results anyway.
      */
-    private static final int MAX_PAGES = 5;
+    private static final int MAX_PAGES = 30;
 
     @Inject
     private ResponseValidation responseValidation;
