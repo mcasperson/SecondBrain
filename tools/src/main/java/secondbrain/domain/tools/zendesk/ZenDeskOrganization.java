@@ -852,7 +852,7 @@ class ZenDeskConfig {
                     context,
                     ZenDeskOrganization.NUM_COMMENTS_ARG,
                     "zendesk_filterbyorganization",
-                    "false" + "").value();
+                    "false").value();
 
             return Try.of(() -> BooleanUtils.toBoolean(stringValue))
                     .recover(throwable -> false)
