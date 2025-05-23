@@ -93,4 +93,4 @@ runs:
     SB_OLLAMA_CONTEXTWINDOW: "${{ inputs.contextWindow }}"
     SB_OLLAMA_DIFFCONTEXTWINDOW: "${{ inputs.diffContextWindow }}"
     # This reduces the number of API calls we need to make to the ZenDesk API.
-    sb_zendesk_filterbyorganization: "true"
+    SB_ZENDESK_FILTERBYORGANIZATION: "true"
