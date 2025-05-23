@@ -173,6 +173,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         query.add("type:ticket");
         query.add("created>" + parsedArgs.getStartDate());
 
+        if (parsedArgs.getZenDeskFilterByOrganization() && StringUtils.isNoneBlank(parsedArgs.getOrganization())) {
+            query.add("organization:" + parsedArgs.getOrganization());
+        }
+
         // We can have multiple ZenDesk servers
         final List<Pair<String, String>> zenServers = Stream.of(
                         Pair.ofNonNull(parsedArgs.getAuthHeader(), parsedArgs.getUrl()),
@@ -476,6 +480,10 @@ class ZenDeskConfig {
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.filterbyorganization", defaultValue = "false")
+    private Optional<String> configZenDeskFilterByOrganization;
+
+    @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
     private Optional<String> configZenDeskAccessToken;
 
@@ -655,6 +663,17 @@ class ZenDeskConfig {
         return configZenDeskUrl2;
     }
 
+    /**
+     * This setting determines if the API call to ZenDesk includes the organization ID in the query.
+     * This is useful when querying for results over a long timeframe but for a specific organization.
+     * Leave this as false if the ZenDesk API call should return all results over the time period.
+     * Returning all results is useful if you query the result sets multiple times over with different
+     * organizations, as the first call is cached, and all subsequent calls are much faster.
+     */
+    public Optional<String> getConfigZenDeskFilterByOrganization() {
+        return configZenDeskFilterByOrganization;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -823,6 +842,20 @@ class ZenDeskConfig {
                     .recover(throwable -> MAX_TICKETS)
                     // Must be at least 1
                     .map(i -> Math.max(1, i))
+                    .get();
+        }
+
+        public boolean getZenDeskFilterByOrganization() {
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigZenDeskFilterByOrganization()::get,
+                    arguments,
+                    context,
+                    ZenDeskOrganization.NUM_COMMENTS_ARG,
+                    "zendesk_filterbyorganization",
+                    "false" + "").value();
+
+            return Try.of(() -> BooleanUtils.toBoolean(stringValue))
+                    .recover(throwable -> false)
                     .get();
         }
 
