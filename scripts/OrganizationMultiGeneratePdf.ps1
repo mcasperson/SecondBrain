@@ -98,10 +98,10 @@ if ($GenerateCompanyReports)
             $entityName = ($using:entity).name
 
             # This is a quick way to test a single customer
-#            if ($entityName -ne "Intel")
-#            {
-#                return
-#            }
+            #            if ($entityName -ne "Intel")
+            #            {
+            #                return
+            #            }
 
             # Ignore the NPS entity, as it is not a customer.
             if ($entityName -eq "NPS")
@@ -366,7 +366,9 @@ if ($GenerateExecutiveSummary)
         "Summarize the document as a single paragraph.
         Write the company name as a level 2 markdown header and then write the summary as plain text.
         Include the company's Annual Recuring Revenue (ARR) in the summary.
-        If there is no mention of "deployments in the last 30 days", "total projects", or "total tenants", then do not include them in the summary.
+        You will be penalized for including the ARR if it was not supplied.
+        You will be penalized for including the total deployments in the last 30 days, total projects, or total tenants if they were not supplied.
+        You will be penalized for mentioning "executive summary" or "executive summaries".
         You will be penalized for using 'Octopus Deploy', 'Octopus', 'OCTOPUS', 'OCTOPUS DEPLOY PTY LTD', 'OD', or 'Company Name' as the company name.
         You will be penalized for including a 'End of Summary' heading.
         You will be penalized for talking about "limited engagement" or "limited communication".
