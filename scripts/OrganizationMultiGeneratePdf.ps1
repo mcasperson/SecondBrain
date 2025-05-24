@@ -367,6 +367,7 @@ if ($GenerateExecutiveSummary)
         Write the company name as a level 2 markdown header and then write the summary as plain text.
         Include the company's Annual Recuring Revenue (ARR) in the summary.
         You will be penalized for mentioning a lack of Gong, Slack, ZenDesk, or PlanHat activity.
+        You will be penalized for mentioning a lack of Google Document.
         You will be penalized for mentioning "the document".
         You will be penalized for including the ARR if it was not supplied.
         You will be penalized for including the total deployments in the last 30 days, total projects, or total tenants if they were not supplied.
