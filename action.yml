@@ -75,6 +75,10 @@ inputs:
     description: 'The number of days worth of Slack messages to consume'
     required: false
     default: '7'
+  slackAccessToken:
+    description: 'The Slack access token'
+    required: false
+    default: ''
 outputs:
   response:
     description: 'The LLM response'
@@ -104,3 +108,4 @@ runs:
     SB_ZENDESK_FILTERBYORGANIZATION: "true"
     SB_SLACK_CHANNEL: "${{ inputs.slackChannel }}"
     SB_SLACK_DAYS: "${{ inputs.slackDays }}"
+    SB_SLACK_ACCESSTOKEN: "${{ inputs.slackAccessToken }}"
