@@ -79,6 +79,10 @@ inputs:
     description: 'The Slack access token'
     required: false
     default: ''
+  slackExcludedOrgs:
+    description: 'Organizations to exclude from the Slack summary'
+    required: false
+    default: ''
   outputFormat:
     description: 'The output format. Set markdn for Slack markdown, or leave blank for regular markdown.'
     required: false
@@ -114,3 +118,4 @@ runs:
     SB_SLACK_CHANNEL: "${{ inputs.slackChannel }}"
     SB_SLACK_DAYS: "${{ inputs.slackDays }}"
     SB_SLACK_ACCESSTOKEN: "${{ inputs.slackAccessToken }}"
+    SB_SLACK_EXCLUDEDORGS: "${{ inputs.slackExcludedOrgs }}"
