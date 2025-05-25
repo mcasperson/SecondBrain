@@ -79,6 +79,10 @@ inputs:
     description: 'The Slack access token'
     required: false
     default: ''
+  outputFormat:
+    description: 'The output format. Set markdn for Slack markdown, or leave blank for regular markdown.'
+    required: false
+    default: ''
 outputs:
   response:
     description: 'The LLM response'
@@ -87,6 +91,7 @@ runs:
   image: 'docker://ghcr.io/mcasperson/secondbrainaction:latest'
   args:
     - ${{ inputs.prompt }}
+    - ${{ inputs.outputFormat }}
   env:
     SB_TOOLS_FORCE: "${{ inputs.tool }}"
     SB_OLLAMA_GITDIFFMODEL: "${{ inputs.gitDiffModel }}"
