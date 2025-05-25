@@ -24,6 +24,10 @@ inputs:
     description: 'GitHub repo'
     required: false
     default: ${{ github.event.repository.name }}
+  githubDays:
+    description: 'GitHub days'
+    required: false
+    default: "1"
   sha:
     description: 'Git commit SHA'
     required: false
@@ -105,6 +109,7 @@ runs:
     SB_GITHUB_OWNER: "${{ inputs.owner }}"
     SB_GITHUB_REPO: "${{ inputs.repo }}"
     SB_GITHUB_SHA: "${{ inputs.sha }}"
+    SB_GITHUB_DAYS: "${{ inputs.githubDays }}"
     SB_ZENDESK_ACCESSTOKEN: "${{ inputs.zenDeskToken }}"
     SB_ZENDESK_USER: "${{ inputs.zenDeskUser }}"
     SB_ZENDESK_URL: "${{ inputs.zenDeskUrl }}"
