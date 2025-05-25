@@ -67,6 +67,14 @@ inputs:
     description: 'The size of the diff context window'
     required: false
     default: '8192'
+  slackChannel:
+    description: 'The slack channel to summarize'
+    required: false
+    default: ''
+  slackDays:
+    description: 'The number of days worth of Slack messages to consume'
+    required: false
+    default: '7'
 outputs:
   response:
     description: 'The LLM response'
@@ -94,3 +102,5 @@ runs:
     SB_OLLAMA_DIFFCONTEXTWINDOW: "${{ inputs.diffContextWindow }}"
     # This reduces the number of API calls we need to make to the ZenDesk API.
     SB_ZENDESK_FILTERBYORGANIZATION: "true"
+    SB_SLACK_CHANNEL: "${{ inputs.slackChannel }}"
+    SB_SLACK_DAYS: "${{ inputs.slackDays }}"
