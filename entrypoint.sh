@@ -33,7 +33,7 @@ java \
   -Dstdout.encoding=UTF-8 \
   -Dsb.ollama.url=http://127.0.0.1:11434 \
   -Dsb.ollama.toolmodel=llama3.2:3b \
-  -jar /usr/local/bin/secondbrain-cli.jar "$1" >> /tmp/secondbrain-cli.log
+  -jar /usr/local/bin/secondbrain-cli.jar "$1" "$2" >> /tmp/secondbrain-cli.log
 
 cat /tmp/secondbrain-cli.log
 
