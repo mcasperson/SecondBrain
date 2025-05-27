@@ -11,44 +11,56 @@ on:
       - '.github/workflows/*'
 
 jobs:
-  build:
+  setup:
     runs-on: self-hosted
 
-    permissions:
-      contents: write
-      packages: write
+    steps:
+    #      - name: Free Disk Space (Ubuntu)
+    #        uses: jlumbroso/free-disk-space@main
+    #        with:
+    #          # Leave this to "false" to leave common tools
+    #          tool-cache: false
+    #          dotnet: false
+    #
+    #          # None of these are required
+    #          android: true
+    #          haskell: true
+    #          large-packages: true
+    #          docker-images: true
+    #          swap-storage: true
+
+    #      - name: Cache Ollama models
+    #        uses: actions/cache@v4
+    #        with:
+    #          path: ~/.secondbrain
+    #          key: secondbrain-${{ runner.os }}
+
+    #      - name: Setup dotnet
+    #        uses: actions/setup-dotnet@v4
+    #        with:
+    #          dotnet-version: 9.0.x
+
+    #      - name: Set up JDK 21
+    #        uses: actions/setup-java@v4
+    #        with:
+    #          distribution: 'temurin'
+    #          java-version: '21'
+    #          cache: 'maven'
+
+  checkout:
+    runs-on: self-hosted
 
     steps:
-      #      - name: Free Disk Space (Ubuntu)
-      #        uses: jlumbroso/free-disk-space@main
-      #        with:
-      #          # Leave this to "false" to leave common tools
-      #          tool-cache: false
-      #          dotnet: false
-      #
-      #          # None of these are required
-      #          android: true
-      #          haskell: true
-      #          large-packages: true
-      #          docker-images: true
-      #          swap-storage: true
-
-      #      - name: Cache Ollama models
-      #        uses: actions/cache@v4
-      #        with:
-      #          path: ~/.secondbrain
-      #          key: secondbrain-${{ runner.os }}
-
-      #      - name: Setup dotnet
-      #        uses: actions/setup-dotnet@v4
-      #        with:
-      #          dotnet-version: 9.0.x
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: '0'
 
+  version:
+    runs-on: self-hosted
+    needs: checkout
+
+    steps:
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v3.1.1
         with:
@@ -60,16 +72,22 @@ jobs:
         with:
           overrideConfig: mode=Mainline
 
-      #      - name: Set up JDK 21
-      #        uses: actions/setup-java@v4
-      #        with:
-      #          distribution: 'temurin'
-      #          java-version: '21'
-      #          cache: 'maven'
+  build:
+    runs-on: self-hosted
+    needs: checkout # rely on checkout to get the code
 
+    steps:
       - name: Build with Maven
         run: mvn --batch-mode clean install
 
+  publish:
+    needs: [ build, version ] # rely on build to run tests and version to determine the version
+    runs-on: self-hosted
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
       - name: Publish to GitHub Packages
         run: mvn --batch-mode -DskipTests deploy
         env:
@@ -83,6 +101,15 @@ jobs:
           tag_name: ${{ steps.determine_version.outputs.semVer }}+run${{ github.run_number }}-attempt${{ github.run_attempt }}
           draft: ${{ github.ref == 'refs/heads/main' && 'false' || 'true' }}
           name: Release ${{ steps.determine_version.outputs.semVer }} Run ${{ github.run_number }} Attempt ${{ github.run_attempt }}
+
+  docker:
+    needs: [ setup, build ] # rely on build to run tests and setup to clean up disk space
+    runs-on: self-hosted
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
