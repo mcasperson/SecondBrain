@@ -7,7 +7,7 @@ COPY core ./core
 COPY service ./service
 COPY tools ./tools
 COPY web ./web
-RUN --mount=type=cache,target=/home/matthew/.m2 mvn clean install -DskipTests --batch-mode
+RUN --mount=type=cache,target=/root/.m2 mvn clean install -DskipTests --batch-mode
 RUN cd web && mvn clean package -DskipTests --batch-mode
 
 FROM ollama/ollama:latest
