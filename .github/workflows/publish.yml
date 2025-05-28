@@ -151,16 +151,15 @@ jobs:
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbraincache .
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbraincache,mode=max
 
-      # the image appears to be too big to process here
-      #      - name: Build and push Docker image for action
-      #        uses: docker/build-push-action@v6
-      #        with:
-      #          file: Dockerfile
-      #          context: .
-      #          push: true
-      #          tags: ghcr.io/${{ github.repository_owner }}/secondbrainaction:latest
-      #          cache-from: type=gha
-      #          cache-to: type=gha,mode=max
+      - name: Build and push Docker image for action
+        uses: docker/build-push-action@v6
+        with:
+          file: Dockerfile
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/secondbrainaction:latest
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbrainaction .
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbrainactioncache,mode=max
 
 #      - name: Allow ollama models to be cached
 #        run: sudo chmod -R 777 ~/.secondbrain
