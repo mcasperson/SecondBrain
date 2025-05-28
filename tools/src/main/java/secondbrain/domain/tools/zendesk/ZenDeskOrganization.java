@@ -37,6 +37,8 @@ import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.domain.tools.slackzengoogle.MultiSlackZenGoogle;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
@@ -92,6 +94,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
             You will be penalized for using terms like flooded, wave, or inundated.
             If there are no ZenDesk Tickets, you must indicate that in the answer.
             """.stripLeading();
+
+    @Inject
+    private Logger logger;
+
+    @Inject
+    private RatingTool ratingTool;
 
     @Inject
     private ModelConfig modelConfig;
@@ -238,6 +246,11 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
                         parsedArgs))
+                /*
+                    If there is a filter question (usually a question to remove spam or irrelevant tickets),
+                    then we filter the tickets based on the rating of the context.
+                 */
+                .map(tickets -> contextMeetsRating(tickets, parsedArgs))
                 .map(tickets -> trimTickets(tickets, parsedArgs))
                 /*
                     Take the raw ticket comments and summarize them with individual calls to the LLM.
@@ -478,6 +491,36 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                         .collect(Collectors.joining("\n")))
                 .collect(Collectors.toList());
     }
+
+    private List<RagDocumentContext<ZenDeskResultsResponse>> contextMeetsRating(
+            final List<RagDocumentContext<ZenDeskResultsResponse>> tickets,
+            final ZenDeskConfig.LocalArguments parsedArgs) {
+        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return tickets;
+        }
+
+        return tickets.stream()
+                .filter(ticket ->
+                        getContextRating(ticket, parsedArgs) >= parsedArgs.getContextFilterMinimumRating()
+                )
+                .toList();
+    }
+
+    private Integer getContextRating(final RagDocumentContext<ZenDeskResultsResponse> ticket, final ZenDeskConfig.LocalArguments parsedArgs) {
+        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return 10;
+        }
+
+        return Try.of(() -> ratingTool.call(
+                        Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document()),
+                        parsedArgs.getContextFilterQuestion(),
+                        List.of()).combinedDocument())
+                .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
+                // Ratings are provided on a best effort basis, so we ignore any failures
+                .recover(InternalFailure.class, ex -> 10)
+                .get();
+
+    }
 }
 
 @ApplicationScoped
@@ -562,6 +605,14 @@ class ZenDeskConfig {
     private Optional<String> configTicketSummaryPrompt;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.contextFilterMinimumRating")
+    private Optional<String> configContextFilterMinimumRating;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -580,6 +631,14 @@ class ZenDeskConfig {
     @Inject
     @Identifier("sanitizeOrganization")
     private SanitizeArgument sanitizeOrganization;
+
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
+    }
+
+    public Optional<String> getConfigContextFilterMinimumRating() {
+        return configContextFilterMinimumRating;
+    }
 
     public Optional<String> getConfigZenDeskAccessToken() {
         return configZenDeskAccessToken;
@@ -699,6 +758,29 @@ class ZenDeskConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG,
+                            "multislackzengoogle_context_filter_question",
+                            "")
+                    .value();
+        }
+
+        public Integer getContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    "multislackzengoogle_context_filter_minimum_rating",
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
 
         public String getZenDeskUrl() {
