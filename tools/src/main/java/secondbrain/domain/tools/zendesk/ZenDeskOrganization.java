@@ -69,6 +69,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     public static final String ZENDESK_KEYWORD_ARG = "keywords";
     public static final String ZENDESK_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String ZENDESK_ENTITY_NAME_CONTEXT_ARG = "entityName";
+    public static final String ZENDESK_TICKET_SUMMARY_PROMPT_ARG = "ticketSummaryPrompt";
 
 
     private static final int MAX_TICKETS = 100;
@@ -245,7 +246,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                     raw tickets. The reality is that even LLMs with a context length of 128k tokens mostly fixated
                     one a small number of tickets.
                  */
-                .map(tickets -> summariseTickets(tickets, environmentSettings))
+                .map(tickets -> summariseTickets(tickets, environmentSettings, parsedArgs))
                 // Don't let one failed instance block the others
                 .onFailure(throwable -> log.warning("Failed to get tickets: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .recover(throwable -> List.of())
@@ -373,9 +374,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     /**
      * Summarise the tickets by passing them through the LLM
      */
-    private List<RagDocumentContext<ZenDeskResultsResponse>> summariseTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets, final Map<String, String> context) {
+    private List<RagDocumentContext<ZenDeskResultsResponse>> summariseTickets(
+            final List<RagDocumentContext<ZenDeskResultsResponse>> tickets,
+            final Map<String, String> context,
+            final ZenDeskConfig.LocalArguments parsedArgs) {
         return tickets.stream()
-                .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), context)))
+                .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), context, parsedArgs)))
                 .collect(Collectors.toList());
     }
 
@@ -393,14 +397,16 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     /**
      * Summarise an individual ticket
      */
-    private String getTicketSummary(final String ticketContents, final Map<String, String> environmentSettings) {
+    private String getTicketSummary(final String ticketContents,
+                                    final Map<String, String> environmentSettings,
+                                    final ZenDeskConfig.LocalArguments parsedArgs) {
         final String ticketContext = promptBuilderSelector
                 .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                 .buildContextPrompt("ZenDesk Ticket", ticketContents);
 
         final String prompt = promptBuilderSelector
                 .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildFinalPrompt("You are a helpful agent", ticketContext, "Summarise the ticket in one paragraph");
+                .buildFinalPrompt("You are a helpful agent", ticketContext, parsedArgs.getTicketSummaryPrompt());
 
         return ollamaClient.callOllamaWithCache(
                 new RagMultiDocumentContext<>(prompt),
@@ -552,6 +558,10 @@ class ZenDeskConfig {
     private Optional<String> configHistoryttl;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.ticketsummaryprompt")
+    private Optional<String> configTicketSummaryPrompt;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -672,6 +682,10 @@ class ZenDeskConfig {
      */
     public Optional<String> getConfigZenDeskFilterByOrganization() {
         return configZenDeskFilterByOrganization;
+    }
+
+    public Optional<String> getConfigTicketSummaryPrompt() {
+        return configTicketSummaryPrompt;
     }
 
     public class LocalArguments {
@@ -1044,6 +1058,16 @@ class ZenDeskConfig {
             return Try.of(argument::value)
                     .map(i -> Math.max(0, Integer.parseInt(i)))
                     .get();
+        }
+
+        public String getTicketSummaryPrompt() {
+            return getArgsAccessor().getArgument(
+                    getConfigTicketSummaryPrompt()::get,
+                    arguments,
+                    context,
+                    ZenDeskOrganization.ZENDESK_TICKET_SUMMARY_PROMPT_ARG,
+                    "zen_ticketSummaryPrompt",
+                    "Summarise the ticket in one paragraph").value();
         }
     }
 }

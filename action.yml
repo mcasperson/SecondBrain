@@ -63,6 +63,10 @@ inputs:
     description: 'The organization to summarize'
     required: false
     default: ''
+  ticketSummaryPrompt:
+    description: 'The custom prompt to use for summarizing ZenDesk tickets'
+    required: false
+    default: ''
   contextWindow:
     description: 'The size of the context window'
     required: false
@@ -120,7 +124,10 @@ runs:
     SB_OLLAMA_DIFFCONTEXTWINDOW: "${{ inputs.diffContextWindow }}"
     # This reduces the number of API calls we need to make to the ZenDesk API.
     SB_ZENDESK_FILTERBYORGANIZATION: "true"
+    SB_ZENDESK_TICKETSUMMARYPROMPT: "${{ inputs.ticketSummaryPrompt }}"
     SB_SLACK_CHANNEL: "${{ inputs.slackChannel }}"
     SB_SLACK_DAYS: "${{ inputs.slackDays }}"
     SB_SLACK_ACCESSTOKEN: "${{ inputs.slackAccessToken }}"
     SB_SLACK_EXCLUDEDORGS: "${{ inputs.slackExcludedOrgs }}"
+
+
