@@ -104,7 +104,7 @@ jobs:
           draft: ${{ github.ref == 'refs/heads/main' && 'false' || 'true' }}
           name: Release ${{ steps.determine_version.outputs.semVer }} Run ${{ github.run_number }} Attempt ${{ github.run_attempt }}
 
-  docker:
+  webappdocker:
     needs: [ setup, build ] # rely on build to run tests and setup to clean up disk space
     runs-on: self-hosted
     permissions:
@@ -112,24 +112,6 @@ jobs:
       packages: write
 
     steps:
-      # Need some workarounds to support buildkit cache:
-      # https://github.com/reproducible-containers/buildkit-cache-dance
-      #      - name: Cache
-      #        uses: actions/cache@v4
-      #        id: cache
-      #        with:
-      #          path: root-m2
-      #          key: cache
-      #
-      #      - name: inject cache into docker
-      #        uses: reproducible-containers/buildkit-cache-dance@v3.1.0
-      #        with:
-      #          cache-map: |
-      #            {
-      #              "root-m2": "/root/.m2"
-      #            }
-      #          skip-extraction: ${{ steps.cache.outputs.cache-hit }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -151,6 +133,24 @@ jobs:
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbraincache .
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbraincache,mode=max
 
+  githubactiondocker:
+    needs: [ setup, build ] # rely on build to run tests and setup to clean up disk space
+    runs-on: self-hosted
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and push Docker image for action
         uses: docker/build-push-action@v6
         with:
@@ -160,6 +160,3 @@ jobs:
           tags: ghcr.io/${{ github.repository_owner }}/secondbrainaction:latest
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbrainaction .
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbrainactioncache,mode=max
-
-#      - name: Allow ollama models to be cached
-#        run: sudo chmod -R 777 ~/.secondbrain
