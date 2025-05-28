@@ -114,21 +114,21 @@ jobs:
     steps:
       # Need some workarounds to support buildkit cache:
       # https://github.com/reproducible-containers/buildkit-cache-dance
-      - name: Cache
-        uses: actions/cache@v3
-        id: cache
-        with:
-          path: root-m2
-          key: cache
-
-      - name: inject cache into docker
-        uses: reproducible-containers/buildkit-cache-dance@v3.1.0
-        with:
-          cache-map: |
-            {
-              "root-m2": "/root/.m2"
-            }
-          skip-extraction: ${{ steps.cache.outputs.cache-hit }}
+      #      - name: Cache
+      #        uses: actions/cache@v4
+      #        id: cache
+      #        with:
+      #          path: root-m2
+      #          key: cache
+      #
+      #      - name: inject cache into docker
+      #        uses: reproducible-containers/buildkit-cache-dance@v3.1.0
+      #        with:
+      #          cache-map: |
+      #            {
+      #              "root-m2": "/root/.m2"
+      #            }
+      #          skip-extraction: ${{ steps.cache.outputs.cache-hit }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

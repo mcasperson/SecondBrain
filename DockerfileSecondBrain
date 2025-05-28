@@ -1,13 +1,26 @@
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /usr/src/app
-COPY pom.xml .
+
+ADD pom.xml ./pom.xml
+ADD core/pom.xml ./core/pom.xml
+ADD cli/pom.xml ./cli/pom.xml
+ADD service/pom.xml ./service/pom.xml
+ADD tools/pom.xml ./tools/pom.xml
+ADD web/pom.xml ./web/pom.xml
+
+RUN mvn -pl core verify --fail-never --batch-mode
+RUN mvn -pl tools verify --fail-never --batch-mode
+RUN mvn -pl service verify --fail-never --batch-mode
+RUN mvn -pl cli verify --fail-never --batch-mode
+RUN mvn -pl web verify --fail-never --batch-mode
+
 COPY .mvn .mvn
 COPY cli ./cli
 COPY core ./core
 COPY service ./service
 COPY tools ./tools
 COPY web ./web
-RUN --mount=type=cache,target=/root/.m2 mvn clean install -DskipTests --batch-mode
+RUN mvn clean install -DskipTests --batch-mode
 RUN cd web && mvn clean package -DskipTests --batch-mode
 
 # Based on https://hub.docker.com/r/payara/micro/dockerfile
