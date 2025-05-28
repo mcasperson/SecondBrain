@@ -1061,13 +1061,17 @@ class ZenDeskConfig {
         }
 
         public String getTicketSummaryPrompt() {
-            return getArgsAccessor().getArgument(
-                    getConfigTicketSummaryPrompt()::get,
-                    arguments,
-                    context,
-                    ZenDeskOrganization.ZENDESK_TICKET_SUMMARY_PROMPT_ARG,
-                    "zen_ticketSummaryPrompt",
-                    "Summarise the ticket in one paragraph").value();
+            return getArgsAccessor()
+                    .getArgument(
+                            getConfigTicketSummaryPrompt()::get,
+                            arguments,
+                            context,
+                            ZenDeskOrganization.ZENDESK_TICKET_SUMMARY_PROMPT_ARG,
+                            "zen_ticketSummaryPrompt",
+                            """
+                                    Summarise the ticket in one paragraph.
+                                    You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.""".stripLeading())
+                    .value();
         }
     }
 }
