@@ -128,7 +128,7 @@ jobs:
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/secondbrain:latest
           # https://docs.docker.com/build/ci/github-actions/cache/
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbraincache .
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbraincache
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbraincache,mode=max
 
   githubactiondocker:
@@ -156,5 +156,5 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/secondbrainaction:latest
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbrainactioncache .
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbrainactioncache
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbrainactioncache,mode=max
