@@ -147,8 +147,9 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/secondbrain:latest
-      #          cache-from: type=gha
-      #          cache-to: type=gha,mode=max
+          # https://docs.docker.com/build/ci/github-actions/cache/
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/secondbrain:latest
+          cache-to: type=inline
 
       # the image appears to be too big to process here
       #      - name: Build and push Docker image for action
