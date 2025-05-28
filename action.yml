@@ -71,6 +71,10 @@ inputs:
     description: 'The minimum rating to filter the context of the ZenDesk tickets'
     required: false
     default: ''
+  zendeskRecipient:
+    description: 'The recipient for the ZenDesk ticket'
+    required: false
+    default: ''
   ticketSummaryPrompt:
     description: 'The custom prompt to use for summarizing ZenDesk tickets'
     required: false
@@ -130,6 +134,7 @@ runs:
     SB_ZENDESK_ORGANIZATION: "${{ inputs.zenDeskOrganization }}"
     SB_ZENDESK_CONTEXTFILTERQUESTION: ${{ inputs.contextFilterQuestion }}
     SB_ZENDESK_CONTEXTFILTERMINIMUMRATING: ${{ inputs.contextFilterMinimumRating }}
+    SB_ZENDESK_RECIPIENT: "${{ inputs.zendeskRecipient }}"
     SB_OLLAMA_CONTEXTWINDOW: "${{ inputs.contextWindow }}"
     SB_OLLAMA_DIFFCONTEXTWINDOW: "${{ inputs.diffContextWindow }}"
     # This reduces the number of API calls we need to make to the ZenDesk API.
