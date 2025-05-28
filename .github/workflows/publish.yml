@@ -49,20 +49,14 @@ jobs:
     #          java-version: '21'
     #          cache: 'maven'
 
-  checkout:
+  version:
     runs-on: self-hosted
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: '0'
 
-  version:
-    runs-on: self-hosted
-    needs: checkout
-
-    steps:
       - name: Install GitVersion
         uses: gittools/actions/gitversion/setup@v3.1.1
         with:
@@ -76,9 +70,10 @@ jobs:
 
   build:
     runs-on: self-hosted
-    needs: checkout # rely on checkout to get the code
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Build with Maven
         run: mvn --batch-mode clean install
 
@@ -90,6 +85,9 @@ jobs:
       packages: write
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Publish to GitHub Packages
         run: mvn --batch-mode -DskipTests deploy
         env:
