@@ -38,7 +38,6 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.rating.RatingTool;
-import secondbrain.domain.tools.slackzengoogle.MultiSlackZenGoogle;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
@@ -68,10 +67,14 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     public static final String NUM_COMMENTS_ARG = "numComments";
     public static final String DAYS_ARG = "days";
     public static final String HOURS_ARG = "hours";
+    public static final String START_PERIOD_ARG = "start";
+    public static final String END_PERIOD_ARG = "end";
     public static final String ZENDESK_KEYWORD_ARG = "keywords";
     public static final String ZENDESK_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String ZENDESK_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String ZENDESK_TICKET_SUMMARY_PROMPT_ARG = "ticketSummaryPrompt";
+    public static final String ZENDESK_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
+    public static final String ZENDESK_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
 
 
     private static final int MAX_TICKETS = 100;
@@ -180,7 +183,19 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 
         final List<String> query = new ArrayList<>();
         query.add("type:ticket");
-        query.add("created>" + parsedArgs.getStartDate());
+
+        if (StringUtils.isNotBlank(parsedArgs.getStartPeriod())) {
+            query.add("created>" + parsedArgs.getStartPeriod());
+        }
+
+        if (StringUtils.isNotBlank(parsedArgs.getEndPeriod())) {
+            query.add("created<" + parsedArgs.getEndPeriod());
+        }
+
+        // The explicit dates take precedence over a day range
+        if (StringUtils.isBlank(parsedArgs.getStartPeriod()) && StringUtils.isBlank(parsedArgs.getEndPeriod())) {
+            query.add("created>" + parsedArgs.getStartDate());
+        }
 
         if (parsedArgs.getZenDeskFilterByOrganization() && StringUtils.isNoneBlank(parsedArgs.getOrganization())) {
             query.add("organization:" + parsedArgs.getOrganization());
@@ -573,6 +588,14 @@ class ZenDeskConfig {
     private Optional<String> configZenDeskDays;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.startperiod")
+    private Optional<String> configZenDeskStartPeriod;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.endperiod")
+    private Optional<String> configZenDeskEndPeriod;
+
+    @Inject
     @ConfigProperty(name = "sb.zendesk.hours")
     private Optional<String> configZenDeskHours;
 
@@ -747,6 +770,14 @@ class ZenDeskConfig {
         return configTicketSummaryPrompt;
     }
 
+    public Optional<String> getConfigZenDeskStartPeriod() {
+        return configZenDeskStartPeriod;
+    }
+
+    public Optional<String> getConfigZenDeskEndPeriod() {
+        return configZenDeskEndPeriod;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -765,8 +796,8 @@ class ZenDeskConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG,
-                            "multislackzengoogle_context_filter_question",
+                            ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_QUESTION_ARG,
+                            "zendesk_context_filter_question",
                             "")
                     .value();
         }
@@ -776,7 +807,7 @@ class ZenDeskConfig {
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "multislackzengoogle_context_filter_minimum_rating",
                     "0");
 
@@ -923,6 +954,28 @@ class ZenDeskConfig {
             }
 
             return switchArguments(prompt, getRawDays(), getRawHours(), "day", "hour");
+        }
+
+        public String getStartPeriod() {
+            return getArgsAccessor().getArgument(
+                            getConfigZenDeskStartPeriod()::get,
+                            arguments,
+                            context,
+                            ZenDeskOrganization.START_PERIOD_ARG,
+                            "zendesk_startperiod",
+                            "")
+                    .value();
+        }
+
+        public String getEndPeriod() {
+            return getArgsAccessor().getArgument(
+                            getConfigZenDeskEndPeriod()::get,
+                            arguments,
+                            context,
+                            ZenDeskOrganization.END_PERIOD_ARG,
+                            "zendesk_endperiod",
+                            "")
+                    .value();
         }
 
         public int getNumComments() {

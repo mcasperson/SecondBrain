@@ -59,6 +59,14 @@ inputs:
     description: 'The number of days worth of tickets to summarize'
     required: false
     default: '30'
+  zenStartPeriod:
+    description: 'The start period for ZenDesk tickets'
+    required: false
+    default: ''
+  zenEndPeriod:
+    description: 'The end period for ZenDesk tickets'
+    required: false
+    default: ''
   zenDeskOrganization:
     description: 'The organization to summarize'
     required: false
@@ -130,6 +138,8 @@ runs:
     SB_ZENDESK_USER: "${{ inputs.zenDeskUser }}"
     SB_ZENDESK_URL: "${{ inputs.zenDeskUrl }}"
     SB_ZENDESK_DAYS: "${{ inputs.zenDeskDays }}"
+    SB_ZENDESK_STARTPERIOD: "${{ inputs.zenStartPeriod }}"
+    SB_ZENDESK_ENDPERIOD: "${{ inputs.zenEndPeriod }}"
     SB_ZENDESK_NUMCOMMENTS: 10
     SB_ZENDESK_ORGANIZATION: "${{ inputs.zenDeskOrganization }}"
     SB_ZENDESK_CONTEXTFILTERQUESTION: ${{ inputs.contextFilterQuestion }}
