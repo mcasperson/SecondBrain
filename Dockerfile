@@ -30,6 +30,8 @@ FROM ollama/ollama:latest
 # that we control.
 RUN mkdir -p /ollama/models
 ENV OLLAMA_MODELS /ollama/models
+# See https://github.com/ollama/ollama/issues/1736
+ENV OLLAMA_EXPERIMENT client2
 
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update \

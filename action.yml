@@ -59,8 +59,28 @@ inputs:
     description: 'The number of days worth of tickets to summarize'
     required: false
     default: '30'
+  zenStartPeriod:
+    description: 'The start period for ZenDesk tickets in the ISO date-time format e.g. 2011-12-03T10:15:30+01:00. Leave blank to default to the last 31 days.'
+    required: false
+    default: ''
+  zenEndPeriod:
+    description: 'The end period for ZenDesk tickets in the ISO date-time format e.g. 2011-12-03T10:15:30+01:00. Leave blank to default to the last 31 days.'
+    required: false
+    default: ''
   zenDeskOrganization:
     description: 'The organization to summarize'
+    required: false
+    default: ''
+  contextFilterQuestion:
+    description: 'An optional question to filter the context of the ZenDesk tickets'
+    required: false
+    default: ''
+  contextFilterMinimumRating:
+    description: 'The minimum rating to filter the context of the ZenDesk tickets'
+    required: false
+    default: ''
+  zendeskRecipient:
+    description: 'The recipient for the ZenDesk ticket'
     required: false
     default: ''
   ticketSummaryPrompt:
@@ -118,8 +138,13 @@ runs:
     SB_ZENDESK_USER: "${{ inputs.zenDeskUser }}"
     SB_ZENDESK_URL: "${{ inputs.zenDeskUrl }}"
     SB_ZENDESK_DAYS: "${{ inputs.zenDeskDays }}"
+    SB_ZENDESK_STARTPERIOD: "${{ inputs.zenStartPeriod }}"
+    SB_ZENDESK_ENDPERIOD: "${{ inputs.zenEndPeriod }}"
     SB_ZENDESK_NUMCOMMENTS: 10
     SB_ZENDESK_ORGANIZATION: "${{ inputs.zenDeskOrganization }}"
+    SB_ZENDESK_CONTEXTFILTERQUESTION: ${{ inputs.contextFilterQuestion }}
+    SB_ZENDESK_CONTEXTFILTERMINIMUMRATING: ${{ inputs.contextFilterMinimumRating }}
+    SB_ZENDESK_RECIPIENT: "${{ inputs.zendeskRecipient }}"
     SB_OLLAMA_CONTEXTWINDOW: "${{ inputs.contextWindow }}"
     SB_OLLAMA_DIFFCONTEXTWINDOW: "${{ inputs.diffContextWindow }}"
     # This reduces the number of API calls we need to make to the ZenDesk API.
