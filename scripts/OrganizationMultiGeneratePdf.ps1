@@ -180,14 +180,35 @@ if ($GenerateCompanyReports)
             "-Dsb.ollama.model=$using:model"
             -jar $using:jarFile
             "Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, PlanHat activities, and Gong calls associated with $entityName.
-            Include an executive summary as the first paragraph.
-            Include subheadings for the major topics discussed in the report.
-            Show the total deployments in the last 30 days, total projects, and total tenants as a bullet point list at the end.
-            List the company's Annual Recuring Revenue (ARR) at the end of the report.
+
+            The first paragraph must list the people who were involved in the engagement and the list of topics that were discussed.
+            An example of the first paragraph is: 'In the past $using:days day we met with PERSON 1 (JOB TITLE 1), PERSON 2 (JOB TITLE 2), and PERSON3 to discus TOPIC1 and TOPIC2'.
+
+            List each topic as a subheading.
+            For each topic, provide:
+            * A summary of the topic
+            * Who was involved in the topic
+            * Any details on why the topic is important
+            * Any action items associated with the topic
+            * Any dates associated with the topic
+            * Any next steps associated with the topic
+
+            If it is not possible to determine why a topic was important, you must not include any details about why the topic was important.
+            If there are no dates associated with the topic, you must not include any details about dates for that topic.
+            If there are no next steps associated with the topic, you must not include any details about next steps for that topic.
+            If there are no action items associated with the topic, you must not include any details about action items for that topic.
+
+            Show the total deployments in the last 30 days, total projects, and total tenants as a bullet point list.
+            List the company's Annual Recuring Revenue (ARR).
             If the ARR is not available, show the value as 'N/A'.
-            You will be penalized for including an ARR value if it was not supplied.
+
             If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes.
+
             You must use asterisks for bullet point lists.
+            You must use bullet point lists instead of numbered lists.
+
+            You will be penalized for including an ARR value if it was not supplied.
+            You will be penalized for including job titles that were not supplied.
             You will be penalized for talking about 'limited engagement' or 'limited communication'.
             You will be penalized for using dashes for bullet point lists.
             You will be penalized for referecing Slack Messages, ZenDesk tickets, PlanHat activities, or Google Documents that were not supplied in the prompt.
@@ -201,7 +222,6 @@ if ($GenerateCompanyReports)
             You will be penalized for attempting to resolve the ZenDesk tickets.
             You will be penalized for mentioning the duration covered.
             You will be penalized for referencing ZenDesk tickets or PlanHat actions by ID.
-            You must use bullet point lists instead of numbered lists.
             You will be penalized for using nested bullet points.
             You will be penalized for using numbered lists in the output."
 "@)
