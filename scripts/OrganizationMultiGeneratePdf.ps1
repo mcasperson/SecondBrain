@@ -363,13 +363,19 @@ if ($GenerateExecutiveSummary)
         "-Dsb.ollama.toolmodel=$toolModel"
         "-Dsb.ollama.model=$model"
         -jar $jarFile
-        "Summarize the document as a single paragraph.
-        Write the company name as a level 2 markdown header and then write the summary as plain text.
-        Include the company's Annual Recuring Revenue (ARR) in the summary.
+        "Write a summary of the document using bullet points.
+        The first bullet point must include the ARR (Annual Recurring Revenue) of the company. Report the ARR as 'N/A' if it is not available.
+        An example of the first bullet point is: 'COMPANY has an ARR of $xxx' or 'COMPANY has an ARR of N/A'.
+        The second bullet point must list the people in the company that we met with and what was discussed.
+        An example of the second bullet point is: 'We met with PERSON1, PERSON2, and PERSON3 to discuss TOPIC1, TOPIC2, and TOPIC3'.
+        The next bullet points must list any next steps or action items that were agreed upon. The action items must include dates if they were discussed.
+        An example of the next bullet points are: 'We agreed to do ACTION1 on DATE1', 'We agreeded to do ACTION2 on DATE2', and 'We agreed to do ACTION3'.
+        The final bullet point must provide a one sentence summary of the document.
+
         You will be penalized for mentioning a lack of Gong, Slack, ZenDesk, or PlanHat activity.
         You will be penalized for mentioning a lack of Google Document.
         You will be penalized for mentioning "the document".
-        You will be penalized for including the ARR if it was not supplied.
+        You will be penalized for including an ARR if it was not supplied.
         You will be penalized for including the total deployments in the last 30 days, total projects, or total tenants if they were not supplied.
         You will be penalized for mentioning "executive summary" or "executive summaries".
         You will be penalized for using 'Octopus Deploy', 'Octopus', 'OCTOPUS', 'OCTOPUS DEPLOY PTY LTD', 'OD', or 'Company Name' as the company name.
