@@ -182,7 +182,7 @@ if ($GenerateCompanyReports)
             "Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, PlanHat activities, and Gong calls associated with $entityName.
 
             The first paragraph must list the people who were involved in the engagement and the list of topics that were discussed.
-            An example of the first paragraph is: 'In the past $using:days day we met with PERSON 1 (JOB TITLE 1), PERSON 2 (JOB TITLE 2), and PERSON3 to discus TOPIC1 and TOPIC2'.
+            An example of the first paragraph is: 'In the past $using:days day we talked with with PERSON 1 (JOB TITLE 1), PERSON 2 (JOB TITLE 2), and PERSON3 to discus TOPIC1 and TOPIC2'.
 
             List each topic as a subheading.
             For each topic, provide:
@@ -387,7 +387,7 @@ if ($GenerateExecutiveSummary)
         The first bullet point must include the ARR (Annual Recurring Revenue) of the company. Report the ARR as 'N/A' if it is not available.
         An example of the first bullet point is: 'COMPANY has an ARR of $xxx' or 'COMPANY has an ARR of N/A'.
         The second bullet point must list the people in the company that we met with and what was discussed.
-        An example of the second bullet point is: 'We met with PERSON1, PERSON2, and PERSON3 to discuss TOPIC1, TOPIC2, and TOPIC3'.
+        An example of the second bullet point is: 'We talked with with PERSON1, PERSON2, and PERSON3 to discuss TOPIC1, TOPIC2, and TOPIC3'.
         The next bullet points must list any next steps or action items that were agreed upon. The action items must include dates if they were discussed.
         An example of the next bullet points are: 'We agreed to do ACTION1 on DATE1', 'We agreeded to do ACTION2 on DATE2', and 'We agreed to do ACTION3'.
         The final bullet point must provide a one sentence summary of the document.
