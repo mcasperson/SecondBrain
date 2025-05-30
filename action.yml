@@ -60,11 +60,11 @@ inputs:
     required: false
     default: '30'
   zenStartPeriod:
-    description: 'The start period for ZenDesk tickets in the ISO date-time format e.g. 2011-12-03T10:15:30+01:00'
+    description: 'The start period for ZenDesk tickets in the ISO date-time format e.g. 2011-12-03T10:15:30+01:00. Leave blank to default to the last 31 days.'
     required: false
     default: ''
   zenEndPeriod:
-    description: 'The end period for ZenDesk tickets in the ISO date-time format e.g. 2011-12-03T10:15:30+01:00'
+    description: 'The end period for ZenDesk tickets in the ISO date-time format e.g. 2011-12-03T10:15:30+01:00. Leave blank to default to the last 31 days.'
     required: false
     default: ''
   zenDeskOrganization:
