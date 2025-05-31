@@ -187,7 +187,7 @@ if ($GenerateCompanyReports)
 
             Use a markdown level 2 subheading for each topic, and then provide the following details as a bullet point list:
             A summary of the topic;
-            Who was involved in the topic. For example, 'This discussion involved PERSON 1, PERSON 2, and PERSON 3';
+            Who was involved in the topic, for example, 'This discussion involved PERSON 1, PERSON 2, and PERSON 3';
             Any details on why the topic is important;
             Any action items associated with the topic;
             Any dates associated with the topic;
