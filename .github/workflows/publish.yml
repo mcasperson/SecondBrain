@@ -9,6 +9,9 @@ on:
     paths-ignore:
       - 'action.yml'
       - '.github/workflows/*'
+      - '**/*.ps1'
+      - '**/*.md'
+      - '**/*.py'
 
 jobs:
   setup:
