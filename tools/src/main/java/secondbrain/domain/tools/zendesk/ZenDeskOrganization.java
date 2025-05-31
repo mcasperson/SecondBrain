@@ -23,11 +23,13 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -148,6 +150,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 
     @Inject
     private Logger log;
+
+    @Inject
+    private JsonDeserializer jsonDeserializer;
+
+    @Inject
+    private ExceptionHandler exceptionHandler;
 
     @Override
     public String getName() {
@@ -284,23 +292,37 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .recover(throwable -> List.of())
                 .get();
 
+        saveFiles(context, parsedArgs);
+
+        return context;
+    }
+
+    private void saveFiles(final List<RagDocumentContext<ZenDeskResultsResponse>> context, final ZenDeskConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getSaveIndividual()) {
             context.forEach(ticket -> Try.of(() -> Files.write(
                     Paths.get(ticketToFileName(ticket)),
                     ticket.document().getBytes(),
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING)));
-        }
 
-        return context;
+            context.forEach(ticket -> Try.of(() -> Files.write(
+                    Paths.get(ticketToMetaFileName(ticket)),
+                    jsonDeserializer.serialize(ticket.meta().toMetaObjectResult()).getBytes(),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING)));
+        }
     }
 
     private String ticketToFileName(final RagDocumentContext<ZenDeskResultsResponse> ticket) {
         return "ZenDesk-" + ticket.id() + ".md";
     }
 
+    private String ticketToMetaFileName(final RagDocumentContext<ZenDeskResultsResponse> ticket) {
+        return "ZenDesk-" + ticket.id() + ".json";
+    }
+
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         return List.of();
     }
 
