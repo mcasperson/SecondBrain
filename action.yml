@@ -87,6 +87,10 @@ inputs:
     description: 'The custom prompt to use for summarizing ZenDesk tickets'
     required: false
     default: ''
+  zendeskSaveIndividual:
+    description: 'Set to true to save the result of each individual ZenDesk ticket summary to a file.'
+    required: false
+    default: ''
   contextWindow:
     description: 'The size of the context window'
     required: false
@@ -145,6 +149,7 @@ runs:
     SB_ZENDESK_CONTEXTFILTERQUESTION: ${{ inputs.contextFilterQuestion }}
     SB_ZENDESK_CONTEXTFILTERMINIMUMRATING: ${{ inputs.contextFilterMinimumRating }}
     SB_ZENDESK_RECIPIENT: "${{ inputs.zendeskRecipient }}"
+    SB_ZENDESK_SAVEINDIVIDUAL: "${{ inputs.zendeskSaveIndividual }}"
     SB_OLLAMA_CONTEXTWINDOW: "${{ inputs.contextWindow }}"
     SB_OLLAMA_DIFFCONTEXTWINDOW: "${{ inputs.diffContextWindow }}"
     # This reduces the number of API calls we need to make to the ZenDesk API.
