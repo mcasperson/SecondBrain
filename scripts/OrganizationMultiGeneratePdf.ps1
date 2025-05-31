@@ -194,13 +194,14 @@ if ($GenerateCompanyReports)
             Any next steps associated with the topic.
 
             Use a markdown level 2 subheading for the 'Company Details' section, and then provide the following details as a bullet point list:
-            Show the total deployments in the last 30 days, total projects, and total tenants.
-            List the company's Annual Recuring Revenue (ARR).
+            The total deployments in the last 30 days;
+            The total projects;
+            The total tenants;
+            The company's Annual Recuring Revenue (ARR).
 
             The following instructions provide additional details on how to write the report.
 
             Each of the bullet points associated with a topic must be one or two sentences long.
-            You will be penalized for writing phrases such as "A summary of the topic", "Who was involved in the topic", "Details on why the topic is important", "Action items associated with the topic", "Dates associated with the topic", or "Next steps associated with the topic".
             If it is not possible to determine why a topic was important, you must not include any details about why the topic was important.
             If there are no dates associated with the topic, you must not include any details about dates for that topic.
             If there are no next steps associated with the topic, you must not include any details about next steps for that topic.
