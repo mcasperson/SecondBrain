@@ -378,6 +378,8 @@ if ($GenerateExecutiveSummary)
 
         Write-Host "Processing file: $( $file.Name )"
 
+        $company = $file.Name -replace "^COMPANY ", "" -replace "\.md$", ""
+
         $arguments = Get-SplitTrimmedAndJoinedString(@"
         "-Dstdout.encoding=UTF-8"
         "-Dsb.tools.force=PublicWeb"
@@ -388,9 +390,10 @@ if ($GenerateExecutiveSummary)
         "-Dsb.ollama.toolmodel=$toolModel"
         "-Dsb.ollama.model=$model"
         -jar $jarFile
-        "Write a summary of the document using bullet points.
+        "Write a summary of the document containing interactions with $company.
+        You must use bullet points.
         The first bullet point must include the ARR (Annual Recurring Revenue) of the company. Report the ARR as 'N/A' if it is not available.
-        An example of the first bullet point is: 'COMPANY has an ARR of $xxx' or 'COMPANY has an ARR of N/A'.
+        An example of the first bullet point is: '$company has an ARR of $xxx' or '$company has an ARR of N/A'.
         The second bullet point must list the people in the company that we met with and what was discussed.
         An example of the second bullet point is: 'We talked with with PERSON1, PERSON2, and PERSON3 to discuss TOPIC1, TOPIC2, and TOPIC3'.
         The next bullet points must be a one sentence summary of each of the topics.
