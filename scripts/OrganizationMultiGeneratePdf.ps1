@@ -202,6 +202,7 @@ if ($GenerateCompanyReports)
             The following instructions provide additional details on how to write the report.
 
             Each of the bullet points associated with a topic must be one or two sentences long.
+            If the job titles of the people involved in the topic were not supplied, you must not include any details about job titles.
             If it is not possible to determine why a topic was important, you must not include any details about why the topic was important.
             If there are no dates associated with the topic, you must not include any details about dates for that topic.
             If there are no next steps associated with the topic, you must not include any details about next steps for that topic.
