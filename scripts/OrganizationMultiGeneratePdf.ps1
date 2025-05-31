@@ -191,6 +191,10 @@ if ($GenerateCompanyReports)
             * Any dates associated with the topic.
             * Any next steps associated with the topic.
 
+            Use a markdown level 2 subheading for the 'Company Details' section, and then provide the following details as a bullet point list:
+            Show the total deployments in the last 30 days, total projects, and total tenants.
+            List the company's Annual Recuring Revenue (ARR).
+
             Each of the bullet points associated with a topic must be one or two sentences long.
             You will be penalized for writing phrases such as "A summary of the topic", "Who was involved in the topic", "Details on why the topic is important", "Action items associated with the topic", "Dates associated with the topic", or "Next steps associated with the topic".
             If it is not possible to determine why a topic was important, you must not include any details about why the topic was important.
@@ -198,12 +202,9 @@ if ($GenerateCompanyReports)
             If there are no next steps associated with the topic, you must not include any details about next steps for that topic.
             If there are no action items associated with the topic, you must not include any details about action items for that topic.
 
-            Show the total deployments in the last 30 days, total projects, and total tenants as a bullet point list.
-            List the company's Annual Recuring Revenue (ARR).
+
             If the ARR is not available, show the value as 'N/A'.
-
             If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes.
-
             You must use asterisks for bullet point lists.
             You must use bullet point lists instead of numbered lists.
 
