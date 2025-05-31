@@ -23,11 +23,13 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -44,6 +46,9 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
 import secondbrain.infrastructure.zendesk.api.*;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -65,6 +70,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     public static final String EXCLUDE_SUBMITTERS_ARG = "excludeSubmitters";
     public static final String RECIPIENT_ARG = "recipient";
     public static final String NUM_COMMENTS_ARG = "numComments";
+    public static final String SAVE_INDIVIDUAL_ARG = "saveIndividual";
     public static final String DAYS_ARG = "days";
     public static final String HOURS_ARG = "hours";
     public static final String START_PERIOD_ARG = "start";
@@ -144,6 +150,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 
     @Inject
     private Logger log;
+
+    @Inject
+    private JsonDeserializer jsonDeserializer;
+
+    @Inject
+    private ExceptionHandler exceptionHandler;
 
     @Override
     public String getName() {
@@ -238,7 +250,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
             final String url,
             final String query,
             final Client client) {
-        return Try.of(() -> zenDeskClient.getTickets(
+        final List<RagDocumentContext<ZenDeskResultsResponse>> context = Try.of(() -> zenDeskClient.getTickets(
                         client,
                         auth,
                         url,
@@ -279,10 +291,38 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .onFailure(throwable -> log.warning("Failed to get tickets: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .recover(throwable -> List.of())
                 .get();
+
+        saveFiles(context, parsedArgs);
+
+        return context;
+    }
+
+    private void saveFiles(final List<RagDocumentContext<ZenDeskResultsResponse>> context, final ZenDeskConfig.LocalArguments parsedArgs) {
+        if (parsedArgs.getSaveIndividual()) {
+            context.forEach(ticket -> Try.of(() -> Files.write(
+                    Paths.get(ticketToFileName(ticket)),
+                    ticket.document().getBytes(),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING)));
+
+            context.forEach(ticket -> Try.of(() -> Files.write(
+                    Paths.get(ticketToMetaFileName(ticket)),
+                    jsonDeserializer.serialize(ticket.meta().toMetaObjectResult()).getBytes(),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING)));
+        }
+    }
+
+    private String ticketToFileName(final RagDocumentContext<ZenDeskResultsResponse> ticket) {
+        return "ZenDesk-" + ticket.id() + ".md";
+    }
+
+    private String ticketToMetaFileName(final RagDocumentContext<ZenDeskResultsResponse> ticket) {
+        return "ZenDesk-" + ticket.id() + ".json";
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         return List.of();
     }
 
@@ -544,6 +584,19 @@ class ZenDeskConfig {
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.saveindividual", defaultValue = "false")
+    private Optional<String> configSaveIndividual;
+
+    /**
+     * Set this to true to include the organization in the query sent to the ZenDesk API.
+     * Including the organization results in a targeted set of results, and is useful
+     * when you are building a report for a specific organization, especially over a long time period.
+     * Set this to false to ignore the organization in the query. This returns all tickets
+     * in a time period. This is useful when you rerun this query many times to get the
+     * results of many different organizations. The cached result of the API call is then used
+     * between calls. Individual organizations are then filtered out from the collective results client side.
+     */
+    @Inject
     @ConfigProperty(name = "sb.zendesk.filterbyorganization", defaultValue = "false")
     private Optional<String> configZenDeskFilterByOrganization;
 
@@ -778,6 +831,15 @@ class ZenDeskConfig {
         return configZenDeskEndPeriod;
     }
 
+    /**
+     * Set this value to true to save the result of each ZenDesk ticket to
+     * a file. This is useful if you wish to build a report from each ticket as
+     * opposed to the result of a prompt run against all the tickets.
+     */
+    public Optional<String> getConfigSaveIndividual() {
+        return configSaveIndividual;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -789,6 +851,20 @@ class ZenDeskConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        public boolean getSaveIndividual() {
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigSaveIndividual()::get,
+                    arguments,
+                    context,
+                    ZenDeskOrganization.SAVE_INDIVIDUAL_ARG,
+                    "zendesk_saveindividual",
+                    "false").value();
+
+            return Try.of(() -> BooleanUtils.toBoolean(stringValue))
+                    .recover(throwable -> false)
+                    .get();
         }
 
         public String getContextFilterQuestion() {
