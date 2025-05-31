@@ -378,7 +378,7 @@ if ($GenerateExecutiveSummary)
 
         Write-Host "Processing file: $( $file.Name )"
 
-        $company = $file.Name -replace "^COMPANY ", "" -replace "\.md$", ""
+        $company = $file.BaseName -replace "^COMPANY "
 
         $arguments = Get-SplitTrimmedAndJoinedString(@"
         "-Dstdout.encoding=UTF-8"
