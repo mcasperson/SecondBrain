@@ -207,6 +207,8 @@ if ($GenerateCompanyReports)
             If there are no dates associated with the topic, you must not include any details about dates for that topic.
             If there are no next steps associated with the topic, you must not include any details about next steps for that topic.
             If there are no action items associated with the topic, you must not include any details about action items for that topic.
+            If there are no questions associated with the topic, you must not include any details about questions for that topic.
+            If there are no pain points associated with the topic, you must not include any details about pain points for that topic.
 
             If the ARR is not available, show the value as 'N/A'.
             If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes.
