@@ -178,7 +178,7 @@ if ($GenerateCompanyReports)
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
             -jar $using:jarFile
-            "## Report Instructions
+            "The following instructions define the structure of the output.
 
             Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, PlanHat activities, and Gong calls associated with $entityName.
 
@@ -197,7 +197,7 @@ if ($GenerateCompanyReports)
             Show the total deployments in the last 30 days, total projects, and total tenants.
             List the company's Annual Recuring Revenue (ARR).
 
-            ## Further Instructions
+            The following instructions provide additional details on how to write the report.
 
             Each of the bullet points associated with a topic must be one or two sentences long.
             You will be penalized for writing phrases such as "A summary of the topic", "Who was involved in the topic", "Details on why the topic is important", "Action items associated with the topic", "Dates associated with the topic", or "Next steps associated with the topic".
