@@ -178,7 +178,9 @@ if ($GenerateCompanyReports)
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
             -jar $using:jarFile
-            "Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, PlanHat activities, and Gong calls associated with $entityName.
+            "## Report Instructions
+
+            Write a business report based on the the last $using:days days worth of slack messages, ZenDesk tickets, PlanHat activities, and Gong calls associated with $entityName.
 
             The first paragraph must list the people who were involved in the engagement and the list of topics that were discussed.
             An example of the first paragraph is: 'In the past $using:days day we talked with with PERSON 1 (JOB TITLE 1), PERSON 2 (JOB TITLE 2), and PERSON 3 to discus TOPIC1 and TOPIC2'.
@@ -195,13 +197,14 @@ if ($GenerateCompanyReports)
             Show the total deployments in the last 30 days, total projects, and total tenants.
             List the company's Annual Recuring Revenue (ARR).
 
+            ## Further Instructions
+
             Each of the bullet points associated with a topic must be one or two sentences long.
             You will be penalized for writing phrases such as "A summary of the topic", "Who was involved in the topic", "Details on why the topic is important", "Action items associated with the topic", "Dates associated with the topic", or "Next steps associated with the topic".
             If it is not possible to determine why a topic was important, you must not include any details about why the topic was important.
             If there are no dates associated with the topic, you must not include any details about dates for that topic.
             If there are no next steps associated with the topic, you must not include any details about next steps for that topic.
             If there are no action items associated with the topic, you must not include any details about action items for that topic.
-
 
             If the ARR is not available, show the value as 'N/A'.
             If a Google Document is supplied, it must only be used to add supporting context to the contents of the ZenDesk tickets, PlanHat activities, and Slack messaes.
