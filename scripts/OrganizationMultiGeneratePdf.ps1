@@ -388,10 +388,12 @@ if ($GenerateExecutiveSummary)
         An example of the first bullet point is: 'COMPANY has an ARR of $xxx' or 'COMPANY has an ARR of N/A'.
         The second bullet point must list the people in the company that we met with and what was discussed.
         An example of the second bullet point is: 'We talked with with PERSON1, PERSON2, and PERSON3 to discuss TOPIC1, TOPIC2, and TOPIC3'.
+        The next bullet points must be a one sentence summary of each of the topics.
         The next bullet points must list any next steps or action items that were agreed upon. The action items must include dates if they were discussed.
         An example of the next bullet points are: 'We agreed to do ACTION1 on DATE1', 'We agreeded to do ACTION2 on DATE2', and 'We agreed to do ACTION3'.
         The final bullet point must provide a one sentence summary of the document.
 
+        If there are no next steps or action items, you must not include any details about next steps or action items.
         You will be penalized for mentioning a lack of Gong, Slack, ZenDesk, or PlanHat activity.
         You will be penalized for mentioning a lack of Google Document.
         You will be penalized for mentioning "the document".
