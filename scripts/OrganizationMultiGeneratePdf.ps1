@@ -186,12 +186,12 @@ if ($GenerateCompanyReports)
             An example of the first paragraph is: 'In the past $using:days day we talked with with PERSON 1 (JOB TITLE 1), PERSON 2 (JOB TITLE 2), and PERSON 3 to discus TOPIC1 and TOPIC2'.
 
             Use a markdown level 2 subheading for each topic, and then provide the following details as a bullet point list:
-            * A summary of the topic.
-            * Who was involved in the topic. For example, 'This discussion involved PERSON 1, PERSON 2, and PERSON 3'.
-            * Any details on why the topic is important.
-            * Any action items associated with the topic.
-            * Any dates associated with the topic.
-            * Any next steps associated with the topic.
+            A summary of the topic;
+            Who was involved in the topic. For example, 'This discussion involved PERSON 1, PERSON 2, and PERSON 3';
+            Any details on why the topic is important;
+            Any action items associated with the topic;
+            Any dates associated with the topic;
+            Any next steps associated with the topic.
 
             Use a markdown level 2 subheading for the 'Company Details' section, and then provide the following details as a bullet point list:
             Show the total deployments in the last 30 days, total projects, and total tenants.
