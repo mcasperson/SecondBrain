@@ -192,6 +192,7 @@ if ($GenerateCompanyReports)
             * Any dates associated with the topic.
             * Any next steps associated with the topic.
 
+            Each of the bullet points associated with a topic must be one or two sentences long.
             You will be penalized for writing phrases such as "A summary of the topic", "Who was involved in the topic", "Details on why the topic is important", "Action items associated with the topic", "Dates associated with the topic", or "Next steps associated with the topic".
             If it is not possible to determine why a topic was important, you must not include any details about why the topic was important.
             If there are no dates associated with the topic, you must not include any details about dates for that topic.
