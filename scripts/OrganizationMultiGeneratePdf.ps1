@@ -98,10 +98,10 @@ if ($GenerateCompanyReports)
             $entityName = ($using:entity).name
 
             # This is a quick way to test a single customer
-                        if ($entityName -ne "Transurban")
-                        {
-                            return
-                        }
+#                        if ($entityName -ne "Transurban")
+#                        {
+#                            return
+#                        }
 
             # Ignore the NPS entity, as it is not a customer.
             if ($entityName -eq "NPS")
@@ -114,10 +114,10 @@ if ($GenerateCompanyReports)
             # specified time range, cache them, and then have each entity pick their own data from the cache. This
             # means the first time SecondBrain is run, it will make large requests to the external systems.
             # Subsequent runs will get their data from the shared cache.
-#            if (($using:index) -gt 1)
-#            {
-#                Start-Sleep -m (1000 * 60)
-#            }
+            if (($using:index) -gt 1)
+            {
+                Start-Sleep -m (1000 * 60)
+            }
 
             $EntityLog = "/tmp/pdfgenerate $entityName $( Get-Date -Format "yyyy-MM-dd HH:mm:ss" ).log"
 
