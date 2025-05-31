@@ -394,6 +394,7 @@ if ($GenerateExecutiveSummary)
         The final bullet point must provide a one sentence summary of the document.
 
         If there are no next steps or action items, you must not include any details about next steps or action items.
+        If there are no dates associated with the next steps or action items, you must not include any details about dates for those next steps or action items.
         You will be penalized for mentioning a lack of Gong, Slack, ZenDesk, or PlanHat activity.
         You will be penalized for mentioning a lack of Google Document.
         You will be penalized for mentioning "the document".
