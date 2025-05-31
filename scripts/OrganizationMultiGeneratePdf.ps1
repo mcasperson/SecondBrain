@@ -188,10 +188,10 @@ if ($GenerateCompanyReports)
             Use a markdown level 2 subheading for each topic, and then provide the following details as a bullet point list:
             A summary of the topic;
             Who was involved in the topic, for example, 'This discussion involved PERSON 1, PERSON 2, and PERSON 3';
-            Any details on why the topic is important;
-            Any action items associated with the topic;
-            Any dates associated with the topic;
-            Any next steps associated with the topic.
+            Any details on why the topic is important (phrased as 'This topic is important because REASON 1, REASON 2, and REASON 3');
+            Any action items, questions, or pain points associated with the topic (phrased as 'The customer asked QUESTION 1, QUESTION 2, and QUESTION 3', or 'The customer raised PAIN POINT 1, PAIN POINT 2, and PAIN POINT 3', or 'We agreed to do ACTION 1, ACTION 2, and ACTION 3');
+            Any dates associated with the topic (phrased as 'The dates mentioned were DATE (DETAILS OF DATE 1), DATE (DETAILS OF DATE 2), and DATE (DETAILS OF DATE 3)');
+            Any next steps associated with the topic (phrased as 'The next steps are NEXT STEP 1, NEXT STEP 2, and NEXT STEP 3');
 
             Use a markdown level 2 subheading for the 'Company Details' section, and then provide the following details as a bullet point list:
             The total deployments in the last 30 days;
