@@ -184,15 +184,15 @@ if ($GenerateCompanyReports)
             The first paragraph must list the people who were involved in the engagement and the list of topics that were discussed.
             An example of the first paragraph is: 'In the past $using:days day we talked with with PERSON 1 (JOB TITLE 1), PERSON 2 (JOB TITLE 2), and PERSON3 to discus TOPIC1 and TOPIC2'.
 
-            List each topic as a subheading.
-            For each topic, provide:
-            * A summary of the topic
-            * Who was involved in the topic
+            Use a markdown level 2 subheading for each topic, and then provide the following details as a bullet point list:
+            * A summary of the topic.
+            * Who was involved in the topic.
             * Any details on why the topic is important
             * Any action items associated with the topic
             * Any dates associated with the topic
             * Any next steps associated with the topic
 
+            You will be penalized for writing phrases such as "A summary of the topic", "Who was involved in the topic", "Details on why the topic is important", "Action items associated with the topic", "Dates associated with the topic", or "Next steps associated with the topic".
             If it is not possible to determine why a topic was important, you must not include any details about why the topic was important.
             If there are no dates associated with the topic, you must not include any details about dates for that topic.
             If there are no next steps associated with the topic, you must not include any details about next steps for that topic.
