@@ -166,7 +166,6 @@ if ($GenerateCompanyReports)
             "-Dsb.multislackzengoogle.metaPrompt9=Do the messages mention performance?"
             "-Dsb.multislackzengoogle.metaField9=Performance"
             "-Dsb.multislackzengoogle.metaPrompt10=Do the messages mention security or compliance?"
-            "-Dsb.multislackzengoogle.metaPrompt10=Do the messages mention security or compliance?"
             "-Dsb.multislackzengoogle.metaField10=Security"
             "-Dsb.multislackzengoogle.metaPrompt11=Do the messages mention Linux?"
             "-Dsb.multislackzengoogle.metaField11=Linux"
