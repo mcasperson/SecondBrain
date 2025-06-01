@@ -147,7 +147,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
             final String url,
             final String ticketId,
             final Client client) {
-        final Try<RagDocumentContext<ZenDeskTicket>> context = Try
+        final RagDocumentContext<ZenDeskTicket> context = Try
                 // Start by getting the ticket
                 .of(() -> zenDeskClient.getTicket(
                         client,
@@ -161,7 +161,8 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         client,
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
-                        parsedArgs));
+                        parsedArgs))
+                .get();
 
         return List.of(context);
     }
