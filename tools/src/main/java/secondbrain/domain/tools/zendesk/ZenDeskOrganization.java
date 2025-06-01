@@ -57,6 +57,7 @@ import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -211,18 +212,20 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         }
 
         // We can have multiple ZenDesk servers
-        final List<ZenDeskCreds> zenDeskCreds = List.of(
-                new ZenDeskCreds(
-                        parsedArgs.getUrl(),
-                        parsedArgs.getUser(),
-                        parsedArgs.getToken(),
-                        parsedArgs.getAuthHeader()),
-                new ZenDeskCreds(
-                        parsedArgs.getUrl2(),
-                        parsedArgs.getUser2(),
-                        parsedArgs.getToken2(),
-                        parsedArgs.getAuthHeader2())
-        );
+        final List<ZenDeskCreds> zenDeskCreds = Stream.of(
+                        new ZenDeskCreds(
+                                parsedArgs.getUrl(),
+                                parsedArgs.getUser(),
+                                parsedArgs.getToken(),
+                                parsedArgs.getAuthHeader()),
+                        new ZenDeskCreds(
+                                parsedArgs.getUrl2(),
+                                parsedArgs.getUser2(),
+                                parsedArgs.getToken2(),
+                                parsedArgs.getAuthHeader2())
+                )
+                .filter(ZenDeskCreds::isValid)
+                .toList();
 
         final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.withResources(ClientBuilder::newClient)
                 .of(client -> zenDeskCreds
@@ -1215,4 +1218,7 @@ record ZenDeskCreds(
         String token,
         String auth
 ) {
+    public boolean isValid() {
+        return StringUtils.isNotBlank(url) && StringUtils.isNotBlank(user) && StringUtils.isNotBlank(token) && StringUtils.isNotBlank(auth);
+    }
 }
