@@ -180,11 +180,12 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
         final Try<RagMultiDocumentContext<ZenDeskTicket>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                // Limit the list to just those that fit in the context
-                .map(list -> listLimiter.limitListContent(
-                        list,
-                        RagDocumentContext::document,
-                        modelConfig.getCalculatedContextWindow(environmentSettings)))
+                // Limit the content of the ticket to the configured context window
+                .map(list -> list
+                        .stream()
+                        .map(ticket -> ticket
+                                .updateDocument(ticket.document().substring(0, modelConfig.getCalculatedContextWindow(environmentSettings))))
+                        .toList())
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
                 .map(tickets -> mergeContext(tickets, debugArgs, modelConfig.getCalculatedModel(environmentSettings)))
                 // Make sure we had some content for the prompt
