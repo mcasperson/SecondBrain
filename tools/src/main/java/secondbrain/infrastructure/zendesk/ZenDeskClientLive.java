@@ -53,6 +53,17 @@ public class ZenDeskClientLive implements ZenDeskClient {
         return getTickets(client, authorization, url, query, 1, MAX_PAGES, ttlSeconds);
     }
 
+    @Override
+    public ZenDeskTicket getTicket(Client client, String authorization, String url, String ticketId, int ttlSeconds) {
+        return localStorage.getOrPutObject(
+                ZenDeskClientLive.class.getSimpleName(),
+                "ZenDeskApiTicket",
+                DigestUtils.sha256Hex(url + ticketId),
+                ttlSeconds,
+                ZenDeskTicket.class,
+                () -> getTicketApi(client, authorization, url, ticketId).ticket());
+    }
+
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
@@ -124,7 +135,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * attempt to retry a few times with a delay.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    private ZenDeskTicketResponse getTicketFromApi(
+    private ZenDeskTicketResponse getTicketApi(
             final Client client,
             final String authorization,
             final String url,

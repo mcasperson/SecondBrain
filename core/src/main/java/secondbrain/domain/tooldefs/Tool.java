@@ -50,6 +50,10 @@ public interface Tool<T> {
      * a question, while call() actually answers the question. While getContext() may call the LLM to produce a summary
      * of the upstream data (perhaps to condense large amounts of upstream data or convert data like git diffs into plain
      * text), getContext() does not typically pass the prompt argument to the LLM.
+     * <p>
+     * This function can either throw an InternalException or an ExternalException. An InternalException indicates that
+     * there is an unrecoverable error, and there is no point in retrying. An ExternalException indicates that an
+     * external service (like a REST API) is down, and a retry may succeed later.
      *
      * @param environmentSettings The setting associated with the prompt. These are values that come from the environment (like credentials) rather than from the prompt.
      * @param prompt              The prompt supplied by the user.
@@ -77,6 +81,10 @@ public interface Tool<T> {
     /**
      * Calls the tool. Typically, this function will call getContext() to get the context for the prompt, and then
      * pass the context and the prompt to the LLM for the final answer.
+     * <p>
+     * This function can either throw an InternalException or an ExternalException. An InternalException indicates that
+     * there is an unrecoverable error, and there is no point in retrying. An ExternalException indicates that an
+     * external service (like a REST API) is down, and a retry may succeed later.
      *
      * @param environmentSettings The environmentSettings associated with the prompt. These are values that come from the environment (like credentials) rather than from the prompt.
      * @param prompt              The prompt.

@@ -25,6 +25,17 @@ public class ZenDeskClientMock implements ZenDeskClient {
         return generateMockTickets(3);
     }
 
+    @Override
+    public ZenDeskTicket getTicket(Client client, String authorization, String url, String ticketId, int ttlSeconds) {
+        return new ZenDeskTicket(
+                ticketId,
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString()
+        );
+    }
+
     private List<ZenDeskResultsResponse> getTickets(
             final Client client,
             final String authorization,
