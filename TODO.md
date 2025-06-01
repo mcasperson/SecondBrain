@@ -1,0 +1,1 @@
+* Need to move metadata generation from `ZenDeskOrganization` to `ZenDeskIndividualTicket`
