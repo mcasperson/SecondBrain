@@ -11,7 +11,7 @@ import java.util.PriorityQueue;
 import static java.util.Comparator.comparing;
 
 /**
- * Represents a single document made up of many individual context sentences.
+ * Represents a single string document made up of many individual context sentences.
  * <p>
  * When the context passed to an LLM is just a single document, the RagDocumentContext is
  * all that is needed to capture the context and the individual sentences that make up
@@ -19,6 +19,9 @@ import static java.util.Comparator.comparing;
  * <p>
  * When multiple documents make up the context passed to an LLM, the RagMultiDocumentContext
  * class is used to capture many RagDocumentContext instances.
+ * <p>
+ * RagDocumentContext differs from IndividualContext in RagDocumentContext captures the content of
+ * an external data source as a string and then breaks down the string into individual sentences.
  *
  * @param contextLabel   The label of the context when it is presented to the LLM
  * @param document       The document
