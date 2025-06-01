@@ -131,6 +131,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
+                        API.Case(API.$(instanceOf(IllegalArgumentException.class)), throwable -> new InternalFailure("A required property was not defined", throwable)),
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The ZenDesk ticket is empty", throwable)),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
@@ -146,25 +147,23 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
             final String url,
             final String ticketId,
             final Client client) {
-        final Try<RagDocumentContext<ZenDeskTicket>> context = Try.of(() -> zenDeskClient.getTicket(
+        final Try<RagDocumentContext<ZenDeskTicket>> context = Try
+                // Start by getting the ticket
+                .of(() -> zenDeskClient.getTicket(
                         client,
                         auth,
                         url,
                         ticketId,
                         parsedArgs.getSearchTTL()))
                 // Get the ticket comments
-                .map(response -> ticketToComments(
-                        response,
+                .map(ticket -> ticketToComments(
+                        ticket,
                         client,
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
                         parsedArgs));
 
-        final RagDocumentContext<ZenDeskTicket> result = context.mapFailure(
-                        API.Case(API.$(instanceOf(IllegalArgumentException.class)), throwable -> new InternalFailure("A required property was not defined", throwable)))
-                .get();
-
-        return List.of(result);
+        return List.of(context);
     }
 
     @Override
@@ -187,7 +186,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                 .updateDocument(ticket.document().substring(0, modelConfig.getCalculatedContextWindow(environmentSettings))))
                         .toList())
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                .map(tickets -> mergeContext(tickets, debugArgs, modelConfig.getCalculatedModel(environmentSettings)))
+                .map(tickets -> createMultiDocument(tickets, debugArgs, modelConfig.getCalculatedModel(environmentSettings)))
                 // Make sure we had some content for the prompt
                 .mapTry(mergedContext ->
                         validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
@@ -253,16 +252,32 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         return url + "/agent/tickets/" + id;
     }
 
-    private RagMultiDocumentContext<ZenDeskTicket> mergeContext(final List<RagDocumentContext<ZenDeskTicket>> context, final String debug, final String customModel) {
+    /**
+     * Create a RagMultiDocumentContext from a list of RagDocumentContexts. This combines the individual
+     * documents into a single string, which is then used as the context for the prompt.
+     */
+    private RagMultiDocumentContext<ZenDeskTicket> createMultiDocument(final List<RagDocumentContext<ZenDeskTicket>> context, final String debug, final String customModel) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(RagDocumentContext::document)
-                        .map(content -> promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("ZenDesk Ticket", content))
+                        .map(content -> promptBuilderSelector
+                                .getPromptBuilder(customModel)
+                                .buildContextPrompt("ZenDesk Ticket", content))
                         .collect(Collectors.joining("\n")),
                 context,
                 debug);
     }
 
+    /**
+     * Take a ZenDesk ticket, get all the comments associated with it, and convert them into a RagDocumentContext.
+     *
+     * @param ticket        The ZenDesk ticket to convert
+     * @param client        The JAX-RS client to use for API calls
+     * @param authorization The authorization header to use for API calls
+     * @param numComments   The number of comments to fetch for the ticket
+     * @param parsedArgs    The parsed arguments containing configuration details
+     * @return A RagDocumentContext containing the ticket and its comments
+     */
     private RagDocumentContext<ZenDeskTicket> ticketToComments(final ZenDeskTicket ticket,
                                                                final Client client,
                                                                final String authorization,
@@ -281,12 +296,9 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                         parsedArgs.getSearchTTL())
                                 .ticketToBody(numComments),
                         t))
-                // Combine the ticket subject and body into a single string
-                .map(comments -> comments.updateContext(
-                        comments.meta().subject() + "\n" + String.join("\n", comments.context())))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
                 .map(comments -> getDocumentContext(
-                        comments.context(),
+                        comments.meta().subject() + "\n" + String.join("\n", comments.context()),   // The full context is the subject with the comments
                         comments.id(),
                         comments.meta(),
                         authorization,
