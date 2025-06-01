@@ -33,9 +33,14 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
-import secondbrain.infrastructure.zendesk.api.*;
+import secondbrain.infrastructure.zendesk.api.ZenDeskOrganizationItemResponse;
+import secondbrain.infrastructure.zendesk.api.ZenDeskResultsResponse;
+import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -88,7 +93,7 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
 
     @Override
     public String getName() {
-        return ZenDeskOrganization.class.getSimpleName();
+        return ZenDeskTicket.class.getSimpleName();
     }
 
     @Override
@@ -141,20 +146,25 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
             final String url,
             final String ticketId,
             final Client client) {
-        return Try.of(() -> zenDeskClient.getTicket(
+        final Try<RagDocumentContext<ZenDeskResultsResponse>> context = Try.of(() -> zenDeskClient.getTicket(
                         client,
                         auth,
                         url,
                         ticketId,
                         parsedArgs.getSearchTTL()))
-                // Get the ticket comments (i.e., the initial email)
+                // Get the ticket comments
                 .map(response -> ticketToComments(
                         response,
                         client,
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
-                        parsedArgs))
+                        parsedArgs));
+
+        final RagDocumentContext<ZenDeskResultsResponse> result = context.mapFailure(
+                        API.Case(API.$(instanceOf(IllegalArgumentException.class)), throwable -> new InternalFailure("A required property was not defined", throwable)))
                 .get();
+
+        return List.of(result);
     }
 
     @Override
@@ -261,15 +271,16 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
                 // Get the context associated with the ticket
                 .map(t -> new IndividualContext<>(
                         t.id(),
-                        ticketToBody(zenDeskClient.getComments(
+                        zenDeskClient
+                                .getComments(
                                         client,
                                         authorization,
                                         parsedArgs.getUrl(),
                                         t.id(),
-                                        parsedArgs.getSearchTTL()),
-                                numComments),
+                                        parsedArgs.getSearchTTL())
+                                .ticketToBody(numComments),
                         t))
-                // Get the comment body as a LLM context string
+                // Combine the ticket subject and body into a single string
                 .map(comments -> comments.updateContext(
                         comments.meta().subject() + "\n" + String.join("\n", comments.context())))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
@@ -306,18 +317,6 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
                         ticketToLink(parsedArgs.getUrl(), meta, authHeader)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
-    }
-
-    private List<String> ticketToBody(final ZenDeskCommentsResponse comments, final int limit) {
-        return comments
-                .getResults()
-                .stream()
-                .limit(limit)
-                .map(ZenDeskCommentResponse::body)
-                .map(body -> Arrays.stream(body.split("\\r\\n|\\r|\\n"))
-                        .filter(StringUtils::isNotBlank)
-                        .collect(Collectors.joining("\n")))
-                .collect(Collectors.toList());
     }
 }
 

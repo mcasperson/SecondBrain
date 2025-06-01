@@ -145,7 +145,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Ticket ID is required");
         }
 
-        final String target = url + "/api/v2/tickets/" + ticketId;
+        final String target = url + "/api/v2/tickets/" + ticketId + ".json";
 
         return Try.withResources(() -> client.target(target)
                         .request()

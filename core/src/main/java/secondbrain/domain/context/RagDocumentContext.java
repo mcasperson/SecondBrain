@@ -24,7 +24,7 @@ import static java.util.Comparator.comparing;
  * an external data source as a string and then breaks down the string into individual sentences.
  *
  * @param contextLabel   The label of the context when it is presented to the LLM
- * @param document       The document
+ * @param document       The string representation of the external data
  * @param sentences      The individual context strings that make up the documents
  * @param id             The ID of the document
  * @param meta           The metadata associated with the document
