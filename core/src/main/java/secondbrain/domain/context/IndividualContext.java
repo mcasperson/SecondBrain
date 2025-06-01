@@ -2,7 +2,7 @@ package secondbrain.domain.context;
 
 /**
  * Represents the relationship between an external data source and its context. The purpose of this class is
- * to ensure that we can list the external sources that were used to generate the prompt context, allowing
+ * to ensure that we can list the external sources used to generate the prompt context, allowing
  * users to verify the sources of the information.
  * <p>
  * IndividualContext is used as the results from various external sources are captured and processed. For example,

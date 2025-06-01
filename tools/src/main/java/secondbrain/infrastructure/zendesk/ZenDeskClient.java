@@ -16,6 +16,13 @@ public interface ZenDeskClient {
             String query,
             int ttlSeconds);
 
+    ZenDeskResultsResponse getTicket(
+            Client client,
+            String authorization,
+            String url,
+            String ticketId,
+            int ttlSeconds);
+
     ZenDeskCommentsResponse getComments(
             Client client,
             String authorization,
