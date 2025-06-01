@@ -24,8 +24,13 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
     /*
         Don't recurse forever, because LLMs can't deal with large results anyway.
+        Any more than 10 pages is invalid anyway. You'll get a message like this:
+        {
+            "error": "invalid",
+            "description": "Invalid search: Requested response size was greater than Search Response Limits"
+        }
      */
-    private static final int MAX_PAGES = 30;
+    private static final int MAX_PAGES = 10;
 
     @Inject
     private ResponseValidation responseValidation;
