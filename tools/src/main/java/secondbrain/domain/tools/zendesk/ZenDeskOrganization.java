@@ -213,15 +213,15 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         // We can have multiple ZenDesk servers
         final List<ZenDeskCreds> zenDeskCreds = List.of(
                 new ZenDeskCreds(
-                        parsedArgs.getAuthHeader(),
                         parsedArgs.getUrl(),
                         parsedArgs.getUser(),
-                        parsedArgs.getToken()),
+                        parsedArgs.getToken(),
+                        parsedArgs.getAuthHeader()),
                 new ZenDeskCreds(
-                        parsedArgs.getAuthHeader2(),
                         parsedArgs.getUrl2(),
                         parsedArgs.getUser2(),
-                        parsedArgs.getToken2())
+                        parsedArgs.getToken2(),
+                        parsedArgs.getAuthHeader2())
         );
 
         final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.withResources(ClientBuilder::newClient)
@@ -365,8 +365,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new InternalFailure("No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'" + debugArgs)),
                         API.Case(API.$(),
                                 throwable -> new ExternalFailure("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
                 .get();
