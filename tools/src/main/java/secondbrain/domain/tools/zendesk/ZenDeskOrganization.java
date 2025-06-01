@@ -20,8 +20,6 @@ import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
@@ -44,7 +42,6 @@ import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
-import secondbrain.infrastructure.zendesk.api.ZenDeskResultsResponse;
 import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 
 import java.nio.file.Files;
@@ -133,12 +130,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
     @Inject
     private DebugToolArgs debugToolArgs;
-
-    @Inject
-    private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SentenceVectorizer sentenceVectorizer;
 
     @Inject
     private PromptBuilderSelector promptBuilderSelector;
@@ -386,8 +377,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     }
 
 
-    private List<ZenDeskResultsResponse> filterResponse(
-            final List<ZenDeskResultsResponse> tickets,
+    private List<ZenDeskTicket> filterResponse(
+            final List<ZenDeskTicket> tickets,
             final String organization,
             final boolean forceAssignee,
             final List<String> exclude,
@@ -451,7 +442,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         ).combinedDocument();
     }
 
-    private List<RagDocumentContext<ZenDeskTicket>> ticketToComments(final List<ZenDeskResultsResponse> tickets,
+    private List<RagDocumentContext<ZenDeskTicket>> ticketToComments(final List<ZenDeskTicket> tickets,
                                                                      final Map<String, String> environmentSettings,
                                                                      final String url,
                                                                      final String email,

@@ -16,7 +16,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
     private OllamaClient ollamaClient;
 
     @Override
-    public List<ZenDeskResultsResponse> getTickets(
+    public List<ZenDeskTicket> getTickets(
             final Client client,
             final String authorization,
             final String url,
@@ -32,11 +32,12 @@ public class ZenDeskClientMock implements ZenDeskClient {
                 UUID.randomUUID().toString(),
                 UUID.randomUUID().toString(),
                 UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 UUID.randomUUID().toString()
         );
     }
 
-    private List<ZenDeskResultsResponse> getTickets(
+    private List<ZenDeskTicket> getTickets(
             final Client client,
             final String authorization,
             final String url,
@@ -84,25 +85,25 @@ public class ZenDeskClientMock implements ZenDeskClient {
         return new ZenDeskUserItemResponse(name, userId != null ? userId : UUID.randomUUID().toString());
     }
 
-    private List<ZenDeskResultsResponse> generateMockTickets(int count) {
-        final List<ZenDeskResultsResponse> tickets = new ArrayList<>();
+    private List<ZenDeskTicket> generateMockTickets(int count) {
+        final List<ZenDeskTicket> tickets = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
             final String subject = ollamaClient.callOllamaSimple("Generate a subject line for a customer support ticket. Keep it concise.");
-            final String description = ollamaClient.callOllamaSimple("Generate a detailed description for a customer support ticket. This should explain a customer's problem in detail.");
             final String email = ollamaClient.callOllamaSimple("Generate a random email address. Return only the email address, nothing else.");
 
             final String id = UUID.randomUUID().toString();
             final String submitterId = UUID.randomUUID().toString();
+            final String assigneeId = UUID.randomUUID().toString();
             final String organizationId = UUID.randomUUID().toString();
 
-            tickets.add(new ZenDeskResultsResponse(
+            tickets.add(new ZenDeskTicket(
                     id,
-                    subject,
-                    description,
                     submitterId,
-                    email,
-                    organizationId
+                    assigneeId,
+                    subject,
+                    organizationId,
+                    email
             ));
         }
 

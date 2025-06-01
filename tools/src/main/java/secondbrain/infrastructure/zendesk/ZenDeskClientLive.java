@@ -39,7 +39,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      */
     @Retry(delay = 30000, maxRetries = 10)
     @Override
-    public List<ZenDeskResultsResponse> getTickets(
+    public List<ZenDeskTicket> getTickets(
             final Client client,
             final String authorization,
             final String url,
@@ -70,7 +70,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * This method is synchronized to have one tool populate the cache and let the others read from it.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    private List<ZenDeskResultsResponse> getTickets(
+    private List<ZenDeskTicket> getTickets(
             Client client,
             String authorization,
             String url,
@@ -79,12 +79,12 @@ public class ZenDeskClientLive implements ZenDeskClient {
             int maxPage,
             int ttlSeconds) {
 
-        final ZenDeskResultsResponse[] value = localStorage.getOrPutObject(
+        final ZenDeskTicket[] value = localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskApiTickets",
                 DigestUtils.sha256Hex(url + query + maxPage),
                 ttlSeconds,
-                ZenDeskResultsResponse[].class,
+                ZenDeskTicket[].class,
                 () -> getTicketsApi(client, authorization, url, query, page, maxPage));
 
         return Arrays.asList(value);
@@ -95,7 +95,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * attempt to retry a few times with a delay.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    private ZenDeskResultsResponse[] getTicketsApi(
+    private ZenDeskTicket[] getTicketsApi(
             final Client client,
             final String authorization,
             final String url,
@@ -125,7 +125,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                                 r.getResultsArray(),
                                 r.next_page() != null && page < maxPage
                                         ? getTicketsApi(client, authorization, url, query, page + 1, maxPage)
-                                        : new ZenDeskResultsResponse[]{}))
+                                        : new ZenDeskTicket[]{}))
                         .get())
                 .get();
     }

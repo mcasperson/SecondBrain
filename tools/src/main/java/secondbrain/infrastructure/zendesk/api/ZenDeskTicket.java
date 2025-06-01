@@ -7,7 +7,7 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ZenDeskTicket(String id, String submitter_id, String assignee_id, String subject,
-                            String organization_id) {
+                            String organization_id, String recipient) {
     public List<MetaObjectResult> toMetaObjectResult() {
         return List.of(
                 new MetaObjectResult("ID", id),
