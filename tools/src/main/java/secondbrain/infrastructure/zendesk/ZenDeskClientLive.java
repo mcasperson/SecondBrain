@@ -24,7 +24,8 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
     /*
         Don't recurse forever, because LLMs can't deal with large results anyway.
-        Any more than 10 pages is invalid anyway. You'll get a message like this:
+        Any more than 10 pages is invalid anyway (https://developer.zendesk.com/api-reference/ticketing/ticket-management/search/#results-limit).
+        You'll get a message like this:
         {
             "error": "invalid",
             "description": "Invalid search: Requested response size was greater than Search Response Limits"
