@@ -54,14 +54,14 @@ public class ZenDeskClientLive implements ZenDeskClient {
     }
 
     @Override
-    public ZenDeskResultsResponse getTicket(Client client, String authorization, String url, String ticketId, int ttlSeconds) {
+    public ZenDeskTicket getTicket(Client client, String authorization, String url, String ticketId, int ttlSeconds) {
         return localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskApiTicket",
                 DigestUtils.sha256Hex(url + ticketId),
                 ttlSeconds,
-                ZenDeskResultsResponse.class,
-                () -> getTicketApi(client, authorization, url, ticketId));
+                ZenDeskTicket.class,
+                () -> getTicketApi(client, authorization, url, ticketId).ticket());
     }
 
     /**
@@ -135,35 +135,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * attempt to retry a few times with a delay.
      */
     @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    private ZenDeskResultsResponse getTicketApi(
-            final Client client,
-            final String authorization,
-            final String url,
-            final String ticketId) {
-
-        if (StringUtils.isBlank(ticketId)) {
-            throw new IllegalArgumentException("Ticket ID is required");
-        }
-
-        final String target = url + "/api/v2/tickets/" + ticketId + ".json";
-
-        return Try.withResources(() -> client.target(target)
-                        .request()
-                        .header("Authorization", authorization)
-                        .header("Accept", "application/json")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(ZenDeskResultsResponse.class))
-                        .get())
-                .get();
-    }
-
-    /**
-     * ZenDesk has API rate limits measured in requests per minute, so we
-     * attempt to retry a few times with a delay.
-     */
-    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
-    private ZenDeskTicketResponse getTicketFromApi(
+    private ZenDeskTicketResponse getTicketApi(
             final Client client,
             final String authorization,
             final String url,

@@ -34,7 +34,7 @@ import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
 import secondbrain.infrastructure.zendesk.api.ZenDeskOrganizationItemResponse;
-import secondbrain.infrastructure.zendesk.api.ZenDeskResultsResponse;
+import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
 import java.util.List;
@@ -48,7 +48,7 @@ import static com.google.common.base.Predicates.instanceOf;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 @ApplicationScoped
-public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
+public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_TICKET_ID_ARG = "ticketId";
 
     private static final String INSTRUCTIONS = """
@@ -93,7 +93,7 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
 
     @Override
     public String getName() {
-        return ZenDeskTicket.class.getSimpleName();
+        return ZenDeskIndividualTicket.class.getSimpleName();
     }
 
     @Override
@@ -112,14 +112,14 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
     }
 
     @Override
-    public List<RagDocumentContext<ZenDeskResultsResponse>> getContext(
+    public List<RagDocumentContext<ZenDeskTicket>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
         final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<List<RagDocumentContext<ZenDeskResultsResponse>>> result = Try.withResources(ClientBuilder::newClient)
+        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.withResources(ClientBuilder::newClient)
                 .of(client -> getContext(
                         parsedArgs,
                         environmentSettings,
@@ -139,14 +139,14 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
 
     }
 
-    private List<RagDocumentContext<ZenDeskResultsResponse>> getContext(
+    private List<RagDocumentContext<ZenDeskTicket>> getContext(
             final ZenDeskTicketConfig.LocalArguments parsedArgs,
             final Map<String, String> environmentSettings,
             final String auth,
             final String url,
             final String ticketId,
             final Client client) {
-        final Try<RagDocumentContext<ZenDeskResultsResponse>> context = Try.of(() -> zenDeskClient.getTicket(
+        final Try<RagDocumentContext<ZenDeskTicket>> context = Try.of(() -> zenDeskClient.getTicket(
                         client,
                         auth,
                         url,
@@ -160,7 +160,7 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
                         parsedArgs.getNumComments(),
                         parsedArgs));
 
-        final RagDocumentContext<ZenDeskResultsResponse> result = context.mapFailure(
+        final RagDocumentContext<ZenDeskTicket> result = context.mapFailure(
                         API.Case(API.$(instanceOf(IllegalArgumentException.class)), throwable -> new InternalFailure("A required property was not defined", throwable)))
                 .get();
 
@@ -173,13 +173,13 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
     }
 
     @Override
-    public RagMultiDocumentContext<ZenDeskResultsResponse> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<ZenDeskTicket> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
 
         final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final Try<RagMultiDocumentContext<ZenDeskResultsResponse>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+        final Try<RagMultiDocumentContext<ZenDeskTicket>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 // Limit the list to just those that fit in the context
                 .map(list -> listLimiter.limitListContent(
                         list,
@@ -221,7 +221,7 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
      * @param meta The ticket metadata
      * @return A Markdown link to the source ticket
      */
-    private String ticketToLink(final String url, final ZenDeskResultsResponse meta, final String authHeader) {
+    private String ticketToLink(final String url, final ZenDeskTicket meta, final String authHeader) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> meta.subject().replaceAll("\\r\\n|\\r|\\n", " ") + " - "
                         // Best effort to get the organization name, but don't treat this as a failure
@@ -238,7 +238,7 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
     }
 
     @Nullable
-    private String getOrganizationName(final ZenDeskResultsResponse meta, final String authHeader, final String url) {
+    private String getOrganizationName(final ZenDeskTicket meta, final String authHeader, final String url) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try
                         .of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
@@ -252,7 +252,7 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
         return url + "/agent/tickets/" + id;
     }
 
-    private RagMultiDocumentContext<ZenDeskResultsResponse> mergeContext(final List<RagDocumentContext<ZenDeskResultsResponse>> context, final String debug, final String customModel) {
+    private RagMultiDocumentContext<ZenDeskTicket> mergeContext(final List<RagDocumentContext<ZenDeskTicket>> context, final String debug, final String customModel) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(RagDocumentContext::document)
@@ -262,11 +262,11 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
                 debug);
     }
 
-    private RagDocumentContext<ZenDeskResultsResponse> ticketToComments(final ZenDeskResultsResponse ticket,
-                                                                        final Client client,
-                                                                        final String authorization,
-                                                                        final int numComments,
-                                                                        final ZenDeskTicketConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<ZenDeskTicket> ticketToComments(final ZenDeskTicket ticket,
+                                                               final Client client,
+                                                               final String authorization,
+                                                               final int numComments,
+                                                               final ZenDeskTicketConfig.LocalArguments parsedArgs) {
         return Try.of(() -> ticket)
                 // Get the context associated with the ticket
                 .map(t -> new IndividualContext<>(
@@ -293,10 +293,10 @@ public class ZenDeskTicket implements Tool<ZenDeskResultsResponse> {
                 .get();
     }
 
-    private RagDocumentContext<ZenDeskResultsResponse> getDocumentContext(
+    private RagDocumentContext<ZenDeskTicket> getDocumentContext(
             final String document,
             final String id,
-            final ZenDeskResultsResponse meta,
+            final ZenDeskTicket meta,
             final String authHeader,
             final ZenDeskTicketConfig.LocalArguments parsedArgs) {
         final String contextLabel = String.join(
@@ -419,7 +419,7 @@ class ZenDeskTicketConfig {
                     getConfigTicketId()::get,
                     arguments,
                     context,
-                    ZenDeskTicket.ZENDESK_TICKET_ID_ARG,
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_ID_ARG,
                     "zendesk_ticketid",
                     "").value();
 
