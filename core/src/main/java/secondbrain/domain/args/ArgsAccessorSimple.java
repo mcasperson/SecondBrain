@@ -44,7 +44,7 @@ public class ArgsAccessorSimple implements ArgsAccessor {
         return Try.of(() -> new Argument(systemProperty.getValue(), true))
                 .mapTry(v -> validateString.throwIfEmpty(v, Argument::value))
                 // then try the context
-                .recover(e -> new Argument(context.get(contextName), true))
+                .recover(e -> validateString.isNotEmpty(contextName) ? new Argument(context.get(contextName), true) : null)
                 .mapTry(v -> validateString.throwIfEmpty(v, Argument::value))
                 // then get the user supplied argument
                 .recover(e -> getArgument(arguments, argName, defaultValue))

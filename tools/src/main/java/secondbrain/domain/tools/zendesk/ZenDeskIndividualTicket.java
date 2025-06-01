@@ -50,11 +50,11 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 @ApplicationScoped
 public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_TICKET_ID_ARG = "ticketId";
+    public static final String ZENDESK_URL_ARG = "zendeskUrl";
+    public static final String ZENDESK_EMAIL_ARG = "zendeskEmail";
+    public static final String ZENDESK_TOKEN_ARG = "zendeskToken";
 
-    private static final String INSTRUCTIONS = """
-            Summarise the ticket in one paragraph.
-            You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.
-            """.stripLeading();
+    private static final String INSTRUCTIONS = "You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.";
 
     @Inject
     private ModelConfig modelConfig;
@@ -445,12 +445,20 @@ class ZenDeskTicketConfig {
         }
 
         public String getToken() {
+            final String argument = getArgsAccessor().getArgument(
+                    getConfigZenDeskAccessToken()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG,
+                    "",
+                    "").value();
+
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_access_token")))
                     .recover(e -> context.get("zendesk_access_token"))
                     .mapTry(getValidateString()::throwIfEmpty)
-                    .recoverWith(e -> Try.of(() -> getConfigZenDeskAccessToken().get()));
+                    .recoverWith(e -> Try.of(() -> argument));
 
             if (token.isFailure() || StringUtils.isBlank(token.get())) {
                 throw new InternalFailure("Failed to get Zendesk access token");
@@ -460,8 +468,16 @@ class ZenDeskTicketConfig {
         }
 
         public String getUrl() {
+            final String argument = getArgsAccessor().getArgument(
+                    getConfigZenDeskUrl()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_URL_ARG,
+                    "",
+                    "").value();
+
             final Try<String> url = getContext("zendesk_url", context, getTextEncryptor())
-                    .recoverWith(e -> Try.of(() -> getConfigZenDeskUrl().get()));
+                    .recoverWith(e -> Try.of(() -> argument));
 
             if (url.isFailure() || StringUtils.isBlank(url.get())) {
                 throw new InternalFailure("Failed to get Zendesk URL");
@@ -471,10 +487,18 @@ class ZenDeskTicketConfig {
         }
 
         public String getUser() {
+            final String argument = getArgsAccessor().getArgument(
+                    getConfigZenDeskUser()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_EMAIL_ARG,
+                    "",
+                    "").value();
+
             final Try<String> user = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_user")))
                     .recover(e -> context.get("zendesk_user"))
                     .mapTry(getValidateString()::throwIfEmpty)
-                    .recoverWith(e -> Try.of(() -> getConfigZenDeskUser().get()));
+                    .recoverWith(e -> Try.of(() -> argument));
 
             if (user.isFailure() || StringUtils.isBlank(user.get())) {
                 throw new InternalFailure("Failed to get Zendesk User");

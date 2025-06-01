@@ -12,18 +12,18 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.*;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.context.SentenceSplitter;
+import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
-import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
@@ -44,7 +44,8 @@ import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
-import secondbrain.infrastructure.zendesk.api.*;
+import secondbrain.infrastructure.zendesk.api.ZenDeskResultsResponse;
+import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -63,7 +64,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
-public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
+public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_DISABLELINKS_ARG = "disableLinks";
     public static final String ZENDESK_ORGANIZATION_ARG = "zenDeskOrganization";
     public static final String EXCLUDE_ORGANIZATION_ARG = "excludeOrganization";
@@ -105,7 +106,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
             """.stripLeading();
 
     @Inject
-    private Logger logger;
+    private ZenDeskIndividualTicket ticketTool;
 
     @Inject
     private RatingTool ratingTool;
@@ -154,9 +155,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     @Inject
     private JsonDeserializer jsonDeserializer;
 
-    @Inject
-    private ExceptionHandler exceptionHandler;
-
     @Override
     public String getName() {
         return ZenDeskOrganization.class.getSimpleName();
@@ -186,7 +184,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     }
 
     @Override
-    public List<RagDocumentContext<ZenDeskResultsResponse>> getContext(
+    public List<RagDocumentContext<ZenDeskTicket>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -214,20 +212,28 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         }
 
         // We can have multiple ZenDesk servers
-        final List<Pair<String, String>> zenServers = Stream.of(
-                        Pair.ofNonNull(parsedArgs.getAuthHeader(), parsedArgs.getUrl()),
-                        Pair.ofNonNull(parsedArgs.getAuthHeader2(), parsedArgs.getUrl2()))
-                .filter(pair -> StringUtils.isNotBlank(pair.getLeft()) && StringUtils.isNotBlank(pair.getRight()))
+        final List<ZenDeskCreds> zenDeskCreds = Stream.of(
+                        new ZenDeskCreds(
+                                parsedArgs.getUrl(),
+                                parsedArgs.getUser(),
+                                parsedArgs.getToken(),
+                                parsedArgs.getAuthHeader()),
+                        new ZenDeskCreds(
+                                parsedArgs.getUrl2(),
+                                parsedArgs.getUser2(),
+                                parsedArgs.getToken2(),
+                                parsedArgs.getAuthHeader2())
+                )
+                .filter(ZenDeskCreds::isValid)
                 .toList();
 
-        final Try<List<RagDocumentContext<ZenDeskResultsResponse>>> result = Try.withResources(ClientBuilder::newClient)
-                .of(client -> zenServers
+        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.withResources(ClientBuilder::newClient)
+                .of(client -> zenDeskCreds
                         .stream()
-                        .flatMap(pair -> getContext(
+                        .flatMap(zenDeskCred -> getContext(
                                 parsedArgs,
                                 environmentSettings,
-                                pair.getLeft(),
-                                pair.getRight(),
+                                zenDeskCred,
                                 String.join(" ", query),
                                 client).stream())
                         .toList());
@@ -243,17 +249,16 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
 
     }
 
-    private List<RagDocumentContext<ZenDeskResultsResponse>> getContext(
+    private List<RagDocumentContext<ZenDeskTicket>> getContext(
             final ZenDeskConfig.LocalArguments parsedArgs,
             final Map<String, String> environmentSettings,
-            final String auth,
-            final String url,
+            final ZenDeskCreds creds,
             final String query,
             final Client client) {
-        final List<RagDocumentContext<ZenDeskResultsResponse>> context = Try.of(() -> zenDeskClient.getTickets(
+        final List<RagDocumentContext<ZenDeskTicket>> context = Try.of(() -> zenDeskClient.getTickets(
                         client,
-                        auth,
-                        url,
+                        creds.auth(),
+                        creds.url(),
                         String.join(" ", query),
                         parsedArgs.getSearchTTL()))
                 // Filter out any tickets based on the submitter and assignee
@@ -269,9 +274,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 // Get the ticket comments (i.e., the initial email)
                 .map(response -> ticketToComments(
                         response,
-                        client,
-                        parsedArgs.getAuthHeader(),
-                        parsedArgs.getNumComments(),
+                        environmentSettings,
+                        creds.url(),
+                        creds.user(),
+                        creds.token(),
                         parsedArgs))
                 /*
                     If there is a filter question (usually a question to remove spam or irrelevant tickets),
@@ -297,7 +303,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         return context;
     }
 
-    private void saveFiles(final List<RagDocumentContext<ZenDeskResultsResponse>> context, final ZenDeskConfig.LocalArguments parsedArgs) {
+    private void saveFiles(final List<RagDocumentContext<ZenDeskTicket>> context, final ZenDeskConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getSaveIndividual()) {
             context.forEach(ticket -> Try.of(() -> Files.write(
                     Paths.get(ticketToFileName(ticket)),
@@ -313,11 +319,11 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         }
     }
 
-    private String ticketToFileName(final RagDocumentContext<ZenDeskResultsResponse> ticket) {
+    private String ticketToFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
         return "ZenDesk-" + ticket.id() + ".md";
     }
 
-    private String ticketToMetaFileName(final RagDocumentContext<ZenDeskResultsResponse> ticket) {
+    private String ticketToMetaFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
         return "ZenDesk-" + ticket.id() + ".json";
     }
 
@@ -327,13 +333,13 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     }
 
     @Override
-    public RagMultiDocumentContext<ZenDeskResultsResponse> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<ZenDeskTicket> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
 
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final Try<RagMultiDocumentContext<ZenDeskResultsResponse>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+        final Try<RagMultiDocumentContext<ZenDeskTicket>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 // Limit the list to just those that fit in the context
                 .map(list -> listLimiter.limitListContent(
                         list,
@@ -362,57 +368,18 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new InternalFailure("No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'" + debugArgs)),
                         API.Case(API.$(),
                                 throwable -> new ExternalFailure("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
                 .get();
     }
 
-    /**
-     * Display a Markdown list of the ticket IDs with links to the tickets. This helps users understand
-     * where the information is coming from.
-     *
-     * @param url  The ZenDesk url
-     * @param meta The ticket metadata
-     * @return A Markdown link to the source ticket
-     */
-    private String ticketToLink(final String url, final ZenDeskResultsResponse meta, final String authHeader) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> meta.subject().replaceAll("\\r\\n|\\r|\\n", " ") + " - "
-                        // Best effort to get the organization name, but don't treat this as a failure
-                        + Try.of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
-                        .map(ZenDeskOrganizationItemResponse::name)
-                        .getOrElse("Unknown Organization")
-                        + " - "
-                        // Best effort to get the username, but don't treat this as a failure
-                        + Try.of(() -> zenDeskClient.getUser(client, authHeader, url, meta.assignee_id()))
-                        .map(ZenDeskUserItemResponse::name)
-                        .getOrElse("Unknown User")
-                        + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
-                .get();
-    }
-
-    @Nullable
-    private String getOrganizationName(final ZenDeskResultsResponse meta, final String authHeader, final String url) {
-        return Try.withResources(ClientBuilder::newClient)
-                .of(client -> Try
-                        .of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
-                        .map(ZenDeskOrganizationItemResponse::name)
-                        .get())
-                // Do a best effort here - we don't want to fail the whole process because we can't get the organization name
-                .getOrNull();
-    }
-
-    private String idToLink(final String url, final String id) {
-        return url + "/agent/tickets/" + id;
-    }
-
-    private RagMultiDocumentContext<ZenDeskResultsResponse> mergeContext(final List<RagDocumentContext<ZenDeskResultsResponse>> context, final String debug, final String customModel) {
+    private RagMultiDocumentContext<ZenDeskTicket> mergeContext(final List<RagDocumentContext<ZenDeskTicket>> context, final String debug, final String customModel) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(RagDocumentContext::document)
-                        .map(content -> promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt("ZenDesk Ticket", content))
+                        .map(content -> promptBuilderSelector
+                                .getPromptBuilder(customModel)
+                                .buildContextPrompt("ZenDesk Ticket", content))
                         .collect(Collectors.joining("\n")),
                 context,
                 debug);
@@ -440,10 +407,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     }
 
     /**
-     * Summarise the tickets by passing them through the LLM
+     * Summarize the tickets by passing them through the LLM
      */
-    private List<RagDocumentContext<ZenDeskResultsResponse>> summariseTickets(
-            final List<RagDocumentContext<ZenDeskResultsResponse>> tickets,
+    private List<RagDocumentContext<ZenDeskTicket>> summariseTickets(
+            final List<RagDocumentContext<ZenDeskTicket>> tickets,
             final Map<String, String> context,
             final ZenDeskConfig.LocalArguments parsedArgs) {
         return tickets.stream()
@@ -451,7 +418,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .collect(Collectors.toList());
     }
 
-    private List<RagDocumentContext<ZenDeskResultsResponse>> trimTickets(final List<RagDocumentContext<ZenDeskResultsResponse>> tickets, final ZenDeskConfig.LocalArguments parsedArgs) {
+    private List<RagDocumentContext<ZenDeskTicket>> trimTickets(final List<RagDocumentContext<ZenDeskTicket>> tickets, final ZenDeskConfig.LocalArguments parsedArgs) {
         return tickets.stream()
                 .map(ticket -> ticket.updateDocument(
                         documentTrimmer.trimDocumentToKeywords(
@@ -463,7 +430,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
     }
 
     /**
-     * Summarise an individual ticket
+     * Summarize an individual ticket
      */
     private String getTicketSummary(final String ticketContents,
                                     final Map<String, String> environmentSettings,
@@ -484,71 +451,30 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
         ).combinedDocument();
     }
 
-    private List<RagDocumentContext<ZenDeskResultsResponse>> ticketToComments(final List<ZenDeskResultsResponse> tickets,
-                                                                              final Client client,
-                                                                              final String authorization,
-                                                                              final int numComments,
-                                                                              final ZenDeskConfig.LocalArguments parsedArgs) {
+    private List<RagDocumentContext<ZenDeskTicket>> ticketToComments(final List<ZenDeskResultsResponse> tickets,
+                                                                     final Map<String, String> environmentSettings,
+                                                                     final String url,
+                                                                     final String email,
+                                                                     final String token,
+                                                                     final ZenDeskConfig.LocalArguments parsedArgs) {
         return tickets.stream()
                 // Get the context associated with the ticket
-                .map(ticket -> new IndividualContext<>(
-                        ticket.id(),
-                        ticketToBody(zenDeskClient.getComments(
-                                        client,
-                                        authorization,
-                                        parsedArgs.getZenDeskUrl(),
-                                        ticket.id(),
-                                        parsedArgs.getSearchTTL()),
-                                numComments),
-                        ticket))
-                // Get the comment body as a LLM context string
-                .map(comments -> comments.updateContext(
-                        comments.meta().subject() + "\n" + String.join("\n", comments.context())))
-                // Get the LLM context string as a RAG context, complete with vectorized sentences
-                .map(comments -> getDocumentContext(comments.context(), comments.id(), comments.meta(), authorization, parsedArgs))
+                .flatMap(ticket -> ticketTool.getContext(
+                        environmentSettings,
+                        parsedArgs.getTicketSummaryPrompt(),
+                        List.of(
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ID_ARG, ticket.id(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_URL_ARG, url, true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_EMAIL_ARG, email, true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG, token, true)
+                        )
+                ).stream())
                 // Get a list of context strings
                 .collect(Collectors.toList());
     }
 
-    private RagDocumentContext<ZenDeskResultsResponse> getDocumentContext(final String document, final String id, final ZenDeskResultsResponse meta, final String authHeader, final ZenDeskConfig.LocalArguments parsedArgs) {
-        final String contextLabel = String.join(
-                " ",
-                Stream.of(getContextLabel(), getOrganizationName(meta, authHeader, parsedArgs.getZenDeskUrl()))
-                        .filter(StringUtils::isNotBlank)
-                        .toList());
-
-        if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(contextLabel, document, List.of());
-        }
-
-        return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
-                .map(sentences -> new RagDocumentContext<>(
-                        contextLabel,
-                        document,
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
-                                .collect(Collectors.toList()),
-                        id,
-                        meta,
-                        ticketToLink(parsedArgs.getZenDeskUrl(), meta, authHeader)))
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                .get();
-    }
-
-    private List<String> ticketToBody(final ZenDeskCommentsResponse comments, final int limit) {
-        return comments
-                .getResults()
-                .stream()
-                .limit(limit)
-                .map(ZenDeskCommentResponse::body)
-                .map(body -> Arrays.stream(body.split("\\r\\n|\\r|\\n"))
-                        .filter(StringUtils::isNotBlank)
-                        .collect(Collectors.joining("\n")))
-                .collect(Collectors.toList());
-    }
-
-    private List<RagDocumentContext<ZenDeskResultsResponse>> contextMeetsRating(
-            final List<RagDocumentContext<ZenDeskResultsResponse>> tickets,
+    private List<RagDocumentContext<ZenDeskTicket>> contextMeetsRating(
+            final List<RagDocumentContext<ZenDeskTicket>> tickets,
             final ZenDeskConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
             return tickets;
@@ -561,7 +487,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 .toList();
     }
 
-    private Integer getContextRating(final RagDocumentContext<ZenDeskResultsResponse> ticket, final ZenDeskConfig.LocalArguments parsedArgs) {
+    private Integer getContextRating(final RagDocumentContext<ZenDeskTicket> ticket, final ZenDeskConfig.LocalArguments parsedArgs) {
         if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
             return 10;
         }
@@ -574,7 +500,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskResultsResponse> {
                 // Ratings are provided on a best effort basis, so we ignore any failures
                 .recover(InternalFailure.class, ex -> 10)
                 .get();
-
     }
 }
 
@@ -1284,5 +1209,16 @@ class ZenDeskConfig {
                                     You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.""".stripLeading())
                     .value();
         }
+    }
+}
+
+record ZenDeskCreds(
+        String url,
+        String user,
+        String token,
+        String auth
+) {
+    public boolean isValid() {
+        return StringUtils.isNotBlank(url) && StringUtils.isNotBlank(user) && StringUtils.isNotBlank(token) && StringUtils.isNotBlank(auth);
     }
 }

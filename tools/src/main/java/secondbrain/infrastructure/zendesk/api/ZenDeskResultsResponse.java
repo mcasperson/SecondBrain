@@ -1,19 +1,8 @@
 package secondbrain.infrastructure.zendesk.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import secondbrain.domain.tooldefs.MetaObjectResult;
-
-import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ZenDeskResultsResponse(String id, String subject, String assignee_id, String submitter_id,
                                      String recipient, String organization_id) {
-    public List<MetaObjectResult> toMetaObjectResult() {
-        return List.of(
-                new MetaObjectResult("ID", id),
-                new MetaObjectResult("Subject", subject),
-                new MetaObjectResult("OrganizationId", organization_id),
-                new MetaObjectResult("SubmittedId", submitter_id),
-                new MetaObjectResult("AssigneeId", assignee_id));
-    }
 }
