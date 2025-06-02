@@ -79,6 +79,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_TICKET_SUMMARY_PROMPT_ARG = "ticketSummaryPrompt";
     public static final String ZENDESK_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
     public static final String ZENDESK_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
+    public static final String ZENDESK_CONTEXT_FILTER_BY_RECIPIENT_ARG = "filterByRecipient";
 
 
     private static final int MAX_TICKETS = 100;
@@ -200,6 +202,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
         if (parsedArgs.getZenDeskFilterByOrganization() && StringUtils.isNoneBlank(parsedArgs.getOrganization())) {
             query.add("organization:" + parsedArgs.getOrganization());
+        }
+
+        if (parsedArgs.getZenDeskFilterByRecipient() && StringUtils.isBlank(parsedArgs.getRecipient())) {
+            query.add("recipient:" + parsedArgs.getRecipient());
         }
 
         // We can have multiple ZenDesk servers
@@ -517,6 +523,10 @@ class ZenDeskConfig {
     private Optional<String> configZenDeskFilterByOrganization;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.filterbyrecipient", defaultValue = "false")
+    private Optional<String> configZenDeskFilterByRecipient;
+
+    @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
     private Optional<String> configZenDeskAccessToken;
 
@@ -733,6 +743,17 @@ class ZenDeskConfig {
      */
     public Optional<String> getConfigZenDeskFilterByOrganization() {
         return configZenDeskFilterByOrganization;
+    }
+
+    /**
+     * This setting determines if the API call to ZenDesk includes the recipient in the query.
+     * This is useful when querying for results over a long timeframe but for a specific recipient.
+     * Leave this as false if the ZenDesk API call should return all results over the time period.
+     * Returning all results is useful if you query the result sets multiple times over with different
+     * recipient, as the first call is cached, and all subsequent calls are much faster.
+     */
+    public Optional<String> getConfigZenDeskFilterByRecipient() {
+        return configZenDeskFilterByRecipient;
     }
 
     public Optional<String> getConfigTicketSummaryPrompt() {
@@ -991,8 +1012,22 @@ class ZenDeskConfig {
                     getConfigZenDeskFilterByOrganization()::get,
                     arguments,
                     context,
-                    ZenDeskOrganization.NUM_COMMENTS_ARG,
+                    ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG,
                     "zendesk_filterbyorganization",
+                    "false").value();
+
+            return Try.of(() -> BooleanUtils.toBoolean(stringValue))
+                    .recover(throwable -> false)
+                    .get();
+        }
+
+        public boolean getZenDeskFilterByRecipient() {
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigZenDeskFilterByRecipient()::get,
+                    arguments,
+                    context,
+                    ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_BY_RECIPIENT_ARG,
+                    "zendesk_filterbyrecipient",
                     "false").value();
 
             return Try.of(() -> BooleanUtils.toBoolean(stringValue))
