@@ -98,10 +98,10 @@ if ($GenerateCompanyReports)
             $entityName = ($using:entity).name
 
             # This is a quick way to test a single customer
-#                        if ($entityName -ne "Transurban")
-#                        {
-#                            return
-#                        }
+            #                        if ($entityName -ne "Transurban")
+            #                        {
+            #                            return
+            #                        }
 
             # Ignore the NPS entity, as it is not a customer.
             if ($entityName -eq "NPS")
@@ -141,6 +141,7 @@ if ($GenerateCompanyReports)
             "-Dsb.zendesk.accesstoken2=$env:SB_ZENDESK_ACCESSTOKEN_CODEFRESH"
             "-Dsb.zendesk.user2=$env:SB_ZENDESK_USER_CODEFRESH"
             "-Dsb.zendesk.url2=$env:SB_ZENDESK_URL_CODEFREH"
+            "-Dsb.zendesk.filterbyrecipient=support@octopus.com"
             "-Dsb.cache.path=/home/matthew"
             "-Dsb.tools.force=MultiSlackZenGoogle"
             "-Dsb.multislackzengoogle.minTimeBasedContext=1"
@@ -302,6 +303,7 @@ if ($GenerateTopicReports)
             "-Dsb.cache.backup=$( $using:topicIndex -eq 1 )"
             "-Dsb.cache.path=/home/matthew"
             "-Dsb.tools.force=MultiSlackZenGoogle"
+            "-Dsb.zendesk.filterbyrecipient=support@octopus.com"
             "-Dsb.ollama.contextwindow=$using:contextWindow"
             "-Dsb.exceptions.printstacktrace=false"
             "-Dsb.multislackzengoogle.days=$using:Days"
