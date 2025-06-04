@@ -140,7 +140,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
+    @Retry(delay = 60000, maxRetries = 5, abortOn = {IllegalArgumentException.class})
     private ZenDeskTicketResponse getTicketApi(
             final Client client,
             final String authorization,
@@ -168,7 +168,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
+    @Retry(delay = 60000, maxRetries = 5, abortOn = {IllegalArgumentException.class})
     @Override
     public ZenDeskCommentsResponse getComments(
             final Client client,
@@ -190,7 +190,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 () -> getCommentsFromApi(client, authorization, url, ticketId));
     }
 
-    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
+    @Retry(delay = 60000, maxRetries = 5, abortOn = {IllegalArgumentException.class})
     private ZenDeskCommentsResponse getCommentsFromApi(
             final Client client,
             final String authorization,
@@ -218,7 +218,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
+    @Retry(delay = 60000, maxRetries = 5, abortOn = {IllegalArgumentException.class})
     private ZenDeskOrganizationResponse getOrganizationFromApi(
             final Client client,
             final String authorization,
@@ -265,7 +265,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
+    @Retry(delay = 60000, maxRetries = 5, abortOn = {IllegalArgumentException.class})
     private ZenDeskUserResponse getUserFromApi(
             final Client client,
             final String authorization,
