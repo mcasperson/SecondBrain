@@ -43,7 +43,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 30000, maxRetries = 10)
     @Override
     public List<ZenDeskTicket> getTickets(
             final Client client,
@@ -75,7 +74,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * attempt to retry a few times with a delay.
      * This method is synchronized to have one tool populate the cache and let the others read from it.
      */
-    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
     private List<ZenDeskTicket> getTickets(
             Client client,
             String authorization,
@@ -100,7 +98,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 30000, maxRetries = 10, abortOn = {IllegalArgumentException.class})
+    @Retry(delay = 60000, maxRetries = 5, abortOn = {IllegalArgumentException.class})
     private ZenDeskTicket[] getTicketsApi(
             final Client client,
             final String authorization,
@@ -168,7 +166,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 60000, maxRetries = 5, abortOn = {IllegalArgumentException.class})
     @Override
     public ZenDeskCommentsResponse getComments(
             final Client client,
