@@ -59,7 +59,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
     }
 
     @Override
-    public ZenDeskTicket getTicket(Client client, String authorization, String url, String ticketId, int ttlSeconds) {
+    public ZenDeskTicket getTicket(final Client client, final String authorization, final String url, final String ticketId, final int ttlSeconds) {
         return localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskApiTicket",

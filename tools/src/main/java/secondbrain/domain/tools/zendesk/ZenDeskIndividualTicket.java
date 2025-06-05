@@ -50,6 +50,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 @ApplicationScoped
 public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_TICKET_ID_ARG = "ticketId";
+    public static final String ZENDESK_TICKET_SUBJECT_ARG = "ticketSubject";
     public static final String ZENDESK_URL_ARG = "zendeskUrl";
     public static final String ZENDESK_EMAIL_ARG = "zendeskEmail";
     public static final String ZENDESK_TOKEN_ARG = "zendeskToken";
@@ -126,6 +127,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getUrl(),
                         parsedArgs.getTicketId(),
+                        parsedArgs.getTicketSubject(),
                         client));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
@@ -146,18 +148,13 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
             final String auth,
             final String url,
             final String ticketId,
+            final String ticketSubject,
             final Client client) {
         final RagDocumentContext<ZenDeskTicket> context = Try
                 // Start by getting the ticket
-                .of(() -> zenDeskClient.getTicket(
-                        client,
-                        auth,
-                        url,
+                .of(() -> ticketToComments(
                         ticketId,
-                        parsedArgs.getSearchTTL()))
-                // Get the ticket comments
-                .map(ticket -> ticketToComments(
-                        ticket,
+                        ticketSubject,
                         client,
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
@@ -272,31 +269,31 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     /**
      * Take a ZenDesk ticket, get all the comments associated with it, and convert them into a RagDocumentContext.
      *
-     * @param ticket        The ZenDesk ticket to convert
+     * @param ticketId      The ZenDesk ticket to ID convert
+     * @param ticketSubject The ZenDesk ticket subject convert
      * @param client        The JAX-RS client to use for API calls
      * @param authorization The authorization header to use for API calls
      * @param numComments   The number of comments to fetch for the ticket
      * @param parsedArgs    The parsed arguments containing configuration details
      * @return A RagDocumentContext containing the ticket and its comments
      */
-    private RagDocumentContext<ZenDeskTicket> ticketToComments(final ZenDeskTicket ticket,
+    private RagDocumentContext<ZenDeskTicket> ticketToComments(final String ticketId,
+                                                               final String ticketSubject,
                                                                final Client client,
                                                                final String authorization,
                                                                final int numComments,
                                                                final ZenDeskTicketConfig.LocalArguments parsedArgs) {
-        return Try.of(() -> ticket)
-                // Get the context associated with the ticket
-                .map(t -> new IndividualContext<>(
-                        t.id(),
+        return Try.of(() -> new IndividualContext<>(
+                        ticketId,
                         zenDeskClient
                                 .getComments(
                                         client,
                                         authorization,
                                         parsedArgs.getUrl(),
-                                        t.id(),
+                                        ticketId,
                                         parsedArgs.getSearchTTL())
                                 .ticketToBody(numComments),
-                        t))
+                        new ZenDeskTicket(ticketId, ticketSubject)))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
                 .map(comments -> getDocumentContext(
                         comments.meta().subject() + "\n" + String.join("\n", comments.context()),   // The full context is the subject with the comments
@@ -344,6 +341,10 @@ class ZenDeskTicketConfig {
     private Optional<String> configTicketId;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.ticketsubject")
+    private Optional<String> configTicketSubject;
+
+    @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
     private Optional<String> configZenDeskAccessToken;
 
@@ -386,6 +387,10 @@ class ZenDeskTicketConfig {
 
     public Optional<String> getConfigTicketId() {
         return configTicketId;
+    }
+
+    public Optional<String> getConfigTicketSubject() {
+        return configTicketSubject;
     }
 
     public Optional<String> getConfigZenDeskAccessToken() {
@@ -435,6 +440,17 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ID_ARG,
                     "zendesk_ticketid",
+                    "").value();
+
+        }
+
+        public String getTicketSubject() {
+            return getArgsAccessor().getArgument(
+                    getConfigTicketSubject()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG,
+                    "zendesk_ticketsubject",
                     "").value();
 
         }

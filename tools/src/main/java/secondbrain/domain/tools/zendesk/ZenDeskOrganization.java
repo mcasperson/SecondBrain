@@ -461,6 +461,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         parsedArgs.getTicketSummaryPrompt(),
                         List.of(
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ID_ARG, ticket.id(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG, ticket.subject(), true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_URL_ARG, url, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_EMAIL_ARG, email, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG, token, true)
