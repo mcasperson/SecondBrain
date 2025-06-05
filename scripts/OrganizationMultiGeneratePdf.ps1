@@ -398,7 +398,7 @@ if ($GenerateExecutiveSummary)
         "-Dsb.ollama.model=$model"
         -jar $jarFile
         "Write a summary of the document containing interactions with $company.
-        You must use bullet points.
+        The summary must include a level 2 markdown header for the company name, and then a bullet point list of the following details.
         The first bullet point must include the ARR (Annual Recurring Revenue) of the company. Report the ARR as 'N/A' if it is not available.
         An example of the first bullet point is: '$company has an ARR of $xxx' or '$company has an ARR of N/A'.
         The second bullet point must list the people in the company that we met with and what was discussed.
