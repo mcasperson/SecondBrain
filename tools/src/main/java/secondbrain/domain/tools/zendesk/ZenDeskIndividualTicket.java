@@ -23,7 +23,6 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.MetaObjectResult;
@@ -75,9 +74,6 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     private ZenDeskClient zenDeskClient;
 
     @Inject
-    private ListLimiter listLimiter;
-
-    @Inject
     private DebugToolArgs debugToolArgs;
 
     @Inject
@@ -121,14 +117,12 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.withResources(ClientBuilder::newClient)
-                .of(client -> getContext(
-                        parsedArgs,
-                        environmentSettings,
+                .of(client -> ticketToComments(
+                        client,
                         parsedArgs.getAuthHeader(),
-                        parsedArgs.getUrl(),
-                        parsedArgs.getTicketId(),
-                        parsedArgs.getTicketSubject(),
-                        client));
+                        parsedArgs.getNumComments(),
+                        parsedArgs))
+                .map(List::of);
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -140,28 +134,6 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call ZenDesk API", ex)))
                 .get();
 
-    }
-
-    private List<RagDocumentContext<ZenDeskTicket>> getContext(
-            final ZenDeskTicketConfig.LocalArguments parsedArgs,
-            final Map<String, String> environmentSettings,
-            final String auth,
-            final String url,
-            final String ticketId,
-            final String ticketSubject,
-            final Client client) {
-        final RagDocumentContext<ZenDeskTicket> context = Try
-                // Start by getting the ticket
-                .of(() -> ticketToComments(
-                        ticketId,
-                        ticketSubject,
-                        client,
-                        parsedArgs.getAuthHeader(),
-                        parsedArgs.getNumComments(),
-                        parsedArgs))
-                .get();
-
-        return List.of(context);
     }
 
     @Override
@@ -269,31 +241,27 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     /**
      * Take a ZenDesk ticket, get all the comments associated with it, and convert them into a RagDocumentContext.
      *
-     * @param ticketId      The ZenDesk ticket to ID convert
-     * @param ticketSubject The ZenDesk ticket subject convert
      * @param client        The JAX-RS client to use for API calls
      * @param authorization The authorization header to use for API calls
      * @param numComments   The number of comments to fetch for the ticket
      * @param parsedArgs    The parsed arguments containing configuration details
      * @return A RagDocumentContext containing the ticket and its comments
      */
-    private RagDocumentContext<ZenDeskTicket> ticketToComments(final String ticketId,
-                                                               final String ticketSubject,
-                                                               final Client client,
+    private RagDocumentContext<ZenDeskTicket> ticketToComments(final Client client,
                                                                final String authorization,
                                                                final int numComments,
                                                                final ZenDeskTicketConfig.LocalArguments parsedArgs) {
         return Try.of(() -> new IndividualContext<>(
-                        ticketId,
+                        parsedArgs.getTicketId(),
                         zenDeskClient
                                 .getComments(
                                         client,
                                         authorization,
                                         parsedArgs.getUrl(),
-                                        ticketId,
+                                        parsedArgs.getTicketId(),
                                         parsedArgs.getSearchTTL())
                                 .ticketToBody(numComments),
-                        new ZenDeskTicket(ticketId, ticketSubject)))
+                        new ZenDeskTicket(parsedArgs.getTicketId(), parsedArgs.getTicketSubject())))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
                 .map(comments -> getDocumentContext(
                         comments.meta().subject() + "\n" + String.join("\n", comments.context()),   // The full context is the subject with the comments
