@@ -179,7 +179,10 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(final List<RagDocumentContext<GitHubCommitAndDiff>> context,
+                                              final Map<String, String> environmentSettings,
+                                              final String prompt,
+                                              final List<ToolArgs> arguments) {
         return List.of();
     }
 

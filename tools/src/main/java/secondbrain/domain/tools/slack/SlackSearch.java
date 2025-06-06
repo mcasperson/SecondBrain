@@ -157,7 +157,10 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(final List<RagDocumentContext<SlackSearchResultResource>> context,
+                                              final Map<String, String> environmentSettings,
+                                              final String prompt,
+                                              final List<ToolArgs> arguments) {
         return List.of();
     }
 

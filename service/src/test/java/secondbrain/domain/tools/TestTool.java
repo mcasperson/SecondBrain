@@ -38,7 +38,7 @@ public class TestTool implements Tool<Void> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(List<RagDocumentContext<Void>> context, Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
         return List.of();
     }
 

@@ -74,6 +74,7 @@ public interface Tool<T> {
      * @return The metadata associated with the prompt.
      */
     List<MetaObjectResult> getMetadata(
+            List<RagDocumentContext<T>> context,
             Map<String, String> environmentSettings,
             String prompt,
             List<ToolArgs> arguments);

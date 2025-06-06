@@ -153,7 +153,10 @@ public class Gong implements Tool<GongCallDetails> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(final List<RagDocumentContext<GongCallDetails>> context,
+                                              final Map<String, String> environmentSettings,
+                                              final String prompt,
+                                              final List<ToolArgs> arguments) {
         return List.of();
     }
 
@@ -297,7 +300,7 @@ class GongConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
-    @ConfigProperty(name = "sb.gong.summarizetranscript", defaultValue="false")
+    @ConfigProperty(name = "sb.gong.summarizetranscript", defaultValue = "false")
     private Optional<String> configSummarizeTranscript;
 
     @Inject

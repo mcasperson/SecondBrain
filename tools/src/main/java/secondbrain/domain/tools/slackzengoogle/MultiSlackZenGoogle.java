@@ -247,7 +247,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(
+            final List<RagDocumentContext<Void>> context,
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
         return List.of();
     }
 
@@ -439,6 +443,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                     .stream()
                     .limit(1)
                     .flatMap(planHatId -> Try.of(() -> planHatUsage.getMetadata(
+                                            List.of(),
                                             context,
                                             prompt,
                                             List.of(new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, planHatId, true)))

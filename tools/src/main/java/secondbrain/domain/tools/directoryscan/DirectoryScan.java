@@ -162,7 +162,10 @@ public class DirectoryScan implements Tool<Void> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(final List<RagDocumentContext<Void>> context,
+                                              final Map<String, String> environmentSettings,
+                                              final String prompt,
+                                              final List<ToolArgs> arguments) {
         return List.of();
     }
 

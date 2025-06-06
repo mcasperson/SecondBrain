@@ -181,7 +181,10 @@ public class PlanHat implements Tool<Conversation> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(final List<RagDocumentContext<Conversation>> context,
+                                              final Map<String, String> environmentSettings,
+                                              final String prompt,
+                                              final List<ToolArgs> arguments) {
         return List.of();
     }
 

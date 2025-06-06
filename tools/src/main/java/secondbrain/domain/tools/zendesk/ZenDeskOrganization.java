@@ -203,7 +203,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         if (parsedArgs.getZenDeskFilterByOrganization() && StringUtils.isNoneBlank(parsedArgs.getOrganization())) {
             query.add("organization:" + parsedArgs.getOrganization());
         }
-        
+
         // We can have multiple ZenDesk servers
         final List<ZenDeskCreds> zenDeskCreds = Stream.of(
                         new ZenDeskCreds(
@@ -321,7 +321,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(final List<RagDocumentContext<ZenDeskTicket>> context,
+                                              final Map<String, String> environmentSettings,
+                                              final String prompt,
+                                              final List<ToolArgs> arguments) {
         return List.of();
     }
 

@@ -175,7 +175,11 @@ public class PlanHatUsage implements Tool<Company> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public List<MetaObjectResult> getMetadata(
+            final List<RagDocumentContext<Company>> context,
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
         final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {

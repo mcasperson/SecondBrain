@@ -29,6 +29,7 @@ import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
@@ -55,6 +56,9 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_TOKEN_ARG = "zendeskToken";
 
     private static final String INSTRUCTIONS = "You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.";
+
+    @Inject
+    private RatingTool ratingTool;
 
     @Inject
     private ModelConfig modelConfig;
@@ -137,8 +141,25 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        return List.of();
+    public List<MetaObjectResult> getMetadata(
+            final List<RagDocumentContext<ZenDeskTicket>> context,
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        final int filterRating = Try.of(context::getFirst)
+                .map(ticket -> ratingTool.call(
+                                Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document()),
+                                parsedArgs.getContextFilterQuestion(),
+                                List.of())
+                        .combinedDocument())
+                .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
+                // Ratings are provided on a best effort basis, so we ignore any failures
+                .recover(InternalFailure.class, ex -> 10)
+                .get();
+
+        return List.of(new MetaObjectResult("FilterRating", filterRating));
     }
 
     @Override
@@ -333,6 +354,14 @@ class ZenDeskTicketConfig {
     private Optional<String> configZenDeskNumComments;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.contextFilterMinimumRating")
+    private Optional<String> configContextFilterMinimumRating;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -379,6 +408,14 @@ class ZenDeskTicketConfig {
 
     public Optional<String> getConfigZenDeskNumComments() {
         return configZenDeskNumComments;
+    }
+
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
+    }
+
+    public Optional<String> getConfigContextFilterMinimumRating() {
+        return configContextFilterMinimumRating;
     }
 
 
@@ -519,6 +556,29 @@ class ZenDeskTicketConfig {
                     // Must be at least 1
                     .map(i -> Math.max(1, i))
                     .get();
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_QUESTION_ARG,
+                            "zendesk_context_filter_question",
+                            "")
+                    .value();
+        }
+
+        public Integer getContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    "multislackzengoogle_context_filter_minimum_rating",
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
     }
 }
