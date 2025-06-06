@@ -391,7 +391,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
      * Try and get all the downstream context. Note that this tool is a long-running operation that attempts to access a lot
      * of data. We silently fail for any downstream context that could not be retrieved rather than fail the entire operation.
      */
-    private List<RagDocumentContext<Void>> getEntityContext(final PositionalEntity positionalEntity, final Map<String, String> context, final String prompt, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+    private List<RagDocumentContext<Void>> getEntityContext(
+            final PositionalEntity positionalEntity,
+            final Map<String, String> context,
+            final String prompt,
+            final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
         final Entity entity = positionalEntity.entity();
 
         if (entity.disabled()) {
@@ -433,12 +437,12 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .flatMap(ragDoc -> ragDoc.getMetadata().stream())
                 .toList();
 
-        saveMetaResult(positionalEntity, filteredContext, parsedArgs, metadata);
+        saveMetaResult(filteredContext, parsedArgs, metadata);
 
         return filteredContext;
     }
 
-    private MetaObjectResult getContextCount(final PositionalEntity positionalEntity, final List<RagDocumentContext<Void>> ragContext) {
+    private MetaObjectResult getContextCount(final List<RagDocumentContext<Void>> ragContext) {
         return new MetaObjectResult(
                 "ContextCount",
                 ragContext.size());
@@ -501,14 +505,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private void saveMetaResult(
-            final PositionalEntity positionalEntity,
             final List<RagDocumentContext<Void>> ragContext,
             final MultiSlackZenGoogleConfig.LocalArguments parsedArgs,
             final List<MetaObjectResult> additionalMetadata) {
         final List<MetaObjectResult> results = new ArrayList<MetaObjectResult>();
 
         if (StringUtils.isNotBlank(parsedArgs.getMetaReport())) {
-            results.add(getContextCount(positionalEntity, ragContext));
+            results.add(getContextCount(ragContext));
             results.addAll(getMetaResults(ragContext, parsedArgs));
             results.addAll(additionalMetadata);
 
