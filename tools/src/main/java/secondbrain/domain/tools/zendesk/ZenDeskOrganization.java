@@ -473,13 +473,15 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     private List<RagDocumentContext<ZenDeskTicket>> contextMeetsRating(
             final List<RagDocumentContext<ZenDeskTicket>> tickets,
             final ZenDeskConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return tickets;
-        }
-
         return tickets.stream()
                 .filter(ticket ->
-                        getContextRating(ticket, parsedArgs) >= parsedArgs.getContextFilterMinimumRating()
+                        Objects.requireNonNullElse(ticket.metadata(), List.<MetaObjectResult>of())
+                                .stream()
+                                .filter(m -> "FilterRating".equals(m.name()))
+                                .map(MetaObjectResult::value)
+                                .map(v -> (int) v)
+                                .findFirst()
+                                .orElse(10) >= parsedArgs.getContextFilterMinimumRating()
                 )
                 .toList();
     }

@@ -3,6 +3,7 @@ package secondbrain.domain.context;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.limit.TrimResult;
+import secondbrain.domain.tooldefs.MetaObjectResult;
 
 import java.util.List;
 import java.util.Objects;
@@ -27,29 +28,35 @@ import static java.util.Comparator.comparing;
  * @param document       The string representation of the external data
  * @param sentences      The individual context strings that make up the documents
  * @param id             The ID of the document
- * @param meta           The metadata associated with the document
+ * @param meta           The original object that was used to generate the document
+ * @param metadata       The metadata associated with the document, such as the source, author, etc.
  * @param link           The link to the document
  * @param keywordMatches The keywords that were matched in the document
  * @param group          The group that the document belongs to
  */
 public record RagDocumentContext<T>(String contextLabel, String document, List<RagStringContext> sentences, String id,
-                                    @Nullable T meta, @Nullable String link, @Nullable List<String> keywordMatches,
+                                    @Nullable T meta, @Nullable List<MetaObjectResult> metadata, @Nullable String link,
+                                    @Nullable List<String> keywordMatches,
                                     @Nullable String group) {
 
+    public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T meta, final @Nullable String link, final @Nullable List<String> keywordMatches, final @Nullable String group) {
+        this(contextLabel, document, sentences, id, meta, null, link, keywordMatches, group);
+    }
+
     public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T meta, final @Nullable String link, final @Nullable List<String> keywordMatches) {
-        this(contextLabel, document, sentences, id, meta, link, keywordMatches, null);
+        this(contextLabel, document, sentences, id, meta, null, link, keywordMatches, null);
     }
 
     public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id) {
-        this(contextLabel, document, sentences, id, null, null, null, null);
+        this(contextLabel, document, sentences, id, null, null, null, null, null);
     }
 
     public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T meta, final @Nullable String link) {
-        this(contextLabel, document, sentences, id, meta, link, null, null);
+        this(contextLabel, document, sentences, id, meta, null, link, null, null);
     }
 
     public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences) {
-        this(contextLabel, document, sentences, "", null, null, null, null);
+        this(contextLabel, document, sentences, "", null, null, null, null, null);
     }
 
     public String getGroup() {
@@ -79,6 +86,10 @@ public record RagDocumentContext<T>(String contextLabel, String document, List<R
 
     public RagDocumentContext<T> updateGroup(final String group) {
         return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, link, keywordMatches, group);
+    }
+
+    public RagDocumentContext<T> updateMetadata(final List<MetaObjectResult> metadata) {
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, meta, metadata, link, keywordMatches, group);
     }
 
     public RagDocumentContext<T> updateContextLabel(final String contextLabel) {
