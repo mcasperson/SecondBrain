@@ -170,9 +170,9 @@ def main():
     parser.add_argument('--output_dir', required=True, help='Output directory where the markdown files will be saved')
 
     args = parser.parse_args()
-    destination = parser.output_dir
-
+    
     user_ids = args.user_ids.split(',')
+    destination = args.output_dir
 
     # Get the list of calls
     data = get_calls_from_gong(
