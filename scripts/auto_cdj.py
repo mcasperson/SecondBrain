@@ -217,7 +217,7 @@ def main():
                 '-Dsb.ollama.contextwindow=65536',
                 '-Dsb.exceptions.printstacktrace=false',
                 "-Dsb.cache.path=/home/matthew",
-                "-Dsb.ollama.model=qwen2.5:32b",
+                "-Dsb.ollama.model=qwen3:30b-a3b",
                 "-Dsb.tools.force=Gong",
                 f"-Dsb.gong.callId={call["id"]}",
                 '-jar',
