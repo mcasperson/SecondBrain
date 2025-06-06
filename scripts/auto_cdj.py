@@ -170,6 +170,7 @@ def main():
     parser.add_argument('--output_dir', required=True, help='Output directory where the markdown files will be saved')
 
     args = parser.parse_args()
+    destination = parser.output_dir
 
     user_ids = args.user_ids.split(',')
 
@@ -194,9 +195,6 @@ def main():
     total_calls = sum(len(calls) for calls in company_to_calls.values())
     print(f"Total mapped calls: {total_calls}")
 
-    # destination = create_temp_directory()
-    destination = os.environ['SB_AUTOCDJ_DIR']
-
     jar_file = '/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar'
 
     for company, calls in company_to_calls.items():
@@ -214,7 +212,7 @@ def main():
                 'java',
                 '-Dstdout.encoding=UTF-8',
                 '-Dsb.cache.writeonly=false',
-                '-Dsb.ollama.contextwindow=65536',
+                '-Dsb.ollama.contextwindow=40000',
                 '-Dsb.exceptions.printstacktrace=false',
                 "-Dsb.cache.path=/home/matthew",
                 "-Dsb.ollama.model=qwen3:30b-a3b",
