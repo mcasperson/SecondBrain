@@ -21,10 +21,7 @@ import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.tooldefs.MetaObjectResult;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
@@ -152,8 +149,10 @@ public class PlanHatUsage implements Tool<Company> {
                         List.of(),
                         company.id() + ":" + pair.getRight(),
                         company,
+                        getMetadata(environmentSettings, prompt, arguments),
                         null,
-                        List.of()))
+                        List.of(),
+                        null))
                 .toList();
 
         final List<RagDocumentContext<Company>> customContext = Stream.of(
@@ -174,9 +173,7 @@ public class PlanHatUsage implements Tool<Company> {
         return ListUtils.union(usageContext, customContext);
     }
 
-    @Override
-    public List<MetaObjectResult> getMetadata(
-            final List<RagDocumentContext<Company>> context,
+    private MetaObjectResults getMetadata(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -196,13 +193,15 @@ public class PlanHatUsage implements Tool<Company> {
                 .get();
 
         if (company.custom() == null) {
-            return List.of();
+            return new MetaObjectResults();
         }
 
-        return Stream.of(parsedArgs.getCustom1())
+        final List<MetaObjectResult> meta = Stream.of(parsedArgs.getCustom1())
                 .filter(StringUtils::isNotBlank)
                 .map(custom -> new MetaObjectResult(custom, company.custom().getOrDefault(custom, "").toString()))
                 .toList();
+
+        return new MetaObjectResults(meta);
     }
 
     @Override

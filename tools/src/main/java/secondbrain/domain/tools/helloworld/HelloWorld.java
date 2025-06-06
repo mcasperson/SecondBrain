@@ -10,7 +10,6 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
-import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -48,14 +47,6 @@ public class HelloWorld implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        return List.of();
-    }
-
-    @Override
-    public List<MetaObjectResult> getMetadata(final List<RagDocumentContext<Void>> context,
-                                              final Map<String, String> environmentSettings,
-                                              final String prompt,
-                                              final List<ToolArgs> arguments) {
         return List.of();
     }
 

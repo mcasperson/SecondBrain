@@ -3,7 +3,7 @@ package secondbrain.domain.context;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.tooldefs.MetaObjectResult;
+import secondbrain.domain.tooldefs.MetaObjectResults;
 
 import java.util.List;
 import java.util.Objects;
@@ -39,25 +39,25 @@ public record RagDocumentContext<T>(String contextLabel,
                                     List<RagStringContext> sentences,
                                     String id,
                                     @Nullable T source,
-                                    @Nullable List<MetaObjectResult> metadata,
+                                    @Nullable MetaObjectResults metadata,
                                     @Nullable String link,
                                     @Nullable List<String> keywordMatches,
                                     @Nullable String group) {
 
-    public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T meta, final @Nullable String link, final @Nullable List<String> keywordMatches, final @Nullable String group) {
-        this(contextLabel, document, sentences, id, meta, null, link, keywordMatches, group);
+    public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T source, final @Nullable String link, final @Nullable List<String> keywordMatches, final @Nullable String group) {
+        this(contextLabel, document, sentences, id, source, null, link, keywordMatches, group);
     }
 
-    public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T meta, final @Nullable String link, final @Nullable List<String> keywordMatches) {
-        this(contextLabel, document, sentences, id, meta, null, link, keywordMatches, null);
+    public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T source, final @Nullable String link, final @Nullable List<String> keywordMatches) {
+        this(contextLabel, document, sentences, id, source, null, link, keywordMatches, null);
     }
 
     public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id) {
         this(contextLabel, document, sentences, id, null, null, null, null, null);
     }
 
-    public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T meta, final @Nullable String link) {
-        this(contextLabel, document, sentences, id, meta, null, link, null, null);
+    public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T source, final @Nullable String link) {
+        this(contextLabel, document, sentences, id, source, null, link, null, null);
     }
 
     public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences) {
@@ -93,7 +93,7 @@ public record RagDocumentContext<T>(String contextLabel,
         return new RagDocumentContext<>(contextLabel, document, sentences, id, source, link, keywordMatches, group);
     }
 
-    public RagDocumentContext<T> updateMetadata(final List<MetaObjectResult> metadata) {
+    public RagDocumentContext<T> updateMetadata(final MetaObjectResults metadata) {
         return new RagDocumentContext<>(contextLabel, document, sentences, id, source, metadata, link, keywordMatches, group);
     }
 
@@ -103,6 +103,14 @@ public record RagDocumentContext<T>(String contextLabel,
 
     public RagDocumentContext<T> updateLink(final String link) {
         return new RagDocumentContext<>(contextLabel, document, sentences, id, source, link, keywordMatches, group);
+    }
+
+    public MetaObjectResults getMetadata() {
+        if (metadata == null) {
+            return new MetaObjectResults();
+        }
+
+        return metadata;
     }
 
     /**

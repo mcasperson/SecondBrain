@@ -66,20 +66,6 @@ public interface Tool<T> {
             List<ToolArgs> arguments);
 
     /**
-     * Returns any metadata associated with the prompt.
-     *
-     * @param environmentSettings The setting associated with the prompt. These are values that come from the environment (like credentials) rather than from the prompt.
-     * @param prompt              The prompt supplied by the user.
-     * @param arguments           The arguments extracted from the prompt.
-     * @return The metadata associated with the prompt.
-     */
-    List<MetaObjectResult> getMetadata(
-            List<RagDocumentContext<T>> context,
-            Map<String, String> environmentSettings,
-            String prompt,
-            List<ToolArgs> arguments);
-
-    /**
      * Calls the tool. Typically, this function will call getContext() to get the context for the prompt, and then
      * pass the context and the prompt to the LLM for the final answer.
      * <p>

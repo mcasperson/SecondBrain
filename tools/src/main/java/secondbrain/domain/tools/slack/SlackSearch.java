@@ -30,7 +30,6 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -154,14 +153,6 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                 .filter(ragDoc -> validateString.isNotEmpty(ragDoc.document()))
                 .toList();
 
-    }
-
-    @Override
-    public List<MetaObjectResult> getMetadata(final List<RagDocumentContext<SlackSearchResultResource>> context,
-                                              final Map<String, String> environmentSettings,
-                                              final String prompt,
-                                              final List<ToolArgs> arguments) {
-        return List.of();
     }
 
     @Override

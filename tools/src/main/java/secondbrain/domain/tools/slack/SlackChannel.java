@@ -31,7 +31,6 @@ import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -188,14 +187,6 @@ public class SlackChannel implements Tool<Void> {
                 .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
 
         return List.of(getDocumentContext(messagesWithUsersReplaced, channel, parsedArgs));
-    }
-
-    @Override
-    public List<MetaObjectResult> getMetadata(final List<RagDocumentContext<Void>> context,
-                                              final Map<String, String> environmentSettings,
-                                              final String prompt,
-                                              final List<ToolArgs> arguments) {
-        return List.of();
     }
 
     @Override

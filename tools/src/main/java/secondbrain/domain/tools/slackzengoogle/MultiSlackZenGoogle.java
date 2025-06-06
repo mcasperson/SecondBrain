@@ -48,7 +48,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
@@ -247,15 +246,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(
-            final List<RagDocumentContext<Void>> context,
-            final Map<String, String> environmentSettings,
-            final String prompt,
-            final List<ToolArgs> arguments) {
-        return List.of();
-    }
-
-    @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
@@ -424,6 +414,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .filter(keywordRagDoc -> slackContext.stream().noneMatch(ragDoc -> ragDoc.getLink().equals(keywordRagDoc.getLink())))
                 .toList();
 
+        final List<RagDocumentContext<Void>> planHatUsageContext = getPlanhatUsageContext(positionalEntity, parsedArgs, prompt, context);
+
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
         retValue.addAll(slackKeywordSearch);
         retValue.addAll(slackContext);
@@ -431,30 +423,15 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         retValue.addAll(zenContext);
         retValue.addAll(planHatContext);
         retValue.addAll(gongContext);
-
-        final List<MetaObjectResult> metadata = new ArrayList<>();
-
-        // Only proceed with these details if we have enough context to include this entity in the response.
-        if (!validateSufficientContext(retValue, parsedArgs).isEmpty()) {
-            final List<RagDocumentContext<Void>> planHatUsageContext = getPlanhatUsageContext(positionalEntity, parsedArgs, prompt, context);
-            retValue.addAll(planHatUsageContext);
-
-            final List<MetaObjectResult> planHatMetadata = positionalEntity.entity.getPlanHat()
-                    .stream()
-                    .limit(1)
-                    .flatMap(planHatId -> Try.of(() -> planHatUsage.getMetadata(
-                                            List.of(),
-                                            context,
-                                            prompt,
-                                            List.of(new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, planHatId, true)))
-                                    .stream())
-                            .onFailure(ex -> logger.warning("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
-                            .getOrElse(Stream::of))
-                    .toList();
-            metadata.addAll(planHatMetadata);
-        }
+        retValue.addAll(planHatUsageContext);
 
         final List<RagDocumentContext<Void>> filteredContext = contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
+
+        // Merge all the metadata from the context into a single list.
+        final List<MetaObjectResult> metadata = retValue
+                .stream()
+                .flatMap(ragDoc -> ragDoc.getMetadata().stream())
+                .toList();
 
         saveMetaResult(positionalEntity, filteredContext, parsedArgs, metadata);
 
