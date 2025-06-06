@@ -170,8 +170,9 @@ def main():
     parser.add_argument('--output_dir', required=True, help='Output directory where the markdown files will be saved')
 
     args = parser.parse_args()
-
+    
     user_ids = args.user_ids.split(',')
+    destination = args.output_dir
 
     # Get the list of calls
     data = get_calls_from_gong(
@@ -194,9 +195,6 @@ def main():
     total_calls = sum(len(calls) for calls in company_to_calls.values())
     print(f"Total mapped calls: {total_calls}")
 
-    # destination = create_temp_directory()
-    destination = os.environ['SB_AUTOCDJ_DIR']
-
     jar_file = '/home/matthew/Code/SecondBrain/cli/target/secondbrain-cli-1.0-SNAPSHOT.jar'
 
     for company, calls in company_to_calls.items():
@@ -214,10 +212,10 @@ def main():
                 'java',
                 '-Dstdout.encoding=UTF-8',
                 '-Dsb.cache.writeonly=false',
-                '-Dsb.ollama.contextwindow=65536',
+                '-Dsb.ollama.contextwindow=40000',
                 '-Dsb.exceptions.printstacktrace=false',
                 "-Dsb.cache.path=/home/matthew",
-                "-Dsb.ollama.model=qwen2.5:32b",
+                "-Dsb.ollama.model=qwen3:30b-a3b",
                 "-Dsb.tools.force=Gong",
                 f"-Dsb.gong.callId={call["id"]}",
                 '-jar',
