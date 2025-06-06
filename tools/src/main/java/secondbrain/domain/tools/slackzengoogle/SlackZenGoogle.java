@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Predicates.instanceOf;
 
 /**
- * This is an example of a meta-tool that calls multiple child tools to get an answer. In this case, it
+ * This is an example of a source-tool that calls multiple child tools to get an answer. In this case, it
  * queries a Slack channel, a Google Document, and a Zen Desk organization channel to answer a prompt.
  */
 @ApplicationScoped

@@ -55,7 +55,7 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
 
 
 /**
- * This meta-tool calls the zendesk, slack, and google tools to answer a prompt against multiple
+ * This source-tool calls the zendesk, slack, and google tools to answer a prompt against multiple
  * entities defined in an external directory. The directory YAM looks like this:
  * <p>
  * entities:

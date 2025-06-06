@@ -306,7 +306,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
             context.forEach(ticket -> Try.of(() -> Files.write(
                     Paths.get(ticketToMetaFileName(ticket)),
-                    jsonDeserializer.serialize(ticket.meta().toMetaObjectResult()).getBytes(),
+                    jsonDeserializer.serialize(ticket.source().toMetaObjectResult()).getBytes(),
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING)));
         }

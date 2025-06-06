@@ -43,7 +43,7 @@ public interface Tool<T> {
      * deterministic sources like system properties, or untrusted, meaning they were extracted from user input. Untrusted arguments
      * may be sanitized or validated before being passed to the LLM.
      * <p>
-     * This context is either used to build the output of this tool, or a meta-tool combines this context with the
+     * This context is either used to build the output of this tool, or a source-tool combines this context with the
      * context of other tools to answer questions that span multiple data sources.
      * <p>
      * The difference between getContext() and call() is that getContext() provides the information required to answer
