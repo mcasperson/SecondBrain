@@ -43,7 +43,7 @@ public interface Tool<T> {
      * deterministic sources like system properties, or untrusted, meaning they were extracted from user input. Untrusted arguments
      * may be sanitized or validated before being passed to the LLM.
      * <p>
-     * This context is either used to build the output of this tool, or a meta-tool combines this context with the
+     * This context is either used to build the output of this tool, or a source-tool combines this context with the
      * context of other tools to answer questions that span multiple data sources.
      * <p>
      * The difference between getContext() and call() is that getContext() provides the information required to answer
@@ -61,20 +61,6 @@ public interface Tool<T> {
      * @return The individual items that make up the context for the prompt. Can be a single item or multiple items.
      */
     List<RagDocumentContext<T>> getContext(
-            Map<String, String> environmentSettings,
-            String prompt,
-            List<ToolArgs> arguments);
-
-    /**
-     * Returns any metadata associated with the prompt.
-     *
-     * @param environmentSettings The setting associated with the prompt. These are values that come from the environment (like credentials) rather than from the prompt.
-     * @param prompt              The prompt supplied by the user.
-     * @param arguments           The arguments extracted from the prompt.
-     * @return The metadata associated with the prompt.
-     */
-    List<MetaObjectResult> getMetadata(
-            List<RagDocumentContext<T>> context,
             Map<String, String> environmentSettings,
             String prompt,
             List<ToolArgs> arguments);

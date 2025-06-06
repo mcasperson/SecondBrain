@@ -11,6 +11,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jsoup.internal.StringUtil;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
@@ -25,10 +26,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tooldefs.MetaObjectResult;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
@@ -49,6 +47,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 @ApplicationScoped
 public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
+    public static final String ZENDESK_FILTER_RATING_META = "FilterRating";
     public static final String ZENDESK_TICKET_ID_ARG = "ticketId";
     public static final String ZENDESK_TICKET_SUBJECT_ARG = "ticketSubject";
     public static final String ZENDESK_URL_ARG = "zendeskUrl";
@@ -126,6 +125,8 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
                         parsedArgs))
+                .map(ticket -> ticket.updateMetadata(
+                        getMetadata(ticket, environmentSettings, prompt, arguments)))
                 .map(List::of);
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
@@ -137,19 +138,20 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call ZenDesk API", ex)))
                 .get();
-
     }
 
-    @Override
-    public List<MetaObjectResult> getMetadata(
-            final List<RagDocumentContext<ZenDeskTicket>> context,
+    private MetaObjectResults getMetadata(
+            final RagDocumentContext<ZenDeskTicket> ticket,
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
         final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final int filterRating = Try.of(context::getFirst)
-                .map(ticket -> ratingTool.call(
+        if (StringUtil.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return new MetaObjectResults();
+        }
+
+        final int filterRating = Try.of(() -> ratingTool.call(
                                 Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document()),
                                 parsedArgs.getContextFilterQuestion(),
                                 List.of())
@@ -159,7 +161,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                 .recover(InternalFailure.class, ex -> 10)
                 .get();
 
-        return List.of(new MetaObjectResult("FilterRating", filterRating));
+        return new MetaObjectResults(List.of(new MetaObjectResult(ZENDESK_FILTER_RATING_META, filterRating)));
     }
 
     @Override

@@ -33,7 +33,7 @@ import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tooldefs.MetaObjectResult;
+import secondbrain.domain.tooldefs.MetaObjectResults;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -306,7 +306,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
             context.forEach(ticket -> Try.of(() -> Files.write(
                     Paths.get(ticketToMetaFileName(ticket)),
-                    jsonDeserializer.serialize(ticket.meta().toMetaObjectResult()).getBytes(),
+                    jsonDeserializer.serialize(ticket.source().toMetaObjectResult()).getBytes(),
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING)));
         }
@@ -318,14 +318,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
     private String ticketToMetaFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
         return "ZenDesk-" + ticket.id() + ".json";
-    }
-
-    @Override
-    public List<MetaObjectResult> getMetadata(final List<RagDocumentContext<ZenDeskTicket>> context,
-                                              final Map<String, String> environmentSettings,
-                                              final String prompt,
-                                              final List<ToolArgs> arguments) {
-        return List.of();
     }
 
     @Override
@@ -473,30 +465,14 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     private List<RagDocumentContext<ZenDeskTicket>> contextMeetsRating(
             final List<RagDocumentContext<ZenDeskTicket>> tickets,
             final ZenDeskConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return tickets;
-        }
-
-        return tickets.stream()
+        return tickets
+                .stream()
                 .filter(ticket ->
-                        getContextRating(ticket, parsedArgs) >= parsedArgs.getContextFilterMinimumRating()
+                        Objects.requireNonNullElse(ticket.metadata(), new MetaObjectResults())
+                                .getIntValueByName(ZenDeskIndividualTicket.ZENDESK_FILTER_RATING_META, 10)
+                                >= parsedArgs.getContextFilterMinimumRating()
                 )
                 .toList();
-    }
-
-    private Integer getContextRating(final RagDocumentContext<ZenDeskTicket> ticket, final ZenDeskConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return 10;
-        }
-
-        return Try.of(() -> ratingTool.call(
-                        Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document()),
-                        parsedArgs.getContextFilterQuestion(),
-                        List.of()).combinedDocument())
-                .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
-                // Ratings are provided on a best effort basis, so we ignore any failures
-                .recover(InternalFailure.class, ex -> 10)
-                .get();
     }
 }
 
@@ -603,10 +579,6 @@ class ZenDeskConfig {
     private Optional<String> configTicketSummaryPrompt;
 
     @Inject
-    @ConfigProperty(name = "sb.zendesk.contextFilterQuestion")
-    private Optional<String> configContextFilterQuestion;
-
-    @Inject
     @ConfigProperty(name = "sb.zendesk.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
 
@@ -629,10 +601,6 @@ class ZenDeskConfig {
     @Inject
     @Identifier("sanitizeOrganization")
     private SanitizeArgument sanitizeOrganization;
-
-    public Optional<String> getConfigContextFilterQuestion() {
-        return configContextFilterQuestion;
-    }
 
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
@@ -787,17 +755,6 @@ class ZenDeskConfig {
             return Try.of(() -> BooleanUtils.toBoolean(stringValue))
                     .recover(throwable -> false)
                     .get();
-        }
-
-        public String getContextFilterQuestion() {
-            return getArgsAccessor().getArgument(
-                            getConfigContextFilterQuestion()::get,
-                            arguments,
-                            context,
-                            ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_QUESTION_ARG,
-                            "zendesk_context_filter_question",
-                            "")
-                    .value();
         }
 
         public Integer getContextFilterMinimumRating() {

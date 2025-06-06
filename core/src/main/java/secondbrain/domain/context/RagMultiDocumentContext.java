@@ -37,7 +37,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
     }
 
     public List<T> getMetas() {
-        return individualContexts.stream().map(RagDocumentContext::meta).toList();
+        return individualContexts.stream().map(RagDocumentContext::source).toList();
     }
 
     public List<String> getLinks() {

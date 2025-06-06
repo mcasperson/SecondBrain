@@ -14,7 +14,6 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.*;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -33,7 +32,7 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Predicates.instanceOf;
 
 /**
- * This is an example of a meta-tool that calls multiple child tools to get an answer. In this case, it
+ * This is an example of a source-tool that calls multiple child tools to get an answer. In this case, it
  * queries a Slack channel, a Google Document, and a Zen Desk organization channel to answer a prompt.
  */
 @ApplicationScoped
@@ -164,14 +163,6 @@ public class SlackZenGoogle implements Tool<Void> {
         retValue.addAll(zenContext);
         retValue.addAll(planHatContext);
         return retValue;
-    }
-
-    @Override
-    public List<MetaObjectResult> getMetadata(final List<RagDocumentContext<Void>> context,
-                                              final Map<String, String> environmentSettings,
-                                              final String prompt,
-                                              final List<ToolArgs> arguments) {
-        return List.of();
     }
 
     @Override
