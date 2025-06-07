@@ -144,24 +144,23 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
             final List<ToolArgs> arguments) {
         final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        if (StringUtil.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return new MetaObjectResults();
-        }
-
-        final int filterRating = Try.of(() -> ratingTool.call(
-                                Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document()),
-                                parsedArgs.getContextFilterQuestion(),
-                                List.of())
-                        .combinedDocument())
-                .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
-                // Ratings are provided on a best effort basis, so we ignore any failures
-                .recover(InternalFailure.class, ex -> 10)
-                .get();
-
         final List<MetaObjectResult> metadata = ticket.source() != null
                 ? new ArrayList<>(ticket.source().toMetaObjectResult())
                 : new ArrayList<>();
-        metadata.add(new MetaObjectResult(ZENDESK_FILTER_RATING_META, filterRating));
+        
+        if (!StringUtil.isBlank(parsedArgs.getContextFilterQuestion())) {
+            final int filterRating = Try.of(() -> ratingTool.call(
+                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document()),
+                                    parsedArgs.getContextFilterQuestion(),
+                                    List.of())
+                            .combinedDocument())
+                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
+                    // Ratings are provided on a best effort basis, so we ignore any failures
+                    .recover(InternalFailure.class, ex -> 10)
+                    .get();
+
+            metadata.add(new MetaObjectResult(ZENDESK_FILTER_RATING_META, filterRating));
+        }
 
         return new MetaObjectResults(metadata, ticketToMetaFileName(ticket), ticket.id());
     }
