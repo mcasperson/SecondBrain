@@ -98,7 +98,7 @@ if ($GenerateCompanyReports)
             $entityName = ($using:entity).name
 
             # This is a quick way to test a single customer
-            #                        if ($entityName -ne "Transurban")
+            #                        if ($entityName -ne "Intel")
             #                        {
             #                            return
             #                        }
