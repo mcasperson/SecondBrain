@@ -15,5 +15,5 @@ public interface PromptHandler {
      * @param prompt  The prompt to handle.
      * @return The response from the LLM.
      */
-    String handlePrompt(Map<String, String> context, String prompt);
+    PromptHandlerResponse handlePrompt(Map<String, String> context, String prompt);
 }

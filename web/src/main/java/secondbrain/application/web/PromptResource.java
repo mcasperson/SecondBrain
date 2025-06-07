@@ -67,7 +67,7 @@ public class PromptResource {
 
         Thread.startVirtualThread(() -> {
             Try.of(() -> promptHandler.handlePrompt(combinedContext, Objects.requireNonNullElse(prompt, "")))
-                    .onSuccess(result -> asyncResults.addResult(resultKey, result))
+                    .onSuccess(result -> asyncResults.addResult(resultKey, result.getResponseText()))
                     .onFailure(throwable -> asyncResults.addResult(resultKey, exceptionHandler.getExceptionMessage(throwable)));
         });
 

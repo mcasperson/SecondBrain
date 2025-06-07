@@ -124,6 +124,8 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         parsedArgs))
                 .map(ticket -> ticket.updateMetadata(
                         getMetadata(ticket, environmentSettings, prompt, arguments)))
+                .map(ticket -> ticket.updateIntermediateResult(
+                        new IntermediateResult(ticket.document(), ticketToFileName(ticket))))
                 .map(List::of);
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
@@ -147,7 +149,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         final List<MetaObjectResult> metadata = ticket.source() != null
                 ? new ArrayList<>(ticket.source().toMetaObjectResult())
                 : new ArrayList<>();
-        
+
         if (!StringUtil.isBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(
                                     Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document()),
@@ -167,6 +169,10 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
     private String ticketToMetaFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
         return "ZenDesk-" + ticket.id() + ".json";
+    }
+
+    private String ticketToFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
+        return "ZenDesk-" + ticket.id() + ".md";
     }
 
     @Override

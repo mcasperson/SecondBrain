@@ -61,8 +61,7 @@ public class PromptHandlerOllama implements PromptHandler {
     private ExceptionHandler exceptionHandler;
 
 
-    public String handlePrompt(final Map<String, String> context, final String prompt) {
-
+    public PromptHandlerResponse handlePrompt(final Map<String, String> context, final String prompt) {
         return handlePromptWithRetry(context, prompt, 1);
     }
 
@@ -71,14 +70,14 @@ public class PromptHandlerOllama implements PromptHandler {
      * quantized to 4 bits, can struggle to generate valid JSON in response to a request to select a tool.
      * So we retry a bunch of times to try and get a valid response.
      */
-    public String handlePromptWithRetry(final Map<String, String> context, final String prompt, final int count) {
+    public PromptHandlerResponse handlePromptWithRetry(final Map<String, String> context, final String prompt, final int count) {
         return Try.of(() -> toolSelector.getTool(prompt, context))
                 .map(toolCall -> callTool(toolCall, context, prompt))
                 /*
                     Internal errors are not resolved with retries, so we capture the error message
                     and return it to the user.
                  */
-                .recover(InternalFailure.class, exceptionHandler::getExceptionMessage)
+                .recover(InternalFailure.class, ex -> new PromptResponseSimple(exceptionHandler.getExceptionMessage(ex)))
                 /*
                     We assume everything else is an external error that may be resolved with retries.
                  */
@@ -92,14 +91,14 @@ public class PromptHandlerOllama implements PromptHandler {
                 /*
                     The retry count is exhausted, so we return the error message to the user.
                  */
-                .recover(Throwable.class, exceptionHandler::getExceptionMessage)
+                .recover(Throwable.class, ex -> new PromptResponseSimple(exceptionHandler.getExceptionMessage(ex)))
                 .get();
     }
 
 
-    private String callTool(@Nullable final ToolCall toolCall, final Map<String, String> context, final String prompt) {
+    private PromptHandlerResponse callTool(@Nullable final ToolCall toolCall, final Map<String, String> context, final String prompt) {
         if (toolCall == null) {
-            return "No tool found";
+            return new PromptResponseSimple("No tool found");
         }
 
         logger.log(Level.INFO, "Calling tool " + toolCall.tool().getName());
@@ -107,7 +106,6 @@ public class PromptHandlerOllama implements PromptHandler {
         final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
                 .recover(throwable -> 0.5f)
                 .get();
-
 
         final int parsedMinWords = Try.of(() -> Integer.parseInt(minWords))
                 .recover(throwable -> 10)
@@ -127,21 +125,27 @@ public class PromptHandlerOllama implements PromptHandler {
             links to the context items, and annotations that link the LLM output to the original context.
          */
         return Try.of(() -> toolCall.call(context, prompt))
-                .map(document -> new PromptResponse(
-                        getAnnotations(document, parsedMinSimilarity, parsedMinWords),
-                        getLinks(document),
-                        getDebugLinks(document, Boolean.getBoolean(debug) || argumentDebugging)))
-                .map(response ->
-                        response.annotationResult().result()
-                                + response.links()
-                                + response.debug()
-                                + getAnnotationCoverage(response.annotationResult(), Boolean.getBoolean(debug) || argumentDebugging))
-                .recover(InternalFailure.class, exceptionHandler::getExceptionMessage)
+                .map(document -> generateAnnotatedResponse(
+                        document,
+                        parsedMinSimilarity,
+                        parsedMinWords,
+                        argumentDebugging))
+                .recover(InternalFailure.class, ex -> new PromptResponseSimple(exceptionHandler.getExceptionMessage(ex)))
                 .get();
     }
 
-    private boolean getDisableLinks() {
-        return disableLinks.map(Boolean::parseBoolean).orElse(false);
+    private PromptHandlerResponse generateAnnotatedResponse(final RagMultiDocumentContext<?> document, final float parsedMinSimilarity, final int parsedMinWords, final boolean argumentDebugging) {
+        final PromptResponse response = new PromptResponse(
+                getAnnotations(document, parsedMinSimilarity, parsedMinWords),
+                getLinks(document),
+                getDebugLinks(document, Boolean.getBoolean(debug) || argumentDebugging));
+
+        final String annotatedResponse = response.annotationResult().result()
+                + response.links()
+                + response.debug()
+                + getAnnotationCoverage(response.annotationResult(), Boolean.getBoolean(debug) || argumentDebugging);
+
+        return new PromptResponseSimple(annotatedResponse, document.getMetaObjectResults(), document.getIntermediateResults());
     }
 
     private AnnotationResult<? extends RagMultiDocumentContext<?>> getAnnotations(final RagMultiDocumentContext<?> document, final float parsedMinSimilarity, final int parsedMinWords) {

@@ -44,9 +44,6 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
 import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -291,32 +288,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .recover(throwable -> List.of())
                 .get();
 
-        saveFiles(context, parsedArgs);
-
         return context;
-    }
-
-    private void saveFiles(final List<RagDocumentContext<ZenDeskTicket>> context, final ZenDeskConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getSaveIndividual()) {
-            context.forEach(ticket -> Try.of(() -> Files.write(
-                    Paths.get(ticketToFileName(ticket)),
-                    ticket.document().getBytes(),
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING)));
-
-            context
-                    .stream()
-                    .filter(ticket -> ticket.metadata() != null)
-                    .forEach(ticket -> Try.of(() -> Files.write(
-                            Paths.get(ticket.metadata().getFilename()),
-                            jsonDeserializer.serialize(ticket.metadata()).getBytes(),
-                            StandardOpenOption.CREATE,
-                            StandardOpenOption.TRUNCATE_EXISTING)));
-        }
-    }
-
-    private String ticketToFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
-        return "ZenDesk-" + ticket.id() + ".md";
     }
 
     @Override
@@ -479,10 +451,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 class ZenDeskConfig {
     private static final int MAX_TICKETS = 100;
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
-
-    @Inject
-    @ConfigProperty(name = "sb.zendesk.saveindividual", defaultValue = "false")
-    private Optional<String> configSaveIndividual;
 
     /**
      * Set this to true to include the organization in the query sent to the ZenDesk API.
@@ -720,15 +688,6 @@ class ZenDeskConfig {
         return configZenDeskEndPeriod;
     }
 
-    /**
-     * Set this value to true to save the result of each ZenDesk ticket to
-     * a file. This is useful if you wish to build a report from each ticket as
-     * opposed to the result of a prompt run against all the tickets.
-     */
-    public Optional<String> getConfigSaveIndividual() {
-        return configSaveIndividual;
-    }
-
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -740,20 +699,6 @@ class ZenDeskConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
-        }
-
-        public boolean getSaveIndividual() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigSaveIndividual()::get,
-                    arguments,
-                    context,
-                    ZenDeskOrganization.SAVE_INDIVIDUAL_ARG,
-                    "zendesk_saveindividual",
-                    "false").value();
-
-            return Try.of(() -> BooleanUtils.toBoolean(stringValue))
-                    .recover(throwable -> false)
-                    .get();
         }
 
         public Integer getContextFilterMinimumRating() {

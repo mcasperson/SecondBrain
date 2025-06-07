@@ -1,6 +1,8 @@
 package secondbrain.domain.context;
 
 import org.apache.commons.lang3.StringUtils;
+import secondbrain.domain.tooldefs.IntermediateResult;
+import secondbrain.domain.tooldefs.MetaObjectResults;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -18,7 +20,8 @@ import java.util.stream.Collectors;
  * @param individualContexts The individual documents that all contribute to the combined context
  * @param debug              General debug information
  */
-public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocumentContext<T>> individualContexts,
+public record RagMultiDocumentContext<T>(String combinedDocument,
+                                         List<RagDocumentContext<T>> individualContexts,
                                          String debug) {
     public RagMultiDocumentContext(final String combinedDocument) {
         this(combinedDocument, List.of(), null);
@@ -30,14 +33,6 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
 
     public String getCombinedDocument() {
         return Objects.requireNonNullElse(combinedDocument, "");
-    }
-
-    public List<String> getIds() {
-        return individualContexts.stream().map(RagDocumentContext::id).toList();
-    }
-
-    public List<T> getMetas() {
-        return individualContexts.stream().map(RagDocumentContext::source).toList();
     }
 
     public List<String> getLinks() {
@@ -151,7 +146,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
         return sentenceSplitter.splitDocument(combinedDocument(), minWords)
                 .stream()
                 .filter(sentence -> !StringUtils.isBlank(sentence))
-                // find the best match in each individual context, or no match at all
+                // find the best match in each context, or no match at all
                 .flatMap(sentence -> individualContexts.stream()
                         .map(rag -> rag.getClosestSentence(
                                 sentence,
@@ -165,5 +160,20 @@ public record RagMultiDocumentContext<T>(String combinedDocument, List<RagDocume
                 .map(RagMatchedStringContext::toRagSentenceAndOriginal)
                 // Getting a set ensures that we don't have duplicates
                 .collect(Collectors.toSet());
+    }
+
+    public List<MetaObjectResults> getMetaObjectResults() {
+        return individualContexts
+                .stream()
+                .map(RagDocumentContext::getMetadata)
+                .toList();
+    }
+
+    public List<IntermediateResult> getIntermediateResults() {
+        return individualContexts
+                .stream()
+                .map(RagDocumentContext::intermediateResult)
+                .filter(Objects::nonNull)
+                .toList();
     }
 }

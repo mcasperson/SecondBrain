@@ -3,6 +3,7 @@ package secondbrain.domain.context;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.limit.TrimResult;
+import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.MetaObjectResults;
 
 import java.util.List;
@@ -40,28 +41,29 @@ public record RagDocumentContext<T>(String contextLabel,
                                     String id,
                                     @Nullable T source,
                                     @Nullable MetaObjectResults metadata,
+                                    @Nullable IntermediateResult intermediateResult,
                                     @Nullable String link,
                                     @Nullable List<String> keywordMatches,
                                     @Nullable String group) {
 
     public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T source, final @Nullable String link, final @Nullable List<String> keywordMatches, final @Nullable String group) {
-        this(contextLabel, document, sentences, id, source, null, link, keywordMatches, group);
+        this(contextLabel, document, sentences, id, source, null, null, link, keywordMatches, group);
     }
 
     public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T source, final @Nullable String link, final @Nullable List<String> keywordMatches) {
-        this(contextLabel, document, sentences, id, source, null, link, keywordMatches, null);
+        this(contextLabel, document, sentences, id, source, null, null, link, keywordMatches, null);
     }
 
     public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id) {
-        this(contextLabel, document, sentences, id, null, null, null, null, null);
+        this(contextLabel, document, sentences, id, null, null, null, null, null, null);
     }
 
     public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T source, final @Nullable String link) {
-        this(contextLabel, document, sentences, id, source, null, link, null, null);
+        this(contextLabel, document, sentences, id, source, null, null, link, null, null);
     }
 
     public RagDocumentContext(final String contextLabel, final String document, final List<RagStringContext> sentences) {
-        this(contextLabel, document, sentences, "", null, null, null, null, null);
+        this(contextLabel, document, sentences, "", null, null, null, null, null, null);
     }
 
     public String getGroup() {
@@ -74,7 +76,7 @@ public record RagDocumentContext<T>(String contextLabel,
 
     /**
      * The document held by this object often needs to undergo some transformation, from raw text, to being sanitized,
-     * to being marked up, as part of a LLM template. In some cases it may even be appropriate to summarize the document
+     * to being marked up, as part of a LLM template. In some cases, it may even be appropriate to summarize the document
      * via an LLM while retaining the original sentences and their vectors. The sentences never change though to ensure
      * the original context is available.
      *
@@ -94,15 +96,19 @@ public record RagDocumentContext<T>(String contextLabel,
     }
 
     public RagDocumentContext<T> updateMetadata(final MetaObjectResults metadata) {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, source, metadata, link, keywordMatches, group);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, source, metadata, intermediateResult, link, keywordMatches, group);
     }
 
     public RagDocumentContext<T> updateContextLabel(final String contextLabel) {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, source, link, keywordMatches, group);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, source, metadata, intermediateResult, link, keywordMatches, group);
     }
 
     public RagDocumentContext<T> updateLink(final String link) {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, source, link, keywordMatches, group);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, source, metadata, intermediateResult, link, keywordMatches, group);
+    }
+
+    public RagDocumentContext<T> updateIntermediateResult(@Nullable final IntermediateResult intermediateResult) {
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, source, metadata, intermediateResult, link, keywordMatches, group);
     }
 
     public MetaObjectResults getMetadata() {

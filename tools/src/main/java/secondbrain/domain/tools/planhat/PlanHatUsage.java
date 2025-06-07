@@ -151,6 +151,7 @@ public class PlanHatUsage implements Tool<Company> {
                         company,
                         getMetadata(environmentSettings, prompt, arguments),
                         null,
+                        null,
                         List.of(),
                         null))
                 .toList();
