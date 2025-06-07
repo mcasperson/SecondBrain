@@ -404,10 +404,11 @@ if ($GenerateExecutiveSummary)
         The next bullet points must be a one sentence summary of each of the topics.
         The next bullet points must list any next steps or action items that were agreed upon. The action items must include dates if they were discussed.
         An example of the next bullet points are: 'We agreed to do ACTION 1 on DATE 1', 'We agreeded to do ACTION 2 on DATE 2', and 'We agreed to do ACTION 3'.
-        The final bullet point must provide a one sentence summary of the document.
 
         If there are no next steps or action items, you must not include any details about next steps or action items.
         If there are no dates associated with the next steps or action items, you must not include any details about dates for those next steps or action items.
+
+        You will be penalized for literally referencing placeholders such as: PERSON 1, PERSON 2, and PERSON 3; REASON 1, REASON 2, and REASON 3; QUESTION 1, QUESTION 2, and QUESTION 3; PAIN POINT 1, PAIN POINT 2, and PAIN POINT 3; ACTION 1, ACTION 2, and ACTION 3; JOB TITLE 1, JOB TITLE 2, and JOB TITLE 3
         You will be penalized for mentioning dates if they were not supplied.
         You will be penalized for mentioning a lack of Gong, Slack, ZenDesk, or PlanHat activity.
         You will be penalized for mentioning a lack of Google Document.
