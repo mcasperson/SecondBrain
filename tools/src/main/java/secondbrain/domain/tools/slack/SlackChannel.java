@@ -249,15 +249,24 @@ public class SlackChannel implements Tool<Void> {
         final Pattern userPattern = Pattern.compile("<@(?<username>\\w+)>");
         final Pattern channelPattern = Pattern.compile("<#(?<channelname>\\w+)\\|?>");
 
+        /*
+            Start with a pairing of the original messages the results of the regex matching for user IDs.
+         */
         return Try.of(() -> Tuple.of(messages, userPattern.matcher(messages).results()))
                 /*
                 We map the original message and the list of regex matches for user IDs to a string with
                 the user IDs replaced with their usernames.
                  */
-                .map(results -> results._2().reduce(
-                        results._1(),
-                        (m, match) -> m.replace(match.group(), slackClient.username(client, token, match.group("username"), parsedArgs.getApiDelay())),
-                        (s, s2) -> s + s2))
+                .map(results ->
+                        // We want to take each username ID match, replace it with a username, and reduce the results down to a single string.
+                        results._2().reduce(
+                                // The starting point is the original message.
+                                results._1(),
+                                // Each user id match is replaced with the username retrieved from the Slack API.
+                                // The original message with the user IDs replaced is returned.
+                                (m, match) -> m.replace(match.group(), slackClient.username(client, token, match.group("username"), parsedArgs.getApiDelay())),
+                                // This is required to allow the reduce function to take a matcher but return a string.
+                                (s, s2) -> s + s2))
                 /*
                 The string with user ids replaces is then mapped to a tuple with the original string and a list of regex
                 matching channel IDs.

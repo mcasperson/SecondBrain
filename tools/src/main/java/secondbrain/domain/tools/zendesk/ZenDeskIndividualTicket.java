@@ -286,7 +286,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         .map(RagDocumentContext::document)
                         .map(content -> promptBuilderSelector
                                 .getPromptBuilder(customModel)
-                                .buildContextPrompt("ZenDesk Ticket", content))
+                                .buildContextPrompt(getContextLabel(), content))
                         .collect(Collectors.joining("\n")),
                 context,
                 debug);

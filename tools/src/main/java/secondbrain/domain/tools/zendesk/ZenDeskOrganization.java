@@ -338,7 +338,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         .map(RagDocumentContext::document)
                         .map(content -> promptBuilderSelector
                                 .getPromptBuilder(customModel)
-                                .buildContextPrompt("ZenDesk Ticket", content))
+                                .buildContextPrompt(getContextLabel(), content))
                         .collect(Collectors.joining("\n")),
                 context,
                 debug);
@@ -401,7 +401,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                     final ZenDeskConfig.LocalArguments parsedArgs) {
         final String ticketContext = promptBuilderSelector
                 .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildContextPrompt("ZenDesk Ticket", ticketContents);
+                .buildContextPrompt(getContextLabel(), ticketContents);
 
         final String prompt = promptBuilderSelector
                 .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
