@@ -24,6 +24,12 @@ import static java.util.Comparator.comparing;
  * <p>
  * RagDocumentContext differs from IndividualContext in RagDocumentContext captures the content of
  * an external data source as a string and then breaks down the string into individual sentences.
+ * <p>
+ * RagDocumentContext also captures the metadata and intermediate results associated with the document.
+ * This data is usually saved to files to be consumed by an external script. For example, you may want
+ * to build a PDF document from the results and capture a table of facts from the source emails
+ * such as the sender, recipient, subject, and date. This can be extracted from the metadata rather than
+ * attempting to be built into the LLM response.
  *
  * @param contextLabel   The label of the context when it is presented to the LLM
  * @param document       The string representation of the external data
