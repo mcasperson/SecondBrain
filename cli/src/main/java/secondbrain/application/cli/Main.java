@@ -96,7 +96,7 @@ public class Main {
                 .getIntermediateResults()
                 .stream()
                 .filter(Objects::nonNull)
-                .filter(meta -> StringUtils.isNotBlank(meta.filename()))
+                .filter(meta -> StringUtils.isNotBlank(meta.filename()) && meta.content() != null)
                 .forEach(meta -> Try.of(() -> Files.write(
                                 Paths.get(meta.filename()),
                                 meta.content().getBytes(),
