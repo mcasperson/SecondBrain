@@ -212,8 +212,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(),
-                                throwable -> new ExternalFailure("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
+                        API.Case(API.$(), throwable -> new ExternalFailure("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
                 .get();
     }
 
@@ -227,18 +226,39 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
      */
     private String ticketToLink(final String url, final ZenDeskTicket meta, final String authHeader) {
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> meta.subject().replaceAll("\\r\\n|\\r|\\n", " ") + " - "
-                        // Best effort to get the organization name, but don't treat this as a failure
-                        + Try.of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
-                        .map(ZenDeskOrganizationItemResponse::name)
-                        .getOrElse("Unknown Organization")
+                .of(client -> replaceLineBreaks(meta.subject())
                         + " - "
-                        // Best effort to get the username, but don't treat this as a failure
-                        + Try.of(() -> zenDeskClient.getUser(client, authHeader, url, meta.assignee_id()))
-                        .map(ZenDeskUserItemResponse::name)
-                        .getOrElse("Unknown User")
+                        + getOrganization(client, authHeader, url, meta)
+                        + " - "
+                        + getUser(client, authHeader, url, meta)
                         + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
                 .get();
+    }
+
+    private String replaceLineBreaks(final String text) {
+        if (StringUtils.isBlank(text)) {
+            return "";
+        }
+
+        return text.replaceAll("\\r\\n|\\r|\\n", " ");
+    }
+
+    private String getOrganization(final Client client, final String authHeader, final String url, final ZenDeskTicket meta) {
+        // Best effort to get the organization name, but don't treat this as a failure
+        return Try.of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
+                .map(ZenDeskOrganizationItemResponse::name)
+                .getOrElse("Unknown Organization");
+    }
+
+    private String getUser(final Client client, final String authHeader, final String url, final ZenDeskTicket meta) {
+        // Best effort to get the username, but don't treat this as a failure
+        return Try.of(() -> zenDeskClient.getUser(client, authHeader, url, meta.assignee_id()))
+                .map(ZenDeskUserItemResponse::name)
+                .getOrElse("Unknown User");
+    }
+
+    private String ticketToText(final IndividualContext<List<String>, ZenDeskTicket> comments) {
+        return comments.meta().subject() + "\n" + String.join("\n", comments.context());
     }
 
     @Nullable
@@ -298,7 +318,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         new ZenDeskTicket(parsedArgs.getTicketId(), parsedArgs.getTicketSubject())))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
                 .map(comments -> getDocumentContext(
-                        comments.meta().subject() + "\n" + String.join("\n", comments.context()),   // The full context is the subject with the comments
+                        ticketToText(comments),
                         comments.id(),
                         comments.meta(),
                         authorization,
@@ -322,9 +342,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                 .map(sentences -> new RagDocumentContext<>(
                         contextLabel,
                         document,
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence))
-                                .collect(Collectors.toList()),
+                        sentenceVectorizer.vectorize(sentences),
                         id,
                         meta,
                         ticketToLink(parsedArgs.getUrl(), meta, authHeader)))

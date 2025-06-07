@@ -240,9 +240,7 @@ public class GoogleDocs implements Tool<Void> {
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
                         trimResult.document(),
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
-                                .collect(Collectors.toList()),
+                        sentenceVectorizer.vectorize(sentences),
                         parsedArgs.getDocumentId(),
                         null,
                         idToLink(parsedArgs.getDocumentId()),

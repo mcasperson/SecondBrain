@@ -196,9 +196,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                 .map(sentences -> new RagDocumentContext<>(
                         getContextLabel(),
                         meta.text(),
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
-                                .collect(Collectors.toList()),
+                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
                         meta.id(),
                         meta,
                         matchToUrl(meta)))

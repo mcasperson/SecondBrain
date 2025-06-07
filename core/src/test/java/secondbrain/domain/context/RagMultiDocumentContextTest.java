@@ -87,12 +87,23 @@ class RagMultiDocumentContextTest {
 
     static class MockSentenceVectorizer implements SentenceVectorizer {
         @Override
-        public RagStringContext vectorize(String text, String hiddenText) {
+        public RagStringContext vectorize(final String text, final String hiddenText) {
             return vectorize(text);
         }
 
         @Override
-        public RagStringContext vectorize(String sentence) {
+        public List<RagStringContext> vectorize(final List<String> text, final String hiddenText) {
+            if (text == null || text.isEmpty()) {
+                return List.of();
+            }
+
+            return text.stream()
+                    .map(t -> vectorize(t, hiddenText))
+                    .toList();
+        }
+
+        @Override
+        public RagStringContext vectorize(final String sentence) {
             if (sentence.equals("This is a test document after processing")) {
                 return new RagStringContext(sentence, new Vector(1d));  // Mock vector
             }
@@ -102,6 +113,17 @@ class RagMultiDocumentContextTest {
             }
 
             return new RagStringContext(sentence, new Vector());  // Mock vector
+        }
+
+        @Override
+        public List<RagStringContext> vectorize(final List<String> text) {
+            if (text == null || text.isEmpty()) {
+                return List.of();
+            }
+
+            return text.stream()
+                    .map(this::vectorize)
+                    .toList();
         }
     }
 }

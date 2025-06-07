@@ -198,9 +198,7 @@ public class PublicWeb implements Tool<Void> {
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
                         trimResult.document(),
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
-                                .collect(Collectors.toList()),
+                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
                         null,
                         null,
                         null,

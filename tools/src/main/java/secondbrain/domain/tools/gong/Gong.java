@@ -164,9 +164,7 @@ public class Gong implements Tool<GongCallDetails> {
                 .map(sentences -> new RagDocumentContext<GongCallDetails>(
                         getContextLabel(),
                         trimmedConversationResult.document(),
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
-                                .collect(Collectors.toList()),
+                        sentenceVectorizer.vectorize(sentences),
                         call.id(),
                         call,
                         "[Gong " + call.id() + "](" + call.url() + ")",

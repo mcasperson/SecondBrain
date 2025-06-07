@@ -240,9 +240,7 @@ public class PlanHat implements Tool<Conversation> {
                 .map(sentences -> new RagDocumentContext<Conversation>(
                         contextLabel,
                         trimmedConversationResult.getLeft().getContent(),
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
-                                .collect(Collectors.toList()),
+                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
                         trimmedConversationResult.getLeft().id(),
                         trimmedConversationResult.getLeft(),
                         "[PlanHat " + trimmedConversationResult.getLeft().id() + "](" + trimmedConversationResult.getLeft().getPublicUrl(url) + ")",
