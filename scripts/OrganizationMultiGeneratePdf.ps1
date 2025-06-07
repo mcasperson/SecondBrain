@@ -204,6 +204,7 @@ if ($GenerateCompanyReports)
             Each of the bullet points associated with a topic must be one or two sentences long.
             If the job titles of the people involved in the topic were not supplied, you must not include any details about job titles.
             If it is not possible to determine why a topic was important, you must not include any details about why the topic was important.
+            If there are no people associated with the topic, you must not include any details about people for that topic.
             If there are no dates associated with the topic, you must not include any details about dates for that topic.
             If there are no next steps associated with the topic, you must not include any details about next steps for that topic.
             If there are no action items associated with the topic, you must not include any details about action items for that topic.
@@ -215,6 +216,7 @@ if ($GenerateCompanyReports)
             You must use asterisks for bullet point lists.
             You must use bullet point lists instead of numbered lists.
 
+            You will be penalized for literally referencing placeholders such as: PERSON 1, PERSON 2, and PERSON 3; REASON 1, REASON 2, and REASON 3; QUESTION 1, QUESTION 2, and QUESTION 3; PAIN POINT 1, PAIN POINT 2, and PAIN POINT 3; ACTION 1, ACTION 2, and ACTION 3; JOB TITLE 1, JOB TITLE 2, and JOB TITLE 3
             You will be penalized for including an ARR value if it was not supplied.
             You will be penalized for including job titles that were not supplied.
             You will be penalized for talking about 'limited engagement' or 'limited communication'.
