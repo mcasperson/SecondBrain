@@ -82,6 +82,7 @@ public class Main {
                 .getMetaObjectResults()
                 .stream()
                 .filter(Objects::nonNull)
+                .filter(meta -> StringUtils.isNotBlank(meta.getFilename()))
                 .forEach(meta -> Try.of(() -> Files.write(
                                 Paths.get(meta.getFilename()),
                                 jsonDeserializer.serialize(meta).getBytes(),
@@ -95,6 +96,7 @@ public class Main {
                 .getIntermediateResults()
                 .stream()
                 .filter(Objects::nonNull)
+                .filter(meta -> StringUtils.isNotBlank(meta.filename()))
                 .forEach(meta -> Try.of(() -> Files.write(
                                 Paths.get(meta.filename()),
                                 meta.content().getBytes(),

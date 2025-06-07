@@ -84,15 +84,15 @@ public record RagDocumentContext<T>(String contextLabel,
      * @return A new copy of this object with the new document
      */
     public RagDocumentContext<T> updateDocument(final String document) {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, source, link, keywordMatches, group);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, source, metadata, intermediateResult, link, keywordMatches, group);
     }
 
     public RagDocumentContext<T> updateDocument(final TrimResult trimResult) {
-        return new RagDocumentContext<>(contextLabel, trimResult.document(), sentences, id, source, link, trimResult.keywordMatches(), group);
+        return new RagDocumentContext<>(contextLabel, trimResult.document(), sentences, id, source, metadata, intermediateResult, link, trimResult.keywordMatches(), group);
     }
 
     public RagDocumentContext<T> updateGroup(final String group) {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, source, link, keywordMatches, group);
+        return new RagDocumentContext<>(contextLabel, document, sentences, id, source, metadata, intermediateResult, link, keywordMatches, group);
     }
 
     public RagDocumentContext<T> updateMetadata(final MetaObjectResults metadata) {
