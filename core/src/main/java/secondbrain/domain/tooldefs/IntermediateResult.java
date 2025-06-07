@@ -8,4 +8,7 @@ package secondbrain.domain.tooldefs;
  * @param filename The filename where the content is saved
  */
 public record IntermediateResult(String content, String filename) {
+    public IntermediateResult updateContent(final String newContent) {
+        return new IntermediateResult(newContent, filename);
+    }
 }

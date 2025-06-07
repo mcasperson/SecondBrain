@@ -373,7 +373,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             final Map<String, String> context,
             final ZenDeskConfig.LocalArguments parsedArgs) {
         return tickets.stream()
+                // Replace the raw ticket text with the summarized ticket
                 .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), context, parsedArgs)))
+                // Replace the intermediate result with the summarized ticket
+                .map(ticket -> ticket.intermediateResult() != null
+                        ? ticket.updateIntermediateResult(ticket.intermediateResult().updateContent(ticket.document()))
+                        : ticket)
                 .collect(Collectors.toList());
     }
 
