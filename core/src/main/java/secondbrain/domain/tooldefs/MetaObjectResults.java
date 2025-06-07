@@ -1,5 +1,6 @@
 package secondbrain.domain.tooldefs;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.tika.utils.StringUtils;
 
@@ -8,8 +9,17 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class MetaObjectResults extends ArrayList<MetaObjectResult> {
+    private String filename;
+    private String id;
+
     public MetaObjectResults() {
         super();
+    }
+
+    public MetaObjectResults(final Iterable<MetaObjectResult> results, final String filename, final String id) {
+        this(results);
+        this.filename = filename;
+        this.id = id;
     }
 
     public MetaObjectResults(final Iterable<MetaObjectResult> results) {
@@ -58,5 +68,15 @@ public class MetaObjectResults extends ArrayList<MetaObjectResult> {
         return getByName(name)
                 .map(MetaObjectResult::value)
                 .map(Object::toString);
+    }
+
+    @JsonIgnore
+    public String getFilename() {
+        return filename;
+    }
+
+    @JsonIgnore
+    public String getId() {
+        return id;
     }
 }

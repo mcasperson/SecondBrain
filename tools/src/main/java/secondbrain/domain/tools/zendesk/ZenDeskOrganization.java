@@ -304,20 +304,19 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING)));
 
-            context.forEach(ticket -> Try.of(() -> Files.write(
-                    Paths.get(ticketToMetaFileName(ticket)),
-                    jsonDeserializer.serialize(ticket.source().toMetaObjectResult()).getBytes(),
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING)));
+            context
+                    .stream()
+                    .filter(ticket -> ticket.metadata() != null)
+                    .forEach(ticket -> Try.of(() -> Files.write(
+                            Paths.get(ticket.metadata().getFilename()),
+                            jsonDeserializer.serialize(ticket.metadata()).getBytes(),
+                            StandardOpenOption.CREATE,
+                            StandardOpenOption.TRUNCATE_EXISTING)));
         }
     }
 
     private String ticketToFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
         return "ZenDesk-" + ticket.id() + ".md";
-    }
-
-    private String ticketToMetaFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
-        return "ZenDesk-" + ticket.id() + ".json";
     }
 
     @Override

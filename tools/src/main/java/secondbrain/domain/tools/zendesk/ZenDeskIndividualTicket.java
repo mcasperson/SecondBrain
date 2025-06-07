@@ -35,10 +35,7 @@ import secondbrain.infrastructure.zendesk.api.ZenDeskOrganizationItemResponse;
 import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -161,7 +158,16 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                 .recover(InternalFailure.class, ex -> 10)
                 .get();
 
-        return new MetaObjectResults(List.of(new MetaObjectResult(ZENDESK_FILTER_RATING_META, filterRating)));
+        final List<MetaObjectResult> metadata = ticket.source() != null
+                ? new ArrayList<>(ticket.source().toMetaObjectResult())
+                : new ArrayList<>();
+        metadata.add(new MetaObjectResult(ZENDESK_FILTER_RATING_META, filterRating));
+
+        return new MetaObjectResults(metadata, ticketToMetaFileName(ticket), ticket.id());
+    }
+
+    private String ticketToMetaFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
+        return "ZenDesk-" + ticket.id() + ".json";
     }
 
     @Override
