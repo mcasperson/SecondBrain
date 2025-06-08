@@ -61,7 +61,7 @@ public class Main {
                 .map(response -> markdownParsing
                         ? response.updateResponseText(markdnParser.printMarkDn(response.getResponseText()))
                         : response)
-                .onSuccess(System.out::println)
+                .onSuccess(response -> System.out.println(response.getResponseText()))
                 .onSuccess(this::writeOutput)
                 .onSuccess(this::saveMetadata)
                 .onSuccess(this::saveIntermediateResults)
