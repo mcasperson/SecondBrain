@@ -149,7 +149,7 @@ public class PlanHatUsage implements Tool<Company> {
                         List.of(),
                         company.id() + ":" + pair.getRight(),
                         company,
-                        getMetadata(environmentSettings, prompt, arguments),
+                        null,
                         null,
                         null,
                         List.of(),
@@ -167,8 +167,11 @@ public class PlanHatUsage implements Tool<Company> {
                         List.of(),
                         company.id() + ":" + custom,
                         company,
+                        getMetadata(environmentSettings, prompt, arguments),
                         null,
-                        List.of()))
+                        null,
+                        List.of(),
+                        null))
                 .toList();
 
         return ListUtils.union(usageContext, customContext);

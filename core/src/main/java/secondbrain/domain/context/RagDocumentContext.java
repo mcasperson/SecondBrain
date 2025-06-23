@@ -131,7 +131,17 @@ public record RagDocumentContext<T>(String contextLabel,
      * type to work with.
      */
     public RagDocumentContext<Void> getRagDocumentContextVoid() {
-        return new RagDocumentContext<>(contextLabel, document, sentences, id, null, link, keywordMatches, group);
+        return new RagDocumentContext<>(
+                contextLabel,
+                document,
+                sentences,
+                id,
+                null,
+                metadata,
+                intermediateResult,
+                link,
+                keywordMatches,
+                group);
     }
 
     /**
