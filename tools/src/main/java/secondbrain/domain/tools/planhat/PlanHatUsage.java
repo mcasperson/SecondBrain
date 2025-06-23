@@ -195,7 +195,7 @@ public class PlanHatUsage implements Tool<Company> {
             return List.of();
         }
 
-        return Stream.of(parsedArgs.getCustom1())
+        return Stream.of(parsedArgs.getCustom1(), parsedArgs.getCustom2())
                 .filter(StringUtils::isNotBlank)
                 .map(custom -> new MetaObjectResult(custom, company.custom().getOrDefault(custom, "").toString()))
                 .toList();

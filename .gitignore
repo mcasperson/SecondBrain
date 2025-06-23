@@ -38,3 +38,4 @@ out
 *.backup.5
 
 report.json
+*.json
