@@ -29,6 +29,13 @@ public class MetaObjectResults extends ArrayList<MetaObjectResult> {
         }
     }
 
+    public MetaObjectResults(final MetaObjectResult result) {
+        super();
+        if (result != null) {
+            this.add(result);
+        }
+    }
+
     public Optional<MetaObjectResult> getByName(final String name) {
         if (StringUtils.isBlank(name)) {
             return Optional.empty();

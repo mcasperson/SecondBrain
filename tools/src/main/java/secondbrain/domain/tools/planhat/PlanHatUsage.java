@@ -167,7 +167,7 @@ public class PlanHatUsage implements Tool<Company> {
                         List.of(),
                         company.id() + ":" + custom,
                         company,
-                        getMetadata(environmentSettings, prompt, arguments),
+                        getMetadata(environmentSettings, prompt, arguments, custom),
                         null,
                         null,
                         List.of(),
@@ -180,7 +180,8 @@ public class PlanHatUsage implements Tool<Company> {
     private MetaObjectResults getMetadata(
             final Map<String, String> environmentSettings,
             final String prompt,
-            final List<ToolArgs> arguments) {
+            final List<ToolArgs> arguments,
+            final String custom) {
         final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
@@ -214,12 +215,7 @@ public class PlanHatUsage implements Tool<Company> {
             return new MetaObjectResults();
         }
 
-        final List<MetaObjectResult> meta = Stream.of(parsedArgs.getCustom1(), parsedArgs.getCustom2())
-                .filter(StringUtils::isNotBlank)
-                .map(custom -> new MetaObjectResult(custom, company.get().custom().getOrDefault(custom, "").toString()))
-                .toList();
-
-        return new MetaObjectResults(meta);
+        return new MetaObjectResults(new MetaObjectResult(custom, company.get().custom().getOrDefault(custom, "").toString()));
     }
 
     @Override
