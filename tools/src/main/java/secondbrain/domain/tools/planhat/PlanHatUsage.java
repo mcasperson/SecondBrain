@@ -167,7 +167,7 @@ public class PlanHatUsage implements Tool<Company> {
                         List.of(),
                         company.id() + ":" + custom,
                         company,
-                        getMetadata(environmentSettings, prompt, arguments, custom),
+                        new MetaObjectResults(new MetaObjectResult(custom, company.custom().getOrDefault(custom, "").toString())),
                         null,
                         null,
                         List.of(),
@@ -175,47 +175,6 @@ public class PlanHatUsage implements Tool<Company> {
                 .toList();
 
         return ListUtils.union(usageContext, customContext);
-    }
-
-    private MetaObjectResults getMetadata(
-            final Map<String, String> environmentSettings,
-            final String prompt,
-            final List<ToolArgs> arguments,
-            final String custom) {
-        final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-
-        if (StringUtils.isBlank(parsedArgs.getCompany())) {
-            throw new InternalFailure("You must provide a company ID to query");
-        }
-
-        // We can process multiple planhat instances
-        final List<Pair<String, String>> tokens = Stream.of(
-                        Pair.of(parsedArgs.getUrl(), parsedArgs.getToken()),
-                        Pair.of(parsedArgs.getUrl2(), parsedArgs.getToken2()))
-                .filter(pair -> StringUtils.isNotBlank(pair.getRight()) && StringUtils.isNotBlank(pair.getLeft()))
-                .toList();
-
-        final Optional<Company> company = Try.withResources(ClientBuilder::newClient)
-                .of(client -> tokens
-                        .stream()
-                        .map(pair -> Try.of(() -> planHatClient.getCompany(
-                                client,
-                                parsedArgs.getCompany(),
-                                pair.getLeft(),
-                                pair.getRight(),
-                                parsedArgs.getSearchTTL()))
-                        )
-                        .filter(Try::isSuccess)
-                        .map(Try::get)
-                        .findFirst()
-                )
-                .get();
-
-        if (company.isEmpty()) {
-            return new MetaObjectResults();
-        }
-
-        return new MetaObjectResults(new MetaObjectResult(custom, company.get().custom().getOrDefault(custom, "").toString()));
     }
 
     @Override
