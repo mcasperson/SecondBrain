@@ -184,22 +184,36 @@ public class PlanHatUsage implements Tool<Company> {
             throw new InternalFailure("You must provide a company ID to query");
         }
 
-        final Company company = Try.withResources(ClientBuilder::newClient)
-                .of(client -> planHatClient.getCompany(
-                        client,
-                        parsedArgs.getCompany(),
-                        parsedArgs.getUrl(),
-                        parsedArgs.getToken(),
-                        parsedArgs.getSearchTTL()))
+        // We can process multiple planhat instances
+        final List<Pair<String, String>> tokens = Stream.of(
+                        Pair.of(parsedArgs.getUrl(), parsedArgs.getToken()),
+                        Pair.of(parsedArgs.getUrl2(), parsedArgs.getToken2()))
+                .filter(pair -> StringUtils.isNotBlank(pair.getRight()) && StringUtils.isNotBlank(pair.getLeft()))
+                .toList();
+
+        final Optional<Company> company = Try.withResources(ClientBuilder::newClient)
+                .of(client -> tokens
+                        .stream()
+                        .map(pair -> Try.of(() -> planHatClient.getCompany(
+                                client,
+                                parsedArgs.getCompany(),
+                                pair.getLeft(),
+                                pair.getRight(),
+                                parsedArgs.getSearchTTL()))
+                        )
+                        .filter(Try::isSuccess)
+                        .map(Try::get)
+                        .findFirst()
+                )
                 .get();
 
-        if (company.custom() == null) {
+        if (company.isEmpty()) {
             return new MetaObjectResults();
         }
 
-        final List<MetaObjectResult> meta = Stream.of(parsedArgs.getCustom1())
+        final List<MetaObjectResult> meta = Stream.of(parsedArgs.getCustom1(), parsedArgs.getCustom2())
                 .filter(StringUtils::isNotBlank)
-                .map(custom -> new MetaObjectResult(custom, company.custom().getOrDefault(custom, "").toString()))
+                .map(custom -> new MetaObjectResult(custom, company.get().custom().getOrDefault(custom, "").toString()))
                 .toList();
 
         return new MetaObjectResults(meta);
