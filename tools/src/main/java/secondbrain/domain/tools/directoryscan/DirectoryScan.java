@@ -29,7 +29,6 @@ import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -162,11 +161,6 @@ public class DirectoryScan implements Tool<Void> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
-        return List.of();
-    }
-
-    @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
@@ -275,10 +269,7 @@ public class DirectoryScan implements Tool<Void> {
         return new RagDocumentContext<>(
                 getContextLabel(),
                 trimResult.document(),
-                sentenceSplitter.splitDocument(trimResult.document(), 10)
-                        .stream()
-                        .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
-                        .toList(),
+                sentenceVectorizer.vectorize(sentenceSplitter.splitDocument(trimResult.document(), 10), parsedArgs.getEntity()),
                 file,
                 null,
                 "[" + file + "](file://" + file + ")",

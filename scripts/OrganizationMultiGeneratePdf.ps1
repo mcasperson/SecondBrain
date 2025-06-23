@@ -98,7 +98,7 @@ if ($GenerateCompanyReports)
             $entityName = ($using:entity).name
 
             # This is a quick way to test a single customer
-            #                        if ($entityName -ne "Transurban")
+            #                        if ($entityName -ne "Intel")
             #                        {
             #                            return
             #                        }
@@ -141,8 +141,6 @@ if ($GenerateCompanyReports)
             "-Dsb.zendesk.accesstoken2=$env:SB_ZENDESK_ACCESSTOKEN_CODEFRESH"
             "-Dsb.zendesk.user2=$env:SB_ZENDESK_USER_CODEFRESH"
             "-Dsb.zendesk.url2=$env:SB_ZENDESK_URL_CODEFREH"
-            "-Dsb.zendesk.filterbyrecipient=true"
-            "-Dsb.zendesk.recipient=support@octopus.com"
             "-Dsb.cache.path=/home/matthew"
             "-Dsb.tools.force=MultiSlackZenGoogle"
             "-Dsb.multislackzengoogle.minTimeBasedContext=1"
@@ -206,6 +204,7 @@ if ($GenerateCompanyReports)
             Each of the bullet points associated with a topic must be one or two sentences long.
             If the job titles of the people involved in the topic were not supplied, you must not include any details about job titles.
             If it is not possible to determine why a topic was important, you must not include any details about why the topic was important.
+            If there are no people associated with the topic, you must not include any details about people for that topic.
             If there are no dates associated with the topic, you must not include any details about dates for that topic.
             If there are no next steps associated with the topic, you must not include any details about next steps for that topic.
             If there are no action items associated with the topic, you must not include any details about action items for that topic.
@@ -217,6 +216,7 @@ if ($GenerateCompanyReports)
             You must use asterisks for bullet point lists.
             You must use bullet point lists instead of numbered lists.
 
+            You will be penalized for literally referencing placeholders such as: PERSON 1, PERSON 2, and PERSON 3; REASON 1, REASON 2, and REASON 3; QUESTION 1, QUESTION 2, and QUESTION 3; PAIN POINT 1, PAIN POINT 2, and PAIN POINT 3; ACTION 1, ACTION 2, and ACTION 3; JOB TITLE 1, JOB TITLE 2, and JOB TITLE 3
             You will be penalized for including an ARR value if it was not supplied.
             You will be penalized for including job titles that were not supplied.
             You will be penalized for talking about 'limited engagement' or 'limited communication'.
@@ -304,8 +304,6 @@ if ($GenerateTopicReports)
             "-Dsb.cache.backup=$( $using:topicIndex -eq 1 )"
             "-Dsb.cache.path=/home/matthew"
             "-Dsb.tools.force=MultiSlackZenGoogle"
-            "-Dsb.zendesk.filterbyrecipient=true"
-            "-Dsb.zendesk.recipient=support@octopus.com"
             "-Dsb.ollama.contextwindow=$using:contextWindow"
             "-Dsb.exceptions.printstacktrace=false"
             "-Dsb.multislackzengoogle.days=$using:Days"
@@ -406,10 +404,11 @@ if ($GenerateExecutiveSummary)
         The next bullet points must be a one sentence summary of each of the topics.
         The next bullet points must list any next steps or action items that were agreed upon. The action items must include dates if they were discussed.
         An example of the next bullet points are: 'We agreed to do ACTION 1 on DATE 1', 'We agreeded to do ACTION 2 on DATE 2', and 'We agreed to do ACTION 3'.
-        The final bullet point must provide a one sentence summary of the document.
 
         If there are no next steps or action items, you must not include any details about next steps or action items.
         If there are no dates associated with the next steps or action items, you must not include any details about dates for those next steps or action items.
+
+        You will be penalized for literally referencing placeholders such as: PERSON 1, PERSON 2, and PERSON 3; REASON 1, REASON 2, and REASON 3; QUESTION 1, QUESTION 2, and QUESTION 3; PAIN POINT 1, PAIN POINT 2, and PAIN POINT 3; ACTION 1, ACTION 2, and ACTION 3; JOB TITLE 1, JOB TITLE 2, and JOB TITLE 3
         You will be penalized for mentioning dates if they were not supplied.
         You will be penalized for mentioning a lack of Gong, Slack, ZenDesk, or PlanHat activity.
         You will be penalized for mentioning a lack of Google Document.

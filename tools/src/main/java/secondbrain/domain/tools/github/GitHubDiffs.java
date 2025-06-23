@@ -25,7 +25,6 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.ListUtilsEx;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -176,11 +175,6 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                         parsedArgs.getMaxDiffs() > 0 ? parsedArgs.getMaxDiffs() : commitsResponse.size()))
                 .map(commits -> convertCommitsToDiffSummaries(commits, parsedArgs))
                 .get();
-    }
-
-    @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
-        return List.of();
     }
 
     @Override

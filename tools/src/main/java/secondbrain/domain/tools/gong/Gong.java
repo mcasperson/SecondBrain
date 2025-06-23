@@ -27,7 +27,6 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -152,11 +151,6 @@ public class Gong implements Tool<GongCallDetails> {
                 .toList();
     }
 
-    @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
-        return List.of();
-    }
-
     private RagDocumentContext<GongCallDetails> getDocumentContext(final GongCallDetails call, final String transcript, final GongConfig.LocalArguments parsedArgs) {
         final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(transcript, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
 
@@ -170,9 +164,7 @@ public class Gong implements Tool<GongCallDetails> {
                 .map(sentences -> new RagDocumentContext<GongCallDetails>(
                         getContextLabel(),
                         trimmedConversationResult.document(),
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
-                                .collect(Collectors.toList()),
+                        sentenceVectorizer.vectorize(sentences),
                         call.id(),
                         call,
                         "[Gong " + call.id() + "](" + call.url() + ")",
@@ -297,7 +289,7 @@ class GongConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
-    @ConfigProperty(name = "sb.gong.summarizetranscript", defaultValue="false")
+    @ConfigProperty(name = "sb.gong.summarizetranscript", defaultValue = "false")
     private Optional<String> configSummarizeTranscript;
 
     @Inject

@@ -30,7 +30,6 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -181,11 +180,6 @@ public class PlanHat implements Tool<Conversation> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
-        return List.of();
-    }
-
-    @Override
     public RagMultiDocumentContext<Conversation> call(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
         final List<RagDocumentContext<Conversation>> contextList = getContext(environmentSettings, prompt, arguments);
 
@@ -246,9 +240,7 @@ public class PlanHat implements Tool<Conversation> {
                 .map(sentences -> new RagDocumentContext<Conversation>(
                         contextLabel,
                         trimmedConversationResult.getLeft().getContent(),
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
-                                .collect(Collectors.toList()),
+                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
                         trimmedConversationResult.getLeft().id(),
                         trimmedConversationResult.getLeft(),
                         "[PlanHat " + trimmedConversationResult.getLeft().id() + "](" + trimmedConversationResult.getLeft().getPublicUrl(url) + ")",

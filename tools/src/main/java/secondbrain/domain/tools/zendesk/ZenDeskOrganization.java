@@ -33,7 +33,7 @@ import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tooldefs.MetaObjectResult;
+import secondbrain.domain.tooldefs.MetaObjectResults;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -44,9 +44,6 @@ import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
 import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -204,10 +201,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             query.add("organization:" + parsedArgs.getOrganization());
         }
 
-        if (parsedArgs.getZenDeskFilterByRecipient() && StringUtils.isBlank(parsedArgs.getRecipient())) {
-            query.add("recipient:" + parsedArgs.getRecipient());
-        }
-
         // We can have multiple ZenDesk servers
         final List<ZenDeskCreds> zenDeskCreds = Stream.of(
                         new ZenDeskCreds(
@@ -295,38 +288,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .recover(throwable -> List.of())
                 .get();
 
-        saveFiles(context, parsedArgs);
-
         return context;
-    }
-
-    private void saveFiles(final List<RagDocumentContext<ZenDeskTicket>> context, final ZenDeskConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getSaveIndividual()) {
-            context.forEach(ticket -> Try.of(() -> Files.write(
-                    Paths.get(ticketToFileName(ticket)),
-                    ticket.document().getBytes(),
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING)));
-
-            context.forEach(ticket -> Try.of(() -> Files.write(
-                    Paths.get(ticketToMetaFileName(ticket)),
-                    jsonDeserializer.serialize(ticket.meta().toMetaObjectResult()).getBytes(),
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.TRUNCATE_EXISTING)));
-        }
-    }
-
-    private String ticketToFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
-        return "ZenDesk-" + ticket.id() + ".md";
-    }
-
-    private String ticketToMetaFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
-        return "ZenDesk-" + ticket.id() + ".json";
-    }
-
-    @Override
-    public List<MetaObjectResult> getMetadata(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        return List.of();
     }
 
     @Override
@@ -376,7 +338,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         .map(RagDocumentContext::document)
                         .map(content -> promptBuilderSelector
                                 .getPromptBuilder(customModel)
-                                .buildContextPrompt("ZenDesk Ticket", content))
+                                .buildContextPrompt(getContextLabel(), content))
                         .collect(Collectors.joining("\n")),
                 context,
                 debug);
@@ -411,7 +373,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             final Map<String, String> context,
             final ZenDeskConfig.LocalArguments parsedArgs) {
         return tickets.stream()
+                // Replace the raw ticket text with the summarized ticket
                 .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), context, parsedArgs)))
+                // Replace the intermediate result with the summarized ticket
+                .map(ticket -> ticket.intermediateResult() != null
+                        ? ticket.updateIntermediateResult(ticket.intermediateResult().updateContent(ticket.document()))
+                        : ticket)
                 .collect(Collectors.toList());
     }
 
@@ -434,7 +401,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                     final ZenDeskConfig.LocalArguments parsedArgs) {
         final String ticketContext = promptBuilderSelector
                 .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildContextPrompt("ZenDesk Ticket", ticketContents);
+                .buildContextPrompt(getContextLabel(), ticketContents);
 
         final String prompt = promptBuilderSelector
                 .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
@@ -474,30 +441,14 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     private List<RagDocumentContext<ZenDeskTicket>> contextMeetsRating(
             final List<RagDocumentContext<ZenDeskTicket>> tickets,
             final ZenDeskConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return tickets;
-        }
-
-        return tickets.stream()
+        return tickets
+                .stream()
                 .filter(ticket ->
-                        getContextRating(ticket, parsedArgs) >= parsedArgs.getContextFilterMinimumRating()
+                        Objects.requireNonNullElse(ticket.metadata(), new MetaObjectResults())
+                                .getIntValueByName(ZenDeskIndividualTicket.ZENDESK_FILTER_RATING_META, 10)
+                                >= parsedArgs.getContextFilterMinimumRating()
                 )
                 .toList();
-    }
-
-    private Integer getContextRating(final RagDocumentContext<ZenDeskTicket> ticket, final ZenDeskConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return 10;
-        }
-
-        return Try.of(() -> ratingTool.call(
-                        Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document()),
-                        parsedArgs.getContextFilterQuestion(),
-                        List.of()).combinedDocument())
-                .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
-                // Ratings are provided on a best effort basis, so we ignore any failures
-                .recover(InternalFailure.class, ex -> 10)
-                .get();
     }
 }
 
@@ -505,10 +456,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 class ZenDeskConfig {
     private static final int MAX_TICKETS = 100;
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
-
-    @Inject
-    @ConfigProperty(name = "sb.zendesk.saveindividual", defaultValue = "false")
-    private Optional<String> configSaveIndividual;
 
     /**
      * Set this to true to include the organization in the query sent to the ZenDesk API.
@@ -522,10 +469,6 @@ class ZenDeskConfig {
     @Inject
     @ConfigProperty(name = "sb.zendesk.filterbyorganization", defaultValue = "false")
     private Optional<String> configZenDeskFilterByOrganization;
-
-    @Inject
-    @ConfigProperty(name = "sb.zendesk.filterbyrecipient", defaultValue = "false")
-    private Optional<String> configZenDeskFilterByRecipient;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
@@ -608,10 +551,6 @@ class ZenDeskConfig {
     private Optional<String> configTicketSummaryPrompt;
 
     @Inject
-    @ConfigProperty(name = "sb.zendesk.contextFilterQuestion")
-    private Optional<String> configContextFilterQuestion;
-
-    @Inject
     @ConfigProperty(name = "sb.zendesk.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
 
@@ -634,10 +573,6 @@ class ZenDeskConfig {
     @Inject
     @Identifier("sanitizeOrganization")
     private SanitizeArgument sanitizeOrganization;
-
-    public Optional<String> getConfigContextFilterQuestion() {
-        return configContextFilterQuestion;
-    }
 
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
@@ -746,17 +681,6 @@ class ZenDeskConfig {
         return configZenDeskFilterByOrganization;
     }
 
-    /**
-     * This setting determines if the API call to ZenDesk includes the recipient in the query.
-     * This is useful when querying for results over a long timeframe but for a specific recipient.
-     * Leave this as false if the ZenDesk API call should return all results over the time period.
-     * Returning all results is useful if you query the result sets multiple times over with different
-     * recipient, as the first call is cached, and all subsequent calls are much faster.
-     */
-    public Optional<String> getConfigZenDeskFilterByRecipient() {
-        return configZenDeskFilterByRecipient;
-    }
-
     public Optional<String> getConfigTicketSummaryPrompt() {
         return configTicketSummaryPrompt;
     }
@@ -767,15 +691,6 @@ class ZenDeskConfig {
 
     public Optional<String> getConfigZenDeskEndPeriod() {
         return configZenDeskEndPeriod;
-    }
-
-    /**
-     * Set this value to true to save the result of each ZenDesk ticket to
-     * a file. This is useful if you wish to build a report from each ticket as
-     * opposed to the result of a prompt run against all the tickets.
-     */
-    public Optional<String> getConfigSaveIndividual() {
-        return configSaveIndividual;
     }
 
     public class LocalArguments {
@@ -789,31 +704,6 @@ class ZenDeskConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
-        }
-
-        public boolean getSaveIndividual() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigSaveIndividual()::get,
-                    arguments,
-                    context,
-                    ZenDeskOrganization.SAVE_INDIVIDUAL_ARG,
-                    "zendesk_saveindividual",
-                    "false").value();
-
-            return Try.of(() -> BooleanUtils.toBoolean(stringValue))
-                    .recover(throwable -> false)
-                    .get();
-        }
-
-        public String getContextFilterQuestion() {
-            return getArgsAccessor().getArgument(
-                            getConfigContextFilterQuestion()::get,
-                            arguments,
-                            context,
-                            ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_QUESTION_ARG,
-                            "zendesk_context_filter_question",
-                            "")
-                    .value();
         }
 
         public Integer getContextFilterMinimumRating() {
@@ -1015,20 +905,6 @@ class ZenDeskConfig {
                     context,
                     ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG,
                     "zendesk_filterbyorganization",
-                    "false").value();
-
-            return Try.of(() -> BooleanUtils.toBoolean(stringValue))
-                    .recover(throwable -> false)
-                    .get();
-        }
-
-        public boolean getZenDeskFilterByRecipient() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigZenDeskFilterByRecipient()::get,
-                    arguments,
-                    context,
-                    ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_BY_RECIPIENT_ARG,
-                    "zendesk_filterbyrecipient",
                     "false").value();
 
             return Try.of(() -> BooleanUtils.toBoolean(stringValue))

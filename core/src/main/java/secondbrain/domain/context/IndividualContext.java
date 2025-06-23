@@ -13,6 +13,8 @@ package secondbrain.domain.context;
  * RagDocumentContext only captures a string as the context. LLMs can only process strings, so
  * RagDocumentContext is the next step between the raw context captured by IndividualContext and the
  * final prompt sent to the LLM.
+ * <p>
+ * IndividualContext is not part of the public API. It is a convenience used as data is transformed.
  *
  * @param id      The external source ID
  * @param context The external source context.

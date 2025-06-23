@@ -11,6 +11,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jsoup.internal.StringUtil;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
@@ -25,10 +26,8 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tooldefs.MetaObjectResult;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
@@ -36,10 +35,7 @@ import secondbrain.infrastructure.zendesk.api.ZenDeskOrganizationItemResponse;
 import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -48,6 +44,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 @ApplicationScoped
 public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
+    public static final String ZENDESK_FILTER_RATING_META = "FilterRating";
     public static final String ZENDESK_TICKET_ID_ARG = "ticketId";
     public static final String ZENDESK_TICKET_SUBJECT_ARG = "ticketSubject";
     public static final String ZENDESK_URL_ARG = "zendeskUrl";
@@ -55,6 +52,9 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_TOKEN_ARG = "zendeskToken";
 
     private static final String INSTRUCTIONS = "You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.";
+
+    @Inject
+    private RatingTool ratingTool;
 
     @Inject
     private ModelConfig modelConfig;
@@ -122,6 +122,10 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
                         parsedArgs))
+                .map(ticket -> ticket.updateMetadata(
+                        getMetadata(ticket, environmentSettings, prompt, arguments)))
+                .map(ticket -> ticket.updateIntermediateResult(
+                        new IntermediateResult(ticket.document(), ticketToFileName(ticket))))
                 .map(List::of);
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
@@ -133,12 +137,42 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call ZenDesk API", ex)))
                 .get();
-
     }
 
-    @Override
-    public List<MetaObjectResult> getMetadata(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        return List.of();
+    private MetaObjectResults getMetadata(
+            final RagDocumentContext<ZenDeskTicket> ticket,
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        final List<MetaObjectResult> metadata = ticket.source() != null
+                ? new ArrayList<>(ticket.source().toMetaObjectResult())
+                : new ArrayList<>();
+
+        if (!StringUtil.isBlank(parsedArgs.getContextFilterQuestion())) {
+            final int filterRating = Try.of(() -> ratingTool.call(
+                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document()),
+                                    parsedArgs.getContextFilterQuestion(),
+                                    List.of())
+                            .combinedDocument())
+                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
+                    // Ratings are provided on a best effort basis, so we ignore any failures
+                    .recover(InternalFailure.class, ex -> 10)
+                    .get();
+
+            metadata.add(new MetaObjectResult(ZENDESK_FILTER_RATING_META, filterRating));
+        }
+
+        return new MetaObjectResults(metadata, ticketToMetaFileName(ticket), ticket.id());
+    }
+
+    private String ticketToMetaFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
+        return "ZenDesk-" + ticket.id() + ".json";
+    }
+
+    private String ticketToFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
+        return "ZenDesk-" + ticket.id() + ".md";
     }
 
     @Override
@@ -178,8 +212,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(),
-                                throwable -> new ExternalFailure("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
+                        API.Case(API.$(), throwable -> new ExternalFailure("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
                 .get();
     }
 
@@ -193,18 +226,39 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
      */
     private String ticketToLink(final String url, final ZenDeskTicket meta, final String authHeader) {
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> meta.subject().replaceAll("\\r\\n|\\r|\\n", " ") + " - "
-                        // Best effort to get the organization name, but don't treat this as a failure
-                        + Try.of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
-                        .map(ZenDeskOrganizationItemResponse::name)
-                        .getOrElse("Unknown Organization")
+                .of(client -> replaceLineBreaks(meta.subject())
                         + " - "
-                        // Best effort to get the username, but don't treat this as a failure
-                        + Try.of(() -> zenDeskClient.getUser(client, authHeader, url, meta.assignee_id()))
-                        .map(ZenDeskUserItemResponse::name)
-                        .getOrElse("Unknown User")
+                        + getOrganization(client, authHeader, url, meta)
+                        + " - "
+                        + getUser(client, authHeader, url, meta)
                         + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
                 .get();
+    }
+
+    private String replaceLineBreaks(final String text) {
+        if (StringUtils.isBlank(text)) {
+            return "";
+        }
+
+        return text.replaceAll("\\r\\n|\\r|\\n", " ");
+    }
+
+    private String getOrganization(final Client client, final String authHeader, final String url, final ZenDeskTicket meta) {
+        // Best effort to get the organization name, but don't treat this as a failure
+        return Try.of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
+                .map(ZenDeskOrganizationItemResponse::name)
+                .getOrElse("Unknown Organization");
+    }
+
+    private String getUser(final Client client, final String authHeader, final String url, final ZenDeskTicket meta) {
+        // Best effort to get the username, but don't treat this as a failure
+        return Try.of(() -> zenDeskClient.getUser(client, authHeader, url, meta.assignee_id()))
+                .map(ZenDeskUserItemResponse::name)
+                .getOrElse("Unknown User");
+    }
+
+    private String ticketToText(final IndividualContext<List<String>, ZenDeskTicket> comments) {
+        return comments.meta().subject() + "\n" + String.join("\n", comments.context());
     }
 
     @Nullable
@@ -232,7 +286,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         .map(RagDocumentContext::document)
                         .map(content -> promptBuilderSelector
                                 .getPromptBuilder(customModel)
-                                .buildContextPrompt("ZenDesk Ticket", content))
+                                .buildContextPrompt(getContextLabel(), content))
                         .collect(Collectors.joining("\n")),
                 context,
                 debug);
@@ -264,7 +318,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         new ZenDeskTicket(parsedArgs.getTicketId(), parsedArgs.getTicketSubject())))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
                 .map(comments -> getDocumentContext(
-                        comments.meta().subject() + "\n" + String.join("\n", comments.context()),   // The full context is the subject with the comments
+                        ticketToText(comments),
                         comments.id(),
                         comments.meta(),
                         authorization,
@@ -288,9 +342,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                 .map(sentences -> new RagDocumentContext<>(
                         contextLabel,
                         document,
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence))
-                                .collect(Collectors.toList()),
+                        sentenceVectorizer.vectorize(sentences),
                         id,
                         meta,
                         ticketToLink(parsedArgs.getUrl(), meta, authHeader)))
@@ -331,6 +383,14 @@ class ZenDeskTicketConfig {
     @Inject
     @ConfigProperty(name = "sb.zendesk.numcomments")
     private Optional<String> configZenDeskNumComments;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.contextFilterMinimumRating")
+    private Optional<String> configContextFilterMinimumRating;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -379,6 +439,14 @@ class ZenDeskTicketConfig {
 
     public Optional<String> getConfigZenDeskNumComments() {
         return configZenDeskNumComments;
+    }
+
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
+    }
+
+    public Optional<String> getConfigContextFilterMinimumRating() {
+        return configContextFilterMinimumRating;
     }
 
 
@@ -519,6 +587,29 @@ class ZenDeskTicketConfig {
                     // Must be at least 1
                     .map(i -> Math.max(1, i))
                     .get();
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_QUESTION_ARG,
+                            "zendesk_context_filter_question",
+                            "")
+                    .value();
+        }
+
+        public Integer getContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    "multislackzengoogle_context_filter_minimum_rating",
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
     }
 }

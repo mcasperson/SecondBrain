@@ -30,7 +30,6 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -157,11 +156,6 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
-        return List.of();
-    }
-
-    @Override
     public RagMultiDocumentContext<SlackSearchResultResource> call(
             final Map<String, String> environmentSettings,
             final String prompt,
@@ -202,9 +196,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                 .map(sentences -> new RagDocumentContext<>(
                         getContextLabel(),
                         meta.text(),
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
-                                .collect(Collectors.toList()),
+                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
                         meta.id(),
                         meta,
                         matchToUrl(meta)))

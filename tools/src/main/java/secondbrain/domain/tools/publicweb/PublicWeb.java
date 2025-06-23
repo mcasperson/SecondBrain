@@ -26,7 +26,6 @@ import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
-import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -141,11 +140,6 @@ public class PublicWeb implements Tool<Void> {
     }
 
     @Override
-    public List<MetaObjectResult> getMetadata(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
-        return List.of();
-    }
-
-    @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
@@ -204,9 +198,7 @@ public class PublicWeb implements Tool<Void> {
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
                         trimResult.document(),
-                        sentences.stream()
-                                .map(sentence -> sentenceVectorizer.vectorize(sentence, parsedArgs.getEntity()))
-                                .collect(Collectors.toList()),
+                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
                         null,
                         null,
                         null,

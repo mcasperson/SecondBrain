@@ -12,13 +12,15 @@ import java.util.stream.Stream;
  */
 @ApplicationScoped
 public class SimpleSentenceSplitter implements SentenceSplitter {
+    private static final String SENTENCE_SPLIT_REGEX = "\\r\\n|\\r|\\n|\\.\\s+|\\.$|;\\s+|;|!\\s+|!$|\\?\\s+|\\?$";
+
     @Override
     public List<String> splitDocument(final String document, final int minWords) {
         if (StringUtils.isBlank(document)) {
             return List.of();
         }
 
-        return Stream.of(document.split("\\r\\n|\\r|\\n|\\.\\s+|\\.$|;\\s+|;|!\\s+|!$|\\?\\s+|\\?$"))
+        return Stream.of(document.split(SENTENCE_SPLIT_REGEX))
                 .filter(sentence -> !sentence.isBlank())
                 .filter(sentence -> sentence.split("\\s+").length >= minWords)
                 .map(String::trim)
