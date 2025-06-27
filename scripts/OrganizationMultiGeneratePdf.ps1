@@ -175,6 +175,8 @@ if ($GenerateCompanyReports)
             "-Dsb.multislackzengoogle.metaField13=Tenants"
             "-Dsb.multislackzengoogle.metaPrompt14=Do the messages mention the use of ArgoCD?"
             "-Dsb.multislackzengoogle.metaField14=ArgoCD"
+            "-Dsb.multislackzengoogle.metaPrompt15=Do the messages mention the use of AI?"
+            "-Dsb.multislackzengoogle.metaField15=AI"
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
             -jar $using:jarFile
