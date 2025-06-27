@@ -14,6 +14,7 @@ public class PromptBuilderGemmaTest {
 
         assertTrue("hf.co/unsloth/gemma-3-27b-it-GGUF:Q4_K_M".matches(regex));
         assertTrue("gemma2".matches(regex));
+        assertTrue("gemma3n".matches(regex));
         assertTrue("gemma3".matches(regex));
         assertTrue("gemma3:27b".matches(regex));
         assertFalse("mistral".matches(regex));
