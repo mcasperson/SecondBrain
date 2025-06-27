@@ -327,7 +327,7 @@ def add_toc(pdf, script_dir, contents, companies):
             pdf.add_icon_if_threshold_met(script_dir, content['tenants'], 5, "tenants", 160)
             pdf.add_icon_if_threshold_met(script_dir, content['windows'], 5, "windows", 166)
             pdf.add_icon_if_threshold_met(script_dir, content['linux'], 5, "linux", 172)
-            pdf.add_icon_if_threshold_met(script_dir, content['ai'], 5, "ai", 180)
+            pdf.add_icon_if_threshold_met(script_dir, content['ai'], 5, "ai", 178)
 
         if len(high_activity_customers) != 0:
             high_activity_link = pdf.add_link()
