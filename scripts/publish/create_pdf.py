@@ -1,8 +1,9 @@
 import argparse
 import json
-import markdown2
 import os
 import re
+
+import markdown2
 from fpdf.enums import XPos, YPos, Align
 from fpdf.fpdf import FPDF
 
@@ -210,6 +211,7 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                         linux = extract_metadata_value(json_data, "Linux", 0)
                         tenants = extract_metadata_value(json_data, "Tenants", 0)
                         argocd = extract_metadata_value(json_data, "ArgoCD", 0)
+                        ai = extract_metadata_value(json_data, "AI", 0)
                         arr = parse_int(extract_metadata_value(json_data, "ARR (SFDC)"))
                         arr2 = parse_int(extract_metadata_value(json_data, "ARR Amount"))
                     except:
@@ -245,6 +247,7 @@ def get_companies(pdf, directory, company_prefix, executive_summary_prefix, aver
                  'linux': linux,
                  'tenants': tenants,
                  'argocd': argocd,
+                 'ai': ai,
                  'arr': arr,
                  'arr2': arr2})
 
@@ -266,6 +269,7 @@ def add_toc_categories(pdf, script_dir):
     pdf.add_legend_item(os.path.join(script_dir, "images/windows.png"), 'Windows')
     pdf.add_legend_item(os.path.join(script_dir, "images/tenants.png"), 'Tenants')
     pdf.add_legend_item(os.path.join(script_dir, "images/argocd.png"), 'ArgoCD')
+    pdf.add_legend_item(os.path.join(script_dir, "images/ai.png"), 'AI')
 
 
 def add_toc(pdf, script_dir, contents, companies):
@@ -311,18 +315,19 @@ def add_toc(pdf, script_dir, contents, companies):
 
             # Use the new function for each icon
             pdf.add_icon_if_threshold_met(script_dir, content['argocd'], 5, "argocd", 100)
-            pdf.add_icon_if_threshold_met(script_dir, content['aws'], 5, "aws", 108)
-            pdf.add_icon_if_threshold_met(script_dir, content['azure'], 5, "azure", 116)
-            pdf.add_icon_if_threshold_met(script_dir, content['costs'], 5, "costs", 124)
-            pdf.add_icon_if_threshold_met(script_dir, content['k8s'], 5, "k8s", 132)
-            pdf.add_icon_if_threshold_met(script_dir, content['github'], 5, "github", 140)
-            pdf.add_icon_if_threshold_met(script_dir, content['migration'], 5, "migration", 148)
-            pdf.add_icon_if_threshold_met(script_dir, content['terraform'], 5, "terraform", 156)
-            pdf.add_icon_if_threshold_met(script_dir, content['performance'], 5, "performance", 164)
-            pdf.add_icon_if_threshold_met(script_dir, content['security'], 5, "security", 172)
-            pdf.add_icon_if_threshold_met(script_dir, content['tenants'], 5, "tenants", 180)
-            pdf.add_icon_if_threshold_met(script_dir, content['windows'], 5, "windows", 188)
-            pdf.add_icon_if_threshold_met(script_dir, content['linux'], 5, "linux", 196)
+            pdf.add_icon_if_threshold_met(script_dir, content['aws'], 5, "aws", 106)
+            pdf.add_icon_if_threshold_met(script_dir, content['azure'], 5, "azure", 112)
+            pdf.add_icon_if_threshold_met(script_dir, content['costs'], 5, "costs", 118)
+            pdf.add_icon_if_threshold_met(script_dir, content['k8s'], 5, "k8s", 124)
+            pdf.add_icon_if_threshold_met(script_dir, content['github'], 5, "github", 130)
+            pdf.add_icon_if_threshold_met(script_dir, content['migration'], 5, "migration", 136)
+            pdf.add_icon_if_threshold_met(script_dir, content['terraform'], 5, "terraform", 142)
+            pdf.add_icon_if_threshold_met(script_dir, content['performance'], 5, "performance", 148)
+            pdf.add_icon_if_threshold_met(script_dir, content['security'], 5, "security", 154)
+            pdf.add_icon_if_threshold_met(script_dir, content['tenants'], 5, "tenants", 160)
+            pdf.add_icon_if_threshold_met(script_dir, content['windows'], 5, "windows", 166)
+            pdf.add_icon_if_threshold_met(script_dir, content['linux'], 5, "linux", 172)
+            pdf.add_icon_if_threshold_met(script_dir, content['ai'], 5, "ai", 178)
 
         if len(high_activity_customers) != 0:
             high_activity_link = pdf.add_link()
