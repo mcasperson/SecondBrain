@@ -119,6 +119,14 @@ inputs:
     description: 'The output format. Set markdn for Slack markdown, or leave blank for regular markdown.'
     required: false
     default: ''
+  directoryScankeywords:
+    description: 'Keywords to scan for in the source content.'
+    required: false
+    default: ''
+  directoryScanPathSpec:
+    description: 'An Ant pathspec used to select files during a directory scan.'
+    required: false
+    default: ''
 outputs:
   response:
     description: 'The LLM response'
@@ -159,5 +167,9 @@ runs:
     SB_SLACK_DAYS: "${{ inputs.slackDays }}"
     SB_SLACK_ACCESSTOKEN: "${{ inputs.slackAccessToken }}"
     SB_SLACK_EXCLUDEDORGS: "${{ inputs.slackExcludedOrgs }}"
+    SB_DIRECTORYSCAN_PATHSPEC: "${{ inputs.directoryScanPathSpec }}"
+    SB_DIRECTORYSCAN_KEYWORDS: "${{ inputs.directoryScankeywords }}"
+    SB_OLLAMA_FILEWINDOW: "8192"
+    SB_DIRECTORYSCAN_DIRECTORY: "${{ github.workspace }}"
 
 
