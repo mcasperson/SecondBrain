@@ -493,5 +493,14 @@ $SlackBody = $( rclone lsjson "gdrive:AI of Sauron/$PdfFileRelative" | jq -r $Jq
 # Post to Slack
 Invoke-RestMethod -Uri $SlackWebHook -Method Post -ContentType 'application/json' -Body $SlackBody
 
+# Commit the PDF
+cd /home/matthew/Code/AISauronZenDeskReports
+git pull
+cp $PdfFile /home/matthew/Code/AISauronZenDeskReports/pdfs
+git add .
+git commit -m "Add $PdfFile"
+git push
+
+
 
 
