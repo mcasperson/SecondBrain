@@ -119,7 +119,7 @@ inputs:
     description: 'The output format. Set markdn for Slack markdown, or leave blank for regular markdown.'
     required: false
     default: ''
-  directoryScankeywords:
+  directoryScanKeywords:
     description: 'Keywords to scan for in the source content.'
     required: false
     default: ''
