@@ -127,6 +127,10 @@ inputs:
     description: 'An Ant pathspec used to select files during a directory scan.'
     required: false
     default: ''
+  directoryScanDirectory:
+    description: 'The directory to scan.'
+    required: false
+    default: ''
 outputs:
   response:
     description: 'The LLM response'
@@ -170,6 +174,6 @@ runs:
     SB_DIRECTORYSCAN_PATHSPEC: "${{ inputs.directoryScanPathSpec }}"
     SB_DIRECTORYSCAN_KEYWORDS: "${{ inputs.directoryScankeywords }}"
     SB_OLLAMA_FILEWINDOW: "8192"
-    SB_DIRECTORYSCAN_DIRECTORY: "${{ github.workspace }}"
+    SB_DIRECTORYSCAN_DIRECTORY: "${{ inputs.directoryScanDirectory }}"
 
 
