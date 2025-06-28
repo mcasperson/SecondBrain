@@ -24,6 +24,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.files.PathSpec;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.limit.TrimResult;
@@ -60,6 +61,7 @@ public class DirectoryScan implements Tool<Void> {
     public static final String DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW = "keywordWindow";
     public static final String DIRECTORYSCAN_SUMMARIZE_KEYWORDS = "keywords";
     public static final String DIRECTORYSCAN_EXCLUDE_FILES = "excludeFiles";
+    public static final String DIRECTORYSCAN_PATHSPEC = "pathspec";
     public static final String DIRECTORYSCAN_FILE_CONTENT_WINDOW = "fileContextWindow";
     public static final String DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT = "individualDocumentPrompt";
     public static final String DIRECTORYSCAN_FILE_CUSTOM_MODEL = "fileCustomModel";
@@ -114,6 +116,8 @@ public class DirectoryScan implements Tool<Void> {
     private Logger logger;
     @Inject
     private DocumentTrimmer documentTrimmer;
+    @Inject
+    private PathSpec pathSpec;
 
     @Override
     public String getName() {
@@ -210,6 +214,8 @@ public class DirectoryScan implements Tool<Void> {
             return paths
                     .filter(Files::isRegularFile)
                     .filter(path -> parsedArgs.getExcluded() == null || !parsedArgs.getExcluded().contains(path.getFileName().toString()))
+                    .filter(path -> parsedArgs.getPathSpec() == null || parsedArgs.getPathSpec().stream()
+                            .anyMatch(spec -> pathSpec.matches(spec, path.getFileName().toString())))
                     .map(Path::toString)
                     .collect(Collectors.toList());
         }
@@ -364,6 +370,10 @@ class DirectoryScanConfig {
     private Optional<String> configExclude;
 
     @Inject
+    @ConfigProperty(name = "sb.directoryscan.pathspec")
+    private Optional<String> configPathSpec;
+
+    @Inject
     @ConfigProperty(name = "sb.directoryscan.individualdocumentprompt")
     private Optional<String> configDocumentPrompt;
 
@@ -410,6 +420,10 @@ class DirectoryScanConfig {
 
     public Optional<String> getConfigExclude() {
         return configExclude;
+    }
+
+    public Optional<String> getConfigPathSpec() {
+        return configPathSpec;
     }
 
     public Optional<String> getConfigDocumentPrompt() {
@@ -520,6 +534,20 @@ class DirectoryScanConfig {
                             context,
                             DirectoryScan.DIRECTORYSCAN_EXCLUDE_FILES,
                             "directoryscan_exclude_files",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
+
+        @Nullable
+        public List<String> getPathSpec() {
+            return getArgsAccessor().getArgumentList(
+                            getConfigPathSpec()::get,
+                            arguments,
+                            context,
+                            DirectoryScan.DIRECTORYSCAN_PATHSPEC,
+                            "directoryscan_pathspec",
                             "")
                     .stream()
                     .map(Argument::value)
