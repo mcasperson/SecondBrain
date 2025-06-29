@@ -206,7 +206,7 @@ public class DirectoryScan implements Tool<Void> {
                 .get();
     }
 
-    public List<String> getFiles(final DirectoryScanConfig.LocalArguments parsedArgs) {
+    private List<String> getFiles(final DirectoryScanConfig.LocalArguments parsedArgs) {
         return parsedArgs.getDirectory()
                 .stream()
                 .flatMap(pathname -> getFiles(pathname, parsedArgs).get().stream())
