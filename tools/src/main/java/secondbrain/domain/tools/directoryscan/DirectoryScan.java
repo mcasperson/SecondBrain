@@ -6,7 +6,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
@@ -36,7 +35,6 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -46,7 +44,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -154,7 +151,7 @@ public class DirectoryScan implements Tool<Void> {
 
         final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        if (StringUtils.isBlank(parsedArgs.getDirectory())) {
+        if (parsedArgs.getDirectory().isEmpty()) {
             throw new InternalFailure("You must provide a directory to scan");
         }
 
@@ -209,17 +206,23 @@ public class DirectoryScan implements Tool<Void> {
                 .get();
     }
 
-    public List<String> getFiles(final DirectoryScanConfig.LocalArguments parsedArgs) throws IOException {
-        try (final Stream<Path> paths = Files.walk(Paths.get(parsedArgs.getDirectory()))) {
-            return paths
-                    .filter(Files::isRegularFile)
-                    .filter(path -> parsedArgs.getExcluded() == null || !parsedArgs.getExcluded().contains(path.getFileName().toString()))
-                    .filter(path -> parsedArgs.getPathSpec() == null || parsedArgs.getPathSpec().stream()
-                            .anyMatch(spec -> pathSpec.matches(spec, path.getFileName().toString())))
-                    .map(Path::toString)
-                    .collect(Collectors.toList());
-        }
+    public List<String> getFiles(final DirectoryScanConfig.LocalArguments parsedArgs) {
+        return parsedArgs.getDirectory()
+                .stream()
+                .flatMap(pathname -> getFiles(pathname, parsedArgs).get().stream())
+                .toList();
     }
+
+    private Try<List<String>> getFiles(final String pathname, final DirectoryScanConfig.LocalArguments parsedArgs) {
+        return Try.withResources(() -> Files.walk(Paths.get(pathname)))
+                .of(paths -> paths.filter(Files::isRegularFile)
+                        .filter(path -> parsedArgs.getExcluded() == null || !parsedArgs.getExcluded().contains(path.getFileName().toString()))
+                        .filter(path -> parsedArgs.getPathSpec() == null || parsedArgs.getPathSpec().stream()
+                                .anyMatch(spec -> pathSpec.matches(spec, path.getFileName().toString())))
+                        .map(Path::toString)
+                        .collect(Collectors.toList()));
+    }
+
 
     private RagMultiDocumentContext<Void> mergeContext(
             final List<RagDocumentContext<Void>> ragContext,
@@ -471,14 +474,17 @@ class DirectoryScanConfig {
             this.context = context;
         }
 
-        public String getDirectory() {
-            return getArgsAccessor().getArgument(
-                    getConfigDirectory()::get,
-                    arguments,
-                    context,
-                    DirectoryScan.DIRECTORYSCAN_DIRECTORY,
-                    "directoryscan_directory",
-                    "").value();
+        public List<String> getDirectory() {
+            return getArgsAccessor().getArgumentList(
+                            getConfigDirectory()::get,
+                            arguments,
+                            context,
+                            DirectoryScan.DIRECTORYSCAN_DIRECTORY,
+                            "directoryscan_directory",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
         }
 
         public int getMaxFiles() {
