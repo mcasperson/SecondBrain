@@ -131,8 +131,8 @@ inputs:
     description: 'The directory to scan.'
     required: false
     default: ''
-  fileWindow:
-    description: 'The number of characters to extract around a keyword.'
+  fileContextWindow:
+    description: 'The context window used when summarising the content from an individual file.'
     required: false
     default: '8192'
 outputs:
@@ -177,7 +177,7 @@ runs:
     SB_SLACK_EXCLUDEDORGS: "${{ inputs.slackExcludedOrgs }}"
     SB_DIRECTORYSCAN_PATHSPEC: "${{ inputs.directoryScanPathSpec }}"
     SB_DIRECTORYSCAN_KEYWORDS: "${{ inputs.directoryScankeywords }}"
-    SB_OLLAMA_FILEWINDOW: "${{ inputs.fileWindow }}"
+    SB_OLLAMA_FILEWINDOW: "${{ inputs.fileContextWindow }}"
     SB_DIRECTORYSCAN_DIRECTORY: "${{ inputs.directoryScanDirectory }}"
 
 
