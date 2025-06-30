@@ -135,6 +135,10 @@ inputs:
     description: 'The context window used when summarising the content from an individual file.'
     required: false
     default: '8192'
+  directoryScanKeywordWindow:
+    description: 'The window of text to include around keywords when summarizing files.'
+    required: false
+    default: '4000'
 outputs:
   response:
     description: 'The LLM response'
@@ -179,5 +183,6 @@ runs:
     SB_DIRECTORYSCAN_KEYWORDS: "${{ inputs.directoryScankeywords }}"
     SB_OLLAMA_FILEWINDOW: "${{ inputs.fileContextWindow }}"
     SB_DIRECTORYSCAN_DIRECTORY: "${{ inputs.directoryScanDirectory }}"
+    SB_DIRECTORYSCAN_KEYWORDWINDOW: "${{ inputs.directoryScanKeywordWindow }}"
 
 
