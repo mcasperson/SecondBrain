@@ -13,6 +13,9 @@ import java.util.*;
 @ApplicationScoped
 public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
 
+    public static final int DEFAULT_LOOK_BEHIND_PERCENTAGE = 25;
+    public static final int DEFAULT_LOOK_AHEAD_PERCENTAGE = 75;
+
     @Override
     public TrimResult trimDocumentToKeywords(final String document, final List<String> keywords, final int sectionLength) {
         if (document == null || document.isEmpty()) {
@@ -147,9 +150,9 @@ record KeywordPositions(String keyword, List<Integer> positions) {
         return positions.stream()
                 .map(position -> new Section(
                         // Look back 25% of the width
-                        Math.max(0, position - (int) (width * 0.25)),
+                        Math.max(0, position - (int) (width * (DocumentTrimmerExactKeywords.DEFAULT_LOOK_BEHIND_PERCENTAGE / 100.0))),
                         // look forward 75% of the width. This assumes most of the content associated with a keyword is after the keyword
-                        Math.min(position + (int) (width * 0.75), documentLength),
+                        Math.min(position + (int) (width * (DocumentTrimmerExactKeywords.DEFAULT_LOOK_AHEAD_PERCENTAGE / 100.0)), documentLength),
                         Set.of(keyword)))
                 .toList();
     }
