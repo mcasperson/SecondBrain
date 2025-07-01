@@ -76,6 +76,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_DAYS_ARG = "days";
     public static final String MULTI_SLACK_ZEN_ENTITY_NAME_ARG = "entityName";
     public static final String MULTI_SLACK_ZEN_MAX_ENTITIES_ARG = "maxEntities";
+    public static final String MULTI_SLACK_ZEN_MAX_ANNOTATION_PREFIX_ARG = "annotationPrefix";
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG = "individualContextFilterQuestion";
@@ -253,8 +254,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragContext -> mergeContext(ragContext, modelConfig.getCalculatedModel(environmentSettings)))
+                .map(ragContext -> mergeContext(ragContext, modelConfig.getCalculatedModel(environmentSettings), parsedArgs))
                 .map(multiRagDoc -> multiRagDoc.updateDocument(
                         promptBuilderSelector
                                 .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
@@ -794,14 +797,16 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return result;
     }
 
-    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
+    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(ragDoc ->
                                 promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt(
                                         ragDoc.contextLabel(), ragDoc.document()))
                         .collect(Collectors.joining("\n")),
-                context);
+                context,
+                null,
+                parsedArgs.getAnnotationPrefix());
     }
 
     record PositionalEntity(Entity entity, int position, int total) {
@@ -903,6 +908,10 @@ class MultiSlackZenGoogleConfig {
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.keywordwindow")
     private Optional<String> configKeywordWindow;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.annotationPrefix")
+    private Optional<String> configAnnotationPrefix;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.contextFilterQuestion")
@@ -1296,6 +1305,10 @@ class MultiSlackZenGoogleConfig {
         return configIndividualContextFilterMinimumRating;
     }
 
+    public Optional<String> getConfigAnnotationPrefix() {
+        return configAnnotationPrefix;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -1316,6 +1329,16 @@ class MultiSlackZenGoogleConfig {
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_URL_ARG,
                     "multislackzengoogle_url",
+                    "").value();
+        }
+
+        public String getAnnotationPrefix() {
+            return getArgsAccessor().getArgument(
+                    getConfigAnnotationPrefix()::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_MAX_ANNOTATION_PREFIX_ARG,
+                    "multislackzengoogle_annotation_prefix",
                     "").value();
         }
 

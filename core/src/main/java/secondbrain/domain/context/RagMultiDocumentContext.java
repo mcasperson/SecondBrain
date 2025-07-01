@@ -22,13 +22,14 @@ import java.util.stream.Collectors;
  */
 public record RagMultiDocumentContext<T>(String combinedDocument,
                                          List<RagDocumentContext<T>> individualContexts,
-                                         String debug) {
+                                         String debug,
+                                         String annotationPrefix) {
     public RagMultiDocumentContext(final String combinedDocument) {
-        this(combinedDocument, List.of(), null);
+        this(combinedDocument, List.of(), null, "");
     }
 
     public RagMultiDocumentContext(final String combinedDocument, List<RagDocumentContext<T>> individualContexts) {
-        this(combinedDocument, individualContexts, null);
+        this(combinedDocument, individualContexts, null, "");
     }
 
     public String getCombinedDocument() {
@@ -51,7 +52,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument,
      * @return A new copy of this object with the new document
      */
     public RagMultiDocumentContext<T> updateDocument(final String document) {
-        return new RagMultiDocumentContext<T>(document, individualContexts, debug);
+        return new RagMultiDocumentContext<T>(document, individualContexts, debug, annotationPrefix);
     }
 
     public String getDocumentLeft(final int length) {
@@ -97,7 +98,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument,
                                 // update the document with the annotation index
                                 acc.replaceAll(
                                         Pattern.quote(entry.getContext()),
-                                        Matcher.quoteReplacement(entry.getContext() + " [" + (lookups.indexOf(entry.toRagSentence()) + 1) + "]")),
+                                        Matcher.quoteReplacement(entry.getContext() + " [" + annotationPrefix + (lookups.indexOf(entry.toRagSentence()) + 1) + "]")),
                         (acc1, acc2) -> acc1 + acc2)
                 .trim()
                 + getReferences(lookups);
@@ -124,7 +125,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument,
         final List<String> output = new ArrayList<>();
         for (int i = 0; i < lookups.size(); i++) {
             RagSentence lookup = lookups.get(i);
-            output.add("* [" + (i + 1) + "]: " + lookup.sentence() + (StringUtils.isBlank(lookup.id()) ? "" : " (" + lookup.id() + ")"));
+            output.add("* [" + annotationPrefix + (i + 1) + "]: " + lookup.sentence() + (StringUtils.isBlank(lookup.id()) ? "" : " (" + lookup.id() + ")"));
         }
         return String.join(System.lineSeparator(), output);
     }
