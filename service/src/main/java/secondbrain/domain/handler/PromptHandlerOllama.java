@@ -135,7 +135,12 @@ public class PromptHandlerOllama implements PromptHandler {
     }
 
     private PromptHandlerResponse generateAnnotatedResponse(final RagMultiDocumentContext<?> document, final float parsedMinSimilarity, final int parsedMinWords, final boolean argumentDebugging) {
-        final AnnotationResult<? extends RagMultiDocumentContext<?>> result = getAnnotations(document, parsedMinSimilarity, parsedMinWords);
+        final AnnotationResult<? extends RagMultiDocumentContext<?>> result = document.annotateDocumentContext(
+                parsedMinSimilarity,
+                parsedMinWords,
+                sentenceSplitter,
+                similarityCalculator,
+                sentenceVectorizer);
 
         return new PromptResponseSimple(result.annotatedContent(),
                 result.annotations(),
@@ -144,16 +149,7 @@ public class PromptHandlerOllama implements PromptHandler {
                 document.getMetaObjectResults(),
                 document.getIntermediateResults());
     }
-
-    private AnnotationResult<? extends RagMultiDocumentContext<?>> getAnnotations(final RagMultiDocumentContext<?> document, final float parsedMinSimilarity, final int parsedMinWords) {
-        return document.annotateDocumentContext(
-                parsedMinSimilarity,
-                parsedMinWords,
-                sentenceSplitter,
-                similarityCalculator,
-                sentenceVectorizer);
-    }
-
+    
     private String getLinks(final RagMultiDocumentContext<?> document) {
         if (document.getLinks().isEmpty()) {
             return "";
