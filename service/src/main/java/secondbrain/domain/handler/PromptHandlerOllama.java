@@ -140,10 +140,11 @@ public class PromptHandlerOllama implements PromptHandler {
                 getLinks(document),
                 getDebugLinks(document, Boolean.getBoolean(debug) || argumentDebugging));
 
-        final String annotatedResponse = response.annotationResult().result()
-                + response.links()
-                + response.debug()
-                + getAnnotationCoverage(response.annotationResult(), Boolean.getBoolean(debug) || argumentDebugging);
+        final String annotatedResponse = response.annotationResult().annotatedContent() +
+                response.annotationResult().annotations() +
+                response.links() +
+                response.debug() +
+                getAnnotationCoverage(response.annotationResult(), Boolean.getBoolean(debug) || argumentDebugging);
 
         return new PromptResponseSimple(annotatedResponse, document.getMetaObjectResults(), document.getIntermediateResults());
     }

@@ -32,6 +32,10 @@ public record RagMultiDocumentContext<T>(String combinedDocument,
         this(combinedDocument, individualContexts, null, "");
     }
 
+    public RagMultiDocumentContext(final String combinedDocument, List<RagDocumentContext<T>> individualContexts, final String debug) {
+        this(combinedDocument, individualContexts, debug, "");
+    }
+
     public String getCombinedDocument() {
         return Objects.requireNonNullElse(combinedDocument, "");
     }
@@ -100,12 +104,11 @@ public record RagMultiDocumentContext<T>(String combinedDocument,
                                         Pattern.quote(entry.getContext()),
                                         Matcher.quoteReplacement(entry.getContext() + " [" + annotationPrefix + (lookups.indexOf(entry.toRagSentence()) + 1) + "]")),
                         (acc1, acc2) -> acc1 + acc2)
-                .trim()
-                + getReferences(lookups);
+                .trim();
 
         final int annotationIds = annotations.stream().map(RagSentenceAndOriginal::id).collect(Collectors.toSet()).size();
 
-        return new AnnotationResult<>(result, (float) annotationIds / individualContexts.size(), this);
+        return new AnnotationResult<>(result, getReferences(lookups), (float) annotationIds / individualContexts.size(), this);
     }
 
     private String getReferences(final List<RagSentence> lookups) {
