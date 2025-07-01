@@ -93,7 +93,7 @@ public class Main {
         }
     }
 
-    private void writeOutput(final PromptHandlerResponse content) {
+    private void writeAnnotations(final PromptHandlerResponse content) {
         if (file.isEmpty()) {
             return;
         }
@@ -106,7 +106,7 @@ public class Main {
         }
     }
 
-    private void writeAnnotations(final PromptHandlerResponse content) {
+    private void writeOutput(final PromptHandlerResponse content) {
         if (annotationsFile.isEmpty()) {
             return;
         }
