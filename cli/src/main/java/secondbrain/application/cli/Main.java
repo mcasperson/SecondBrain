@@ -34,6 +34,14 @@ public class Main {
     @ConfigProperty(name = "sb.output.file")
     private Optional<String> file;
 
+    @Inject
+    @ConfigProperty(name = "sb.output.annotationsFile")
+    private Optional<String> annotationsFile;
+
+    @Inject
+    @ConfigProperty(name = "sb.output.printAnnotations", defaultValue = "true")
+    private Boolean printAnnotations;
+
     public static void main(final String[] args) {
         final Weld weld = new Weld();
         /*
@@ -59,13 +67,30 @@ public class Main {
         final boolean markdownParsing = args.length > 1 && "markdn".equals(args[1]);
         Try.of(() -> promptHandler.handlePrompt(Map.of(), getPrompt(args)))
                 .map(response -> markdownParsing
-                        ? response.updateResponseText(markdnParser.printMarkDn(response.getResponseText()))
+                        ? response.updateResponseText(markdnParser)
                         : response)
-                .onSuccess(response -> System.out.println(response.getResponseText()))
+                .onSuccess(this::printOutput)
+                .onSuccess(this::writeAnnotations)
                 .onSuccess(this::writeOutput)
                 .onSuccess(this::saveMetadata)
                 .onSuccess(this::saveIntermediateResults)
                 .onFailure(e -> System.err.println("Failed to process prompt: " + e.getMessage()));
+    }
+
+    private void printOutput(final PromptHandlerResponse content) {
+        System.out.println(content.getResponseText());
+
+        if (printAnnotations) {
+            if (StringUtils.isNotBlank(content.getAnnotations())) {
+                System.out.println(content.getAnnotations());
+            }
+            if (StringUtils.isNotBlank(content.getLinks())) {
+                System.out.println(content.getLinks());
+            }
+            if (StringUtils.isNotBlank(content.getDebugInfo())) {
+                System.out.println(content.getDebugInfo());
+            }
+        }
     }
 
     private void writeOutput(final PromptHandlerResponse content) {
@@ -73,7 +98,20 @@ public class Main {
             return;
         }
 
-        Try.run(() -> Files.write(Paths.get(file.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+        final String annotations = content.getAnnotations() + "\n\n" + content.getLinks() + "\n\n" + content.getDebugInfo();
+
+        if (StringUtils.isNotBlank(annotations)) {
+            Try.run(() -> Files.write(Paths.get(file.get()), annotations.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+                    .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
+        }
+    }
+
+    private void writeAnnotations(final PromptHandlerResponse content) {
+        if (annotationsFile.isEmpty()) {
+            return;
+        }
+
+        Try.run(() -> Files.write(Paths.get(annotationsFile.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                 .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
     }
 

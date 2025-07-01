@@ -1,5 +1,6 @@
 package secondbrain.domain.handler;
 
+import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.MetaObjectResults;
 
@@ -15,7 +16,13 @@ public interface PromptHandlerResponse {
 
     List<IntermediateResult> getIntermediateResults();
 
+    String getAnnotations();
+
+    String getLinks();
+
+    String getDebugInfo();
+
     String getResponseText();
 
-    PromptHandlerResponse updateResponseText(String responseText);
+    PromptHandlerResponse updateResponseText(StringConverter converter);
 }

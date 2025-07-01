@@ -135,18 +135,14 @@ public class PromptHandlerOllama implements PromptHandler {
     }
 
     private PromptHandlerResponse generateAnnotatedResponse(final RagMultiDocumentContext<?> document, final float parsedMinSimilarity, final int parsedMinWords, final boolean argumentDebugging) {
-        final PromptResponse response = new PromptResponse(
-                getAnnotations(document, parsedMinSimilarity, parsedMinWords),
+        final AnnotationResult<? extends RagMultiDocumentContext<?>> result = getAnnotations(document, parsedMinSimilarity, parsedMinWords);
+
+        return new PromptResponseSimple(result.annotatedContent(),
+                result.annotations(),
                 getLinks(document),
-                getDebugLinks(document, Boolean.getBoolean(debug) || argumentDebugging));
-
-        final String annotatedResponse = response.annotationResult().annotatedContent() +
-                response.annotationResult().annotations() +
-                response.links() +
-                response.debug() +
-                getAnnotationCoverage(response.annotationResult(), Boolean.getBoolean(debug) || argumentDebugging);
-
-        return new PromptResponseSimple(annotatedResponse, document.getMetaObjectResults(), document.getIntermediateResults());
+                getDebugLinks(document, Boolean.getBoolean(debug) || argumentDebugging),
+                document.getMetaObjectResults(),
+                document.getIntermediateResults());
     }
 
     private AnnotationResult<? extends RagMultiDocumentContext<?>> getAnnotations(final RagMultiDocumentContext<?> document, final float parsedMinSimilarity, final int parsedMinWords) {
@@ -193,25 +189,5 @@ public class PromptHandlerOllama implements PromptHandler {
 
         return System.lineSeparator() + System.lineSeparator() +
                 "Debug:" + System.lineSeparator() + document.debug();
-    }
-
-    private String getAnnotationCoverage(AnnotationResult<? extends RagMultiDocumentContext<?>> annotationResult, final boolean argumentDebugging) {
-        if (!argumentDebugging || annotationResult == null) {
-            return "";
-        }
-
-        return System.lineSeparator() + System.lineSeparator() +
-                "Annotation Coverage:" + annotationResult.annotationCoverage();
-    }
-
-    /**
-     * Captures all the output to display from a tool call
-     *
-     * @param annotationResult The result of annotating the response
-     * @param links            Link to the source content
-     * @param debug            Any debug information
-     */
-    private record PromptResponse(AnnotationResult<? extends RagMultiDocumentContext<?>> annotationResult, String links,
-                                  String debug) {
     }
 }
