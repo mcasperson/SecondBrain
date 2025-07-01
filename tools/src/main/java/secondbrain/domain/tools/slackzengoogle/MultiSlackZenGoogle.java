@@ -77,8 +77,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_ENTITY_NAME_ARG = "entityName";
     public static final String MULTI_SLACK_ZEN_MAX_ENTITIES_ARG = "maxEntities";
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
-    public static final String MULTI_SLACK_ZEN_META_REPORT_ARG = "metaReport";
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG = "individualContextFilterQuestion";
+    public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG = "individualContextFilterMinimumRating";
+    public static final String MULTI_SLACK_ZEN_META_REPORT_ARG = "metaReport";
     public static final String MULTI_SLACK_ZEN_META_FIELD_1_ARG = "contextMetaField1";
     public static final String MULTI_SLACK_ZEN_META_PROMPT_1_ARG = "contextMetaPrompt1";
     public static final String MULTI_SLACK_ZEN_META_FIELD_2_ARG = "contextMetaField2";
@@ -551,6 +553,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
+                // We filter here if there is a rating each individual content source must meet
+                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
@@ -578,6 +582,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
+                // We filter here if there is a rating each individual content source must meet
+                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
@@ -605,6 +611,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
+                // We filter here if there is a rating each individual content source must meet
+                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
@@ -627,6 +635,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
+                // We filter here if there is a rating each individual content source must meet
+                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
@@ -652,6 +662,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
+                // We filter here if there is a rating each individual content source must meet
+                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
@@ -679,6 +691,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
+                // We filter here if there is a rating each individual content source must meet
+                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
@@ -707,6 +721,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
+                // We filter here if there is a rating each individual content source must meet
+                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
@@ -724,6 +740,22 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         logger.info("The context rating for entity " + entityName + " (" + rating + ") did not meet the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
         return List.of();
+    }
+
+    private Integer getContextRating(final RagDocumentContext<Void> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        if (parsedArgs.getIndividualContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getIndividualContextFilterQuestion())) {
+            return 10;
+        }
+
+        return Try.of(() -> ratingTool.call(
+                        Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, context.document()),
+                        parsedArgs.getIndividualContextFilterQuestion(),
+                        List.of()).combinedDocument())
+                .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
+                // Ratings are provided on a best effort basis, so we ignore any failures
+                .recover(InternalFailure.class, ex -> 10)
+                .get();
+
     }
 
     private Integer getContextRating(final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
@@ -879,6 +911,14 @@ class MultiSlackZenGoogleConfig {
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.individualContextFilterQuestion")
+    private Optional<String> configIndividualContextFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.individualContextFilterMinimumRating")
+    private Optional<String> configIndividualContextFilterMinimumRating;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.metaPrompt1")
@@ -1248,6 +1288,14 @@ class MultiSlackZenGoogleConfig {
         return configMetaField20;
     }
 
+    public Optional<String> getConfigIndividualContextFilterQuestion() {
+        return configIndividualContextFilterQuestion;
+    }
+
+    public Optional<String> getConfigIndividualContextFilterMinimumRating() {
+        return configIndividualContextFilterMinimumRating;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -1379,6 +1427,29 @@ class MultiSlackZenGoogleConfig {
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    "multislackzengoogle_context_filter_minimum_rating",
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+        }
+
+        public String getIndividualContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigIndividualContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
+                            "multislackzengoogle_context_filter_question",
+                            "")
+                    .value();
+        }
+
+        public Integer getIndividualContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigIndividualContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "multislackzengoogle_context_filter_minimum_rating",
                     "0");
 
