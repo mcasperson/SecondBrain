@@ -23,15 +23,6 @@ public class PromptResponseSimple implements PromptHandlerResponse {
         this.links = links;
     }
 
-    public PromptResponseSimple(final String responseText, final List<MetaObjectResults> metaObjectResults) {
-        this.responseText = responseText;
-        this.metaObjectResults = metaObjectResults;
-        this.intermediateResults = List.of();
-        this.annotations = "";
-        this.debug = "";
-        this.links = "";
-    }
-
     public PromptResponseSimple(final String responseText) {
         this.responseText = responseText;
         this.metaObjectResults = List.of();
@@ -53,17 +44,17 @@ public class PromptResponseSimple implements PromptHandlerResponse {
 
     @Override
     public String getAnnotations() {
-        return "";
+        return annotations;
     }
 
     @Override
     public String getLinks() {
-        return "";
+        return links;
     }
 
     @Override
     public String getDebugInfo() {
-        return "";
+        return debug;
     }
 
     @Override
