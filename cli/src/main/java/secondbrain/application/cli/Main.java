@@ -94,24 +94,24 @@ public class Main {
     }
 
     private void writeAnnotations(final PromptHandlerResponse content) {
-        if (file.isEmpty()) {
+        if (annotationsFile.isEmpty()) {
             return;
         }
 
         final String annotations = content.getAnnotations() + "\n\n" + content.getLinks() + "\n\n" + content.getDebugInfo();
 
         if (StringUtils.isNotBlank(annotations)) {
-            Try.run(() -> Files.write(Paths.get(file.get()), annotations.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+            Try.run(() -> Files.write(Paths.get(annotationsFile.get()), annotations.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
         }
     }
 
     private void writeOutput(final PromptHandlerResponse content) {
-        if (annotationsFile.isEmpty()) {
+        if (file.isEmpty()) {
             return;
         }
 
-        Try.run(() -> Files.write(Paths.get(annotationsFile.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+        Try.run(() -> Files.write(Paths.get(file.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                 .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
     }
 
