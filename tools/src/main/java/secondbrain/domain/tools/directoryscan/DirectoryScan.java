@@ -53,7 +53,6 @@ import static com.google.common.base.Predicates.instanceOf;
  */
 @ApplicationScoped
 public class DirectoryScan implements Tool<Void> {
-    public static final String DIRECTORYSCAN_DISABLELINKS_ARG = "disableLinks";
     public static final String DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG = "summarizeIndividualFiles";
     public static final String DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW = "keywordWindow";
     public static final String DIRECTORYSCAN_SUMMARIZE_KEYWORDS = "keywords";
@@ -271,10 +270,6 @@ public class DirectoryScan implements Tool<Void> {
             return null;
         }
 
-        if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), trimResult.document(), List.of(), null, null, null, trimResult.keywordMatches());
-        }
-
         return new RagDocumentContext<>(
                 getContextLabel(),
                 trimResult.document(),
@@ -311,10 +306,6 @@ public class DirectoryScan implements Tool<Void> {
                 "File",
                 DigestUtils.sha256Hex(parsedArgs.getIndividualDocumentPrompt() + trimResult.document()),
                 () -> getFileSummaryLlm(trimResult.document(), parsedArgs));
-
-        if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), summary, List.of());
-        }
 
         return new RagDocumentContext<>(
                 getContextLabel(),
@@ -389,10 +380,6 @@ class DirectoryScanConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
-    @ConfigProperty(name = "sb.directoryscan.disablelinks")
-    private Optional<String> configDisableLinks;
-
-    @Inject
     @ConfigProperty(name = "sb.directoryscan.summarizeindividualfiles")
     private Optional<String> configSummarizeIndividualFiles;
 
@@ -439,10 +426,6 @@ class DirectoryScanConfig {
 
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
-    }
-
-    public Optional<String> getConfigDisableLinks() {
-        return configDisableLinks;
     }
 
     public Optional<String> getConfigSummarizeIndividualFiles() {
@@ -584,18 +567,6 @@ class DirectoryScanConfig {
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "").value();
 
             return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
-        }
-
-        public boolean getDisableLinks() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigDisableLinks()::get,
-                    arguments,
-                    context,
-                    DirectoryScan.DIRECTORYSCAN_DISABLELINKS_ARG,
-                    "directoryscan_disable_links",
-                    "false").value();
-
-            return BooleanUtils.toBoolean(stringValue);
         }
 
         public boolean getSummarizeIndividualFiles() {

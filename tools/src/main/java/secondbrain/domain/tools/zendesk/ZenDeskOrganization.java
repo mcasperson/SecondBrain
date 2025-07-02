@@ -59,7 +59,6 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
-    public static final String ZENDESK_DISABLELINKS_ARG = "disableLinks";
     public static final String ZENDESK_ORGANIZATION_ARG = "zenDeskOrganization";
     public static final String EXCLUDE_ORGANIZATION_ARG = "excludeOrganization";
     public static final String EXCLUDE_SUBMITTERS_ARG = "excludeSubmitters";
@@ -531,10 +530,6 @@ class ZenDeskConfig {
     private Optional<String> configZenDeskExcludedSubmitters;
 
     @Inject
-    @ConfigProperty(name = "sb.zendesk.disablelinks")
-    private Optional<String> configDisableLinks;
-
-    @Inject
     @ConfigProperty(name = "sb.zendesk.keywords")
     private Optional<String> configKeywords;
 
@@ -616,10 +611,6 @@ class ZenDeskConfig {
 
     public Optional<String> getConfigZenDeskExcludedSubmitters() {
         return configZenDeskExcludedSubmitters;
-    }
-
-    public Optional<String> getConfigDisableLinks() {
-        return configDisableLinks;
     }
 
     public Optional<String> getConfigKeywords() {
@@ -1036,18 +1027,6 @@ class ZenDeskConfig {
 
             // If both the first and second keywords were mentioned, we just have to trust the LLM
             return a;
-        }
-
-        public boolean getDisableLinks() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigDisableLinks()::get,
-                    arguments,
-                    context,
-                    ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG,
-                    "zendesk_disable_links",
-                    "false").value();
-
-            return BooleanUtils.toBoolean(stringValue);
         }
 
         public List<String> getKeywords() {

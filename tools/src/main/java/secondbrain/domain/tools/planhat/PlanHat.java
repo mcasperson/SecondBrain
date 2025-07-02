@@ -8,7 +8,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -54,7 +53,6 @@ public class PlanHat implements Tool<Conversation> {
     public static final String DAYS_ARG = "days";
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String COMPANY_ID_ARGS = "companyId";
-    public static final String DISABLE_LINKS_ARG = "disableLinks";
     public static final String PLANHAT_KEYWORD_ARG = "keywords";
     public static final String PLANHAT_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String PLANHAT_ENTITY_NAME_CONTEXT_ARG = "entityName";
@@ -230,12 +228,6 @@ public class PlanHat implements Tool<Conversation> {
 
         final String contextLabel = getContextLabel() + " " + trimmedConversationResult.getLeft().companyName() + " " + trimmedConversationResult.getLeft().date();
 
-        if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(
-                    contextLabel,
-                    trimmedConversationResult.getLeft().getContent(), List.of(), null, null, null, trimmedConversationResult.getRight());
-        }
-
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.getLeft().getContent(), 10))
                 .map(sentences -> new RagDocumentContext<Conversation>(
                         contextLabel,
@@ -295,10 +287,6 @@ class PlanHatConfig {
     private Optional<String> configSearchTtl;
 
     @Inject
-    @ConfigProperty(name = "sb.planhat.disablelinks")
-    private Optional<String> configDisableLinks;
-
-    @Inject
     private ValidateString validateString;
 
     @Inject
@@ -330,10 +318,6 @@ class PlanHatConfig {
 
     public Optional<String> getConfigSearchTtl() {
         return configSearchTtl;
-    }
-
-    public Optional<String> getConfigDisableLinks() {
-        return configDisableLinks;
     }
 
     public ValidateString getValidateString() {
@@ -444,18 +428,6 @@ class PlanHatConfig {
             return Try.of(argument::value)
                     .map(i -> Math.max(0, Integer.parseInt(i)))
                     .get();
-        }
-
-        public boolean getDisableLinks() {
-            final Argument argument = getArgsAccessor().getArgument(
-                    getConfigDisableLinks()::get,
-                    arguments,
-                    context,
-                    PlanHat.DISABLE_LINKS_ARG,
-                    "planhat_disablelinks",
-                    "false");
-
-            return BooleanUtils.toBoolean(argument.value());
         }
 
         public List<String> getKeywords() {

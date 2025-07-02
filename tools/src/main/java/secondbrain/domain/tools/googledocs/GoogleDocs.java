@@ -14,7 +14,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -61,7 +60,6 @@ public class GoogleDocs implements Tool<Void> {
     public static final String GOOGLE_DOC_ID_ARG = "googleDocumentId";
     public static final String GOOGLE_KEYWORD_ARG = "keywords";
     public static final String GOOGLE_KEYWORD_WINDOW_ARG = "keywordWindow";
-    public static final String GOOGLE_DISABLE_LINKS_ARG = "disableLinks";
     public static final String GOOGLE_ENTITY_NAME_CONTEXT_ARG = "entityName";
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
@@ -232,10 +230,6 @@ public class GoogleDocs implements Tool<Void> {
 
 
     private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final GoogleDocsConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), trimResult.document(), List.of());
-        }
-
         return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
@@ -337,10 +331,6 @@ class GoogleDocsConfig {
     private Optional<String> configGoogleServiceAccountJson;
 
     @Inject
-    @ConfigProperty(name = "sb.google.disablelinks")
-    private Optional<String> configDisableLinks;
-
-    @Inject
     @ConfigProperty(name = "sb.google.doc")
     private Optional<String> configGoogleDoc;
 
@@ -357,10 +347,6 @@ class GoogleDocsConfig {
 
     public Optional<String> getConfigGoogleServiceAccountJson() {
         return configGoogleServiceAccountJson;
-    }
-
-    public Optional<String> getConfigDisableLinks() {
-        return configDisableLinks;
     }
 
     public Optional<String> getConfigGoogleDoc() {
@@ -423,18 +409,6 @@ class GoogleDocsConfig {
 
         public String getGoogleServiceAccountJson() {
             return getConfigGoogleServiceAccountJson().get();
-        }
-
-        public boolean getDisableLinks() {
-            final Argument argument = getArgsAccessor().getArgument(
-                    getConfigDisableLinks()::get,
-                    arguments,
-                    context,
-                    GoogleDocs.GOOGLE_DISABLE_LINKS_ARG,
-                    "google_disable_links",
-                    "false");
-
-            return BooleanUtils.toBoolean(argument.value());
         }
 
         public String getEntity() {

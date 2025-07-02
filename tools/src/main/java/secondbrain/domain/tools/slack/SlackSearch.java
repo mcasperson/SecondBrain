@@ -50,7 +50,6 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     public static final String SLACK_SEARCH_DAYS_ARG = "days";
     public static final String SLACK_SEARCH_KEYWORDS_ARG = "searchKeywords";
     public static final String SLACK_SEARCH_FILTER_KEYWORDS_ARG = "keywords";
-    public static final String SLACK_SEARCH_DISABLELINKS_ARG = "disableLinks";
     public static final String SLACK_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
     private static final String INSTRUCTIONS = """
@@ -188,10 +187,6 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     }
 
     private RagDocumentContext<SlackSearchResultResource> getDocumentContext(final SlackSearchResultResource meta, final SlackSearchConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), meta.text(), List.of());
-        }
-
         return Try.of(() -> sentenceSplitter.splitDocument(meta.text(), 10))
                 .map(sentences -> new RagDocumentContext<>(
                         getContextLabel(),
@@ -276,10 +271,6 @@ class SlackSearchConfig {
     private Optional<String> configSearchTtl;
 
     @Inject
-    @ConfigProperty(name = "sb.slack.disablelinks")
-    private Optional<String> configDisableLinks;
-
-    @Inject
     @ConfigProperty(name = "sb.slack.apidelay")
     private Optional<String> configApiDelay;
 
@@ -325,10 +316,6 @@ class SlackSearchConfig {
 
     public Optional<String> getConfigSearchTtl() {
         return configSearchTtl;
-    }
-
-    public Optional<String> getConfigDisableLinks() {
-        return configDisableLinks;
     }
 
     public Optional<String> getConfigApiDelay() {
@@ -461,18 +448,6 @@ class SlackSearchConfig {
                     .map(StringUtils::trim)
                     .map(channel -> channel.replaceFirst("^#", ""))
                     .toList();
-        }
-
-        public boolean getDisableLinks() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigDisableLinks()::get,
-                    arguments,
-                    context,
-                    SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG,
-                    "slack_disable_links",
-                    "false").value();
-
-            return BooleanUtils.toBoolean(stringValue);
         }
 
         public int getKeywordWindow() {

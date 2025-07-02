@@ -53,7 +53,6 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String COMPANY_ARG = "company";
     public static final String CALLID_ARG = "callId";
     public static final String GONG_KEYWORD_ARG = "keywords";
-    public static final String GONG_DISABLELINKS_ARG = "disableLinks";
     public static final String GONG_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String GONG_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String GONG_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
@@ -153,12 +152,6 @@ public class Gong implements Tool<GongCallDetails> {
 
     private RagDocumentContext<GongCallDetails> getDocumentContext(final GongCallDetails call, final String transcript, final GongConfig.LocalArguments parsedArgs) {
         final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(transcript, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
-
-        if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(
-                    getContextLabel(),
-                    trimmedConversationResult.document(), List.of(), null, null, null, trimmedConversationResult.keywordMatches());
-        }
 
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<GongCallDetails>(
@@ -277,10 +270,6 @@ class GongConfig {
     private Optional<String> configCallId;
 
     @Inject
-    @ConfigProperty(name = "sb.gong.disablelinks")
-    private Optional<String> configDisableLinks;
-
-    @Inject
     @ConfigProperty(name = "sb.gong.keywords")
     private Optional<String> configKeywords;
 
@@ -327,10 +316,6 @@ class GongConfig {
 
     public Optional<String> getConfigCompany() {
         return configCompany;
-    }
-
-    public Optional<String> getConfigDisableLinks() {
-        return configDisableLinks;
     }
 
     public Optional<String> getConfigKeywords() {
@@ -449,18 +434,6 @@ class GongConfig {
                     // truncate to the day to increase the chances of getting a cache hit
                     .truncatedTo(ChronoUnit.DAYS)
                     .format(ISO_OFFSET_DATE_TIME);
-        }
-
-        public boolean getDisableLinks() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigDisableLinks()::get,
-                    arguments,
-                    context,
-                    Gong.GONG_DISABLELINKS_ARG,
-                    "gong_disable_links",
-                    "false").value();
-
-            return BooleanUtils.toBoolean(stringValue);
         }
 
         public List<String> getKeywords() {

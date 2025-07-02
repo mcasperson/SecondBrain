@@ -8,7 +8,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -69,7 +68,6 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
  */
 @ApplicationScoped
 public class MultiSlackZenGoogle implements Tool<Void> {
-    public static final String MULTI_SLACK_ZEN_GOOGLE_DISABLELINKS = "disableLinks";
     public static final String MULTI_SLACK_ZEN_KEYWORD_ARG = "keywords";
     public static final String MULTI_SLACK_ZEN_WINDOW_ARG = "keywordWindow";
     public static final String MULTI_SLACK_ZEN_URL_ARG = "url";
@@ -539,8 +537,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .of(() -> List.of(
                         new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + parsedArgs.getDays(), true),
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(
                         addItemToMap(context, SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
@@ -567,7 +564,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(Gong.GONG_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true),
                         new ToolArgs(Gong.GONG_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(Gong.GONG_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Gong.COMPANY_ARG, id, true),
@@ -596,7 +592,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(PlanHat.DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true),
                         new ToolArgs(PlanHat.PLANHAT_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(PlanHat.PLANHAT_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
@@ -651,8 +646,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
                         new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
-                        new ToolArgs(GoogleDocs.GOOGLE_DISABLE_LINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
+                        new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(
                                 addItemToMap(context, GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
                                 prompt,
@@ -679,8 +673,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
                         new ToolArgs(SlackChannel.SLACK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(SlackChannel.SLACK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
-                        new ToolArgs(SlackChannel.DAYS_ARG, "" + parsedArgs.getDays(), true),
-                        new ToolArgs(SlackChannel.SLACK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
+                        new ToolArgs(SlackChannel.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(
                                 addItemToMap(context, SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
@@ -709,8 +702,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
-                        new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + parsedArgs.getDays(), true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_DISABLELINKS_ARG, parsedArgs.getDisableLinks().toString(), true)))
+                        new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(
                                 addItemToMap(context, ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
                                 prompt,
@@ -896,10 +888,6 @@ class MultiSlackZenGoogleConfig {
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.minTimeBasedContext")
     private Optional<String> configSlackZenGoogleMinTimeBasedContext;
-
-    @Inject
-    @ConfigProperty(name = "sb.multislackzengoogle.disablelinks")
-    private Optional<String> configDisableLinks;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.keywords")
@@ -1107,10 +1095,6 @@ class MultiSlackZenGoogleConfig {
 
     public Optional<String> getConfigSlackZenGoogleMinTimeBasedContext() {
         return configSlackZenGoogleMinTimeBasedContext;
-    }
-
-    public Optional<String> getConfigDisableLinks() {
-        return configDisableLinks;
     }
 
     public Optional<String> getConfigKeywords() {
@@ -1396,18 +1380,6 @@ class MultiSlackZenGoogleConfig {
                     "1").value();
 
             return NumberUtils.toInt(stringValue, 1);
-        }
-
-        public Boolean getDisableLinks() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigDisableLinks()::get,
-                    arguments,
-                    context,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_GOOGLE_DISABLELINKS,
-                    "multislackzengoogle_disable_links",
-                    "false").value();
-
-            return BooleanUtils.toBoolean(stringValue);
         }
 
         public String getKeywords() {

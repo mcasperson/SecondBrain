@@ -6,7 +6,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang.math.NumberUtils;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -46,7 +45,6 @@ import static com.google.common.base.Predicates.instanceOf;
 public class PublicWeb implements Tool<Void> {
 
     public static final String PUBLICWEB_URL_ARG = "url";
-    public static final String PUBLICWEB_DISABLELINKS_ARG = "disableLinks";
     public static final String PUBLICWEB_KEYWORD_ARG = "keywords";
     public static final String PUBLICWEB_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String PUBLICWEB_ENTITY_NAME_CONTEXT_ARG = "entityName";
@@ -190,10 +188,6 @@ public class PublicWeb implements Tool<Void> {
     }
 
     private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final PublicWebConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), trimResult.document(), List.of(), null, null, null, trimResult.keywordMatches());
-        }
-
         return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<Void>(
                         getContextLabel(),
@@ -216,10 +210,6 @@ class PublicWebConfig {
     private Optional<String> configUrl;
 
     @Inject
-    @ConfigProperty(name = "sb.publicweb.disablelinks")
-    private Optional<String> configDisableLinks;
-
-    @Inject
     @ConfigProperty(name = "sb.publicweb.keywords")
     private Optional<String> configKeywords;
 
@@ -232,10 +222,6 @@ class PublicWebConfig {
 
     public Optional<String> getConfigUrl() {
         return configUrl;
-    }
-
-    public Optional<String> getConfigDisableLinks() {
-        return configDisableLinks;
     }
 
     public Optional<String> getConfigKeywords() {
@@ -271,18 +257,6 @@ class PublicWebConfig {
                     PublicWeb.PUBLICWEB_URL_ARG,
                     "publicweb_url",
                     "").value();
-        }
-
-        public boolean getDisableLinks() {
-            final Argument argument = getArgsAccessor().getArgument(
-                    getConfigDisableLinks()::get,
-                    arguments,
-                    context,
-                    PublicWeb.PUBLICWEB_DISABLELINKS_ARG,
-                    "publicweb_disable_links",
-                    "");
-
-            return BooleanUtils.toBoolean(argument.value());
         }
 
         public List<String> getKeywords() {

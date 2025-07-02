@@ -7,7 +7,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.collections4.ListUtils;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -253,10 +252,6 @@ class PlanHatUsageConfig {
     private Optional<String> configSearchTtl;
 
     @Inject
-    @ConfigProperty(name = "sb.planhat.disablelinks")
-    private Optional<String> configDisableLinks;
-
-    @Inject
     @ConfigProperty(name = "sb.planhat.custom1")
     private Optional<String> configCustom1;
 
@@ -324,10 +319,6 @@ class PlanHatUsageConfig {
 
     public Optional<String> getConfigSearchTtl() {
         return configSearchTtl;
-    }
-
-    public Optional<String> getConfigDisableLinks() {
-        return configDisableLinks;
     }
 
     public ValidateString getValidateString() {
@@ -465,18 +456,6 @@ class PlanHatUsageConfig {
             return Try.of(argument::value)
                     .map(i -> Math.max(0, Integer.parseInt(i)))
                     .get();
-        }
-
-        public boolean getDisableLinks() {
-            final Argument argument = getArgsAccessor().getArgument(
-                    getConfigDisableLinks()::get,
-                    arguments,
-                    context,
-                    PlanHat.DISABLE_LINKS_ARG,
-                    "planhat_usage_disablelinks",
-                    "false");
-
-            return BooleanUtils.toBoolean(argument.value());
         }
 
         public String getCustom1() {

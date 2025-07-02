@@ -9,7 +9,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang.math.NumberUtils;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -54,7 +53,6 @@ import static com.google.common.base.Predicates.instanceOf;
 public class SlackChannel implements Tool<Void> {
     public static final String SLACK_CHANEL_ARG = "slackChannel";
     public static final String DAYS_ARG = "days";
-    public static final String SLACK_DISABLELINKS_ARG = "disableLinks";
     public static final String SLACK_KEYWORD_ARG = "keywords";
     public static final String SLACK_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String SLACK_ENTITY_NAME_CONTEXT_ARG = "entityName";
@@ -226,10 +224,6 @@ public class SlackChannel implements Tool<Void> {
     }
 
     private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final SlackChannelResource channelDetails, final SlackChannelConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getDisableLinks()) {
-            return new RagDocumentContext<>(getContextLabel(), trimResult.document(), List.of());
-        }
-
         return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 // Strip out any URLs from the sentences
                 .map(sentences -> sentences.stream().map(sentence -> removeMarkdnUrls.sanitize(sentence)).toList())
@@ -337,10 +331,6 @@ class SlackChannelConfig {
     private Optional<String> configHistoryttl;
 
     @Inject
-    @ConfigProperty(name = "sb.slack.disablelinks")
-    private Optional<String> configDisableLinks;
-
-    @Inject
     @ConfigProperty(name = "sb.slack.keywords")
     private Optional<String> configKeywords;
 
@@ -372,10 +362,6 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigHistoryttl() {
         return configHistoryttl;
-    }
-
-    public Optional<String> getConfigDisableLinks() {
-        return configDisableLinks;
     }
 
     public Optional<String> getConfigKeywords() {
@@ -471,18 +457,6 @@ class SlackChannelConfig {
             return Try.of(() -> stringValue)
                     .map(i -> Math.max(0, NumberUtils.toInt(i, DEFAULT_API_DELAY)))
                     .get();
-        }
-
-        public boolean getDisableLinks() {
-            final Argument argument = getArgsAccessor().getArgument(
-                    getConfigDisableLinks()::get,
-                    arguments,
-                    context,
-                    SlackChannel.SLACK_DISABLELINKS_ARG,
-                    "slack_disable_links",
-                    "false");
-
-            return BooleanUtils.toBoolean(argument.value());
         }
 
         public List<String> getKeywords() {

@@ -15,7 +15,6 @@ import secondbrain.domain.tooldefs.ToolCall;
 
 import java.util.Comparator;
 import java.util.Map;
-import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,11 +35,15 @@ public class PromptHandlerOllama implements PromptHandler {
 
     @Inject
     @ConfigProperty(name = "sb.tools.debug", defaultValue = "false")
-    private String debug;
+    private Boolean debug;
 
     @Inject
-    @ConfigProperty(name = "sb.disablelinks")
-    private Optional<String> disableLinks;
+    @ConfigProperty(name = "sb.output.disableAnnotations", defaultValue = "false")
+    private Boolean disableAnnotations;
+
+    @Inject
+    @ConfigProperty(name = "sb.output.disableLinks", defaultValue = "false")
+    private Boolean disableLinks;
 
     @Inject
     private SimilarityCalculator similarityCalculator;
@@ -142,14 +145,15 @@ public class PromptHandlerOllama implements PromptHandler {
                 similarityCalculator,
                 sentenceVectorizer);
 
-        return new PromptResponseSimple(result.annotatedContent(),
-                result.annotations(),
-                getLinks(document),
-                getDebugLinks(document, Boolean.getBoolean(debug) || argumentDebugging),
+        return new PromptResponseSimple(
+                disableAnnotations ? document.combinedDocument() : result.annotatedContent(),
+                disableAnnotations ? "" : result.annotations(),
+                disableLinks ? "" : getLinks(document),
+                debug ? getDebugLinks(document) : "",
                 document.getMetaObjectResults(),
                 document.getIntermediateResults());
     }
-    
+
     private String getLinks(final RagMultiDocumentContext<?> document) {
         if (document.getLinks().isEmpty()) {
             return "";
@@ -178,8 +182,8 @@ public class PromptHandlerOllama implements PromptHandler {
         return CollectionUtils.isEmpty(ragDoc.keywordMatches()) ? "" : " (Keywords: " + String.join(", ", ragDoc.keywordMatches()) + ")";
     }
 
-    private String getDebugLinks(final RagMultiDocumentContext<?> document, final boolean argumentDebugging) {
-        if (!argumentDebugging || StringUtils.isBlank(document.debug())) {
+    private String getDebugLinks(final RagMultiDocumentContext<?> document) {
+        if (StringUtils.isBlank(document.debug())) {
             return "";
         }
 
