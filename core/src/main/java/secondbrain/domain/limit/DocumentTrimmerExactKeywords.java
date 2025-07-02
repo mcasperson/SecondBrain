@@ -1,7 +1,9 @@
 package secondbrain.domain.limit;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.*;
 
@@ -15,6 +17,10 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
 
     public static final int DEFAULT_LOOK_BEHIND_PERCENTAGE = 25;
     public static final int DEFAULT_LOOK_AHEAD_PERCENTAGE = 75;
+
+    @Inject
+    @ConfigProperty(name = "sb.trimmer.allowPartialMatches", defaultValue = "false")
+    private Boolean allowPartialMatches;
 
     @Override
     public TrimResult trimDocumentToKeywords(final String document, final List<String> keywords, final int sectionLength) {
@@ -137,6 +143,11 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
     }
 
     public boolean isWholeWord(final String document, final String keyword, final int position) {
+        // This check is disabled if allowPartialMatches is true.
+        if (allowPartialMatches) {
+            return true;
+        }
+
         if (!(position <= 0 || !StringUtils.isAlphanumeric(document.substring(position - 1, position)))) {
             return false;
         }
