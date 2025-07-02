@@ -39,6 +39,14 @@ public class Main {
     private Optional<String> annotationsFile;
 
     @Inject
+    @ConfigProperty(name = "sb.output.linksFile")
+    private Optional<String> linksFile;
+
+    @Inject
+    @ConfigProperty(name = "sb.output.debugFile")
+    private Optional<String> debugFile;
+
+    @Inject
     @ConfigProperty(name = "sb.output.printAnnotations", defaultValue = "true")
     private Boolean printAnnotations;
 
@@ -71,6 +79,8 @@ public class Main {
                         : response)
                 .onSuccess(this::printOutput)
                 .onSuccess(this::writeAnnotations)
+                .onSuccess(this::writeLinks)
+                .onSuccess(this::writeDebug)
                 .onSuccess(this::writeOutput)
                 .onSuccess(this::saveMetadata)
                 .onSuccess(this::saveIntermediateResults)
@@ -98,10 +108,32 @@ public class Main {
             return;
         }
 
-        final String annotations = content.getAnnotations() + content.getLinks() + content.getDebugInfo();
+        final String annotations = content.getAnnotations() + content.getDebugInfo();
 
         if (StringUtils.isNotBlank(annotations)) {
             Try.run(() -> Files.write(Paths.get(annotationsFile.get()), annotations.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+                    .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
+        }
+    }
+
+    private void writeLinks(final PromptHandlerResponse content) {
+        if (linksFile.isEmpty()) {
+            return;
+        }
+
+        if (StringUtils.isNotBlank(content.getLinks())) {
+            Try.run(() -> Files.write(Paths.get(linksFile.get()), content.getLinks().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+                    .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
+        }
+    }
+
+    private void writeDebug(final PromptHandlerResponse content) {
+        if (debugFile.isEmpty()) {
+            return;
+        }
+
+        if (StringUtils.isNotBlank(content.getDebugInfo())) {
+            Try.run(() -> Files.write(Paths.get(debugFile.get()), content.getDebugInfo().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
         }
     }
