@@ -98,7 +98,7 @@ public class Main {
             return;
         }
 
-        final String annotations = content.getAnnotations() + "\n\n" + content.getLinks() + "\n\n" + content.getDebugInfo();
+        final String annotations = content.getAnnotations() + content.getLinks() + content.getDebugInfo();
 
         if (StringUtils.isNotBlank(annotations)) {
             Try.run(() -> Files.write(Paths.get(annotationsFile.get()), annotations.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
