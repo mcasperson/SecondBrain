@@ -56,6 +56,7 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String GONG_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String GONG_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String GONG_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
+    public static final String GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG = "summarizeTranscriptPrompt";
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of call transcripts from Gong.
@@ -139,7 +140,7 @@ public class Gong implements Tool<GongCallDetails> {
                             raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
                             call transcripts.
                          */
-                        .map(transcripts -> parsedArgs.getSummarizeTranscript() ? summariseCalls(transcripts, environmentSettings) : transcripts)
+                        .map(transcripts -> parsedArgs.getSummarizeTranscript() ? summariseCalls(transcripts, environmentSettings, parsedArgs) : transcripts)
                         .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                         .get())
                 .get();
@@ -220,23 +221,23 @@ public class Gong implements Tool<GongCallDetails> {
     /**
      * Summarise the calls by passing them through the LLM
      */
-    private List<Pair<GongCallDetails, String>> summariseCalls(final List<Pair<GongCallDetails, String>> tickets, final Map<String, String> context) {
+    private List<Pair<GongCallDetails, String>> summariseCalls(final List<Pair<GongCallDetails, String>> tickets, final Map<String, String> context, final GongConfig.LocalArguments parsedArgs) {
         return tickets.stream()
-                .map(pair -> Pair.of(pair.getLeft(), getCallSummary(pair.getRight(), context)))
+                .map(pair -> Pair.of(pair.getLeft(), getCallSummary(pair.getRight(), context, parsedArgs)))
                 .collect(Collectors.toList());
     }
 
     /**
      * Summarise an individual ticket
      */
-    private String getCallSummary(final String transcript, final Map<String, String> environmentSettings) {
+    private String getCallSummary(final String transcript, final Map<String, String> environmentSettings, final GongConfig.LocalArguments parsedArgs) {
         final String ticketContext = promptBuilderSelector
                 .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                 .buildContextPrompt("Gong Transcript", transcript);
 
         final String prompt = promptBuilderSelector
                 .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildFinalPrompt("You are a helpful agent", ticketContext, "Summarise the Gong call transcript in three paragraphs");
+                .buildFinalPrompt("You are a helpful agent", ticketContext, parsedArgs.getTranscriptSummaryPrompt());
 
         return ollamaClient.callOllamaWithCache(
                 new RagMultiDocumentContext<>(prompt),
@@ -280,6 +281,10 @@ class GongConfig {
     @Inject
     @ConfigProperty(name = "sb.gong.summarizetranscript", defaultValue = "false")
     private Optional<String> configSummarizeTranscript;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.summarizetranscriptprompt", defaultValue = "false")
+    private Optional<String> configSummarizeTranscriptPrompt;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -332,6 +337,10 @@ class GongConfig {
 
     public Optional<String> getConfigSummarizeTranscript() {
         return configSummarizeTranscript;
+    }
+
+    public Optional<String> getConfigSummarizeTranscriptPrompt() {
+        return configSummarizeTranscriptPrompt;
     }
 
     public class LocalArguments {
@@ -481,6 +490,18 @@ class GongConfig {
                     "").value();
 
             return BooleanUtils.toBoolean(value);
+        }
+
+        public String getTranscriptSummaryPrompt() {
+            return getArgsAccessor()
+                    .getArgument(
+                            getConfigSummarizeTranscriptPrompt()::get,
+                            arguments,
+                            context,
+                            Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
+                            "gong_transcript_summary_prompt",
+                            "Summarise the Gong call transcript in three paragraphs")
+                    .value();
         }
     }
 }

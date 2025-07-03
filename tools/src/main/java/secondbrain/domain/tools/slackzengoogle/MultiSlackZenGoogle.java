@@ -79,6 +79,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG = "individualContextFilterQuestion";
     public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG = "individualContextFilterMinimumRating";
+    public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_SUMMARY_PROMPT_ARG = "individualContextSummaryPrompt";
     public static final String MULTI_SLACK_ZEN_META_REPORT_ARG = "metaReport";
     public static final String MULTI_SLACK_ZEN_META_FIELD_1_ARG = "contextMetaField1";
     public static final String MULTI_SLACK_ZEN_META_PROMPT_1_ARG = "contextMetaPrompt1";
@@ -564,6 +565,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(Gong.GONG_SUMMARIZE_TRANSCRIPT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(Gong.GONG_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(Gong.GONG_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Gong.COMPANY_ARG, id, true),
@@ -699,6 +702,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_TICKET_SUMMARY_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
@@ -916,6 +920,10 @@ class MultiSlackZenGoogleConfig {
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.individualContextFilterMinimumRating")
     private Optional<String> configIndividualContextFilterMinimumRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.individualContextSummaryPrompt")
+    private Optional<String> configIndividualContextSummaryPrompt;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.metaPrompt1")
@@ -1293,6 +1301,10 @@ class MultiSlackZenGoogleConfig {
         return configAnnotationPrefix;
     }
 
+    public Optional<String> getConfigIndividualContextSummaryPrompt() {
+        return configIndividualContextSummaryPrompt;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -1426,6 +1438,17 @@ class MultiSlackZenGoogleConfig {
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+        }
+
+        public String getIndividualContextSummaryPrompt() {
+            return getArgsAccessor().getArgument(
+                            getConfigIndividualContextSummaryPrompt()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_SUMMARY_PROMPT_ARG,
+                            "multislackzengoogle_context_summary_prompt",
+                            "")
+                    .value();
         }
 
         public String getIndividualContextFilterQuestion() {
