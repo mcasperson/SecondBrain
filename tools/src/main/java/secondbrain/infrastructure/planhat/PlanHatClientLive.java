@@ -1,5 +1,6 @@
 package secondbrain.infrastructure.planhat;
 
+import com.google.common.util.concurrent.RateLimiter;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -9,8 +10,6 @@ import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
-import secondbrain.domain.concurrency.SemaphoreLender;
-import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.planhat.api.Company;
@@ -22,7 +21,7 @@ import java.util.List;
 
 @ApplicationScoped
 public class PlanHatClientLive implements PlanHatClient {
-    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(0.5);
 
     @Inject
     private ResponseValidation responseValidation;
@@ -68,6 +67,8 @@ public class PlanHatClientLive implements PlanHatClient {
 
     @Retry
     private Conversation[] getConversationsApi(final Client client, final String company, final String url, final String token) {
+        RATE_LIMITER.acquire();
+
         final String target = url + "/conversations";
 
         // https://docs.planhat.com/#get_conversation_list
@@ -75,12 +76,12 @@ public class PlanHatClientLive implements PlanHatClient {
                 ? client.target(target).queryParam("cId", company).queryParam("limit", 2000)
                 : client.target(target).queryParam("limit", 2000);
 
-        return Try.withResources(() -> SEMAPHORE_LENDER.lend(webTarget
+        return Try.withResources(() -> webTarget
                         .request()
                         .header("Authorization", "Bearer " + token)
                         .header("Accept", MediaType.APPLICATION_JSON)
-                        .get()))
-                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(Conversation[].class))
                         .get())
                 .get();
@@ -88,14 +89,16 @@ public class PlanHatClientLive implements PlanHatClient {
 
     @Retry
     private Company getCompanyApi(final Client client, final String company, final String url, final String token) {
+        RATE_LIMITER.acquire();
+
         final String target = url + "/companies/" + URLEncoder.encode(company, Charset.defaultCharset());
 
-        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", "Bearer " + token)
                         .header("Accept", MediaType.APPLICATION_JSON)
-                        .get()))
-                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(Company.class))
                         .get())
                 .get();
