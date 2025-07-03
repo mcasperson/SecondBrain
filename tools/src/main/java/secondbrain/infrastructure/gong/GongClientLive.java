@@ -107,14 +107,14 @@ public class GongClientLive implements GongClient {
             final String cursor) {
         RATE_LIMITER.acquire();
 
-        final String target = url + "/v2/calls/extensive?cursor=" + StringUtils.defaultString(cursor);
+        final String target = url + "/v2/calls/extensive";
 
         final List<String> callIds = StringUtils.isBlank(callId) ? null : List.of(callId);
 
         final GongCallExtensiveQuery body = new GongCallExtensiveQuery(
                 new GongCallExtensiveQueryFiler(fromDateTime, toDateTime, null, callIds),
                 new GongCallExtensiveQueryContentSelector("Extended", List.of("Now", "TimeOfCall")),
-                null
+                cursor
         );
 
         return Try.withResources(() -> client.target(target)
