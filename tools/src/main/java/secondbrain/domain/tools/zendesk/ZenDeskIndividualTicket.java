@@ -47,6 +47,8 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_FILTER_RATING_META = "FilterRating";
     public static final String ZENDESK_TICKET_ID_ARG = "ticketId";
     public static final String ZENDESK_TICKET_SUBJECT_ARG = "ticketSubject";
+    public static final String ZENDESK_TICKET_SUBMITTER_ARG = "ticketSubmitter";
+    public static final String ZENDESK_TICKET_ORGANIZATION_ARG = "ticketOrganization";
     public static final String ZENDESK_URL_ARG = "zendeskUrl";
     public static final String ZENDESK_EMAIL_ARG = "zendeskEmail";
     public static final String ZENDESK_TOKEN_ARG = "zendeskToken";
@@ -315,7 +317,12 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                         parsedArgs.getTicketId(),
                                         parsedArgs.getSearchTTL())
                                 .ticketToBody(numComments),
-                        new ZenDeskTicket(parsedArgs.getTicketId(), parsedArgs.getTicketSubject())))
+                        new ZenDeskTicket(parsedArgs.getTicketId(),
+                                parsedArgs.getTicketSubmitter(),
+                                "",
+                                parsedArgs.getTicketSubject(),
+                                parsedArgs.getTicketOrganization(),
+                                "")))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
                 .map(comments -> getDocumentContext(
                         ticketToText(comments),
@@ -363,6 +370,14 @@ class ZenDeskTicketConfig {
     @Inject
     @ConfigProperty(name = "sb.zendesk.ticketsubject")
     private Optional<String> configTicketSubject;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.ticketsubmitter")
+    private Optional<String> configTicketSubmitter;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.ticketorganization")
+    private Optional<String> configTicketOrganization;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
@@ -449,6 +464,14 @@ class ZenDeskTicketConfig {
         return configContextFilterMinimumRating;
     }
 
+    public Optional<String> getConfigTicketSubmitter() {
+        return configTicketSubmitter;
+    }
+
+    public Optional<String> getConfigTicketOrganization() {
+        return configTicketOrganization;
+    }
+
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -487,6 +510,28 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG,
                     "zendesk_ticketsubject",
+                    "").value();
+
+        }
+
+        public String getTicketSubmitter() {
+            return getArgsAccessor().getArgument(
+                    getConfigTicketSubmitter()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG,
+                    "zendesk_ticketsubmitter",
+                    "").value();
+
+        }
+
+        public String getTicketOrganization() {
+            return getArgsAccessor().getArgument(
+                    getConfigTicketOrganization()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG,
+                    "zendesk_ticketorganization",
                     "").value();
 
         }
