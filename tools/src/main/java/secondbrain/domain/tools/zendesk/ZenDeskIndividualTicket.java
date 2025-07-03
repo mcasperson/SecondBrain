@@ -49,6 +49,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_TICKET_SUBJECT_ARG = "ticketSubject";
     public static final String ZENDESK_TICKET_SUBMITTER_ARG = "ticketSubmitter";
     public static final String ZENDESK_TICKET_ORGANIZATION_ARG = "ticketOrganization";
+    public static final String ZENDESK_TICKET_ASSIGNEE_ARG = "ticketAssignee";
     public static final String ZENDESK_URL_ARG = "zendeskUrl";
     public static final String ZENDESK_EMAIL_ARG = "zendeskEmail";
     public static final String ZENDESK_TOKEN_ARG = "zendeskToken";
@@ -319,7 +320,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                 .ticketToBody(numComments),
                         new ZenDeskTicket(parsedArgs.getTicketId(),
                                 parsedArgs.getTicketSubmitter(),
-                                "",
+                                parsedArgs.getTicketAssignee(),
                                 parsedArgs.getTicketSubject(),
                                 parsedArgs.getTicketOrganization(),
                                 "")))
@@ -378,6 +379,10 @@ class ZenDeskTicketConfig {
     @Inject
     @ConfigProperty(name = "sb.zendesk.ticketorganization")
     private Optional<String> configTicketOrganization;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.ticketassignee")
+    private Optional<String> configTicketAssignee;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.accesstoken")
@@ -472,6 +477,10 @@ class ZenDeskTicketConfig {
         return configTicketOrganization;
     }
 
+    public Optional<String> getConfigTicketAssignee() {
+        return configTicketAssignee;
+    }
+
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -532,6 +541,17 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG,
                     "zendesk_ticketorganization",
+                    "").value();
+
+        }
+
+        public String getTicketAssignee() {
+            return getArgsAccessor().getArgument(
+                    getConfigTicketAssignee()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_ASSIGNEE_ARG,
+                    "zendesk_ticketassignee",
                     "").value();
 
         }

@@ -430,6 +430,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG, ticket.subject(), true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG, ticket.organization_id(), true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG, ticket.submitter_id(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ASSIGNEE_ARG, ticket.assignee_id(), true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_URL_ARG, url, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_EMAIL_ARG, email, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG, token, true)
