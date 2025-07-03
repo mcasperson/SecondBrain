@@ -1,5 +1,6 @@
 package secondbrain.infrastructure.gong;
 
+import com.google.common.util.concurrent.RateLimiter;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -7,15 +8,15 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import secondbrain.domain.concurrency.SemaphoreLender;
-import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.infrastructure.gong.api.*;
 
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
@@ -23,7 +24,7 @@ import java.util.Objects;
 @ApplicationScoped
 public class GongClientLive implements GongClient {
     private static final int TTL = 60 * 60 * 24 * 31;
-    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(0.5);
 
     @Inject
     private ResponseValidation responseValidation;
@@ -49,19 +50,19 @@ public class GongClientLive implements GongClient {
          There is no way to filter by salesforce ID. So we instead get all the calls during the period,
          cache the result, and then filter the calls by the company ID.
          */
-        final GongCallsExtensive calls = localStorage.getOrPutObject(
+        final GongCallExtensive[] calls = localStorage.getOrPutObject(
                 GongClientLive.class.getSimpleName(),
                 "GongAPICallsExtensive",
                 DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
                 TTL,
-                GongCallsExtensive.class,
-                () -> getCallsExtensiveApi(client, fromDateTime, toDateTime, callId, username, password));
+                GongCallExtensive[].class,
+                () -> getCallsExtensiveApi(client, fromDateTime, toDateTime, callId, username, password, ""));
 
         if (calls == null) {
             return List.of();
         }
 
-        return calls.calls().stream()
+        return Arrays.stream(calls)
                 .filter(call -> Objects.requireNonNullElse(call.context(), List.<GongCallExtensiveContext>of())
                         .stream()
                         .anyMatch(c ->
@@ -96,14 +97,17 @@ public class GongClientLive implements GongClient {
     /**
      * https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/extensive
      */
-    private GongCallsExtensive getCallsExtensiveApi(
+    private GongCallExtensive[] getCallsExtensiveApi(
             final Client client,
             final String fromDateTime,
             final String toDateTime,
             final String callId,
             final String username,
-            final String password) {
-        final String target = url + "/v2/calls/extensive";
+            final String password,
+            final String cursor) {
+        RATE_LIMITER.acquire();
+
+        final String target = url + "/v2/calls/extensive?cursor=" + StringUtils.defaultString(cursor);
 
         final List<String> callIds = StringUtils.isBlank(callId) ? null : List.of(callId);
 
@@ -113,12 +117,18 @@ public class GongClientLive implements GongClient {
                 null
         );
 
-        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
+        return Try.withResources(() -> client.target(target)
                         .request(MediaType.APPLICATION_JSON_TYPE)
                         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
-                        .post(Entity.entity(body, MediaType.APPLICATION_JSON))))
-                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
+                        .post(Entity.entity(body, MediaType.APPLICATION_JSON)))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(GongCallsExtensive.class))
+                        // Recurse if there is a next page, and we have not gone too far
+                        .map(r -> ArrayUtils.addAll(
+                                r.calls(),
+                                StringUtils.isNotBlank(r.records().cursor())
+                                        ? getCallsExtensiveApi(client, fromDateTime, toDateTime, callId, username, password, r.records().cursor())
+                                        : new GongCallExtensive[]{}))
                         .get())
                 .getOrElseThrow(e -> new RuntimeException("Failed to get calls from Gong API", e));
     }
@@ -131,18 +141,20 @@ public class GongClientLive implements GongClient {
             final String id,
             final String username,
             final String password) {
+        RATE_LIMITER.acquire();
+
         final String target = url + "/v2/calls/transcript";
 
         final GongCallTranscriptQuery body = new GongCallTranscriptQuery(
                 new GongCallTranscriptQueryFilter(List.of(id))
         );
 
-        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
                         .header("Accept", MediaType.APPLICATION_JSON)
-                        .post(Entity.entity(body, MediaType.APPLICATION_JSON))))
-                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
+                        .post(Entity.entity(body, MediaType.APPLICATION_JSON)))
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(GongCallTranscript.class))
                         .get())
                 .getOrElseThrow(e -> new RuntimeException("Failed to get call transcript from Gong API", e));
