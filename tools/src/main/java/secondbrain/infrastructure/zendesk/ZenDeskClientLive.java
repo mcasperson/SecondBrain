@@ -1,5 +1,6 @@
 package secondbrain.infrastructure.zendesk;
 
+import com.google.common.util.concurrent.RateLimiter;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -8,8 +9,6 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
-import secondbrain.domain.concurrency.SemaphoreLender;
-import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.zendesk.api.*;
@@ -20,7 +19,7 @@ import java.util.List;
 @ApplicationScoped
 public class ZenDeskClientLive implements ZenDeskClient {
 
-    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(0.5);
 
     /*
         Don't recurse forever, because LLMs can't deal with large results anyway.
@@ -149,14 +148,16 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Ticket ID is required");
         }
 
+        RATE_LIMITER.acquire();
+
         final String target = url + "/api/v2/tickets/" + id + ".json";
 
-        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
-                        .get()))
-                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskTicketResponse.class))
                         .get())
                 .get();
@@ -198,14 +199,16 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Ticket ID is required");
         }
 
+        RATE_LIMITER.acquire();
+
         final String target = url + "/api/v2/tickets/" + ticketId + "/comments";
 
-        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
-                        .get()))
-                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskCommentsResponse.class))
                         .get())
                 .get();
@@ -226,14 +229,16 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Organization ID is required");
         }
 
+        RATE_LIMITER.acquire();
+
         final String target = url + "/api/v2/organizations/" + orgId;
 
-        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
-                        .get()))
-                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskOrganizationResponse.class))
                         .get())
                 .get();
@@ -273,14 +278,16 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("User ID is required");
         }
 
+        RATE_LIMITER.acquire();
+
         final String target = url + "/api/v2/users/" + userId;
 
-        return Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(target)
+        return Try.withResources(() -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
-                        .get()))
-                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(ZenDeskUserResponse.class))
                         .get())
                 .get();
