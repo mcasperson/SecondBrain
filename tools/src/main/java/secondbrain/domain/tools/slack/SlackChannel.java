@@ -9,6 +9,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -56,6 +57,8 @@ public class SlackChannel implements Tool<Void> {
     public static final String SLACK_KEYWORD_ARG = "keywords";
     public static final String SLACK_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String SLACK_ENTITY_NAME_CONTEXT_ARG = "entityName";
+    public static final String SLACK_SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
+    public static final String SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
 
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final String INSTRUCTIONS = """
@@ -184,7 +187,7 @@ public class SlackChannel implements Tool<Void> {
                 .map(messages::replaceDocument)
                 .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
 
-        return List.of(getDocumentContext(messagesWithUsersReplaced, channel, parsedArgs));
+        return List.of(getDocumentContext(messagesWithUsersReplaced, channel, environmentSettings, parsedArgs));
     }
 
     @Override
@@ -223,7 +226,7 @@ public class SlackChannel implements Tool<Void> {
                 .get();
     }
 
-    private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final SlackChannelResource channelDetails, final SlackChannelConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final SlackChannelResource channelDetails, final Map<String, String> environmentSettings, final SlackChannelConfig.LocalArguments parsedArgs) {
         return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 // Strip out any URLs from the sentences
                 .map(sentences -> sentences.stream().map(sentence -> removeMarkdnUrls.sanitize(sentence)).toList())
@@ -235,6 +238,9 @@ public class SlackChannel implements Tool<Void> {
                         null,
                         matchToUrl(channelDetails),
                         trimResult.keywordMatches()))
+                .map(doc -> parsedArgs.getSummarizeDocument()
+                        ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
+                        : doc)
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }
@@ -280,28 +286,21 @@ public class SlackChannel implements Tool<Void> {
                 .recover(error -> messages);
     }
 
+    private String getDocumentSummary(final String document, final Map<String, String> environmentSettings, final SlackChannelConfig.LocalArguments parsedArgs) {
+        final String ticketContext = promptBuilderSelector
+                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
+                .buildContextPrompt(this.getContextLabel(), document);
 
-    private Try<String> getUsername(final AsyncMethodsClient client, final String token, final String userId) {
-        return Try.of(() -> client.usersInfo(r -> r.token(token).user(userId)).get())
-                .map(response -> response.getUser().getName())
-                /*
-                    If the username could not be retrieved, we return a placeholder.
-                    We could omit this to bubble the errors up, but mostly we want to apply a best effort
-                    to get context and be tolerant of errors.
-                 */
-                .recover(error -> "Unknown user");
-    }
+        final String prompt = promptBuilderSelector
+                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
+                .buildFinalPrompt("You are a helpful agent", ticketContext, parsedArgs.getDocumentSummaryPrompt());
 
-
-    private Try<String> getChannel(final AsyncMethodsClient client, final String token, final String channelId) {
-        return Try.of(() -> client.conversationsInfo(r -> r.token(token).channel(channelId)).get())
-                .map(response -> "#" + response.getChannel().getName())
-                /*
-                    If the channel name could not be retrieved, we return a placeholder.
-                    We could omit this to bubble the errors up, but mostly we want to apply a best effort
-                    to get context and be tolerant of errors.
-                 */
-                .recover(error -> "Unknown channel");
+        return ollamaClient.callOllamaWithCache(
+                new RagMultiDocumentContext<>(prompt),
+                modelConfig.getCalculatedModel(environmentSettings),
+                getName(),
+                modelConfig.getCalculatedContextWindow(environmentSettings)
+        ).combinedDocument();
     }
 
     private String matchToUrl(final SlackChannelResource channel) {
@@ -341,6 +340,15 @@ class SlackChannelConfig {
     @Inject
     @ConfigProperty(name = "sb.slack.apidelay")
     private Optional<String> configApiDelay;
+
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.summarizedocument", defaultValue = "false")
+    private Optional<String> configSummarizeDocument;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.summarizedocumentprompt")
+    private Optional<String> configSummarizeDocumentPrompt;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -382,6 +390,14 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigApiDelay() {
         return configApiDelay;
+    }
+
+    public Optional<String> getConfigSummarizeDocument() {
+        return configSummarizeDocument;
+    }
+
+    public Optional<String> getConfigSummarizeDocumentPrompt() {
+        return configSummarizeDocumentPrompt;
     }
 
     public class LocalArguments {
@@ -492,6 +508,30 @@ class SlackChannelConfig {
                     null,
                     SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG,
                     "").value();
+        }
+
+        public boolean getSummarizeDocument() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigSummarizeDocument()::get,
+                    arguments,
+                    context,
+                    SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG,
+                    "slack_summarizedocument",
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
+        }
+
+        public String getDocumentSummaryPrompt() {
+            return getArgsAccessor()
+                    .getArgument(
+                            getConfigSummarizeDocumentPrompt()::get,
+                            arguments,
+                            context,
+                            SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            "slack_summarizedocument_prompt",
+                            "Summarise the document in three paragraphs")
+                    .value();
         }
     }
 }

@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -56,6 +57,8 @@ public class PlanHat implements Tool<Conversation> {
     public static final String PLANHAT_KEYWORD_ARG = "keywords";
     public static final String PLANHAT_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String PLANHAT_ENTITY_NAME_CONTEXT_ARG = "entityName";
+    public static final String PLANHAT_SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
+    public static final String PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -174,6 +177,9 @@ public class PlanHat implements Tool<Conversation> {
                 )
                 .map(conversation -> getDocumentContext(conversation, parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                .map(doc -> parsedArgs.getSummarizeDocument()
+                        ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
+                        : doc)
                 .toList();
     }
 
@@ -252,6 +258,23 @@ public class PlanHat implements Tool<Conversation> {
                         .collect(Collectors.joining("\n")),
                 context);
     }
+
+    private String getDocumentSummary(final String document, final Map<String, String> environmentSettings, final PlanHatConfig.LocalArguments parsedArgs) {
+        final String ticketContext = promptBuilderSelector
+                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
+                .buildContextPrompt(this.getContextLabel(), document);
+
+        final String prompt = promptBuilderSelector
+                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
+                .buildFinalPrompt("You are a helpful agent", ticketContext, parsedArgs.getDocumentSummaryPrompt());
+
+        return ollamaClient.callOllamaWithCache(
+                new RagMultiDocumentContext<>(prompt),
+                modelConfig.getCalculatedModel(environmentSettings),
+                getName(),
+                modelConfig.getCalculatedContextWindow(environmentSettings)
+        ).combinedDocument();
+    }
 }
 
 @ApplicationScoped
@@ -300,6 +323,15 @@ class PlanHatConfig {
     @ConfigProperty(name = "sb.planhat.keywordwindow")
     private Optional<String> configKeywordWindow;
 
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.summarizedocument", defaultValue = "false")
+    private Optional<String> configSummarizeDocument;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.summarizedocumentprompt")
+    private Optional<String> configSummarizeDocumentPrompt;
+
     public Optional<String> getConfigCompany() {
         return configCompany;
     }
@@ -342,6 +374,14 @@ class PlanHatConfig {
 
     public Optional<String> getConfigUrl2() {
         return configUrl2;
+    }
+
+    public Optional<String> getConfigSummarizeDocument() {
+        return configSummarizeDocument;
+    }
+
+    public Optional<String> getConfigSummarizeDocumentPrompt() {
+        return configSummarizeDocumentPrompt;
     }
 
     public class LocalArguments {
@@ -463,6 +503,30 @@ class PlanHatConfig {
                     null,
                     PlanHat.PLANHAT_ENTITY_NAME_CONTEXT_ARG,
                     "").value();
+        }
+
+        public boolean getSummarizeDocument() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigSummarizeDocument()::get,
+                    arguments,
+                    context,
+                    PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_ARG,
+                    "planhat_summarizedocument",
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
+        }
+
+        public String getDocumentSummaryPrompt() {
+            return getArgsAccessor()
+                    .getArgument(
+                            getConfigSummarizeDocumentPrompt()::get,
+                            arguments,
+                            context,
+                            PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            "planhat_summarizedocument_prompt",
+                            "Summarise the document in three paragraphs")
+                    .value();
         }
     }
 }

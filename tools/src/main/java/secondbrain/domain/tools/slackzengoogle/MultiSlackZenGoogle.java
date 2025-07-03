@@ -595,6 +595,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
+                        new ToolArgs(PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(PlanHat.PLANHAT_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(PlanHat.PLANHAT_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(PlanHat.PLANHAT_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
@@ -675,6 +678,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
+                        new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
                         new ToolArgs(SlackChannel.SLACK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(SlackChannel.SLACK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
