@@ -1,5 +1,6 @@
 package secondbrain.infrastructure.slack;
 
+import com.google.common.util.concurrent.RateLimiter;
 import com.slack.api.methods.AsyncMethodsClient;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
@@ -42,6 +43,7 @@ public class SlackClientLive implements SlackClient {
     private static final int RETRIES = 10;
     private static final int RETRY_JITTER = 10000;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(0.5);
 
     @Inject
     private ValidateString validateString;
@@ -61,23 +63,23 @@ public class SlackClientLive implements SlackClient {
             final int ttlSeconds,
             final int apiDelay) {
 
+        RATE_LIMITER.acquire();
+
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
          */
         final String hash = DigestUtils.sha256Hex(channelId + oldest);
 
-        return Try.withResources(SEMAPHORE_LENDER::lend)
-                .of(sem -> Try
-                        .of(() -> localStorage.getOrPutObject(
-                                SlackClientLive.class.getSimpleName(),
-                                "SlackAPIConversationHistory",
-                                hash,
-                                ttlSeconds,
-                                ConversationsHistoryResponse.class,
-                                () -> conversationHistoryFromApi(client, accessToken, channelId, oldest, 0, apiDelay)))
-                        .map(this::conversationsToText)
-                        .get())
+        return Try
+                .of(() -> localStorage.getOrPutObject(
+                        SlackClientLive.class.getSimpleName(),
+                        "SlackAPIConversationHistory",
+                        hash,
+                        ttlSeconds,
+                        ConversationsHistoryResponse.class,
+                        () -> conversationHistoryFromApi(client, accessToken, channelId, oldest, 0, apiDelay)))
+                .map(this::conversationsToText)
                 .get();
     }
 
@@ -132,22 +134,22 @@ public class SlackClientLive implements SlackClient {
             final String userId,
             final int apiDelay) {
 
+        RATE_LIMITER.acquire();
+
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
          */
         final String hash = DigestUtils.sha256Hex(userId);
 
-        return Try.withResources(SEMAPHORE_LENDER::lend)
-                .of(sem -> Try
-                        .of(() -> localStorage.getOrPutObject(
-                                SlackClientLive.class.getSimpleName(),
-                                "SlackAPIUserInfo",
-                                hash,
-                                UsersInfoResponse.class,
-                                () -> userFromApi(client, accessToken, userId, 0, apiDelay)))
-                        .map(u -> u.getUser().getName())
-                        .get())
+        return Try
+                .of(() -> localStorage.getOrPutObject(
+                        SlackClientLive.class.getSimpleName(),
+                        "SlackAPIUserInfo",
+                        hash,
+                        UsersInfoResponse.class,
+                        () -> userFromApi(client, accessToken, userId, 0, apiDelay)))
+                .map(u -> u.getUser().getName())
                 .get();
     }
 
@@ -197,22 +199,22 @@ public class SlackClientLive implements SlackClient {
             final String channelId,
             final int apiDelay) {
 
+        RATE_LIMITER.acquire();
+
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
          */
         final String hash = DigestUtils.sha256Hex(channelId);
 
-        return Try.withResources(SEMAPHORE_LENDER::lend)
-                .of(sem -> Try
-                        .of(() -> localStorage.getOrPutObject(
-                                SlackClientLive.class.getSimpleName(),
-                                "SlackAPIConversationsInfo",
-                                hash,
-                                ConversationsInfoResponse.class,
-                                () -> channelFromApi(client, accessToken, channelId, 0, apiDelay)))
-                        .map(c -> new SlackConversationResource(c.getChannel().getName()))
-                        .get())
+        return Try
+                .of(() -> localStorage.getOrPutObject(
+                        SlackClientLive.class.getSimpleName(),
+                        "SlackAPIConversationsInfo",
+                        hash,
+                        ConversationsInfoResponse.class,
+                        () -> channelFromApi(client, accessToken, channelId, 0, apiDelay)))
+                .map(c -> new SlackConversationResource(c.getChannel().getName()))
                 .get();
     }
 
@@ -264,32 +266,32 @@ public class SlackClientLive implements SlackClient {
             final int ttlSeconds,
             final int apiDelay) {
 
+        RATE_LIMITER.acquire();
+
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
          */
         final String hash = DigestUtils.sha256Hex(String.join(" ", keywords));
 
-        return Try.withResources(SEMAPHORE_LENDER::lend)
-                .of(sem -> Try
-                        .of(() -> localStorage.getOrPutObject(
-                                SlackClientLive.class.getSimpleName(),
-                                "SlackAPISearch",
-                                hash,
-                                ttlSeconds,
-                                SearchAllResponse.class,
-                                () -> searchFromApi(client, accessToken, keywords, apiDelay)))
-                        .map(s -> s.getMessages()
-                                .getMatches()
-                                .stream()
-                                .map(m -> new SlackSearchResultResource(
-                                        m.getId(),
-                                        m.getTs(),
-                                        m.getChannel().getName(),
-                                        m.getText(),
-                                        m.getPermalink()))
-                                .toList())
-                        .get())
+        return Try
+                .of(() -> localStorage.getOrPutObject(
+                        SlackClientLive.class.getSimpleName(),
+                        "SlackAPISearch",
+                        hash,
+                        ttlSeconds,
+                        SearchAllResponse.class,
+                        () -> searchFromApi(client, accessToken, keywords, apiDelay)))
+                .map(s -> s.getMessages()
+                        .getMatches()
+                        .stream()
+                        .map(m -> new SlackSearchResultResource(
+                                m.getId(),
+                                m.getTs(),
+                                m.getChannel().getName(),
+                                m.getText(),
+                                m.getPermalink()))
+                        .toList())
                 .get();
     }
 
@@ -341,6 +343,8 @@ public class SlackClientLive implements SlackClient {
             final String channel,
             final int apiDelay) {
 
+        RATE_LIMITER.acquire();
+
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
@@ -348,16 +352,14 @@ public class SlackClientLive implements SlackClient {
         final String hash = DigestUtils.sha256Hex(channel);
 
         // get the result from the cache
-        return Try.withResources(SEMAPHORE_LENDER::lend)
-                .of(sem -> Try
-                        .of(() -> localStorage.getOrPutObject(
-                                SlackClientLive.class.getSimpleName(),
-                                "SlackAPIChannel",
-                                hash,
-                                ChannelDetails.class,
-                                () -> findChannelIdFromApi(client, accessToken, channel, null, apiDelay)))
-                        .map(c -> new SlackChannelResource(c.teamId(), c.channelId(), c.channelName()))
-                        .get())
+        return Try
+                .of(() -> localStorage.getOrPutObject(
+                        SlackClientLive.class.getSimpleName(),
+                        "SlackAPIChannel",
+                        hash,
+                        ChannelDetails.class,
+                        () -> findChannelIdFromApi(client, accessToken, channel, null, apiDelay)))
+                .map(c -> new SlackChannelResource(c.teamId(), c.channelId(), c.channelName()))
                 .get();
     }
 
