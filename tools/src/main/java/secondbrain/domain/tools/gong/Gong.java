@@ -283,7 +283,7 @@ class GongConfig {
     private Optional<String> configSummarizeTranscript;
 
     @Inject
-    @ConfigProperty(name = "sb.gong.summarizetranscriptprompt", defaultValue = "false")
+    @ConfigProperty(name = "sb.gong.summarizetranscriptprompt")
     private Optional<String> configSummarizeTranscriptPrompt;
 
     @Inject

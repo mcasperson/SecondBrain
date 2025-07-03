@@ -14,6 +14,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -61,6 +62,8 @@ public class GoogleDocs implements Tool<Void> {
     public static final String GOOGLE_KEYWORD_ARG = "keywords";
     public static final String GOOGLE_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String GOOGLE_ENTITY_NAME_CONTEXT_ARG = "entityName";
+    public static final String GOOGLE_SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
+    public static final String GOOGLE_SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String APPLICATION_NAME = "SecondBrain";
@@ -175,6 +178,9 @@ public class GoogleDocs implements Tool<Void> {
                                 document, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
                         .map(trimResult -> validateString.throwIfEmpty(trimResult, TrimResult::document))
                         .map(trimResult -> getDocumentContext(trimResult, parsedArgs))
+                        .map(doc -> parsedArgs.getSummarizeDocument()
+                                ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
+                                : doc)
                         .map(List::of))
                 .get();
 
@@ -322,6 +328,23 @@ public class GoogleDocs implements Tool<Void> {
     private String textRunToString(final TextRun textRun) {
         return Optional.ofNullable(textRun).map(TextRun::getContent).orElse("");
     }
+
+    private String getDocumentSummary(final String document, final Map<String, String> environmentSettings, final GoogleDocsConfig.LocalArguments parsedArgs) {
+        final String ticketContext = promptBuilderSelector
+                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
+                .buildContextPrompt(this.getContextLabel(), document);
+
+        final String prompt = promptBuilderSelector
+                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
+                .buildFinalPrompt("You are a helpful agent", ticketContext, parsedArgs.getDocumentSummaryPrompt());
+
+        return ollamaClient.callOllamaWithCache(
+                new RagMultiDocumentContext<>(prompt),
+                modelConfig.getCalculatedModel(environmentSettings),
+                getName(),
+                modelConfig.getCalculatedContextWindow(environmentSettings)
+        ).combinedDocument();
+    }
 }
 
 @ApplicationScoped
@@ -341,6 +364,14 @@ class GoogleDocsConfig {
     @Inject
     @ConfigProperty(name = "sb.google.keywordwindow")
     private Optional<String> configKeywordWindow;
+
+    @Inject
+    @ConfigProperty(name = "sb.google.summarizedocument", defaultValue = "false")
+    private Optional<String> configSummarizeDocument;
+
+    @Inject
+    @ConfigProperty(name = "sb.google.summarizedocumentprompt")
+    private Optional<String> configSummarizeDocumentPrompt;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -363,6 +394,14 @@ class GoogleDocsConfig {
 
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
+    }
+
+    public Optional<String> getConfigSummarizeDocument() {
+        return configSummarizeDocument;
+    }
+
+    public Optional<String> getConfigSummarizeDocumentPrompt() {
+        return configSummarizeDocumentPrompt;
     }
 
     public class LocalArguments {
@@ -431,6 +470,30 @@ class GoogleDocsConfig {
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
+
+        public boolean getSummarizeDocument() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigSummarizeDocument()::get,
+                    arguments,
+                    context,
+                    GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_ARG,
+                    "google_summarizedocument",
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
+        }
+
+        public String getDocumentSummaryPrompt() {
+            return getArgsAccessor()
+                    .getArgument(
+                            getConfigSummarizeDocumentPrompt()::get,
+                            arguments,
+                            context,
+                            GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            "google_summarizedocument_prompt",
+                            "Summarise the document in three paragraphs")
+                    .value();
         }
     }
 }
