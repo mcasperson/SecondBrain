@@ -62,9 +62,6 @@ public class SlackClientLive implements SlackClient {
             final String oldest,
             final int ttlSeconds,
             final int apiDelay) {
-
-        RATE_LIMITER.acquire();
-
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
@@ -101,6 +98,8 @@ public class SlackClientLive implements SlackClient {
             throw new InternalFailure("Could not call conversationsHistory after " + RETRIES + " retries");
         }
 
+        RATE_LIMITER.acquire();
+
         if (retryCount > 0) {
             logger.info("Retrying Slack conversationsHistory");
             Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
@@ -133,9 +132,6 @@ public class SlackClientLive implements SlackClient {
             final String accessToken,
             final String userId,
             final int apiDelay) {
-
-        RATE_LIMITER.acquire();
-
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
@@ -162,6 +158,8 @@ public class SlackClientLive implements SlackClient {
         if (retryCount > RETRIES) {
             throw new InternalFailure("Could not call usersInfo after " + RETRIES + " retries");
         }
+
+        RATE_LIMITER.acquire();
 
         if (retryCount > 0) {
             logger.info("Retrying Slack usersInfo");
@@ -198,9 +196,6 @@ public class SlackClientLive implements SlackClient {
             final String accessToken,
             final String channelId,
             final int apiDelay) {
-
-        RATE_LIMITER.acquire();
-
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
@@ -227,6 +222,8 @@ public class SlackClientLive implements SlackClient {
         if (retryCount > RETRIES) {
             throw new InternalFailure("Could not call channel after " + RETRIES + " retries");
         }
+
+        RATE_LIMITER.acquire();
 
         if (retryCount > 0) {
             logger.info("Retrying Slack channel");
@@ -265,9 +262,6 @@ public class SlackClientLive implements SlackClient {
             final Set<String> keywords,
             final int ttlSeconds,
             final int apiDelay) {
-
-        RATE_LIMITER.acquire();
-
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
@@ -314,6 +308,8 @@ public class SlackClientLive implements SlackClient {
             throw new InternalFailure("Could not call searchAll after " + RETRIES + " retries");
         }
 
+        RATE_LIMITER.acquire();
+
         if (retryCount > 0) {
             logger.info("Retrying Slack searchAll");
             Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
@@ -342,8 +338,6 @@ public class SlackClientLive implements SlackClient {
             final String accessToken,
             final String channel,
             final int apiDelay) {
-
-        RATE_LIMITER.acquire();
 
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
@@ -404,6 +398,8 @@ public class SlackClientLive implements SlackClient {
         if (retryCount > RETRIES) {
             throw new InternalFailure("Could not call conversationsList after " + RETRIES + " retries");
         }
+
+        RATE_LIMITER.acquire();
 
         if (retryCount > 0) {
             logger.info("Retrying Slack conversationsList");
