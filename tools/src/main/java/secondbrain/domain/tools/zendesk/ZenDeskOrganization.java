@@ -425,6 +425,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .flatMap(ticket -> ticketTool.getContext(
                         environmentSettings,
                         parsedArgs.getTicketSummaryPrompt(),
+                        /*
+                            We end up passing all the ticket details as arguments to the tool. This is due to the fact
+                            that we can only pass strings between tools.
+                            Passing these arguments avoids having to call the ZenDesk API again to get the ticket details,
+                            at the expense of having a lot of tool arguments.
+                         */
                         List.of(
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ID_ARG, ticket.id(), true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG, ticket.subject(), true),
