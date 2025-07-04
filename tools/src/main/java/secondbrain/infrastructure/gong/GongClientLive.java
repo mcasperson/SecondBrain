@@ -11,6 +11,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
@@ -24,7 +25,7 @@ import java.util.Objects;
 @ApplicationScoped
 public class GongClientLive implements GongClient {
     private static final int TTL = 60 * 60 * 24 * 31;
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(0.5);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
 
     @Inject
     private ResponseValidation responseValidation;

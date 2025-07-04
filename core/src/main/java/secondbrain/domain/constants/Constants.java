@@ -7,6 +7,8 @@ public class Constants {
      */
     public static final int DEFAULT_SEMAPHORE_COUNT = 5;
 
+    public static final double DEFAULT_RATE_LIMIT_PER_SECOND = 0.25;
+
     /**
      * The default content window size. Increasing this value increases the memory
      * usage of the application. 4096 is about as much as you can define for a system with 32 GB of RAM.

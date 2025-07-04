@@ -43,7 +43,7 @@ public class SlackClientLive implements SlackClient {
     private static final int RETRIES = 10;
     private static final int RETRY_JITTER = 10000;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(0.5);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
 
     @Inject
     private ValidateString validateString;

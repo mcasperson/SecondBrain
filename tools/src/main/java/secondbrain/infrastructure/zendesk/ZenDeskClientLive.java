@@ -9,6 +9,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.zendesk.api.*;
@@ -19,7 +20,7 @@ import java.util.List;
 @ApplicationScoped
 public class ZenDeskClientLive implements ZenDeskClient {
 
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(0.5);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
 
     /*
         Don't recurse forever, because LLMs can't deal with large results anyway.
