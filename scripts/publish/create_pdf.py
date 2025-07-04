@@ -308,7 +308,7 @@ def add_toc(pdf, script_dir, contents, companies):
                                   not c.get('high_activity', False) and c.get('type', '') == 'customer']
 
         def add_icons(content):
-            if content['sentiment'] >= 9:
+            if content['sentiment'] >= 8:
                 pdf.image(os.path.join(script_dir, "images/smile.png"), x=92, y=pdf.y, w=6, h=6)
             elif content['sentiment'] <= 2:
                 pdf.image(os.path.join(script_dir, "images/cry.png"), x=92, y=pdf.y, w=6, h=6)
