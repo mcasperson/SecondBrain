@@ -74,7 +74,7 @@ public class OllamaClient {
     /**
      * Call Ollama with the given body. This method is thread-safe, and only allows one call at a time.
      */
-    public synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body, int retryCount) {
+    private synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body, int retryCount) {
         if (retryCount > MAX_RETIES) {
             throw new FailedOllama("OllamaClient failed to call Ollama after " + MAX_RETIES + " retries.");
         }
