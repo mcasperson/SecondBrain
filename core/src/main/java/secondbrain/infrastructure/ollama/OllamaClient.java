@@ -33,6 +33,7 @@ import static io.vavr.control.Try.of;
 
 @ApplicationScoped
 public class OllamaClient {
+    private static final int MAX_RETIES = 3;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
 
     /**
@@ -66,10 +67,18 @@ public class OllamaClient {
     @Inject
     private ModelConfig modelConfig;
 
+    public synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body) {
+        return callOllama(client, body, 0);
+    }
+
     /**
      * Call Ollama with the given body. This method is thread-safe, and only allows one call at a time.
      */
-    public synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body) {
+    public synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body, int retryCount) {
+        if (retryCount > MAX_RETIES) {
+            throw new FailedOllama("OllamaClient failed to call Ollama after " + MAX_RETIES + " retries.");
+        }
+
         logger.info(body.prompt());
         logger.info("Calling: " + uri);
         logger.info("Called with model: " + body.model());
@@ -98,6 +107,11 @@ public class OllamaClient {
                         .map(r -> r.readEntity(OllamaResponse.class))
                         .map(ollamaResponse -> ollamaResponse.replaceResponse(formatResponse(body.model(), ollamaResponse.response())))
                         .get())
+                .recover(ex -> {
+                    logger.warning("Retrying Ollama call, attempt " + (retryCount + 1));
+                    Try.run(() -> Thread.sleep(retryCount * 1000L));
+                    return callOllama(client, body, retryCount + 1);
+                })
                 .get();
     }
 
@@ -143,12 +157,12 @@ public class OllamaClient {
                 promptHash,
                 NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
                 () -> {
-            final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
-            final String responseText = response.combinedDocument();
+                    final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
+                    final String responseText = response.combinedDocument();
 
-            // Don't cache errors
-            return resultOrDefaultOnError(responseText, null);
-        });
+                    // Don't cache errors
+                    return resultOrDefaultOnError(responseText, null);
+                });
 
         // Don't return cached errors
         return valueOrDefaultOnError(result,
