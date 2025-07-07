@@ -5,5 +5,5 @@ package secondbrain.infrastructure.zendesk.api;
  * This is used in the Zendesk API context to map IDs to their string representations.
  */
 public interface IdToString {
-    String getStringFromId(Integer id);
+    String getStringFromId(Long id);
 }
