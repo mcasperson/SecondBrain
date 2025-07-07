@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 
 import java.util.List;
-import java.util.Optional;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GongCallTranscript(List<GongCallTranscriptCollection> callTranscripts) {
@@ -15,15 +14,9 @@ public record GongCallTranscript(List<GongCallTranscriptCollection> callTranscri
 
         return callTranscripts.stream()
                 .flatMap(transcript -> transcript.transcript().stream())
-                .map(transcriptItem ->
-                        Optional.ofNullable(call.getPartyFromId(transcriptItem.speakerId()))
-                                .map(GongCallExtensiveParty::name)
-                                .orElse("Unknown") +
-                                ":\n" +
-                                transcriptItem.sentences().
-                                        stream()
-                                        .map(GongCallTranscriptItemSentence::text)
-                                        .reduce("", (a, b) -> a + "\n" + b))
+                .map(transcriptItem -> call.getPartyNameFromId(transcriptItem.speakerId()) +
+                        ":\n" +
+                        transcriptItem.getTranscript())
                 .reduce("", (a, b) -> a + "\n" + b);
     }
 }

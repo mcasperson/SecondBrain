@@ -23,4 +23,9 @@ public record GongCallDetails(String id, String url, List<GongCallExtensiveParty
                 .findFirst()
                 .orElse(null);
     }
+
+    public String getPartyNameFromId(final String partyId) {
+        final GongCallExtensiveParty party = getPartyFromId(partyId);
+        return party != null ? party.name() : "Unknown";
+    }
 }
