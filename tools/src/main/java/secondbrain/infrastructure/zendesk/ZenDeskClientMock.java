@@ -8,6 +8,7 @@ import secondbrain.infrastructure.zendesk.api.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -59,7 +60,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
 
         for (int i = 0; i < 3; i++) {
             String comment = ollamaClient.callOllamaSimple("Generate a customer support comment for a ZenDesk ticket. Make it sound like a real customer support conversation.");
-            comments.add(new ZenDeskCommentResponse(comment));
+            comments.add(new ZenDeskCommentResponse(comment, new Random().nextInt()));
         }
 
         return new ZenDeskCommentsResponse(comments);
