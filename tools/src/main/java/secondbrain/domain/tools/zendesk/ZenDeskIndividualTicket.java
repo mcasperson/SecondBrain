@@ -317,6 +317,11 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                         parsedArgs.getUrl(),
                                         parsedArgs.getTicketId(),
                                         parsedArgs.getSearchTTL())
+                                .toProcessedCommentsResponse(id -> zenDeskClient.getUser(
+                                        client,
+                                        authorization,
+                                        parsedArgs.getUrl(),
+                                        id.toString()).name())
                                 .ticketToBody(numComments),
                         new ZenDeskTicket(parsedArgs.getTicketId(),
                                 parsedArgs.getTicketSubmitter(),
