@@ -60,7 +60,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
 
         for (int i = 0; i < 3; i++) {
             String comment = ollamaClient.callOllamaSimple("Generate a customer support comment for a ZenDesk ticket. Make it sound like a real customer support conversation.");
-            comments.add(new ZenDeskCommentResponse(comment, new Random().nextInt(), ""));
+            comments.add(new ZenDeskCommentResponse(comment, new Random().nextLong(), ""));
         }
 
         return new ZenDeskCommentsResponse(comments);
