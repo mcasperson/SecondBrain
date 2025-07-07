@@ -154,7 +154,7 @@ class DocumentTrimmerExactKeywordsTest {
     void testIsWholeWord() {
         DocumentTrimmerExactKeywords sectioner = new DocumentTrimmerExactKeywords();
 
-        String document = "This is a test document with keywords.";
+        String document = "This is a test: document with keywords.";
 
         // Test when the keyword is a whole word
         assertTrue(sectioner.isWholeWord(document, "test", document.indexOf("test")));

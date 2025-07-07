@@ -144,7 +144,7 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
 
     public boolean isWholeWord(final String document, final String keyword, final int position) {
         // This check is disabled if allowPartialMatches is true.
-        if (allowPartialMatches) {
+        if (allowPartialMatches != null && allowPartialMatches) {
             return true;
         }
 
