@@ -31,6 +31,7 @@ import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
+import secondbrain.infrastructure.zendesk.api.IdToString;
 import secondbrain.infrastructure.zendesk.api.ZenDeskOrganizationItemResponse;
 import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
@@ -308,6 +309,33 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                                                final String authorization,
                                                                final int numComments,
                                                                final ZenDeskTicketConfig.LocalArguments parsedArgs) {
+        final IdToString idToName = id -> Try.of(() -> zenDeskClient.getUser(
+                        client,
+                        authorization,
+                        parsedArgs.getUrl(),
+                        id.toString()).name())
+                .getOrElse("Unknown User");
+
+        final IdToString idToEmail = id -> Try.of(() -> zenDeskClient.getUser(
+                        client,
+                        authorization,
+                        parsedArgs.getUrl(),
+                        id.toString()).email())
+                .getOrElse("Unknown Email");
+
+        final IdToString authorIdToOrganizationName = id -> Try.of(() -> zenDeskClient.getUser(
+                        client,
+                        authorization,
+                        parsedArgs.getUrl(),
+                        id.toString()))
+                .map(author -> zenDeskClient.getOrganization(
+                        client,
+                        authorization,
+                        parsedArgs.getUrl(),
+                        author.organization_id().toString()))
+                .map(ZenDeskOrganizationItemResponse::name)
+                .getOrElse("Unknown Organization");
+
         return Try.of(() -> new IndividualContext<>(
                         parsedArgs.getTicketId(),
                         zenDeskClient
@@ -317,12 +345,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                         parsedArgs.getUrl(),
                                         parsedArgs.getTicketId(),
                                         parsedArgs.getSearchTTL())
-                                .toProcessedCommentsResponse(id -> Try.of(() -> zenDeskClient.getUser(
-                                                client,
-                                                authorization,
-                                                parsedArgs.getUrl(),
-                                                id.toString()).name())
-                                        .getOrElse("Unknown User"))
+                                .toProcessedCommentsResponse(idToName, idToEmail, authorIdToOrganizationName)
                                 .ticketToBody(numComments),
                         new ZenDeskTicket(parsedArgs.getTicketId(),
                                 parsedArgs.getTicketSubmitter(),

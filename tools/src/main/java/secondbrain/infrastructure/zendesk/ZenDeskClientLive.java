@@ -307,7 +307,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         return localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
-                "ZenDeskAPIUsers",
+                "ZenDeskAPIUsersV2",
                 DigestUtils.sha256Hex(userId + url),
                 ZenDeskUserResponse.class,
                 () -> getUserFromApi(client, authorization, url, userId)).user();

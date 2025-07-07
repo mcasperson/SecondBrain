@@ -29,7 +29,8 @@ public record ZenDeskProcessedCommentsResponse(List<ZenDeskProcessedCommentRespo
         return getResults()
                 .stream()
                 .limit(limit)
-                .map(ticket -> "From " + ticket.author() + ":\n\n" + ticket.body())
+                .map(ticket -> "From " + ticket.author() +
+                        " (" + ticket.email() + ") at " + ticket.organization() + ":\n\n" + ticket.body())
                 .map(body -> Arrays.stream(body.split("\\r\\n|\\r|\\n"))
                         .filter(StringUtils::isNotBlank)
                         .collect(Collectors.joining("\n")))

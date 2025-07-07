@@ -9,5 +9,5 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @param author The name of the author of the comment, which is a string instead of an ID.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record ZenDeskProcessedCommentResponse(String body, String author) {
+public record ZenDeskProcessedCommentResponse(String body, String author, String email, String organization) {
 }

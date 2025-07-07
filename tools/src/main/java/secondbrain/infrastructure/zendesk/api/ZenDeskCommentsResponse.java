@@ -12,13 +12,15 @@ public record ZenDeskCommentsResponse(List<ZenDeskCommentResponse> comments) {
         return Objects.requireNonNullElse(comments, List.of());
     }
 
-    public ZenDeskProcessedCommentsResponse toProcessedCommentsResponse(final IdToString authorIdToName) {
+    public ZenDeskProcessedCommentsResponse toProcessedCommentsResponse(final IdToString authorIdToName, final IdToString authorIdToEmail, final IdToString authorIdToOrganizationName) {
         return new ZenDeskProcessedCommentsResponse(
                 getResults()
                         .stream()
                         .map(comment -> new ZenDeskProcessedCommentResponse(
                                 comment.body(),
-                                authorIdToName.getStringFromId(comment.author_id())))
+                                authorIdToName.getStringFromId(comment.author_id()),
+                                authorIdToEmail.getStringFromId(comment.author_id()),
+                                authorIdToOrganizationName.getStringFromId(comment.author_id())))
                         .collect(Collectors.toList())
         );
     }
