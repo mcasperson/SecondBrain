@@ -1,10 +1,26 @@
 package secondbrain.domain.tools.gong.model;
 
+import org.jspecify.annotations.Nullable;
+import secondbrain.infrastructure.gong.api.GongCallExtensiveParty;
+
+import java.util.List;
+
 /**
  * This class represents the contract between a tool and the Gong API.
  *
- * @param id  The call ID
- * @param url The call URL
+ * @param id      The call ID
+ * @param url     The call URL
+ * @param parties The list of parties involved in the call
  */
-public record GongCallDetails(String id, String url) {
+public record GongCallDetails(String id, String url, List<GongCallExtensiveParty> parties) {
+    @Nullable
+    public GongCallExtensiveParty getPartyFromId(final String partyId) {
+        if (parties == null || parties.isEmpty()) {
+            return null;
+        }
+        return parties.stream()
+                .filter(party -> party.id().equals(partyId))
+                .findFirst()
+                .orElse(null);
+    }
 }

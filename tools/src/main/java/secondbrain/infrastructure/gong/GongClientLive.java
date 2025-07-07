@@ -74,7 +74,7 @@ public class GongClientLive implements GongClient {
                                                 // And one of the objects must be an account that matches the company id
                                                 c.objects().stream().anyMatch(o ->
                                                         company.equals(o.objectId()) && "Account".equals(o.objectType()))))
-                .map(gong -> new GongCallDetails(gong.metaData().id(), gong.metaData().url()))
+                .map(gong -> new GongCallDetails(gong.metaData().id(), gong.metaData().url(), gong.parties()))
                 .toList();
 
     }
@@ -84,15 +84,15 @@ public class GongClientLive implements GongClient {
             final Client client,
             final String username,
             final String password,
-            final String id) {
+            final GongCallDetails call) {
 
         return localStorage.getOrPutObject(
                         GongClientLive.class.getSimpleName(),
                         "GongAPICallTranscript",
-                        id,
+                        call.id(),
                         GongCallTranscript.class,
-                        () -> getCallTranscriptApi(client, id, username, password))
-                .getTranscript();
+                        () -> getCallTranscriptApi(client, call.id(), username, password))
+                .getTranscript(call);
     }
 
     /**
@@ -114,7 +114,10 @@ public class GongClientLive implements GongClient {
 
         final GongCallExtensiveQuery body = new GongCallExtensiveQuery(
                 new GongCallExtensiveQueryFiler(fromDateTime, toDateTime, null, callIds),
-                new GongCallExtensiveQueryContentSelector("Extended", List.of("Now", "TimeOfCall")),
+                new GongCallExtensiveQueryContentSelector(
+                        "Extended",
+                        List.of("Now", "TimeOfCall"),
+                        new GongCallExtensiveQueryExposedFields(true)),
                 cursor
         );
 

@@ -131,7 +131,7 @@ public class Gong implements Tool<GongCallDetails> {
                         .map(c -> c.stream()
                                 .map(call -> Pair.of(
                                         call,
-                                        gongClient.getCallTranscript(client, parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), call.id())))
+                                        gongClient.getCallTranscript(client, parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), call)))
                                 .toList())
                         /*
                             Take the raw transcript and summarize them with individual calls to the LLM.

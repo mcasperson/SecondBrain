@@ -83,7 +83,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
             final String url,
             final String userId) {
         final String name = ollamaClient.callOllamaSimple("Generate a person's full name. Return only the name, nothing else.");
-        return new ZenDeskUserItemResponse(name, userId != null ? userId : UUID.randomUUID().toString());
+        return new ZenDeskUserItemResponse(name, userId != null ? userId : UUID.randomUUID().toString(), "user@example.org", 1L);
     }
 
     private List<ZenDeskTicket> generateMockTickets(int count) {

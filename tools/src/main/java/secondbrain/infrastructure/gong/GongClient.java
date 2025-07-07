@@ -19,5 +19,5 @@ public interface GongClient {
             Client client,
             String username,
             String password,
-            String id);
+            GongCallDetails call);
 }
