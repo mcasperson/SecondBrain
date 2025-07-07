@@ -182,7 +182,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         return localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
-                "ZenDeskApiComments",
+                "ZenDeskApiCommentsV2",
                 DigestUtils.sha256Hex(ticketId + url),
                 0,
                 ZenDeskCommentsResponse.class,
