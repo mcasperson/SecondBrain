@@ -184,5 +184,7 @@ runs:
     SB_OLLAMA_FILEWINDOW: "${{ inputs.fileContextWindow }}"
     SB_DIRECTORYSCAN_DIRECTORY: "${{ inputs.directoryScanDirectory }}"
     SB_DIRECTORYSCAN_KEYWORDWINDOW: "${{ inputs.directoryScanKeywordWindow }}"
+    # Run the prompt against every individual document in the directory scan, and collect the results.
+    SB_DIRECTORYSCAN_INDIVIDUALDOCUMENTPROMPT: "${{ inputs.prompt }}"
 
 
