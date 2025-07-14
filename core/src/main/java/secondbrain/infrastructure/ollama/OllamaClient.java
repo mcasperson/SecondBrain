@@ -86,7 +86,7 @@ public class OllamaClient {
 
         final String target = uri + "/api/generate";
 
-        final OllamaResponse response = Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(uri + "/api/generate")
+        final OllamaResponse result = Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(uri + "/api/generate")
                         .request()
                         .header("Content-Type", "application/json")
                         .header("Accept", "application/json")
@@ -114,9 +114,9 @@ public class OllamaClient {
                 })
                 .get();
 
-        logger.info(response.response());
+        logger.info(result.response());
 
-        return response;
+        return result;
     }
 
     public <T> RagMultiDocumentContext<T> callOllama(final Client client, final OllamaGenerateBodyWithContext<T> body) {
