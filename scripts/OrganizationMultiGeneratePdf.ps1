@@ -563,7 +563,7 @@ if ($GenerateCompanyReports)
                 $arguments = Get-SplitTrimmedAndJoinedString(@"
                 tenant create
                 "--space=AI Server"
-                "--name=$( $jsonFile.BaseName )
+                "--name=$( $jsonFile.BaseName )"
                 --no-prompt
 "@)
                 Invoke-CustomCommand octopus $arguments
@@ -574,7 +574,7 @@ if ($GenerateCompanyReports)
                 "--space=AI Server"
                 "--project=Dossier"
                 "--environment=Production"
-                "--tenant=$( $jsonFile.BaseName )
+                "--tenant=$( $jsonFile.BaseName )"
                 --no-prompt
 "@)
                 Invoke-CustomCommand octopus $arguments
