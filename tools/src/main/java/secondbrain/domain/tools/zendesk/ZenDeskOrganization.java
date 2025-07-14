@@ -73,6 +73,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String ZENDESK_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String ZENDESK_TICKET_SUMMARY_PROMPT_ARG = "ticketSummaryPrompt";
+    public static final String ZENDESK_SUMMARIZE_TICKET_ARG = "summarizeTicket";
     public static final String ZENDESK_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
     public static final String ZENDESK_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
@@ -281,7 +282,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                     raw tickets. The reality is that even LLMs with a context length of 128k tokens mostly fixated
                     one a small number of tickets.
                  */
-                .map(tickets -> summariseTickets(tickets, environmentSettings, parsedArgs))
+                .map(tickets -> parsedArgs.getSummarizeTicket() ? summariseTickets(tickets, environmentSettings, parsedArgs) : tickets)
                 // Don't let one failed instance block the others
                 .onFailure(throwable -> log.warning("Failed to get tickets: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .recover(throwable -> List.of())
@@ -555,6 +556,10 @@ class ZenDeskConfig {
     private Optional<String> configTicketSummaryPrompt;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.summarizeticket")
+    private Optional<String> configSummarizeTicket;
+
+    @Inject
     @ConfigProperty(name = "sb.zendesk.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
 
@@ -683,6 +688,10 @@ class ZenDeskConfig {
 
     public Optional<String> getConfigTicketSummaryPrompt() {
         return configTicketSummaryPrompt;
+    }
+
+    public Optional<String> getConfigSummarizeTicket() {
+        return configSummarizeTicket;
     }
 
     public Optional<String> getConfigZenDeskStartPeriod() {
@@ -1099,6 +1108,18 @@ class ZenDeskConfig {
                                     Summarise the ticket in one paragraph.
                                     You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.""".stripLeading())
                     .value();
+        }
+
+        public boolean getSummarizeTicket() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigSummarizeTicket()::get,
+                    arguments,
+                    context,
+                    ZenDeskOrganization.ZENDESK_SUMMARIZE_TICKET_ARG,
+                    "zen_summarizeticket",
+                    "true").value();
+
+            return BooleanUtils.toBoolean(value);
         }
     }
 }
