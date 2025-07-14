@@ -515,6 +515,7 @@ if ($GenerateCompanyReports)
     release create
     "--space=AI Server"
     "--project=Dossier"
+    "--version=$version"
     --no-prompt
 "@)
     Invoke-CustomCommand octopus $arguments
@@ -588,6 +589,7 @@ if ($GenerateCompanyReports)
                 "--tenant=$( $jsonFile.BaseName )"
                 "--deploy-at=$nextMondayRFC3339"
                 "--deploy-at-expiry=$nextThursdayRFC3339"
+                "--environment=Production"
                 --no-prompt
 "@)
                 Invoke-CustomCommand octopus $arguments
