@@ -507,6 +507,76 @@ git add .
 git commit -m "Add $PdfFile"
 git push
 
+# Generate dossier for all high activity/arr customers
+if ($GenerateCompanyReports)
+{
+    $version = (Get-Date).ToString("yyyy.MM.dd")
+    $arguments = Get-SplitTrimmedAndJoinedString(@"
+    release create
+    "--space=AI Server"
+    "--project=Dossier"
+    --no-prompt
+"@)
+    Invoke-CustomCommand octopus $arguments
 
+    # Get the next Monday at 1am
+    $nextMonday = (Get-Date).Date
+    $nextMonday.AddDays(1)
+    $nextMonday.AddHours(1)
+    while ($nextMonday.DayOfWeek -ne [System.DayOfWeek]::Monday)
+    {
+        $nextMonday = $nextMonday.AddDays(1)
+    }
+    $nextMondayRFC3339 = $nextMonday.ToString("yyyy-MM-ddTHH:mm:sszzz")
 
+    $nextThursday = $nextMonday
+    while ($nextThursday.DayOfWeek -ne [System.DayOfWeek]::Thursday)
+    {
+        $nextThursday = $nextThursday.AddDays(1)
+    }
+    $nextThursdayRFC3339 = $nextThursday.ToString("yyyy-MM-ddTHH:mm:sszzz")
 
+    # Get all JSON files in the subdirectory
+    $jsonFiles = Get-ChildItem -Path $subDir -Filter "*.json"
+
+    Write-Host "Found $( $jsonFiles.Count ) JSON files in $subDir"
+
+    foreach ($jsonFile in $jsonFiles)
+    {
+        try
+        {
+            Write-Host "Processing $( $jsonFile.Name )"
+
+            # Read and parse the JSON file
+            $jsonContent = Get-Content -Path $jsonFile.FullName -Raw | ConvertFrom-Json
+
+            $activityCount = $jsonContent | ? { $_.name -eq "ContextCount" } | % { $_.value }
+            $arr = $jsonContent | ? { $_.name -eq "ARR (SFDC)" } | % { $_.value }
+            $arr2 = $jsonContent | ? { $_.name -eq "ARR Amount" } | % { $_.value }
+
+            # Check if ActivityCount exists and is over 6
+            if ([int]$activityCount -gt 6 -or [int]$arr -gt 100000 -or [int]$arr2 -gt 100000)
+            {
+                Write-Host "$( $jsonFile.BaseName ) is a high activity/arr customer with ActivityCount: $activityCount, ARR (SFDC): $arr, ARR Amount: $arr2"
+
+                # Queue the dossier for deployment
+                $arguments = Get-SplitTrimmedAndJoinedString(@"
+                release deploy
+                "--space=AI Server"
+                "--project=Dossier"
+                "--version=$version"
+                "--tenant=$( $jsonFile.BaseName )
+                "--deploy-at=$nextMondayRFC3339"
+                "--deploy-at-expiry=$nextThursdayRFC3339"
+                --no-prompt
+"@)
+                Invoke-CustomCommand octopus $arguments
+            }
+        }
+        catch
+        {
+            Write-Error "Failed to process $( $jsonFile.Name ): $( $_.Exception.Message )"
+        }
+    }
+
+}
