@@ -4,6 +4,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.infrastructure.gong.api.GongCallExtensiveParty;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * This class represents the contract between a tool and the Gong API.
@@ -20,6 +21,7 @@ public record GongCallDetails(String id, String url, List<GongCallExtensiveParty
         }
 
         return parties.stream()
+                .filter(Objects::nonNull)
                 .filter(party -> speakerId.equals(party.speakerId()))
                 .findFirst()
                 .orElse(null);
