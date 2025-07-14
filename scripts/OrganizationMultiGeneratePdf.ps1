@@ -555,8 +555,8 @@ if ($GenerateCompanyReports)
             $arr = $jsonContent | ? { $_.name -eq "ARR (SFDC)" } | % { $_.value } | Select-Object -First 1
             $arr2 = $jsonContent | ? { $_.name -eq "ARR Amount" } | % { $_.value } | Select-Object -First 1
 
-            # Check if ActivityCount exists and is over 6
-            if ([int]$activityCount -gt 6 -or [int]$arr -gt 100000 -or [int]$arr2 -gt 100000)
+            # Check if ActivityCount exists and is over 8
+            if ([int]$activityCount -gt 8 -or [int]$arr -gt 100000 -or [int]$arr2 -gt 100000)
             {
                 Write-Host "$( $jsonFile.BaseName ) is a high activity/arr customer with ActivityCount: $activityCount, ARR (SFDC): $arr, ARR Amount: $arr2"
 
