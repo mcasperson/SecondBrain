@@ -551,9 +551,9 @@ if ($GenerateCompanyReports)
             # Read and parse the JSON file
             $jsonContent = Get-Content -Path $jsonFile.FullName -Raw | ConvertFrom-Json
 
-            $activityCount = $jsonContent | ? { $_.name -eq "ContextCount" } | % { $_.value }
-            $arr = $jsonContent | ? { $_.name -eq "ARR (SFDC)" } | % { $_.value }
-            $arr2 = $jsonContent | ? { $_.name -eq "ARR Amount" } | % { $_.value }
+            $activityCount = $jsonContent | ? { $_.name -eq "ContextCount" } | % { $_.value } | Select-Object -First 1
+            $arr = $jsonContent | ? { $_.name -eq "ARR (SFDC)" } | % { $_.value } | Select-Object -First 1
+            $arr2 = $jsonContent | ? { $_.name -eq "ARR Amount" } | % { $_.value } | Select-Object -First 1
 
             # Check if ActivityCount exists and is over 6
             if ([int]$activityCount -gt 6 -or [int]$arr -gt 100000 -or [int]$arr2 -gt 100000)
