@@ -279,7 +279,7 @@ class GongConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
-    @ConfigProperty(name = "sb.gong.summarizetranscript", defaultValue = "false")
+    @ConfigProperty(name = "sb.gong.summarizetranscript")
     private Optional<String> configSummarizeTranscript;
 
     @Inject
