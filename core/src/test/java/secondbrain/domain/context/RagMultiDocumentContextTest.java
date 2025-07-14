@@ -57,8 +57,8 @@ class RagMultiDocumentContextTest {
                 similarityCalculator,
                 sentenceVectorizer
         );
-        assertTrue(annotatedDocument.annotatedContent().contains("[1]: This is a test document"));
-        assertTrue(annotatedDocument.annotatedContent().contains("[2]: It contains multiple sentences"));
+        assertTrue(annotatedDocument.annotations().contains("[1]: This is a test document"));
+        assertTrue(annotatedDocument.annotations().contains("[2]: It contains multiple sentences"));
         assertEquals(1, annotatedDocument.annotationCoverage());
     }
 
