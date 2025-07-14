@@ -15,11 +15,12 @@ import java.util.List;
 public record GongCallDetails(String id, String url, List<GongCallExtensiveParty> parties) {
     @Nullable
     public GongCallExtensiveParty getPartyFromId(final String speakerId) {
-        if (parties == null || parties.isEmpty()) {
+        if (parties == null || parties.isEmpty() || speakerId == null || speakerId.isBlank()) {
             return null;
         }
+
         return parties.stream()
-                .filter(party -> party.speakerId().equals(speakerId))
+                .filter(party -> speakerId.equals(party.speakerId()))
                 .findFirst()
                 .orElse(null);
     }
