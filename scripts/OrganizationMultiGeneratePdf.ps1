@@ -521,8 +521,8 @@ if ($GenerateCompanyReports)
 
     # Get the next Monday at 1am
     $nextMonday = (Get-Date).Date
-    $nextMonday.AddDays(1)
-    $nextMonday.AddHours(1)
+    $nextMonday = $nextMonday.AddDays(1)
+    $nextMonday = $nextMonday.AddHours(1)
     while ($nextMonday.DayOfWeek -ne [System.DayOfWeek]::Monday)
     {
         $nextMonday = $nextMonday.AddDays(1)
@@ -585,7 +585,7 @@ if ($GenerateCompanyReports)
                 "--space=AI Server"
                 "--project=Dossier"
                 "--version=$version"
-                "--tenant=$( $jsonFile.BaseName )
+                "--tenant=$( $jsonFile.BaseName )"
                 "--deploy-at=$nextMondayRFC3339"
                 "--deploy-at-expiry=$nextThursdayRFC3339"
                 --no-prompt
