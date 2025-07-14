@@ -565,6 +565,7 @@ if ($GenerateCompanyReports)
                 tenant create
                 "--space=AI Server"
                 "--name=$( $jsonFile.BaseName )"
+                "--tag=Type/Customer"
                 --no-prompt
 "@)
                 Invoke-CustomCommand octopus $arguments
