@@ -551,14 +551,14 @@ if ($GenerateCompanyReports)
             # Read and parse the JSON file
             $jsonContent = Get-Content -Path $jsonFile.FullName -Raw | ConvertFrom-Json
 
-            $activityCount = $jsonContent | ? { $_.name -eq "ContextCount" } | % { $_.value } | Select-Object -First 1
+            $contextCount = $jsonContent | ? { $_.name -eq "ContextCount" } | % { $_.value } | Select-Object -First 1
             $arr = $jsonContent | ? { $_.name -eq "ARR (SFDC)" } | % { $_.value } | Select-Object -First 1
             $arr2 = $jsonContent | ? { $_.name -eq "ARR Amount" } | % { $_.value } | Select-Object -First 1
 
             # Check if ActivityCount exists and is over 8
-            if ([int]$activityCount -gt 8 -or [int]$arr -gt 100000 -or [int]$arr2 -gt 100000)
+            if ([int]$contextCount -gt 8 -or [int]$arr -gt 100000 -or [int]$arr2 -gt 100000)
             {
-                Write-Host "$( $jsonFile.BaseName ) is a high activity/arr customer with ActivityCount: $activityCount, ARR (SFDC): $arr, ARR Amount: $arr2"
+                Write-Host "$( $jsonFile.BaseName ) is a high activity/arr customer with ContextCount: $contextCount, ARR (SFDC): $arr, ARR Amount: $arr2"
 
                 # Create the tenant
                 $arguments = Get-SplitTrimmedAndJoinedString(@"
