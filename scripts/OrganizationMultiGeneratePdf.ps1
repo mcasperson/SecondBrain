@@ -559,6 +559,26 @@ if ($GenerateCompanyReports)
             {
                 Write-Host "$( $jsonFile.BaseName ) is a high activity/arr customer with ActivityCount: $activityCount, ARR (SFDC): $arr, ARR Amount: $arr2"
 
+                # Create the tenant
+                $arguments = Get-SplitTrimmedAndJoinedString(@"
+                tenant create
+                "--space=AI Server"
+                "--name=$( $jsonFile.BaseName )
+                --no-prompt
+"@)
+                Invoke-CustomCommand octopus $arguments
+
+                # Connect the tenant
+                $arguments = Get-SplitTrimmedAndJoinedString(@"
+                tenant connect
+                "--space=AI Server"
+                "--project=Dossier"
+                "--environment=Production"
+                "--tenant=$( $jsonFile.BaseName )
+                --no-prompt
+"@)
+                Invoke-CustomCommand octopus $arguments
+
                 # Queue the dossier for deployment
                 $arguments = Get-SplitTrimmedAndJoinedString(@"
                 release deploy
