@@ -126,8 +126,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
                         parsedArgs))
-                .map(ticket -> ticket.updateMetadata(
-                        getMetadata(ticket, environmentSettings, prompt, arguments)))
+                .map(ticket -> ticket.updateMetadata(getMetadata(ticket, parsedArgs)))
                 .map(ticket -> ticket.updateIntermediateResult(
                         new IntermediateResult(ticket.document(), ticketToFileName(ticket))))
                 .map(List::of);
@@ -145,10 +144,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
     private MetaObjectResults getMetadata(
             final RagDocumentContext<ZenDeskTicket> ticket,
-            final Map<String, String> environmentSettings,
-            final String prompt,
-            final List<ToolArgs> arguments) {
-        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+            final ZenDeskTicketConfig.LocalArguments parsedArgs) {
 
         final List<MetaObjectResult> metadata = ticket.source() != null
                 ? new ArrayList<>(ticket.source().toMetaObjectResult())
