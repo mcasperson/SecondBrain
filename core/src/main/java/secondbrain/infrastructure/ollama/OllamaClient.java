@@ -80,9 +80,9 @@ public class OllamaClient {
         }
 
         logger.info(body.prompt());
-        logger.info("Calling: " + uri);
-        logger.info("Called with model: " + body.model());
-        logger.info("Called with context window: " + Optional.ofNullable(body.options()).map(OllamaGenerateBodyOptions::num_ctx).map(Object::toString).orElse("null"));
+        logger.fine("Calling: " + uri);
+        logger.fine("Called with model: " + body.model());
+        logger.fine("Called with context window: " + Optional.ofNullable(body.options()).map(OllamaGenerateBodyOptions::num_ctx).map(Object::toString).orElse("null"));
 
         final String target = uri + "/api/generate";
 
