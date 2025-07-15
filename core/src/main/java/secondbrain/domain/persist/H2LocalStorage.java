@@ -296,17 +296,17 @@ public class H2LocalStorage implements LocalStorage {
             return generateValue.generate();
         }
 
-        logger.info("Getting string from cache for tool " + tool + " source " + source + " prompt " + promptHash);
+        logger.fine("Getting string from cache for tool " + tool + " source " + source + " prompt " + promptHash);
 
         return Try
                 .of(() -> getString(tool, source, promptHash))
                 // a cache miss means the string is empty, so we throw an exception
                 .filter(StringUtils::isNotBlank)
                 // cache hit
-                .onSuccess(v -> logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
+                .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 // recover from a cache miss by generating the value and saving it
                 .recover(result -> {
-                    logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                    logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                     final String value = generateValue.generate();
                     putString(tool, source, promptHash, ttlSeconds, value);
                     return value;
@@ -318,7 +318,7 @@ public class H2LocalStorage implements LocalStorage {
                 .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 // If there was an error with the local storage, bypass it and generate the value
                 .recover(LocalStorageFailure.class, ex -> {
-                    logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                    logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                     return generateValue.generate();
                 })
                 // For all other errors, we return the value or rethrow the exception
@@ -336,18 +336,18 @@ public class H2LocalStorage implements LocalStorage {
             return generateValue.generate();
         }
 
-        logger.info("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
+        logger.fine("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
 
         return Try.of(() -> getString(tool, source, promptHash))
                 // a cache miss means the string is empty, so we throw an exception
                 .filter(StringUtils::isNotBlank)
                 // a cache hit means we deserialize the result
-                .onSuccess(v -> logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
+                .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> jsonDeserializer.deserialize(r, clazz))
                 // a cache miss means we call the API and then save the result in the cache
                 .recoverWith(ex -> Try.of(() -> {
-                            logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                            logger.info("Exception: " + exceptionHandler.getExceptionMessage(ex));
+                            logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                            logger.fine("Exception: " + exceptionHandler.getExceptionMessage(ex));
                             final T value = generateValue.generate();
                             putString(
                                     tool,
@@ -365,7 +365,7 @@ public class H2LocalStorage implements LocalStorage {
                 .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 // If there was an error with the local storage, bypass it and generate the value
                 .recover(LocalStorageFailure.class, ex -> {
-                    logger.info("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                    logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                     return generateValue.generate();
                 })
                 // For all other errors, we return the value or rethrow the exception
