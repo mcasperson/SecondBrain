@@ -35,6 +35,7 @@ import static io.vavr.control.Try.of;
 public class OllamaClient {
     private static final int MAX_RETIES = 3;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
+    private static final Long RETRY_DELAY = 10000L; // 10 second delay for retries
 
     /**
      * Common error messages that we don't want to cache.
@@ -109,7 +110,7 @@ public class OllamaClient {
                         .get())
                 .recover(ex -> {
                     logger.warning("Retrying Ollama call, attempt " + (retryCount + 1));
-                    Try.run(() -> Thread.sleep(retryCount * 1000L));
+                    Try.run(() -> Thread.sleep(retryCount * RETRY_DELAY));
                     return callOllama(client, body, retryCount + 1);
                 })
                 .get();
