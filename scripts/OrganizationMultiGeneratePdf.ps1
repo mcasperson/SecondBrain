@@ -560,11 +560,13 @@ if ($GenerateCompanyReports)
             {
                 Write-Host "$( $jsonFile.BaseName ) is a high activity/arr customer with ContextCount: $contextCount, ARR (SFDC): $arr, ARR Amount: $arr2"
 
+                $tenantName = $jsonFile.BaseName -replace "^COMPANY ", ""
+
                 # Create the tenant
                 $arguments = Get-SplitTrimmedAndJoinedString(@"
                 tenant create
                 "--space=AI Server"
-                "--name=$( $jsonFile.BaseName )"
+                "--name=$tenantName"
                 "--tag=Type/Customer"
                 --no-prompt
 "@)
@@ -576,7 +578,7 @@ if ($GenerateCompanyReports)
                 "--space=AI Server"
                 "--project=Dossier"
                 "--environment=Production"
-                "--tenant=$( $jsonFile.BaseName )"
+                "--tenant=$tenantName"
                 --no-prompt
 "@)
                 Invoke-CustomCommand octopus $arguments
@@ -587,7 +589,7 @@ if ($GenerateCompanyReports)
                 "--space=AI Server"
                 "--project=Dossier"
                 "--version=$version"
-                "--tenant=$( $jsonFile.BaseName )"
+                "--tenant=$tenantName"
                 "--deploy-at=$nextMondayRFC3339"
                 "--deploy-at-expiry=$nextThursdayRFC3339"
                 "--environment=Production"
