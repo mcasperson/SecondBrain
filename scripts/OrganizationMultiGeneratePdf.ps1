@@ -175,7 +175,7 @@ if ($GenerateCompanyReports)
             "-Dsb.multislackzengoogle.metaField13=Tenants"
             "-Dsb.multislackzengoogle.metaPrompt14=Do the messages mention the use of ArgoCD?"
             "-Dsb.multislackzengoogle.metaField14=ArgoCD"
-            "-Dsb.multislackzengoogle.metaPrompt15=Do the messages mention the use of AI?"
+            "-Dsb.multislackzengoogle.metaPrompt15=Do the messages mention the use of artificial intelligence (AI)? You must only report on specific mentions of AI, such as 'AI', 'artificial intelligence', LLM, or 'machine learning'."
             "-Dsb.multislackzengoogle.metaField15=AI"
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
