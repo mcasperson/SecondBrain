@@ -12,6 +12,7 @@ public class PromptBuilderQwenTest {
         assertNotNull(regex);
 
         assertTrue("qwen2".matches(regex));
+        assertTrue("hf.co/unsloth/Qwen3-30B-A3B-128K-GGUF".matches(regex));
         assertTrue("qwen2.0".matches(regex));
         assertTrue("qwen2.5".matches(regex));
         assertTrue("qwen3".matches(regex));

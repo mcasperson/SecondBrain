@@ -20,7 +20,7 @@ public class PromptBuilderQwen implements PromptBuilder {
 
     @Override
     public String modelRegex() {
-        return "^(qwq|qwen\\d(\\.\\d)?).*$";
+        return "^(hf.co/unsloth/)?(qwq|(q|Q)wen\\d(\\.\\d)?).*$";
     }
 
     @Override
