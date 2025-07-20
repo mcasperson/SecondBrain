@@ -24,4 +24,13 @@ public class FileToTextContext implements FileToText {
                 .map(extractor -> extractor.convert(path))
                 .orElse(Try.of(() -> Files.readString(Paths.get(path))).getOrNull());
     }
+
+    @Override
+    public String convertString(final String contents) {
+        return textExtractors
+                .stream().min((a, b) -> Integer.compare(b.priority(), a.priority()))
+                .map(extractor -> extractor.convertContents(contents))
+                .orElse(contents);
+
+    }
 }

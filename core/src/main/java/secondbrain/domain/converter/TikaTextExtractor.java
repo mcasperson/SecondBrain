@@ -10,7 +10,9 @@ import org.apache.tika.parser.Parser;
 import org.apache.tika.sax.BodyContentHandler;
 import secondbrain.domain.exceptions.ExternalFailure;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
+import java.nio.charset.StandardCharsets;
 
 /**
  * A global fallback for every file type using Tika.
@@ -29,6 +31,24 @@ public class TikaTextExtractor implements TextExtractorStrategy {
                         .run(() -> parser.parse(stream, handler, metadata, context))
                         .mapFailure(
                                 API.Case(API.$(), ex -> new ExternalFailure("Failed to parse file", ex))
+                        ))
+                .get();
+
+        return handler.toString();
+    }
+
+    @Override
+    public String convertContents(final String contents) {
+        final BodyContentHandler handler = new BodyContentHandler(-1);
+        final Parser parser = new AutoDetectParser();
+        final ParseContext context = new ParseContext();
+        final Metadata metadata = new Metadata();
+
+        Try.withResources(() -> new ByteArrayInputStream(contents.getBytes(StandardCharsets.UTF_8)))
+                .of(stream -> Try
+                        .run(() -> parser.parse(stream, handler, metadata, context))
+                        .mapFailure(
+                                API.Case(API.$(), ex -> new ExternalFailure("Failed to parse string", ex))
                         ))
                 .get();
 

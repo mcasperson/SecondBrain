@@ -5,4 +5,6 @@ package secondbrain.domain.converter;
  */
 public interface FileToText {
     String convert(String path);
+
+    String convertString(String path);
 }

@@ -6,6 +6,8 @@ package secondbrain.domain.converter;
 public interface TextExtractorStrategy {
     String convert(String path);
 
+    String convertContents(String contents);
+
     boolean isSupported(String path);
 
     int priority();

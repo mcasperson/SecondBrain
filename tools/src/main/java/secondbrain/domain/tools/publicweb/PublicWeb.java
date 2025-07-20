@@ -130,7 +130,7 @@ public class PublicWeb implements Tool<Void> {
         }
 
         return Try.of(() -> fileReader.read(parsedArgs.getUrl()))
-                .map(fileContent -> fileToText.convert(fileContent))
+                .map(fileContent -> fileToText.convertString(fileContent))
                 .map(content -> documentTrimmer.trimDocumentToKeywords(
                         content,
                         parsedArgs.getKeywords(),
