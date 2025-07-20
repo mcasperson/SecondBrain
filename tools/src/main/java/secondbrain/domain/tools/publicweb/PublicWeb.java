@@ -32,6 +32,8 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -129,8 +131,11 @@ public class PublicWeb implements Tool<Void> {
             throw new InternalFailure("You must provide a URL to download");
         }
 
-        return Try.of(() -> fileReader.read(parsedArgs.getUrl()))
-                .map(fileContent -> fileToText.convertString(fileContent))
+        final Try<String> contents = Files.isRegularFile(Paths.get(parsedArgs.getUrl()))
+                ? Try.of(() -> fileToText.convert(parsedArgs.getUrl()))
+                : Try.of(() -> fileReader.read(parsedArgs.getUrl()));
+
+        return contents
                 .map(content -> documentTrimmer.trimDocumentToKeywords(
                         content,
                         parsedArgs.getKeywords(),
