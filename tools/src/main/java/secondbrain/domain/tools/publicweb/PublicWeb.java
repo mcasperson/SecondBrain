@@ -17,6 +17,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
+import secondbrain.domain.converter.FileToText;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
@@ -86,6 +87,9 @@ public class PublicWeb implements Tool<Void> {
     @Inject
     private PublicWebConfig config;
 
+    @Inject
+    private FileToText fileToText;
+
     @Override
     public String getName() {
         return PublicWeb.class.getSimpleName();
@@ -126,6 +130,7 @@ public class PublicWeb implements Tool<Void> {
         }
 
         return Try.of(() -> fileReader.read(parsedArgs.getUrl()))
+                .map(fileContent -> fileToText.convert(fileContent))
                 .map(content -> documentTrimmer.trimDocumentToKeywords(
                         content,
                         parsedArgs.getKeywords(),
