@@ -58,8 +58,8 @@ $throttleLimit = 20
 $model = "hf.co/unsloth/Qwen3-30B-A3B-GGUF"
 #$model = "qwen3:14b"
 
-#$contextWindow = "32768"
-$contextWindow = "40000"
+$contextWindow = "32768"
+#$contextWindow = "40000"
 #$contextWindow = "655361"
 #$contextWindow = "131072"
 
