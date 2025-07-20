@@ -26,11 +26,11 @@ public class FileToTextContext implements FileToText {
     }
 
     @Override
-    public String convertString(final String contents) {
+    public String convertByteArray(final byte[] contents) {
         return textExtractors
                 .stream().min((a, b) -> Integer.compare(b.priority(), a.priority()))
                 .map(extractor -> extractor.convertContents(contents))
-                .orElse(contents);
+                .orElse(new String(contents));
 
     }
 }

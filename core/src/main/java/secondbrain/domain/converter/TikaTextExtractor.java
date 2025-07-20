@@ -12,7 +12,6 @@ import secondbrain.domain.exceptions.ExternalFailure;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
-import java.nio.charset.StandardCharsets;
 
 /**
  * A global fallback for every file type using Tika.
@@ -38,13 +37,13 @@ public class TikaTextExtractor implements TextExtractorStrategy {
     }
 
     @Override
-    public String convertContents(final String contents) {
+    public String convertContents(final byte[] contents) {
         final BodyContentHandler handler = new BodyContentHandler(-1);
         final Parser parser = new AutoDetectParser();
         final ParseContext context = new ParseContext();
         final Metadata metadata = new Metadata();
 
-        Try.withResources(() -> new ByteArrayInputStream(contents.getBytes(StandardCharsets.UTF_8)))
+        Try.withResources(() -> new ByteArrayInputStream(contents))
                 .of(stream -> Try
                         .run(() -> parser.parse(stream, handler, metadata, context))
                         .mapFailure(
