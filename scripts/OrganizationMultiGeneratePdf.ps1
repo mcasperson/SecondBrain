@@ -521,6 +521,9 @@ if ($GenerateCompanyReports)
 "@)
     Invoke-CustomCommand octopus $arguments
 
+    # Get the date 3 months ago
+    $threeMonthsAgo = (Get-Date).AddMonths(-3)
+
     # Get the next Monday at 1am
     $startTime = (Get-Date).Date
     $startTime = $startTime.AddDays(1)
@@ -544,8 +547,6 @@ if ($GenerateCompanyReports)
 
     foreach ($jsonFile in $jsonFiles)
     {
-        $startTimeRFC3339 = $startTime.ToString("yyyy-MM-ddTHH:mm:sszzz")
-
         try
         {
             Write-Host "Processing $( $jsonFile.Name )"
@@ -585,6 +586,17 @@ if ($GenerateCompanyReports)
 "@)
                 Invoke-CustomCommand octopus $arguments
 
+                $lastDeployment = Get-LastDeploymentTime $tenantName
+
+                if ($null -ne $lastDeployment -and $lastDeployment -lt $threeMonthsAgo)
+                {
+                    Write-Host "Skipping $( $jsonFile.Name ) as it was already deployed in the last 3 months"
+                    continue
+                }
+
+                $startTimeRFC3339 = $startTime.ToString("yyyy-MM-ddTHH:mm:sszzz")
+                $startTime = $startTime.AddHours(6)
+
                 # Queue the dossier for deployment
                 $arguments = Get-SplitTrimmedAndJoinedString(@"
                 release deploy
@@ -604,8 +616,41 @@ if ($GenerateCompanyReports)
         {
             Write-Error "Failed to process $( $jsonFile.Name ): $( $_.Exception.Message )"
         }
-
-        $startTime = $startTime.AddHours(6)
     }
 
+}
+
+function Get-LastDeploymentTime
+{
+    param (
+        [string]$tenantName
+    )
+
+    $octopusUrl = "https://mattc.octopus.app"
+    $apiKey = $env:OCTOPUS_CLI_API_KEY
+    $spaceName = "AI Server"
+    $projectName = "Dossier"
+
+
+    $headers = @{ "X-Octopus-ApiKey" = $apiKey }
+
+    # Get space, project, and tenant IDs
+    $space = (Invoke-RestMethod "$octopusUrl/api/spaces/all" -Headers $headers) | Where-Object Name -eq $spaceName
+
+    Write-Host "Space ID: $( $space.Id )"
+
+    $project = (Invoke-RestMethod "$octopusUrl/api/$( $space.Id )/projects/all" -Headers $headers) | Where-Object Name -eq $projectName
+    $tenant = (Invoke-RestMethod "$octopusUrl/api/$( $space.Id )/tenants/all" -Headers $headers) | Where-Object Name -eq $tenantName
+
+    # Query deployments
+    $deploymentsUrl = "$octopusUrl/api/$( $space.Id )/deployments?projects=$( $project.Id )&tenants=$( $tenant.Id )&take=1"
+    $deployments = Invoke-RestMethod $deploymentsUrl -Headers $headers
+
+    if ($deployments.Items.Count -gt 0)
+    {
+        $lastDeployment = $deployments.Items[0]
+        return $lastDeployment.Created
+    }
+
+    return $null
 }
