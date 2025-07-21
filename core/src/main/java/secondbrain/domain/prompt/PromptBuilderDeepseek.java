@@ -2,6 +2,7 @@ package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.StringUtils;
+import secondbrain.domain.constants.ModelRegex;
 
 /**
  * See <a href="https://ollama.com/library/deepseek-r1/blobs/369ca498f347">ollama</a>
@@ -12,7 +13,7 @@ public class PromptBuilderDeepseek implements PromptBuilder {
 
     @Override
     public String modelRegex() {
-        return "^deepseek-r1.*$";
+        return ModelRegex.DEEPSEEK_REGEX;
     }
 
     @Override

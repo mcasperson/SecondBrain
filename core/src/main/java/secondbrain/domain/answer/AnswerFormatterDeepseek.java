@@ -2,6 +2,7 @@ package secondbrain.domain.answer;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.poi.util.StringUtil;
+import secondbrain.domain.constants.ModelRegex;
 
 /**
  * A formatter to remove the thinking part of the Deepseek response from the deepseek-r1 model.
@@ -10,7 +11,7 @@ import org.apache.poi.util.StringUtil;
 public class AnswerFormatterDeepseek implements AnswerFormatter {
     @Override
     public String modelRegex() {
-        return "^deepseek-r1.*$";
+        return ModelRegex.DEEPSEEK_REGEX;
     }
 
     @Override
