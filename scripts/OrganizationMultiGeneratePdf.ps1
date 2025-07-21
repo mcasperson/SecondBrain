@@ -524,20 +524,22 @@ if ($GenerateCompanyReports)
     # Get the date 3 months ago
     $threeMonthsAgo = (Get-Date).AddMonths(-3)
 
-    # Get the next monday after 2 weeks from today
+    # We make the start time about as far into the future as possible.
+    # We don't actually want Octopus starting this task. Queued tasks represent a backlog of tasks
+    # that we will cancel and restart once the last task has fininshed.
+    # The queuing semantics of Octopus are basically repurposed to create a backlog of tasks that
+    # expire in a month.
     $startTime = (Get-Date).Date
-    $startTime = $startTime.AddDays(14)
+    $startTime = $startTime.AddDays(29)
     while ($startTime.DayOfWeek -ne [System.DayOfWeek]::Monday)
     {
         $startTime = $startTime.AddDays(1)
     }
     $startTimeRFC3339 = $startTime.ToString("yyyy-MM-ddTHH:mm:sszzz")
 
-    $endTime = $startTime
-    while ($endTime.DayOfWeek -ne [System.DayOfWeek]::Thursday)
-    {
-        $endTime = $endTime.AddDays(1)
-    }
+    # The end time is so close to the start time that by the time this task is considered by Octopus,
+    # it has already exppired.
+    $endTime = $startTime.AddSeconds(1)
     $endTimeRFC3339 = $endTime.ToString("yyyy-MM-ddTHH:mm:sszzz")
 
     # Get all JSON files in the subdirectory
