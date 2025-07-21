@@ -655,7 +655,8 @@ function Get-LastDeploymentTime
     if ($completedDeployments.Count -gt 0)
     {
         $lastDeployment = $completedDeployments[0]
-        return $lastDeployment.Created
+        $format = "MM/dd/yyyy HH:mm:ss"
+        return [DateTime]::ParseExact($lastDeployment.Created, "MM/dd/yyyy HH:mm:ss", $null)
     }
 
     return $null
