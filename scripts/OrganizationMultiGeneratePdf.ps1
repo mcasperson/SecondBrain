@@ -524,14 +524,14 @@ if ($GenerateCompanyReports)
     # Get the date 3 months ago
     $threeMonthsAgo = (Get-Date).AddMonths(-3)
 
-    # Get the next Monday at 1am
+    # Get the next monday after 2 weeks from today
     $startTime = (Get-Date).Date
-    $startTime = $startTime.AddDays(1)
-    $startTime = $startTime.AddHours(1)
+    $startTime = $startTime.AddDays(14)
     while ($startTime.DayOfWeek -ne [System.DayOfWeek]::Monday)
     {
         $startTime = $startTime.AddDays(1)
     }
+    $startTimeRFC3339 = $startTime.ToString("yyyy-MM-ddTHH:mm:sszzz")
 
     $endTime = $startTime
     while ($endTime.DayOfWeek -ne [System.DayOfWeek]::Thursday)
@@ -593,9 +593,6 @@ if ($GenerateCompanyReports)
                     Write-Host "Skipping $( $jsonFile.Name ) as it was already deployed in the last 3 months"
                     continue
                 }
-
-                $startTimeRFC3339 = $startTime.ToString("yyyy-MM-ddTHH:mm:sszzz")
-                $startTime = $startTime.AddHours(6)
 
                 # Queue the dossier for deployment
                 $arguments = Get-SplitTrimmedAndJoinedString(@"
