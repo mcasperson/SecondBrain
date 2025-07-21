@@ -636,9 +636,6 @@ function Get-LastDeploymentTime
 
     # Get space, project, and tenant IDs
     $space = (Invoke-RestMethod "$octopusUrl/api/spaces/all" -Headers $headers) | Where-Object Name -eq $spaceName
-
-    Write-Host "Space ID: $( $space.Id )"
-
     $project = (Invoke-RestMethod "$octopusUrl/api/$( $space.Id )/projects/all" -Headers $headers) | Where-Object Name -eq $projectName
     $tenant = (Invoke-RestMethod "$octopusUrl/api/$( $space.Id )/tenants/all" -Headers $headers) | Where-Object Name -eq $tenantName
 
