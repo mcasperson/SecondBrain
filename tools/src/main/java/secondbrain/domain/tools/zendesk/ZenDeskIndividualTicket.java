@@ -156,7 +156,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                     parsedArgs.getContextFilterQuestion(),
                                     List.of())
                             .combinedDocument())
-                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
+                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(InternalFailure.class, ex -> 10)
                     .get();

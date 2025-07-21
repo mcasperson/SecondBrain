@@ -37,7 +37,6 @@ import secondbrain.domain.tooldefs.MetaObjectResults;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
@@ -103,9 +102,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
     @Inject
     private ZenDeskIndividualTicket ticketTool;
-
-    @Inject
-    private RatingTool ratingTool;
 
     @Inject
     private ModelConfig modelConfig;

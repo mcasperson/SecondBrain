@@ -495,7 +495,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, multiRagDoc.combinedDocument()),
                                 metaField.getRight(),
                                 List.of()).combinedDocument())
-                        .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
+                        .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                         .onFailure(ex -> logger.warning("Rating tool failed for " + metaField.getLeft() + ": " + exceptionHandler.getExceptionMessage(ex)))
                         // Meta-fields are a best effort, and we default to 0
                         .recover(ex -> 0)
