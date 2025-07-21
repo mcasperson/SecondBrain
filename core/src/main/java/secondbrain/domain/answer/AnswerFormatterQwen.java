@@ -2,6 +2,7 @@ package secondbrain.domain.answer;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.poi.util.StringUtil;
+import secondbrain.domain.constants.ModelRegex;
 
 /**
  * A formatter to remove the thinking part of the Qwen response from the qwen3 model.
@@ -10,7 +11,7 @@ import org.apache.poi.util.StringUtil;
 public class AnswerFormatterQwen implements AnswerFormatter {
     @Override
     public String modelRegex() {
-        return "^(hf.co/unsloth/)?(qwq|(q|Q)wen\\d(\\.\\d)?).*$";
+        return ModelRegex.QWEN_REGEX;
     }
 
     @Override

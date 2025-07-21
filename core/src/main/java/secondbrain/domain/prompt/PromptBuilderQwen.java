@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.constants.ModelRegex;
 
 import java.util.Optional;
 
@@ -20,7 +21,7 @@ public class PromptBuilderQwen implements PromptBuilder {
 
     @Override
     public String modelRegex() {
-        return "^(hf.co/unsloth/)?(qwq|(q|Q)wen\\d(\\.\\d)?).*$";
+        return ModelRegex.QWEN_REGEX;
     }
 
     @Override
