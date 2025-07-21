@@ -639,12 +639,22 @@ function Get-LastDeploymentTime
     $tenant = (Invoke-RestMethod "$octopusUrl/api/$( $space.Id )/tenants/all" -Headers $headers) | Where-Object Name -eq $tenantName
 
     # Query deployments
-    $deploymentsUrl = "$octopusUrl/api/$( $space.Id )/deployments?projects=$( $project.Id )&tenants=$( $tenant.Id )&take=1"
+    $deploymentsUrl = "$octopusUrl/api/$( $space.Id )/deployments?projects=$( $project.Id )&tenants=$( $tenant.Id )&take=100"
     $deployments = Invoke-RestMethod $deploymentsUrl -Headers $headers
 
-    if ($deployments.Items.Count -gt 0)
+    Write-Host "Found $( $deployments.Items.Count ) deployments for tenant $( $tenantName )"
+    $deployments.Items | %{ Write-Host "Deployment ID: $( $_.Id ), Task ID: $( $_.TaskId ), Created: $( $_.Created )" }
+
+    $completedDeployments = $deployments.Items |
+            ? {
+                (Invoke-RestMethod "$octopusUrl/api/tasks/$( $_.TaskId )" -Headers $headers) |
+                        ? { $_.State -eq "Succeeded" -or $_.State -eq "Queued" -or $_.State -eq "Executing" }
+            }
+
+
+    if ($completedDeployments.Count -gt 0)
     {
-        $lastDeployment = $deployments.Items[0]
+        $lastDeployment = $completedDeployments[0]
         return $lastDeployment.Created
     }
 
