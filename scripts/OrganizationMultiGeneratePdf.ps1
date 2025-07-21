@@ -522,21 +522,20 @@ if ($GenerateCompanyReports)
     Invoke-CustomCommand octopus $arguments
 
     # Get the next Monday at 1am
-    $nextMonday = (Get-Date).Date
-    $nextMonday = $nextMonday.AddDays(1)
-    $nextMonday = $nextMonday.AddHours(1)
-    while ($nextMonday.DayOfWeek -ne [System.DayOfWeek]::Monday)
+    $startTime = (Get-Date).Date
+    $startTime = $startTime.AddDays(1)
+    $startTime = $startTime.AddHours(1)
+    while ($startTime.DayOfWeek -ne [System.DayOfWeek]::Monday)
     {
-        $nextMonday = $nextMonday.AddDays(1)
+        $startTime = $startTime.AddDays(1)
     }
-    $nextMondayRFC3339 = $nextMonday.ToString("yyyy-MM-ddTHH:mm:sszzz")
 
-    $nextThursday = $nextMonday
-    while ($nextThursday.DayOfWeek -ne [System.DayOfWeek]::Thursday)
+    $endTime = $startTime
+    while ($endTime.DayOfWeek -ne [System.DayOfWeek]::Thursday)
     {
-        $nextThursday = $nextThursday.AddDays(1)
+        $endTime = $endTime.AddDays(1)
     }
-    $nextThursdayRFC3339 = $nextThursday.ToString("yyyy-MM-ddTHH:mm:sszzz")
+    $endTimeRFC3339 = $endTime.ToString("yyyy-MM-ddTHH:mm:sszzz")
 
     # Get all JSON files in the subdirectory
     $jsonFiles = Get-ChildItem -Path $subDir -Filter "*.json"
@@ -545,6 +544,8 @@ if ($GenerateCompanyReports)
 
     foreach ($jsonFile in $jsonFiles)
     {
+        $startTimeRFC3339 = $startTime.ToString("yyyy-MM-ddTHH:mm:sszzz")
+
         try
         {
             Write-Host "Processing $( $jsonFile.Name )"
@@ -591,8 +592,8 @@ if ($GenerateCompanyReports)
                 "--project=Dossier"
                 "--version=$version"
                 "--tenant=$tenantName"
-                "--deploy-at=$nextMondayRFC3339"
-                "--deploy-at-expiry=$nextThursdayRFC3339"
+                "--deploy-at=$startTimeRFC3339"
+                "--deploy-at-expiry=$endTimeRFC3339"
                 "--environment=Production"
                 --no-prompt
 "@)
@@ -603,6 +604,8 @@ if ($GenerateCompanyReports)
         {
             Write-Error "Failed to process $( $jsonFile.Name ): $( $_.Exception.Message )"
         }
+
+        $startTime = $startTime.AddHours(6)
     }
 
 }
