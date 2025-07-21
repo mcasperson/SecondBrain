@@ -538,8 +538,8 @@ if ($GenerateCompanyReports)
     $startTimeRFC3339 = $startTime.ToString("yyyy-MM-ddTHH:mm:sszzz")
 
     # The end time is so close to the start time that by the time this task is considered by Octopus,
-    # it has already exppired.
-    $endTime = $startTime.AddSeconds(1)
+    # it will likely be expired.
+    $endTime = $startTime.AddMinutes(5)
     $endTimeRFC3339 = $endTime.ToString("yyyy-MM-ddTHH:mm:sszzz")
 
     # Get all JSON files in the subdirectory
