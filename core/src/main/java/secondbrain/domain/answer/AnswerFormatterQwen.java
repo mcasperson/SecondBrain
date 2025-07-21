@@ -10,7 +10,7 @@ import org.apache.poi.util.StringUtil;
 public class AnswerFormatterQwen implements AnswerFormatter {
     @Override
     public String modelRegex() {
-        return "^qwen.*$";
+        return "^(hf.co/unsloth/)?(qwq|(q|Q)wen\\d(\\.\\d)?).*$";
     }
 
     @Override
