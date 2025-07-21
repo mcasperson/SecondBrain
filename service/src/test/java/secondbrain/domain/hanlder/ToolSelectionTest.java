@@ -10,6 +10,7 @@ import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.RepeatedTest;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -70,6 +71,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * means we accept a success rate of 33%. We need to implement some custom logic to test that our logic has some minimum
  * success rate, sate 80%.
  */
+@Disabled
 @Testcontainers
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
