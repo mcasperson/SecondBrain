@@ -531,10 +531,6 @@ if ($GenerateCompanyReports)
     # expire in a month.
     $startTime = (Get-Date).Date
     $startTime = $startTime.AddDays(29)
-    while ($startTime.DayOfWeek -ne [System.DayOfWeek]::Monday)
-    {
-        $startTime = $startTime.AddDays(1)
-    }
     $startTimeRFC3339 = $startTime.ToString("yyyy-MM-ddTHH:mm:sszzz")
 
     # The end time is so close to the start time that by the time this task is considered by Octopus,
