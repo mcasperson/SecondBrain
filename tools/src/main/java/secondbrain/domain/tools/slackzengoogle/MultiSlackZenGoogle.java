@@ -23,10 +23,7 @@ import secondbrain.domain.exceptions.*;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
-import secondbrain.domain.tooldefs.MetaObjectResult;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
@@ -38,9 +35,6 @@ import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -435,14 +429,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> filteredContext = contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
 
-        // Merge all the metadata from the context into a single list.
-        final List<MetaObjectResult> metadata = retValue
-                .stream()
-                .flatMap(ragDoc -> ragDoc.getMetadata().stream())
-                .toList();
-
-        saveMetaResult(filteredContext, parsedArgs, metadata);
-
         return filteredContext;
     }
 
@@ -506,25 +492,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         }
 
         return results;
-    }
-
-    private void saveMetaResult(
-            final List<RagDocumentContext<Void>> ragContext,
-            final MultiSlackZenGoogleConfig.LocalArguments parsedArgs,
-            final List<MetaObjectResult> additionalMetadata) {
-        final List<MetaObjectResult> results = new ArrayList<MetaObjectResult>();
-
-        if (StringUtils.isNotBlank(parsedArgs.getMetaReport())) {
-            results.add(getContextCount(ragContext));
-            results.addAll(getMetaResults(ragContext, parsedArgs));
-            results.addAll(additionalMetadata);
-
-            Try.run(() -> Files.write(Paths.get(parsedArgs.getMetaReport()),
-                            jsonDeserializer.serialize(results).getBytes(),
-                            StandardOpenOption.CREATE,
-                            StandardOpenOption.TRUNCATE_EXISTING))
-                    .onFailure(ex -> logger.severe(exceptionHandler.getExceptionMessage(ex)));
-        }
     }
 
     /**
@@ -803,6 +770,20 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+
+        // Take the metadata from the individual contexts and merge them into a single list.
+        // This essentially treats all the metadata as a single, top level context.
+        // If any of the individual contexts defined a custom file name for their metadata,
+        // that will also be respected.
+        final List<MetaObjectResult> metadata = context
+                .stream()
+                .flatMap(ragDoc -> ragDoc.getMetadata().stream())
+                .toList();
+
+        final List<MetaObjectResult> results = new ArrayList<MetaObjectResult>(metadata);
+        results.add(getContextCount(context));
+        results.addAll(getMetaResults(context, parsedArgs));
+
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(ragDoc ->
@@ -811,7 +792,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .collect(Collectors.joining("\n")),
                 context,
                 null,
-                parsedArgs.getAnnotationPrefix());
+                parsedArgs.getAnnotationPrefix(),
+                new MetaObjectResults(results, parsedArgs.getMetaReport(), ""));
     }
 
     record PositionalEntity(Entity entity, int position, int total) {

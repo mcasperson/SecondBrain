@@ -1,6 +1,7 @@
 package secondbrain.domain.context;
 
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.MetaObjectResults;
 
@@ -19,25 +20,36 @@ import java.util.stream.Collectors;
  * @param combinedDocument   The combined context to be sent to the LLM
  * @param individualContexts The individual documents that all contribute to the combined context
  * @param debug              General debug information
+ * @param annotationPrefix   The prefix to use when annotating the document with the source sentence
+ * @param metadata           The metadata associated with the individual contexts, such as the source, author
  */
 public record RagMultiDocumentContext<T>(String combinedDocument,
                                          List<RagDocumentContext<T>> individualContexts,
-                                         String debug,
-                                         String annotationPrefix) {
+                                         @Nullable String debug,
+                                         @Nullable String annotationPrefix,
+                                         @Nullable MetaObjectResults metadata) {
     public RagMultiDocumentContext(final String combinedDocument) {
-        this(combinedDocument, List.of(), null, "");
+        this(combinedDocument, List.of(), null, null, null);
     }
 
     public RagMultiDocumentContext(final String combinedDocument, List<RagDocumentContext<T>> individualContexts) {
-        this(combinedDocument, individualContexts, null, "");
+        this(combinedDocument, individualContexts, null, null, null);
     }
 
     public RagMultiDocumentContext(final String combinedDocument, List<RagDocumentContext<T>> individualContexts, final String debug) {
-        this(combinedDocument, individualContexts, debug, "");
+        this(combinedDocument, individualContexts, debug, null, null);
     }
 
     public String getCombinedDocument() {
         return Objects.requireNonNullElse(combinedDocument, "");
+    }
+
+    public MetaObjectResults getMetadata() {
+        if (metadata == null) {
+            return new MetaObjectResults();
+        }
+
+        return metadata;
     }
 
     public List<String> getLinks() {
@@ -48,6 +60,10 @@ public record RagMultiDocumentContext<T>(String combinedDocument,
                 .toList();
     }
 
+    public String getAnnotationPrefix() {
+        return Objects.requireNonNullElse(annotationPrefix, "");
+    }
+
     /**
      * The document held by this object often needs to undergo some transformation, from raw text, to being sanitized,
      * to being marked up, as part of a LLM template. The individual contexts neve change though.
@@ -56,7 +72,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument,
      * @return A new copy of this object with the new document
      */
     public RagMultiDocumentContext<T> updateDocument(final String document) {
-        return new RagMultiDocumentContext<T>(document, individualContexts, debug, annotationPrefix);
+        return new RagMultiDocumentContext<T>(document, individualContexts, debug, annotationPrefix, metadata);
     }
 
     public String getDocumentLeft(final int length) {
@@ -102,7 +118,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument,
                                 // update the document with the annotation index
                                 acc.replaceAll(
                                         Pattern.quote(entry.getContext()),
-                                        Matcher.quoteReplacement(entry.getContext() + " [" + annotationPrefix + (lookups.indexOf(entry.toRagSentence()) + 1) + "]")),
+                                        Matcher.quoteReplacement(entry.getContext() + " [" + getAnnotationPrefix() + (lookups.indexOf(entry.toRagSentence()) + 1) + "]")),
                         (acc1, acc2) -> acc1 + acc2)
                 .trim();
 
@@ -128,7 +144,7 @@ public record RagMultiDocumentContext<T>(String combinedDocument,
         final List<String> output = new ArrayList<>();
         for (int i = 0; i < lookups.size(); i++) {
             RagSentence lookup = lookups.get(i);
-            output.add("* [" + annotationPrefix + (i + 1) + "]: " + lookup.sentence() + (StringUtils.isBlank(lookup.id()) ? "" : " (" + lookup.id() + ")"));
+            output.add("* [" + getAnnotationPrefix() + (i + 1) + "]: " + lookup.sentence() + (StringUtils.isBlank(lookup.id()) ? "" : " (" + lookup.id() + ")"));
         }
         return String.join(System.lineSeparator(), output);
     }
@@ -167,10 +183,16 @@ public record RagMultiDocumentContext<T>(String combinedDocument,
     }
 
     public List<MetaObjectResults> getMetaObjectResults() {
-        return individualContexts
+        // get all the individual metadata from the RagDocumentContext objects
+        final List<MetaObjectResults> individualMetadata = individualContexts
                 .stream()
                 .map(RagDocumentContext::getMetadata)
                 .toList();
+
+        // Add the parent metadata if it exists
+        individualMetadata.add(getMetadata());
+
+        return individualMetadata;
     }
 
     public List<IntermediateResult> getIntermediateResults() {
