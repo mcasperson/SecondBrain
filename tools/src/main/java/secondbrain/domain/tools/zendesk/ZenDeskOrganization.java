@@ -73,13 +73,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String ZENDESK_TICKET_SUMMARY_PROMPT_ARG = "ticketSummaryPrompt";
     public static final String ZENDESK_SUMMARIZE_TICKET_ARG = "summarizeTicket";
+    public static final String ZENDESK_MAX_TICKETS_ARG = "maxTickets";
     public static final String ZENDESK_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
     public static final String ZENDESK_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
     public static final String ZENDESK_CONTEXT_FILTER_BY_RECIPIENT_ARG = "filterByRecipient";
 
-
-    private static final int MAX_TICKETS = 100;
 
     private static final String INSTRUCTIONS = """
             You are an expert in reading help desk tickets.
@@ -256,7 +255,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         parsedArgs.getExcludedOrganization(),
                         parsedArgs.getRecipient()))
                 // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
-                .map(response -> response.subList(0, Math.min(response.size(), MAX_TICKETS)))
+                .map(response -> response.subList(0, Math.min(response.size(), parsedArgs.getMaxTickets())))
                 // Get the ticket comments (i.e., the initial email)
                 .map(response -> ticketToComments(
                         response,
@@ -560,6 +559,10 @@ class ZenDeskConfig {
     private Optional<String> configContextFilterMinimumRating;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.maxtickets")
+    private Optional<String> configMaxTickets;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -696,6 +699,10 @@ class ZenDeskConfig {
 
     public Optional<String> getConfigZenDeskEndPeriod() {
         return configZenDeskEndPeriod;
+    }
+
+    public Optional<String> getConfigMaxTickets() {
+        return configMaxTickets;
     }
 
     public class LocalArguments {
@@ -1116,6 +1123,18 @@ class ZenDeskConfig {
                     "true").value();
 
             return BooleanUtils.toBoolean(value);
+        }
+
+        public int getMaxTickets() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigMaxTickets()::get,
+                    arguments,
+                    context,
+                    ZenDeskOrganization.ZENDESK_MAX_TICKETS_ARG,
+                    "zen_maxtickets",
+                    MAX_TICKETS + "").value();
+
+            return NumberUtils.min(NumberUtils.toInt(value, MAX_TICKETS), MAX_TICKETS);
         }
     }
 }
