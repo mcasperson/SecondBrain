@@ -373,6 +373,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
         return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
                 .map(sentences -> new RagDocumentContext<>(
+                        getName(),
                         contextLabel,
                         document,
                         sentenceVectorizer.vectorize(sentences),

@@ -200,6 +200,7 @@ public class PublicWeb implements Tool<Void> {
     private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final PublicWebConfig.LocalArguments parsedArgs) {
         return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<Void>(
+                        getName(),
                         getContextLabel(),
                         trimResult.document(),
                         sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),

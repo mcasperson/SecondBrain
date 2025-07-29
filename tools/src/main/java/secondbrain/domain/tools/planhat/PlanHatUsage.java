@@ -143,6 +143,7 @@ public class PlanHatUsage implements Tool<Company> {
                         Pair.of(parsedArgs.getUsageName5(), parsedArgs.getUsageId5()))
                 .filter(pair -> StringUtils.isNotBlank(pair.getLeft()) && StringUtils.isNotBlank(pair.getRight()))
                 .map(pair -> new RagDocumentContext<>(
+                        getName(),
                         getContextLabel() + " " + company.name() + " " + pair.getLeft(),
                         company.usage().getOrDefault(pair.getRight(), 0).toString(),
                         List.of(),
@@ -151,8 +152,7 @@ public class PlanHatUsage implements Tool<Company> {
                         new MetaObjectResults(new MetaObjectResult(pair.getLeft(), company.usage().getOrDefault(pair.getRight(), 0).toString())),
                         null,
                         null,
-                        List.of(),
-                        null))
+                        List.of()))
                 .toList();
 
         final List<RagDocumentContext<Company>> customContext = Stream.of(
@@ -161,6 +161,7 @@ public class PlanHatUsage implements Tool<Company> {
                 )
                 .filter(StringUtils::isNotBlank)
                 .map(custom -> new RagDocumentContext<>(
+                        getName(),
                         getContextLabel() + " " + company.name() + " " + custom,
                         company.custom().getOrDefault(custom, "").toString(),
                         List.of(),
@@ -169,8 +170,7 @@ public class PlanHatUsage implements Tool<Company> {
                         new MetaObjectResults(new MetaObjectResult(custom, company.custom().getOrDefault(custom, "").toString())),
                         null,
                         null,
-                        List.of(),
-                        null))
+                        List.of()))
                 .toList();
 
         return ListUtils.union(usageContext, customContext);

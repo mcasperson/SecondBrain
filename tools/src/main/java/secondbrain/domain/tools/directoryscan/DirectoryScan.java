@@ -271,6 +271,7 @@ public class DirectoryScan implements Tool<Void> {
         }
 
         return new RagDocumentContext<>(
+                getName(),
                 getContextLabel(),
                 trimResult.document(),
                 sentenceVectorizer.vectorize(sentenceSplitter.splitDocument(trimResult.document(), 10), parsedArgs.getEntity()),
@@ -308,6 +309,7 @@ public class DirectoryScan implements Tool<Void> {
                 () -> getFileSummaryLlm(trimResult.document(), parsedArgs));
 
         return new RagDocumentContext<>(
+                getName(),
                 getContextLabel(),
                 summary,
                 sentenceSplitter.splitDocument(summary, 10)

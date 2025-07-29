@@ -236,6 +236,7 @@ public class PlanHat implements Tool<Conversation> {
 
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.getLeft().getContent(), 10))
                 .map(sentences -> new RagDocumentContext<Conversation>(
+                        getName(),
                         contextLabel,
                         trimmedConversationResult.getLeft().getContent(),
                         sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),

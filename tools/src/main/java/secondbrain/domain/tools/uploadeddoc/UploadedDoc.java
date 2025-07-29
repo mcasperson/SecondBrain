@@ -187,6 +187,7 @@ public class UploadedDoc implements Tool<Void> {
     private RagDocumentContext<Void> getTrimmedDocumentContext(final TrimResult trimResult, final UploadDocConfig.LocalArguments parsedArgs) {
         return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<Void>(
+                        getName(),
                         getContextLabel(),
                         trimResult.document(),
                         sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),

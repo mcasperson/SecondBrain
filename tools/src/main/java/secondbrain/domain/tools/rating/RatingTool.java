@@ -75,7 +75,7 @@ public class RatingTool implements Tool<Void> {
     public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        return List.of(new RagDocumentContext<>(getContextLabel(), parsedArgs.getDocument(), List.of()));
+        return List.of(new RagDocumentContext<>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of()));
     }
 
     @Override
