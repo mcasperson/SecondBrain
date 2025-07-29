@@ -23,10 +23,7 @@ import secondbrain.domain.exceptions.*;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
-import secondbrain.domain.tooldefs.MetaObjectResult;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
@@ -38,9 +35,6 @@ import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -406,8 +400,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             return List.of();
         }
 
-        logger.info("Percent complete: " + ((float) COUNTER.incrementAndGet() / positionalEntity.total * 100) + "%");
-
         final List<RagDocumentContext<Void>> gongContext = getGongContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> zenContext = getZenContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> slackContext = getSlackContext(positionalEntity, parsedArgs, prompt, context);
@@ -434,14 +426,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         retValue.addAll(planHatUsageContext);
 
         final List<RagDocumentContext<Void>> filteredContext = contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
-
-        // Merge all the metadata from the context into a single list.
-        final List<MetaObjectResult> metadata = retValue
-                .stream()
-                .flatMap(ragDoc -> ragDoc.getMetadata().stream())
-                .toList();
-
-        saveMetaResult(filteredContext, parsedArgs, metadata);
 
         return filteredContext;
     }
@@ -508,25 +492,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return results;
     }
 
-    private void saveMetaResult(
-            final List<RagDocumentContext<Void>> ragContext,
-            final MultiSlackZenGoogleConfig.LocalArguments parsedArgs,
-            final List<MetaObjectResult> additionalMetadata) {
-        final List<MetaObjectResult> results = new ArrayList<MetaObjectResult>();
-
-        if (StringUtils.isNotBlank(parsedArgs.getMetaReport())) {
-            results.add(getContextCount(ragContext));
-            results.addAll(getMetaResults(ragContext, parsedArgs));
-            results.addAll(additionalMetadata);
-
-            Try.run(() -> Files.write(Paths.get(parsedArgs.getMetaReport()),
-                            jsonDeserializer.serialize(results).getBytes(),
-                            StandardOpenOption.CREATE,
-                            StandardOpenOption.TRUNCATE_EXISTING))
-                    .onFailure(ex -> logger.severe(exceptionHandler.getExceptionMessage(ex)));
-        }
-    }
-
     /**
      * Search slack for any mention of the salesforce and planhat ids. This will pick up call summaries that are posted
      * to slack by the salesforce integration.
@@ -552,7 +517,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // Post-process the rag context
                 .stream()
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 // We filter here if there is a rating each individual content source must meet
                 .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
@@ -582,7 +546,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 // We filter here if there is a rating each individual content source must meet
                 .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
@@ -613,7 +576,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 // We filter here if there is a rating each individual content source must meet
                 .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
@@ -637,7 +599,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 // We filter here if there is a rating each individual content source must meet
                 .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
@@ -666,7 +627,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 // We filter here if there is a rating each individual content source must meet
                 .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
@@ -697,7 +657,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 // We filter here if there is a rating each individual content source must meet
                 .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
@@ -727,7 +686,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(ragDoc -> ragDoc.updateGroup(positionalEntity.entity().name()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 // We filter here if there is a rating each individual content source must meet
                 .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
@@ -803,6 +761,23 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+
+        // Elevate the metadata extracted from the planhat usage. This is considered "top-level" metadata
+        // that applies to all the context.
+        final List<MetaObjectResult> metadata = context
+                .stream()
+                .filter(ragDoc -> planHatUsage.getName().equals(ragDoc.getTool()))
+                .flatMap(ragDoc -> ragDoc.getMetadata().stream())
+                .toList();
+
+        final List<MetaObjectResult> results = new ArrayList<MetaObjectResult>(metadata);
+
+        // The count of the number of context documents is top-level metadata
+        results.add(getContextCount(context));
+
+        // The overall ratings are also top-level metadata
+        results.addAll(getMetaResults(context, parsedArgs));
+
         return new RagMultiDocumentContext<>(
                 context.stream()
                         .map(ragDoc ->
@@ -811,7 +786,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .collect(Collectors.joining("\n")),
                 context,
                 null,
-                parsedArgs.getAnnotationPrefix());
+                parsedArgs.getAnnotationPrefix(),
+                new MetaObjectResults(results, parsedArgs.getMetaReport(), ""));
     }
 
     record PositionalEntity(Entity entity, int position, int total) {

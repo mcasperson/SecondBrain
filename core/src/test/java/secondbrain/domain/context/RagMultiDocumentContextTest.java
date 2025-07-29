@@ -21,8 +21,8 @@ class RagMultiDocumentContextTest {
         final RagStringContext doc1 = new RagStringContext("This is a test document", new Vector(1d));
         final RagStringContext doc2 = new RagStringContext("It contains multiple sentences", new Vector(2d));
 
-        RagDocumentContext<String> context1 = new RagDocumentContext<>("document", "This is a test document.", List.of(doc1), "doc1");
-        RagDocumentContext<String> context2 = new RagDocumentContext<>("document", "It contains multiple sentences.", List.of(doc2), "doc2");
+        RagDocumentContext<String> context1 = new RagDocumentContext<>("test", "document", "This is a test document.", List.of(doc1), "doc1");
+        RagDocumentContext<String> context2 = new RagDocumentContext<>("test", "document", "It contains multiple sentences.", List.of(doc2), "doc2");
 
         // Create a multi-document context
         RagMultiDocumentContext<String> multiContext = new RagMultiDocumentContext<>(

@@ -231,6 +231,7 @@ public class SlackChannel implements Tool<Void> {
                 // Strip out any URLs from the sentences
                 .map(sentences -> sentences.stream().map(sentence -> removeMarkdnUrls.sanitize(sentence)).toList())
                 .map(sentences -> new RagDocumentContext<Void>(
+                        getName(),
                         getContextLabel(),
                         trimResult.document(),
                         sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),

@@ -189,6 +189,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     private RagDocumentContext<SlackSearchResultResource> getDocumentContext(final SlackSearchResultResource meta, final SlackSearchConfig.LocalArguments parsedArgs) {
         return Try.of(() -> sentenceSplitter.splitDocument(meta.text(), 10))
                 .map(sentences -> new RagDocumentContext<>(
+                        getName(),
                         getContextLabel(),
                         meta.text(),
                         sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),

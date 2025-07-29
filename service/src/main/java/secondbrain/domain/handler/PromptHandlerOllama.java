@@ -13,7 +13,6 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
 
-import java.util.Comparator;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -163,19 +162,11 @@ public class PromptHandlerOllama implements PromptHandler {
                 "Links:" + System.lineSeparator() +
                 document.individualContexts()
                         .stream()
-                        .sorted(Comparator.comparing(RagDocumentContext::getGroup))
                         .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.link()))
-                        .map(ragDoc ->
-                                getRagDocGroupPrefix(ragDoc)
-                                        + ragDoc.link()
-                                        + getRagDocKeywordsSuffix(ragDoc))
+                        .map(ragDoc -> ragDoc.link() + getRagDocKeywordsSuffix(ragDoc))
                         .filter(StringUtils::isNotBlank)
                         .map(link -> "* " + link)
                         .reduce("", (a, b) -> a + System.lineSeparator() + b);
-    }
-
-    private String getRagDocGroupPrefix(final RagDocumentContext<?> ragDoc) {
-        return StringUtils.isBlank(ragDoc.group()) ? "" : ragDoc.group() + ": ";
     }
 
     private String getRagDocKeywordsSuffix(final RagDocumentContext<?> ragDoc) {

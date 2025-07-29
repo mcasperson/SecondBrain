@@ -254,6 +254,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 : commit.diff();
 
         return new RagDocumentContext<>(
+                getName(),
                 getContextLabel(),
                 summary,
                 sentenceSplitter.splitDocument(summary, 10)

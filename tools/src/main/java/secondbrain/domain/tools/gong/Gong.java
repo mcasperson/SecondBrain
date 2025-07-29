@@ -156,6 +156,7 @@ public class Gong implements Tool<GongCallDetails> {
 
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<GongCallDetails>(
+                        getName(),
                         getContextLabel(),
                         trimmedConversationResult.document(),
                         sentenceVectorizer.vectorize(sentences),

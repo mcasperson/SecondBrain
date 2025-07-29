@@ -238,6 +238,7 @@ public class GoogleDocs implements Tool<Void> {
     private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final GoogleDocsConfig.LocalArguments parsedArgs) {
         return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<Void>(
+                        getName(),
                         getContextLabel(),
                         trimResult.document(),
                         sentenceVectorizer.vectorize(sentences),
