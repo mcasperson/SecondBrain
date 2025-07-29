@@ -183,16 +183,17 @@ public record RagMultiDocumentContext<T>(String combinedDocument,
     }
 
     public List<MetaObjectResults> getMetaObjectResults() {
+
         // get all the individual metadata from the RagDocumentContext objects
         final List<MetaObjectResults> individualMetadata = individualContexts
                 .stream()
                 .map(RagDocumentContext::getMetadata)
                 .toList();
 
-        // Add the parent metadata if it exists
-        individualMetadata.add(getMetadata());
+        final ArrayList<MetaObjectResults> results = new ArrayList<>(individualMetadata);
+        results.add(getMetadata());
 
-        return individualMetadata;
+        return results;
     }
 
     public List<IntermediateResult> getIntermediateResults() {
