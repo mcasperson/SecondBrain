@@ -31,15 +31,16 @@ import static java.util.Comparator.comparing;
  * such as the sender, recipient, subject, and date. This can be extracted from the metadata rather than
  * attempting to be built into the LLM response.
  *
- * @param contextLabel   The label of the context when it is presented to the LLM. This provides a way to reference the context from the prompt.
- * @param document       The string representation of the external data. This may be the raw text of a document, a sanitized version, or even a summarized version.
- * @param sentences      The individual context strings that make up the documents. These are always generated from the raw document text.
- * @param id             The ID of the document. The ID format if dependent on the source of the document.
- * @param source         The original object that was used to generate the document. This will typically be a POJO retrieved from the database or an external API.
- * @param metadata       The metadata associated with the document, such as the source, author, etc. Metadata can also be generated, such as categorizing the text using a second call to the LLM.
- * @param link           The link to the document. These links are often appended to the end of the result to provide a way to access the original document.
- * @param keywordMatches The keywords that were matched in the document. These are often used in the annotations to highlight why the document was selected as context for the LLM.
- * @param tool           The tool that generated the document.
+ * @param contextLabel       The label of the context when it is presented to the LLM. This provides a way to reference the context from the prompt.
+ * @param document           The string representation of the external data. This may be the raw text of a document, a sanitized version, or even a summarized version.
+ * @param sentences          The individual context strings that make up the documents. These are always generated from the raw document text.
+ * @param id                 The ID of the document. The ID format if dependent on the source of the document.
+ * @param source             The original object that was used to generate the document. This will typically be a POJO retrieved from the database or an external API.
+ * @param metadata           The metadata associated with the document, such as the source, author, etc. Metadata can also be generated, such as categorizing the text using a second call to the LLM.
+ * @param link               The link to the document. These links are often appended to the end of the result to provide a way to access the original document.
+ * @param keywordMatches     The keywords that were matched in the document. These are often used in the annotations to highlight why the document was selected as context for the LLM.
+ * @param tool               The tool that generated the document.
+ * @param intermediateResult The intermediate result of the tool execution. This is often used to capture the state of the tool execution and can be used to debug issues with the tool.
  */
 public record RagDocumentContext<T>(String tool,
                                     String contextLabel,
