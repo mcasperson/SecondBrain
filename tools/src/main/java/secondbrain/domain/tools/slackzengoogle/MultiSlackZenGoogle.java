@@ -24,6 +24,7 @@ import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.alias.AliasTool;
 import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
@@ -150,6 +151,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private RatingTool ratingTool;
+
+    @Inject
+    private AliasTool aliasTool;
 
     @Inject
     private OllamaClient ollamaClient;
@@ -497,12 +501,23 @@ public class MultiSlackZenGoogle implements Tool<Void> {
      * to slack by the salesforce integration.
      */
     private List<RagDocumentContext<Void>> getSlackKeywordContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context, final String id) {
-        logger.info("Getting Slack keywords for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.info("Getting Slack keywords for " + positionalEntity.entity().name());
+
+        // Add any specific keywords
+        final List<String> keywords = new ArrayList<>(Arrays.stream(parsedArgs.getKeywords().split(",")).toList());
+
+        // Also search for the salesforce and planhat ids
+        keywords.addAll(positionalEntity.entity.salesforce);
+        keywords.addAll(positionalEntity.entity.planhat);
+
+        // Add any aliases for the entity
+        keywords.addAll(getAliases(positionalEntity.entity.name));
+        
         return Try
                 // Combine all the keywords we are going to search for
                 .of(() -> List.of(
                         new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true),
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, String.join(",", keywords), true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(
@@ -641,7 +656,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
-                        new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
                         new ToolArgs(SlackChannel.SLACK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(SlackChannel.SLACK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(SlackChannel.DAYS_ARG, "" + parsedArgs.getDays(), true)))
@@ -706,6 +720,17 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         logger.info("The context rating for entity " + entityName + " (" + rating + ") did not meet the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
         return List.of();
+    }
+
+    private List<String> getAliases(final String name) {
+        return Try.of(() -> aliasTool.call(Map.of(), name, List.of()))
+                .map(doc -> jsonDeserializer.deserialize(doc.getCombinedDocument(), String[].class))
+                .map(array -> Arrays.stream(array)
+                        .filter(StringUtils::isNotBlank)
+                        .toList())
+                .onFailure(InternalFailure.class, ex -> logger.warning("Getting aliases failed: " + ex.getMessage()))
+                .getOrElse(List::of);
+
     }
 
     private Integer getContextRating(final RagDocumentContext<Void> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
