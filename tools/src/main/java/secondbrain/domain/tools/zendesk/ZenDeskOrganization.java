@@ -459,7 +459,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 @ApplicationScoped
 class ZenDeskConfig {
     private static final int MAX_TICKETS = 100;
-    private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
+    private static final String DEFAULT_TTL_SECONDS = (60 * 60 * 24 * 14) + "";
 
     /**
      * Set this to true to include the organization in the query sent to the ZenDesk API.
@@ -1092,7 +1092,7 @@ class ZenDeskConfig {
                     context,
                     "historyTtl",
                     "zen_historyttl",
-                    DEFAULT_TTL);
+                    DEFAULT_TTL_SECONDS);
 
             return Try.of(argument::value)
                     .map(i -> Math.max(0, Integer.parseInt(i)))
