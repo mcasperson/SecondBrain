@@ -236,6 +236,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // We batch here to interleave API requests to the various external data sources
                 .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))
                 .flatMap(stream -> stream)
+                // We want the context sorted back into a predictable order to avoid a cache miss due to the contents of the system prompt changing
+                .sorted(Comparator.comparing(RagDocumentContext::tool))
                 .toList();
 
         if (ragContext.isEmpty()) {
@@ -512,7 +514,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         // Add any aliases for the entity
         keywords.addAll(getAliases(positionalEntity.entity.name));
-        
+
         return Try
                 // Combine all the keywords we are going to search for
                 .of(() -> List.of(
