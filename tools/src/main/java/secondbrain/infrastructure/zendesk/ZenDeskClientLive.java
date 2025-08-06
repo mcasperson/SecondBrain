@@ -111,6 +111,8 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Query is required");
         }
 
+        RATE_LIMITER.acquire();
+
         final String target = url + "/api/v2/search.json";
 
         return Try.withResources(() -> client.target(target)
