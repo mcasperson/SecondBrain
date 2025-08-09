@@ -36,7 +36,6 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -131,18 +130,11 @@ public class UploadedDoc implements Tool<Void> {
             final List<ToolArgs> arguments) {
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
-                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                        .buildFinalPrompt(
-                                INSTRUCTIONS,
-                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars(environmentSettings)),
-                                prompt)))
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)));
+                        environmentSettings,
+                        getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -152,18 +144,6 @@ public class UploadedDoc implements Tool<Void> {
                         API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
-    }
-
-    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
-        return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(ragDoc -> promptBuilderSelector
-                                .getPromptBuilder(customModel)
-                                .buildContextPrompt(
-                                        getContextLabel(),
-                                        ragDoc.document()))
-                        .collect(Collectors.joining("\n")),
-                context);
     }
 
     private RagDocumentContext<Void> getDocumentContext(final UploadDocConfig.LocalArguments parsedArgs) {

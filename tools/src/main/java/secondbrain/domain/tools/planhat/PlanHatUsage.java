@@ -29,7 +29,6 @@ import secondbrain.infrastructure.planhat.api.Company;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
@@ -187,18 +186,11 @@ public class PlanHatUsage implements Tool<Company> {
         }
 
         final Try<RagMultiDocumentContext<Company>> result = Try.of(() -> contextList)
-                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
-                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                        .buildFinalPrompt(
-                                INSTRUCTIONS,
-                                ragContext.getDocumentLeft(modelConfig.getCalculatedContextWindowChars(environmentSettings)),
-                                prompt)))
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)));
+                        environmentSettings,
+                        getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -208,18 +200,6 @@ public class PlanHatUsage implements Tool<Company> {
                         API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
                         API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
-    }
-
-    private RagMultiDocumentContext<Company> mergeContext(final List<RagDocumentContext<Company>> context, final String customModel) {
-        return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(ragDoc -> promptBuilderSelector
-                                .getPromptBuilder(customModel)
-                                .buildContextPrompt(
-                                        ragDoc.contextLabel(),
-                                        ragDoc.document()))
-                        .collect(Collectors.joining("\n")),
-                context);
     }
 }
 

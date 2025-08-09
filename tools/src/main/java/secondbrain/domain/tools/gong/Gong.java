@@ -179,18 +179,11 @@ public class Gong implements Tool<GongCallDetails> {
         }
 
         final Try<RagMultiDocumentContext<GongCallDetails>> result = Try.of(() -> contextList)
-                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
-                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                        .buildFinalPrompt(
-                                INSTRUCTIONS,
-                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars(environmentSettings)),
-                                prompt)))
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)));
+                        environmentSettings,
+                        getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -200,18 +193,6 @@ public class Gong implements Tool<GongCallDetails> {
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                         API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
-    }
-
-    private RagMultiDocumentContext<GongCallDetails> mergeContext(final List<RagDocumentContext<GongCallDetails>> context, final String customModel) {
-        return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(ragDoc -> promptBuilderSelector
-                                .getPromptBuilder(customModel)
-                                .buildContextPrompt(
-                                        ragDoc.contextLabel(),
-                                        ragDoc.document()))
-                        .collect(Collectors.joining("\n")),
-                context);
     }
 
     @Override
@@ -232,20 +213,21 @@ public class Gong implements Tool<GongCallDetails> {
      * Summarise an individual ticket
      */
     private String getCallSummary(final String transcript, final Map<String, String> environmentSettings, final GongConfig.LocalArguments parsedArgs) {
-        final String ticketContext = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildContextPrompt("Gong Transcript", transcript);
-
-        final String prompt = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildFinalPrompt("You are a helpful agent", ticketContext, parsedArgs.getTranscriptSummaryPrompt());
+        final RagDocumentContext<String> context = new RagDocumentContext<>(
+                getName(),
+                getContextLabel(),
+                transcript,
+                List.of()
+        );
 
         return ollamaClient.callOllamaWithCache(
-                new RagMultiDocumentContext<>(prompt),
-                modelConfig.getCalculatedModel(environmentSettings),
-                getName(),
-                modelConfig.getCalculatedContextWindow(environmentSettings)
-        ).combinedDocument();
+                new RagMultiDocumentContext<>(
+                        parsedArgs.getTranscriptSummaryPrompt(),
+                        "You are a helpful agent",
+                        List.of(context)),
+                environmentSettings,
+                getName()
+        ).getResponse();
     }
 }
 

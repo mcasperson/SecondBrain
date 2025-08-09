@@ -16,12 +16,12 @@ import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -56,6 +56,9 @@ public class RatingTool implements Tool<Void> {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private ValidateList validateList;
+
     @Override
     public String getName() {
         return RatingTool.class.getSimpleName();
@@ -81,24 +84,17 @@ public class RatingTool implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
-                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                        .buildFinalPrompt(
-                                INSTRUCTIONS,
-                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars(environmentSettings)),
-                                prompt)))
-                .map(ragDoc -> validateString.throwIfEmpty(ragDoc, RagMultiDocumentContext::combinedDocument))
+                .map(validateList::throwIfEmpty)
+                .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)))
+                        environmentSettings,
+                        getName()))
                 /*
                  We expect a single value, but might get some whitespace from a thinking model that had the
                  thinking response removed.
                  */
-                .map(ragDoc -> ragDoc.updateDocument(ragDoc.getCombinedDocument().trim()));
+                .map(ragDoc -> ragDoc.updateResponse(ragDoc.getResponse().trim()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -113,18 +109,6 @@ public class RatingTool implements Tool<Void> {
     @Override
     public String getContextLabel() {
         return "Document";
-    }
-
-    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
-        return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(ragDoc -> promptBuilderSelector
-                                .getPromptBuilder(customModel)
-                                .buildContextPrompt(
-                                        getContextLabel(),
-                                        ragDoc.document()))
-                        .collect(Collectors.joining("\n")),
-                context);
     }
 }
 

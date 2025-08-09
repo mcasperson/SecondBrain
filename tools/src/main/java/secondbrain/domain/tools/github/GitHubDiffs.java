@@ -39,7 +39,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -156,7 +155,8 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                                             .map(commits -> gitHubClient.getCommits(client, parsedArgs.getOwner(), parsedArgs.getRepo(), commits, authHeader))
                                             .get())
                             .get(),
-                    parsedArgs);
+                    parsedArgs,
+                    environmentSettings);
         }
 
         // Otherwise, we are interested in a range of commits
@@ -173,7 +173,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                         commitsResponse,
                         0,
                         parsedArgs.getMaxDiffs() > 0 ? parsedArgs.getMaxDiffs() : commitsResponse.size()))
-                .map(commits -> convertCommitsToDiffSummaries(commits, parsedArgs))
+                .map(commits -> convertCommitsToDiffSummaries(commits, parsedArgs, environmentSettings))
                 .get();
     }
 
@@ -193,20 +193,11 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                         list,
                         RagDocumentContext::document,
                         modelConfig.getCalculatedContextWindow(environmentSettings)))
-                .map(ragDocs -> mergeContext(ragDocs, debugArgs))
-                // Make sure we had some content for the prompt
-                .mapTry(mergedContext ->
-                        validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
-                .map(ragDoc -> ragDoc.updateDocument(
-                        promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings)).buildFinalPrompt(
-                                INSTRUCTIONS,
-                                promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings)).buildContextPrompt("Git Diffs", ragDoc.combinedDocument()),
-                                prompt)))
+                .map(ragDocs -> mergeContext(prompt, INSTRUCTIONS, ragDocs, debugArgs))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)));
+                        environmentSettings,
+                        getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -220,22 +211,22 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 .get();
     }
 
-    private RagMultiDocumentContext<GitHubCommitAndDiff> mergeContext(final List<RagDocumentContext<GitHubCommitAndDiff>> context, final String debug) {
+    private RagMultiDocumentContext<GitHubCommitAndDiff> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<GitHubCommitAndDiff>> context, final String debug) {
         return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(RagDocumentContext::document)
-                        .collect(Collectors.joining("\n")),
+                prompt,
+                instructions,
                 context,
                 debug);
     }
 
     private List<RagDocumentContext<GitHubCommitAndDiff>> convertCommitsToDiffSummaries(
             final List<GitHubCommitAndDiff> commitsResponse,
-            final GitHubDiffConfig.LocalArguments parsedArgs) {
+            final GitHubDiffConfig.LocalArguments parsedArgs,
+            final Map<String, String> environmentSettings) {
 
         return commitsResponse
                 .stream()
-                .map(commit -> getCommitSummary(commit, parsedArgs))
+                .map(commit -> getCommitSummary(commit, parsedArgs, environmentSettings))
                 .toList();
     }
 
@@ -244,13 +235,13 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
      * or hallucinate a bunch of random release notes. Instead, each diff is summarised individually and then combined
      * into a single document to be summarised again.
      */
-    private RagDocumentContext<GitHubCommitAndDiff> getCommitSummary(final GitHubCommitAndDiff commit, final GitHubDiffConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<GitHubCommitAndDiff> getCommitSummary(final GitHubCommitAndDiff commit, final GitHubDiffConfig.LocalArguments parsedArgs, final Map<String, String> environmentSettings) {
         /*
              We can optionally summarize each commit as a way of reducing the context size of
              when there are a lot of large diffs.
          */
         final String summary = parsedArgs.getSummarizeIndividualDiffs()
-                ? getDiffSummary(commit.diff(), parsedArgs)
+                ? getDiffSummary(commit.diff(), parsedArgs, environmentSettings)
                 : commit.diff();
 
         return new RagDocumentContext<>(
@@ -270,16 +261,22 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
      * Use the LLM to generate a plain text summary of the diff. This summary will be used to link the
      * final summary of all diffs to the changes in individual diffs.
      */
-    private String getDiffSummary(final String diff, final GitHubDiffConfig.LocalArguments parsedArgs) {
-        return ollamaClient.callOllamaWithCache(
-                new RagMultiDocumentContext<>(promptBuilderSelector.getPromptBuilder(parsedArgs.getDiffCustomModel()).buildFinalPrompt(
-                        DIFF_INSTRUCTIONS,
-                        promptBuilderSelector.getPromptBuilder(parsedArgs.getDiffCustomModel()).buildContextPrompt("Git Diff", diff),
-                        "Provide a one paragraph summary of the changes in the Git Diff.")),
-                parsedArgs.getDiffCustomModel(),
+    private String getDiffSummary(final String diff, final GitHubDiffConfig.LocalArguments parsedArgs, final Map<String, String> environmentSettings) {
+        final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),
-                parsedArgs.getDiffContextWindow()
-        ).combinedDocument();
+                getContextLabel(),
+                diff,
+                List.of()
+        );
+
+        return ollamaClient.callOllamaWithCache(
+                new RagMultiDocumentContext<>(
+                        "Provide a one paragraph summary of the changes in the Git Diff.",
+                        "You are a helpful agent",
+                        List.of(context)),
+                environmentSettings,
+                getName()
+        ).getResponse();
     }
 
     private List<GitHubCommitAndDiff> getCommits(

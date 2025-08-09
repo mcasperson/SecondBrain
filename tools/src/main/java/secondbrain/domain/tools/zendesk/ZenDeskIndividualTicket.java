@@ -28,6 +28,7 @@ import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
@@ -37,7 +38,6 @@ import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
@@ -91,6 +91,9 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
     @Inject
     private ValidateString validateString;
+
+    @Inject
+    private ValidateList validateList;
 
     @Override
     public String getName() {
@@ -155,7 +158,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                     Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document()),
                                     parsedArgs.getContextFilterQuestion(),
                                     List.of())
-                            .combinedDocument())
+                            .getResponse())
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(InternalFailure.class, ex -> 10)
@@ -189,25 +192,17 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         .map(ticket -> ticket
                                 .updateDocument(ticket.document().substring(0, modelConfig.getCalculatedContextWindow(environmentSettings))))
                         .toList())
+                .map(validateList::throwIfEmpty)
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                .map(tickets -> createMultiDocument(tickets, debugArgs, modelConfig.getCalculatedModel(environmentSettings)))
-                // Make sure we had some content for the prompt
-                .mapTry(mergedContext ->
-                        validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
-                // Build the final prompt including instructions, context and the user prompt
-                .map(ragContext -> ragContext.updateDocument(
-                        promptBuilderSelector
-                                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                                .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
+                .map(tickets -> new RagMultiDocumentContext<ZenDeskTicket>(prompt, INSTRUCTIONS, tickets))
                 // Call Ollama with the final prompt
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)))
+                        environmentSettings,
+                        getName()))
                 // Clean up the response
-                .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())))
-                .recover(EmptyString.class, e -> new RagMultiDocumentContext<>("The ticket is empty", List.of(), ""));
+                .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())))
+                .recover(EmptyString.class, e -> new RagMultiDocumentContext<>("", "", null, "The ticket is empty", null, null, null));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -274,22 +269,6 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
     private String idToLink(final String url, final String id) {
         return url + "/agent/tickets/" + id;
-    }
-
-    /**
-     * Create a RagMultiDocumentContext from a list of RagDocumentContexts. This combines the individual
-     * documents into a single string, which is then used as the context for the prompt.
-     */
-    private RagMultiDocumentContext<ZenDeskTicket> createMultiDocument(final List<RagDocumentContext<ZenDeskTicket>> context, final String debug, final String customModel) {
-        return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(RagDocumentContext::document)
-                        .map(content -> promptBuilderSelector
-                                .getPromptBuilder(customModel)
-                                .buildContextPrompt(getContextLabel(), content))
-                        .collect(Collectors.joining("\n")),
-                context,
-                debug);
     }
 
     /**

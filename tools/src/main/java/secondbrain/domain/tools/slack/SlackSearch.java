@@ -41,7 +41,6 @@ import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -162,17 +161,11 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
         final List<RagDocumentContext<SlackSearchResultResource>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<SlackSearchResultResource>> result = Try.of(() -> mergeContext(contextList, environmentSettings))
-                .map(ragContext -> ragContext.updateDocument(
-                        promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings)).buildFinalPrompt(
-                                INSTRUCTIONS,
-                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars(environmentSettings)),
-                                prompt)))
+        final Try<RagMultiDocumentContext<SlackSearchResultResource>> result = Try.of(() -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, contextList))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)));
+                        environmentSettings,
+                        getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -206,17 +199,6 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                         .replaceAll("[^A-Za-z0-9-._ ]", " ")
                         .trim(),
                 0, 75) + "](" + matchedItem.permalink() + ")";
-    }
-
-    private RagMultiDocumentContext<SlackSearchResultResource> mergeContext(final List<RagDocumentContext<SlackSearchResultResource>> ragContext, final Map<String, String> context) {
-        return new RagMultiDocumentContext<>(
-                ragContext.stream()
-                        .map(ragDoc ->
-                                promptBuilderSelector.getPromptBuilder(
-                                                modelConfig.getCalculatedModel(context))
-                                        .buildContextPrompt(getContextLabel(), ragDoc.document()))
-                        .collect(Collectors.joining("\n")),
-                ragContext);
     }
 }
 

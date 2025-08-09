@@ -113,7 +113,14 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        return new RagMultiDocumentContext<>("Cache has been warmed", getContext(environmentSettings, prompt, arguments));
+        return new RagMultiDocumentContext<>(
+                null,
+                null,
+                getContext(environmentSettings, prompt, arguments),
+                "Cache has been warmed",
+                null,
+                null,
+                null);
     }
 
 

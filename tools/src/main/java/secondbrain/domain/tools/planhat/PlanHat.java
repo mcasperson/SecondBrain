@@ -44,7 +44,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
@@ -194,18 +193,11 @@ public class PlanHat implements Tool<Conversation> {
         }
 
         final Try<RagMultiDocumentContext<Conversation>> result = Try.of(() -> contextList)
-                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
-                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                        .buildFinalPrompt(
-                                INSTRUCTIONS,
-                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars(environmentSettings)),
-                                prompt)))
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)));
+                        environmentSettings,
+                        getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -248,33 +240,22 @@ public class PlanHat implements Tool<Conversation> {
                 .get();
     }
 
-    private RagMultiDocumentContext<Conversation> mergeContext(final List<RagDocumentContext<Conversation>> context, final String customModel) {
-        return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(ragDoc -> promptBuilderSelector
-                                .getPromptBuilder(customModel)
-                                .buildContextPrompt(
-                                        ragDoc.contextLabel(),
-                                        ragDoc.document()))
-                        .collect(Collectors.joining("\n")),
-                context);
-    }
-
     private String getDocumentSummary(final String document, final Map<String, String> environmentSettings, final PlanHatConfig.LocalArguments parsedArgs) {
-        final String ticketContext = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildContextPrompt(this.getContextLabel(), document);
-
-        final String prompt = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildFinalPrompt("You are a helpful agent", ticketContext, parsedArgs.getDocumentSummaryPrompt());
+        final RagDocumentContext<String> context = new RagDocumentContext<>(
+                getName(),
+                getContextLabel(),
+                document,
+                List.of()
+        );
 
         return ollamaClient.callOllamaWithCache(
-                new RagMultiDocumentContext<>(prompt),
-                modelConfig.getCalculatedModel(environmentSettings),
-                getName(),
-                modelConfig.getCalculatedContextWindow(environmentSettings)
-        ).combinedDocument();
+                new RagMultiDocumentContext<>(
+                        parsedArgs.getDocumentSummaryPrompt(),
+                        "You are a helpful agent",
+                        List.of(context)),
+                environmentSettings,
+                getName()
+        ).getResponse();
     }
 }
 

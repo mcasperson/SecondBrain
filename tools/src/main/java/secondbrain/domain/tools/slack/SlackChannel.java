@@ -276,20 +276,20 @@ public class SlackChannel implements Tool<Void> {
     }
 
     private String getDocumentSummary(final String document, final Map<String, String> environmentSettings, final SlackChannelConfig.LocalArguments parsedArgs) {
-        final String ticketContext = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildContextPrompt(this.getContextLabel(), document);
-
-        final String prompt = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildFinalPrompt("You are a helpful agent", ticketContext, parsedArgs.getDocumentSummaryPrompt());
+        final RagDocumentContext<String> context = new RagDocumentContext<>(
+                getName(),
+                getContextLabel(),
+                document,
+                List.of()
+        );
 
         return ollamaClient.callOllamaWithCache(
-                new RagMultiDocumentContext<>(prompt),
-                modelConfig.getCalculatedModel(environmentSettings),
-                getName(),
-                modelConfig.getCalculatedContextWindow(environmentSettings)
-        ).combinedDocument();
+                new RagMultiDocumentContext<>(parsedArgs.getDocumentSummaryPrompt(),
+                        "You are a helpful agent",
+                        List.of(context)),
+                environmentSettings,
+                getName()
+        ).getResponse();
     }
 
     private String matchToUrl(final SlackChannelResource channel) {
