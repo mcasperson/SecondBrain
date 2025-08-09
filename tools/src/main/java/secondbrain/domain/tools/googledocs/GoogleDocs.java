@@ -196,21 +196,11 @@ public class GoogleDocs implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
-                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                        .buildFinalPrompt(
-                                INSTRUCTIONS,
-                                // I've opted to get the end of the document if it is larger than the context window.
-                                // The end of the document is typically given more weight by LLMs, and so any long
-                                // document being processed should place the most relevant content towards the end.
-                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars(environmentSettings)),
-                                prompt)))
+                .map(ragDoc -> mergeContext(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        GoogleDocs.class.getSimpleName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)));
+                        environmentSettings,
+                        getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -222,15 +212,10 @@ public class GoogleDocs implements Tool<Void> {
                 .get();
     }
 
-    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
+    private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context) {
         return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(ragDoc -> promptBuilderSelector
-                                .getPromptBuilder(customModel)
-                                .buildContextPrompt(
-                                        getContextLabel() + " " + ragDoc.id(),
-                                        ragDoc.document()))
-                        .collect(Collectors.joining("\n")),
+                prompt,
+                instructions,
                 context);
     }
 
@@ -335,16 +320,28 @@ public class GoogleDocs implements Tool<Void> {
                 .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                 .buildContextPrompt(this.getContextLabel(), document);
 
+        final RagDocumentContext<String> context = new RagDocumentContext<>(
+                getName(),
+                "Document",
+                document,
+                List.of()
+        );
+
         final String prompt = promptBuilderSelector
                 .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
                 .buildFinalPrompt("You are a helpful agent", ticketContext, parsedArgs.getDocumentSummaryPrompt());
 
+        final RagMultiDocumentContext<String> multiDoc = new RagMultiDocumentContext<>(
+                "You are a helpful agent",
+                parsedArgs.getDocumentSummaryPrompt(),
+                List.of(context)
+        );
+
         return ollamaClient.callOllamaWithCache(
-                new RagMultiDocumentContext<>(prompt),
-                modelConfig.getCalculatedModel(environmentSettings),
-                getName(),
-                modelConfig.getCalculatedContextWindow(environmentSettings)
-        ).combinedDocument();
+                multiDoc,
+                environmentSettings,
+                getName()
+        ).response();
     }
 }
 

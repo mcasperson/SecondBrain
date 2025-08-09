@@ -37,6 +37,6 @@ public class GongClientMock implements GongClient {
                                         .buildFinalPrompt("", "", "Write a 5 paragraph call log between 3 people discussing the design of a new AI product.")),
                         modelConfig.getModel(),
                         2048)
-                .combinedDocument();
+                .getResponse();
     }
 }

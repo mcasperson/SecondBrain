@@ -20,9 +20,9 @@ public interface PromptBuilder {
     /**
      * Builds the final prompt to be sent to the LLM.
      *
-     * @param instructions The instructions for the LLM, such as what to do with the context.
+     * @param instructions The instructions for the LLM, such as what to do with the context. This is typically the system prompt.
      * @param context      The context to be included in the prompt, built using {@link #buildContextPrompt(String, String)}.
-     * @param prompt       The main prompt text to be sent to the LLM.
+     * @param prompt       The main prompt text to be sent to the LLM. This is typically the user prompt.
      * @return A string with the final prompt formatted according to the LLM's template style.
      */
     String buildFinalPrompt(String instructions, String context, String prompt);

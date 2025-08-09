@@ -32,6 +32,7 @@ import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
@@ -103,6 +104,8 @@ public class DirectoryScan implements Tool<Void> {
     @Inject
     private ValidateString validateString;
     @Inject
+    private ValidateList validateList;
+    @Inject
     private SentenceSplitter sentenceSplitter;
     @Inject
     private SentenceVectorizer sentenceVectorizer;
@@ -156,7 +159,7 @@ public class DirectoryScan implements Tool<Void> {
 
         return Try
                 .of(() -> getFiles(parsedArgs))
-                .map(files -> convertFilesToSummaries(files, parsedArgs))
+                .map(files -> convertFilesToSummaries(files, parsedArgs, environmentSettings))
                 .get();
     }
 
@@ -172,26 +175,17 @@ public class DirectoryScan implements Tool<Void> {
 
         final Try<RagMultiDocumentContext<Void>> result = Try
                 .of(() -> getContext(environmentSettings, prompt, arguments))
+                // Make sure we had some content for the prompt
+                .map(validateList::throwIfEmpty)
                 .map(list -> listLimiter.limitListContent(
                         list,
                         RagDocumentContext::document,
                         modelConfig.getCalculatedContextWindow(environmentSettings)))
-                .map(ragDocs -> mergeContext(ragDocs, environmentSettings, debugArgs))
-                // Make sure we had some content for the prompt
-                .mapTry(mergedContext ->
-                        validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
-                .map(ragDoc -> ragDoc.updateDocument(
-                        promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings)).buildFinalPrompt(
-                                INSTRUCTIONS,
-                                promptBuilderSelector.getPromptBuilder(
-                                        modelConfig.getCalculatedModel(environmentSettings)).buildContextPrompt(
-                                        "Individual File Answer", ragDoc.combinedDocument()),
-                                prompt)))
+                .map(ragDocs -> mergeContext(prompt, INSTRUCTIONS, ragDocs, debugArgs))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)));
+                        environmentSettings,
+                        getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -224,31 +218,29 @@ public class DirectoryScan implements Tool<Void> {
 
 
     private RagMultiDocumentContext<Void> mergeContext(
+            final String prompt,
+            final String instructions,
             final List<RagDocumentContext<Void>> ragContext,
-            final Map<String, String> context,
             final String debug) {
         return new RagMultiDocumentContext<>(
-                ragContext.stream()
-                        .map(ragDoc -> promptBuilderSelector.getPromptBuilder(
-                                        modelConfig.getCalculatedModel(context))
-                                .buildContextPrompt(getContextLabel(), ragDoc.document()))
-                        .collect(Collectors.joining("\n")),
+                prompt,
+                instructions,
                 ragContext,
                 debug);
     }
 
-    private List<RagDocumentContext<Void>> convertFilesToSummaries(final List<String> files, final DirectoryScanConfig.LocalArguments parsedArgs) {
+    private List<RagDocumentContext<Void>> convertFilesToSummaries(final List<String> files, final DirectoryScanConfig.LocalArguments parsedArgs, final Map<String, String> environmentSettings) {
         return files
                 .stream()
                 .limit(parsedArgs.getMaxFiles() == -1 ? Long.MAX_VALUE : parsedArgs.getMaxFiles())
-                .map(file -> getFileContext(file, parsedArgs))
+                .map(file -> getFileContext(file, parsedArgs, environmentSettings))
                 .filter(Objects::nonNull)
                 .toList();
     }
 
-    private RagDocumentContext<Void> getFileContext(final String file, final DirectoryScanConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<Void> getFileContext(final String file, final DirectoryScanConfig.LocalArguments parsedArgs, final Map<String, String> environmentSettings) {
         if (parsedArgs.getSummarizeIndividualFiles()) {
-            return getFileSummary(file, parsedArgs);
+            return getFileSummary(file, parsedArgs, environmentSettings);
         }
 
         return getRawFile(file, parsedArgs);
@@ -286,7 +278,7 @@ public class DirectoryScan implements Tool<Void> {
      * or hallucinate a bunch of random release notes. Instead, each diff is summarised individually and then combined
      * into a single document to be summarised again.
      */
-    private RagDocumentContext<Void> getFileSummary(final String file, final DirectoryScanConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<Void> getFileSummary(final String file, final DirectoryScanConfig.LocalArguments parsedArgs, final Map<String, String> environmentSettings) {
         logger.info("DirectoryScan processing file: " + file);
 
         /*
@@ -306,7 +298,7 @@ public class DirectoryScan implements Tool<Void> {
                 this.getName(),
                 "File",
                 DigestUtils.sha256Hex(parsedArgs.getIndividualDocumentPrompt() + trimResult.document()),
-                () -> getFileSummaryLlm(trimResult.document(), parsedArgs));
+                () -> getFileSummaryLlm(trimResult.document(), parsedArgs, environmentSettings));
 
         return new RagDocumentContext<>(
                 getName(),
@@ -325,18 +317,22 @@ public class DirectoryScan implements Tool<Void> {
     /**
      * Use the LLM to answer the prompt based on the contents of the file.
      */
-    private String getFileSummaryLlm(final String contents, final DirectoryScanConfig.LocalArguments parsedArgs) {
-        return ollamaClient.callOllamaWithCache(
-                new RagMultiDocumentContext<>(promptBuilderSelector.getPromptBuilder(parsedArgs.getFileCustomModel()).buildFinalPrompt(
-                        FILE_INSTRUCTIONS,
-                        promptBuilderSelector.getPromptBuilder(
-                                parsedArgs.getFileCustomModel()).buildContextPrompt(
-                                getContextLabel(), contents),
-                        parsedArgs.getIndividualDocumentPrompt())),
-                parsedArgs.getFileCustomModel(),
+    private String getFileSummaryLlm(final String contents, final DirectoryScanConfig.LocalArguments parsedArgs, final Map<String, String> environmentSettings) {
+        final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),
-                parsedArgs.getFileContextWindow()
-        ).combinedDocument();
+                getContextLabel(),
+                contents,
+                List.of()
+        );
+
+        return ollamaClient.callOllamaWithCache(
+                new RagMultiDocumentContext<>(
+                        parsedArgs.getIndividualDocumentPrompt(),
+                        FILE_INSTRUCTIONS,
+                        List.of(context)),
+                environmentSettings,
+                getName()
+        ).getResponse();
     }
 }
 

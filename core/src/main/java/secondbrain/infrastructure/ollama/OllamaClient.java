@@ -21,13 +21,16 @@ import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
 import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.prompt.PromptBuilder;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.response.ResponseValidation;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static io.vavr.control.Try.of;
 
@@ -121,12 +124,14 @@ public class OllamaClient {
     }
 
     public <T> RagMultiDocumentContext<T> callOllama(final Client client, final OllamaGenerateBodyWithContext<T> body) {
+        final String prompt = getPromptFromDocument(body.prompt());
+
         final OllamaResponse response = callOllama(client, new OllamaGenerateBody(
                 body.model(),
-                body.prompt().combinedDocument(),
+                prompt,
                 body.stream(),
                 new OllamaGenerateBodyOptions(body.contextWindow())));
-        return body.prompt().updateDocument(response.response());
+        return body.prompt().updateResponse(response.response());
     }
 
     public String callOllamaSimple(final String prompt) {
@@ -135,7 +140,7 @@ public class OllamaClient {
                                 .buildFinalPrompt("", "", prompt)),
                 modelConfig.getModel(),
                 2048)
-                .combinedDocument();
+                .response();
     }
 
     public <T> RagMultiDocumentContext<T> callOllama(
@@ -151,10 +156,14 @@ public class OllamaClient {
 
     public <T> RagMultiDocumentContext<T> callOllamaWithCache(
             final RagMultiDocumentContext<T> ragDoc,
-            final String model,
-            final String tool,
-            @Nullable final Integer contextWindow) {
-        final String promptHash = DigestUtils.sha256Hex(ragDoc.combinedDocument() + model + contextWindow);
+            final Map<String, String> environmentSettings,
+            final String tool) {
+        final String model = modelConfig.getCalculatedModel(environmentSettings);
+        final Integer contextWindow = modelConfig.getCalculatedContextWindow(environmentSettings);
+
+        final String prompt = getPromptFromDocument(ragDoc);
+
+        final String promptHash = DigestUtils.sha256Hex(prompt + model + contextWindow);
 
         final String result = localStorage.getOrPutString(
                 tool,
@@ -163,7 +172,7 @@ public class OllamaClient {
                 NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
                 () -> {
                     final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
-                    final String responseText = response.combinedDocument();
+                    final String responseText = response.response();
 
                     // Don't cache errors
                     return resultOrDefaultOnError(responseText, null);
@@ -171,8 +180,8 @@ public class OllamaClient {
 
         // Don't return cached errors
         return valueOrDefaultOnError(result,
-                ragDoc.updateDocument(result),
-                ragDoc.updateDocument(callOllama(ragDoc, model, contextWindow).combinedDocument()));
+                ragDoc.updateResponse(result),
+                ragDoc.updateResponse(callOllama(ragDoc, model, contextWindow).response()));
     }
 
     private boolean resultIsError(final String result) {
@@ -193,5 +202,19 @@ public class OllamaClient {
                 .findFirst()
                 .map(formatter -> formatter.formatAnswer(response))
                 .orElse(response);
+    }
+
+    private String getPromptFromDocument(final RagMultiDocumentContext<?> ragDoc) {
+        final PromptBuilder promptBuilder = promptBuilderSelector.getPromptBuilder(modelConfig.getModel());
+
+        final String promptContent = ragDoc.individualContexts()
+                .stream()
+                .map(context -> promptBuilder.buildContextPrompt(context.contextLabel(), context.document()))
+                .collect(Collectors.joining("\n"));
+
+        return promptBuilder.buildFinalPrompt(
+                ragDoc.instructions(),
+                promptContent,
+                ragDoc.prompt());
     }
 }

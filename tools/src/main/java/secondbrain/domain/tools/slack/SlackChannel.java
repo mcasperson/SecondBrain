@@ -46,7 +46,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -199,22 +198,11 @@ public class SlackChannel implements Tool<Void> {
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragDoc -> new RagMultiDocumentContext<>(
-                        ragDoc.stream()
-                                .map(document -> promptBuilderSelector.getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings)).buildContextPrompt("Message", document.document()))
-                                .collect(Collectors.joining(System.lineSeparator())),
-                        ragDoc))
-                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                        .buildFinalPrompt(
-                                INSTRUCTIONS,
-                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars(environmentSettings)),
-                                prompt)))
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)));
+                        environmentSettings,
+                        getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411

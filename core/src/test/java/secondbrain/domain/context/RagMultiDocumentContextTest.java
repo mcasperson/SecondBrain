@@ -25,9 +25,14 @@ class RagMultiDocumentContextTest {
         RagDocumentContext<String> context2 = new RagDocumentContext<>("test", "document", "It contains multiple sentences.", List.of(doc2), "doc2");
 
         // Create a multi-document context
-        RagMultiDocumentContext<String> multiContext = new RagMultiDocumentContext<>(
+        RagMultiDocumentContext<String> multiContext = new RagMultiDocumentContext<String>(
+                null,
+                null,
+                List.of(context1, context2),
                 "This is a test document after processing. This is a test document after processing. It contains multiple sentences after processing.",
-                List.of(context1, context2)
+                null,
+                null,
+                null
         );
 
         // Get annotations

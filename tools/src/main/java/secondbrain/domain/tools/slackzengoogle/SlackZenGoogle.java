@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -172,21 +171,11 @@ public class SlackZenGoogle implements Tool<Void> {
             final List<ToolArgs> arguments) {
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragDoc -> mergeContext(ragDoc, modelConfig.getCalculatedModel(environmentSettings)))
-                .map(ragContext -> ragContext.updateDocument(promptBuilderSelector
-                        .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                        .buildFinalPrompt(
-                                INSTRUCTIONS,
-                                // I've opted to get the end of the document if it is larger than the context window.
-                                // The end of the document is typically given more weight by LLMs, and so any long
-                                // document being processed should place the most relevant content towards the end.
-                                ragContext.getDocumentRight(modelConfig.getCalculatedContextWindowChars(environmentSettings)),
-                                prompt)))
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)))
+                        environmentSettings,
+                        getName()))
                 /*
                     InsufficientContext is expected when there is not enough information to answer the prompt.
                     It is not passed up though, as it is not a failure, but rather a lack of information.
@@ -207,16 +196,6 @@ public class SlackZenGoogle implements Tool<Void> {
     @Override
     public String getContextLabel() {
         return "Unused";
-    }
-
-    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel) {
-        return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(ragDoc ->
-                                promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt(
-                                        ragDoc.contextLabel(), ragDoc.document()))
-                        .collect(Collectors.joining("\n")),
-                context);
     }
 }
 

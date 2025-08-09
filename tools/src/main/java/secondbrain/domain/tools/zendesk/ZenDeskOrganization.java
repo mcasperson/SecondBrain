@@ -38,6 +38,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateInputs;
+import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
@@ -130,6 +131,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
     @Inject
     private ValidateString validateString;
+
+    @Inject
+    private ValidateList validateList;
 
     @Inject
     private DocumentTrimmer documentTrimmer;
@@ -299,25 +303,24 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         list,
                         RagDocumentContext::document,
                         modelConfig.getCalculatedContextWindow(environmentSettings)))
+                .map(validateList::throwIfEmpty)
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                .map(tickets -> mergeContext(tickets, debugArgs, modelConfig.getCalculatedModel(environmentSettings)))
-                // Make sure we had some content for the prompt
-                .mapTry(mergedContext ->
-                        validateString.throwIfEmpty(mergedContext, RagMultiDocumentContext::combinedDocument))
-                // Build the final prompt including instructions, context and the user prompt
-                .map(ragContext -> ragContext.updateDocument(
-                        promptBuilderSelector
-                                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                                .buildFinalPrompt(INSTRUCTIONS, ragContext.combinedDocument(), prompt)))
+                .map(tickets -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, tickets))
                 // Call Ollama with the final prompt
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)))
+                        environmentSettings,
+                        getName()))
                 // Clean up the response
-                .map(response -> response.updateDocument(removeSpacing.sanitize(response.combinedDocument())))
-                .recover(EmptyString.class, e -> new RagMultiDocumentContext<>("No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'", List.of(), ""));
+                .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())))
+                .recover(EmptyString.class, e -> new RagMultiDocumentContext<>(
+                        "",
+                        "",
+                        null,
+                        "No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'",
+                        null,
+                        null,
+                        null));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -326,19 +329,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                 throwable -> new ExternalFailure("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
                 .get();
     }
-
-    private RagMultiDocumentContext<ZenDeskTicket> mergeContext(final List<RagDocumentContext<ZenDeskTicket>> context, final String debug, final String customModel) {
-        return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(RagDocumentContext::document)
-                        .map(content -> promptBuilderSelector
-                                .getPromptBuilder(customModel)
-                                .buildContextPrompt(getContextLabel(), content))
-                        .collect(Collectors.joining("\n")),
-                context,
-                debug);
-    }
-
 
     private List<ZenDeskTicket> filterResponse(
             final List<ZenDeskTicket> tickets,
@@ -394,20 +384,21 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     private String getTicketSummary(final String ticketContents,
                                     final Map<String, String> environmentSettings,
                                     final ZenDeskConfig.LocalArguments parsedArgs) {
-        final String ticketContext = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildContextPrompt(getContextLabel(), ticketContents);
-
-        final String prompt = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildFinalPrompt("You are a helpful agent", ticketContext, parsedArgs.getTicketSummaryPrompt());
+        final RagDocumentContext<String> context = new RagDocumentContext<>(
+                getName(),
+                getContextLabel(),
+                ticketContents,
+                List.of()
+        );
 
         return ollamaClient.callOllamaWithCache(
-                new RagMultiDocumentContext<>(prompt),
-                modelConfig.getCalculatedModel(environmentSettings),
-                getName(),
-                modelConfig.getCalculatedContextWindow(environmentSettings)
-        ).combinedDocument();
+                new RagMultiDocumentContext<>(
+                        parsedArgs.getTicketSummaryPrompt(),
+                        "You are a helpful agent",
+                        List.of(context)),
+                environmentSettings,
+                getName()
+        ).getResponse();
     }
 
     private List<RagDocumentContext<ZenDeskTicket>> ticketToComments(final List<ZenDeskTicket> tickets,
