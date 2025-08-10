@@ -2,12 +2,14 @@ package secondbrain.infrastructure.azure;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.answer.AnswerFormatter;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.response.ResponseValidation;
@@ -19,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.*;
@@ -45,6 +48,9 @@ public class AzureClient implements LlmClient {
 
     @Inject
     private ResponseValidation responseValidation;
+
+    @Inject
+    private Instance<AnswerFormatter> answerFormatters;
 
     @Inject
     private Logger logger;
@@ -118,6 +124,7 @@ public class AzureClient implements LlmClient {
                                         .map(AzureResponseChoices::getMessage)
                                         .map(AzureResponseChoicesMessage::getContent)
                                         .reduce("", String::concat))
+                                .map(response -> formatResponse(model.get(), response))
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get()
                         )
@@ -129,5 +136,13 @@ public class AzureClient implements LlmClient {
         logger.info(result);
 
         return result;
+    }
+
+    private String formatResponse(final String model, final String response) {
+        return answerFormatters.stream()
+                .filter(b -> Pattern.compile(b.modelRegex()).matcher(model).matches())
+                .findFirst()
+                .map(formatter -> formatter.formatAnswer(response))
+                .orElse(response);
     }
 }
