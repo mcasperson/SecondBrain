@@ -79,13 +79,8 @@ public class GoogleClient implements LlmClient {
             throw new IllegalStateException("Google API key is not configured.");
         }
 
-        final String prompt = request.getContents().stream()
-                .flatMap(content -> content.getParts().stream())
-                .map(GoogleRequestContentsParts::getText)
-                .collect(Collectors.joining("\n"));
-
         logger.info("Calling Google LLM");
-        logger.info(prompt);
+        logger.info(request.getPromptText());
 
         final String result = Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(URL)
