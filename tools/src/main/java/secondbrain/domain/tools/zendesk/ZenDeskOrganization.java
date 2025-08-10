@@ -31,6 +31,7 @@ import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.sanitize.SanitizeDocument;
+import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.domain.tooldefs.MetaObjectResults;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -77,6 +78,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
     public static final String ZENDESK_CONTEXT_FILTER_BY_RECIPIENT_ARG = "filterByRecipient";
+    private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
 
 
     private static final String INSTRUCTIONS = """
@@ -97,6 +99,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             You will be penalized for using terms like flooded, wave, or inundated.
             If there are no ZenDesk Tickets, you must indicate that in the answer.
             """.stripLeading();
+
+    @Inject
+    private TimeoutService timeoutService;
 
     @Inject
     private ZenDeskIndividualTicket ticketTool;
@@ -237,12 +242,16 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             final ZenDeskCreds creds,
             final String query,
             final Client client) {
-        final List<RagDocumentContext<ZenDeskTicket>> context = Try.of(() -> zenDeskClient.getTickets(
-                        client,
-                        creds.auth(),
-                        creds.url(),
-                        String.join(" ", query),
-                        parsedArgs.getSearchTTL()))
+        final List<RagDocumentContext<ZenDeskTicket>> context = Try.of(() ->
+                        timeoutService.executeWithTimeout(() ->
+                                        zenDeskClient.getTickets(
+                                                client,
+                                                creds.auth(),
+                                                creds.url(),
+                                                String.join(" ", query),
+                                                parsedArgs.getSearchTTL()),
+                                List::<ZenDeskTicket>of,
+                                API_CALL_TIMEOUT_SECONDS))
                 // Filter out any tickets based on the submitter and assignee
                 .map(response -> filterResponse(
                         response,
@@ -254,13 +263,17 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 // Limit how many tickets we process. We're unlikely to be able to pass the details of many tickets to the LLM anyway
                 .map(response -> response.subList(0, Math.min(response.size(), parsedArgs.getMaxTickets())))
                 // Get the ticket comments (i.e., the initial email)
-                .map(response -> ticketToComments(
-                        response,
-                        environmentSettings,
-                        creds.url(),
-                        creds.user(),
-                        creds.token(),
-                        parsedArgs))
+                .map(response ->
+                        timeoutService.executeWithTimeout(() ->
+                                        ticketToComments(
+                                                response,
+                                                environmentSettings,
+                                                creds.url(),
+                                                creds.user(),
+                                                creds.token(),
+                                                parsedArgs),
+                                List::<RagDocumentContext<ZenDeskTicket>>of,
+                                API_CALL_TIMEOUT_SECONDS))
                 /*
                     If there is a filter question (usually a question to remove spam or irrelevant tickets),
                     then we filter the tickets based on the rating of the context.

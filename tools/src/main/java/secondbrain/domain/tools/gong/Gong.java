@@ -27,6 +27,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
+import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -57,6 +58,7 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String GONG_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String GONG_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
     public static final String GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG = "summarizeTranscriptPrompt";
+    private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of call transcripts from Gong.
@@ -66,6 +68,10 @@ public class Gong implements Tool<GongCallDetails> {
             When the user asks a question indicating that they want to know about transcripts, you must generate the answer based on the transcripts.
             You will be penalized for answering that the transcripts can not be accessed.
             """.stripLeading();
+
+    @Inject
+    private TimeoutService timeoutService;
+
     @Inject
     private GongConfig config;
 
@@ -121,14 +127,17 @@ public class Gong implements Tool<GongCallDetails> {
 
         final List<Pair<GongCallDetails, String>> calls = Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.of(() ->
-                                gongClient.getCallsExtensive(
-                                        client,
-                                        parsedArgs.getCompany(),
-                                        parsedArgs.getCallId(),
-                                        parsedArgs.getAccessKey(),
-                                        parsedArgs.getAccessSecretKey(),
-                                        parsedArgs.getStartDate(),
-                                        parsedArgs.getEndDate()))
+                                timeoutService.executeWithTimeout(() ->
+                                                gongClient.getCallsExtensive(
+                                                        client,
+                                                        parsedArgs.getCompany(),
+                                                        parsedArgs.getCallId(),
+                                                        parsedArgs.getAccessKey(),
+                                                        parsedArgs.getAccessSecretKey(),
+                                                        parsedArgs.getStartDate(),
+                                                        parsedArgs.getEndDate()),
+                                        List::<GongCallDetails>of,
+                                        API_CALL_TIMEOUT_SECONDS))
                         .map(c -> c.stream()
                                 .map(call -> Pair.of(
                                         call,
