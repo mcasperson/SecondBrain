@@ -21,6 +21,8 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class GongClientLive implements GongClient {
@@ -36,6 +38,9 @@ public class GongClientLive implements GongClient {
 
     @Inject
     private LocalStorage localStorage;
+
+    @Inject
+    private Logger logger;
 
     @Override
     public List<GongCallDetails> getCallsExtensive(
@@ -106,6 +111,8 @@ public class GongClientLive implements GongClient {
             final String username,
             final String password,
             final String cursor) {
+        logger.log(Level.INFO, "Getting Gong calls extensive from " + fromDateTime + " to " + toDateTime + " with callId " + callId);
+
         RATE_LIMITER.acquire();
 
         final String target = url + "/v2/calls/extensive";
@@ -145,6 +152,8 @@ public class GongClientLive implements GongClient {
             final String id,
             final String username,
             final String password) {
+        logger.log(Level.INFO, "Getting Gong call transcript from " + id);
+
         RATE_LIMITER.acquire();
 
         final String target = url + "/v2/calls/transcript";
