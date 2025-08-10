@@ -48,6 +48,7 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -140,7 +141,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     private DocumentTrimmer documentTrimmer;
 
     @Inject
-    private Logger log;
+    private Logger logger;
 
     @Override
     public String getName() {
@@ -175,7 +176,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-
+        logger.log(Level.INFO, "Getting context for " + getName());
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final List<String> query = new ArrayList<>();
@@ -289,7 +290,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                  */
                 .map(tickets -> parsedArgs.getSummarizeTicket() ? summariseTickets(tickets, environmentSettings, parsedArgs) : tickets)
                 // Don't let one failed instance block the others
-                .onFailure(throwable -> log.warning("Failed to get tickets: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                .onFailure(throwable -> logger.warning("Failed to get tickets: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .recover(throwable -> List.of())
                 .get();
 
@@ -298,6 +299,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
     @Override
     public RagMultiDocumentContext<ZenDeskTicket> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        logger.log(Level.INFO, "Calling " + getName());
 
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 

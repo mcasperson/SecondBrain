@@ -44,6 +44,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import static com.google.common.base.Predicates.instanceOf;
@@ -96,6 +98,9 @@ public class SlackChannel implements Tool<Void> {
     @Inject
     private DocumentTrimmer documentTrimmer;
 
+    @Inject
+    private Logger logger;
+
     @Override
     public String getName() {
         return SlackChannel.class.getSimpleName();
@@ -126,6 +131,8 @@ public class SlackChannel implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
+
+        logger.log(Level.INFO, "Getting context for " + getName());
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -191,6 +198,7 @@ public class SlackChannel implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
+        logger.log(Level.INFO, "Calling " + getName());
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 

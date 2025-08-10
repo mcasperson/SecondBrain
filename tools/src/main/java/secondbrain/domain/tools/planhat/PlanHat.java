@@ -41,6 +41,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -101,7 +102,7 @@ public class PlanHat implements Tool<Conversation> {
     private ValidateString validateString;
 
     @Inject
-    private Logger log;
+    private Logger logger;
 
     @Override
     public String getName() {
@@ -129,6 +130,8 @@ public class PlanHat implements Tool<Conversation> {
 
     @Override
     public List<RagDocumentContext<Conversation>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        logger.log(Level.INFO, "Getting context for " + getName());
+
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
@@ -152,7 +155,7 @@ public class PlanHat implements Tool<Conversation> {
                                 pair.getRight(),
                                 parsedArgs.getSearchTTL()))
                         // Don't let the failure of one instance affect the other
-                        .onFailure(throwable -> log.warning("Failed to get conversations: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                        .onFailure(throwable -> logger.warning("Failed to get conversations: " + ExceptionUtils.getRootCauseMessage(throwable)))
                         .recover(ex -> List.of())
                         .get()
                         .stream())
@@ -177,6 +180,8 @@ public class PlanHat implements Tool<Conversation> {
 
     @Override
     public RagMultiDocumentContext<Conversation> call(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+        logger.log(Level.INFO, "Calling " + getName());
+
         final List<RagDocumentContext<Conversation>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);

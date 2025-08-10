@@ -39,6 +39,8 @@ import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -81,6 +83,9 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     @Preferred
     private SlackClient slackClient;
 
+    @Inject
+    private Logger logger;
+
     @Override
     public String getName() {
         return SlackSearch.class.getSimpleName();
@@ -108,6 +113,8 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
+
+        logger.log(Level.INFO, "Getting context for " + getName());
 
         final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -151,6 +158,8 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
+
+        logger.log(Level.INFO, "Calling " + getName());
 
         final List<RagDocumentContext<SlackSearchResultResource>> contextList = getContext(environmentSettings, prompt, arguments);
 

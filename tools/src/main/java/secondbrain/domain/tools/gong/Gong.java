@@ -115,7 +115,8 @@ public class Gong implements Tool<GongCallDetails> {
     @Override
     public List<RagDocumentContext<GongCallDetails>> getContext(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-
+        logger.log(Level.INFO, "Getting context for " + getName());
+        
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final List<Pair<GongCallDetails, String>> calls = Try.withResources(ClientBuilder::newClient)
@@ -173,6 +174,8 @@ public class Gong implements Tool<GongCallDetails> {
 
     @Override
     public RagMultiDocumentContext<GongCallDetails> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        logger.log(Level.INFO, "Calling " + getName());
+
         final List<RagDocumentContext<GongCallDetails>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
