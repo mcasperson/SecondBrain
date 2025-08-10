@@ -57,13 +57,17 @@ public class GoogleClient implements LlmClient {
         final List<GoogleRequestContentsParts> parts = ragDocs.individualContexts().stream()
                 .map(ragDoc -> new GoogleRequestContentsParts(ragDoc.contextLabel() + ": " + ragDoc.document()))
                 .collect(Collectors.toCollection(ArrayList::new));
-
-        parts.add(new GoogleRequestContentsParts(ragDocs.instructions()));
+        
         parts.add(new GoogleRequestContentsParts(ragDocs.prompt()));
 
         return ragDocs.updateResponse(call(
                         new GoogleRequest(
                                 List.of(new GoogleRequestContents(parts)
+                                ),
+                                new GoogleRequestSystemInstruction(
+                                        List.of(
+                                                new GoogleRequestContentsParts(ragDocs.instructions())
+                                        )
                                 )
                         )
                 )
