@@ -6,4 +6,7 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GoogleRequestContents(List<GoogleRequestContentsParts> parts) {
+    public List<GoogleRequestContentsParts> getParts() {
+        return parts != null ? parts : List.of();
+    }
 }

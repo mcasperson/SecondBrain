@@ -12,4 +12,8 @@ public record GoogleRequest(List<GoogleRequestContents> contents,
     public GoogleRequest(List<GoogleRequestContents> contents) {
         this(contents, null);
     }
+
+    public List<GoogleRequestContents> getContents() {
+        return contents != null ? contents : List.of();
+    }
 }
