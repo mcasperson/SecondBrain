@@ -101,7 +101,7 @@ public class AzureClient implements LlmClient {
                 .map(Integer::parseInt)
                 .orElse(AzureRequest.DEFAULT_TOKENS);
 
-        final Integer maxChars = maxTokens * 4; // Assume 4 chars per token
+        final int maxChars = maxTokens * 4; // Assume 4 chars per token
 
         final List<AzureRequestMessage> messages = new ArrayList<>();
         messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
