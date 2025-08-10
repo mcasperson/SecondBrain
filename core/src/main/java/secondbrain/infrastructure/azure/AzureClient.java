@@ -39,6 +39,7 @@ import static com.google.common.base.Preconditions.*;
 public class AzureClient implements LlmClient {
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
     private static final String DEFAULT_MODEL = "Phi-4";
+    private static final int API_RETRY_COUNT = 3;
     private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS + " seconds";
 
@@ -104,10 +105,11 @@ public class AzureClient implements LlmClient {
                 model
         );
 
-        return timeoutService.executeWithTimeout(
+        return timeoutService.executeWithTimeoutAndRetry(
                 () -> call(request),
                 () -> API_CALL_TIMEOUT_MESSAGE,
-                API_CALL_TIMEOUT_SECONDS);
+                API_CALL_TIMEOUT_SECONDS,
+                API_RETRY_COUNT);
     }
 
     @Override

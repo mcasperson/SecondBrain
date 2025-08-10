@@ -36,6 +36,7 @@ public class GoogleClient implements LlmClient {
 
     private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS + " seconds";
+    private static final int API_RETRY_COUNT = 3;
 
     @Inject
     @ConfigProperty(name = "sb.googlellm.apikey")
@@ -80,10 +81,11 @@ public class GoogleClient implements LlmClient {
                 ))
         );
 
-        return timeoutService.executeWithTimeout(
+        return timeoutService.executeWithTimeoutAndRetry(
                 () -> call(request),
                 () -> API_CALL_TIMEOUT_MESSAGE,
-                API_CALL_TIMEOUT_SECONDS);
+                API_CALL_TIMEOUT_SECONDS,
+                API_RETRY_COUNT);
     }
 
     @Override
