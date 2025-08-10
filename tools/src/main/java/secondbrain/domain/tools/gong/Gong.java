@@ -13,7 +13,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -26,7 +25,6 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -42,6 +40,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -87,12 +86,6 @@ public class Gong implements Tool<GongCallDetails> {
 
     @Inject
     private DocumentTrimmer documentTrimmer;
-
-    @Inject
-    private ModelConfig modelConfig;
-
-    @Inject
-    private PromptBuilderSelector promptBuilderSelector;
 
     @Inject
     @Preferred
@@ -223,6 +216,8 @@ public class Gong implements Tool<GongCallDetails> {
      * Summarise an individual ticket
      */
     private String getCallSummary(final String transcript, final Map<String, String> environmentSettings, final GongConfig.LocalArguments parsedArgs) {
+        logger.log(Level.INFO, "Summarising Gong call transcript");
+
         final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),
                 getContextLabel(),
