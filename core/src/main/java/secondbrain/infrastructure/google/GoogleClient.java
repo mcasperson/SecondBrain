@@ -57,7 +57,7 @@ public class GoogleClient implements LlmClient {
         final List<GoogleRequestContentsParts> parts = ragDocs.individualContexts().stream()
                 .map(ragDoc -> new GoogleRequestContentsParts(ragDoc.contextLabel() + ": " + ragDoc.document()))
                 .collect(Collectors.toCollection(ArrayList::new));
-        
+
         parts.add(new GoogleRequestContentsParts(ragDocs.prompt()));
 
         return ragDocs.updateResponse(call(
@@ -79,7 +79,7 @@ public class GoogleClient implements LlmClient {
             throw new IllegalStateException("Google API key is not configured.");
         }
 
-        return Try.withResources(ClientBuilder::newClient)
+        final String result = Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(URL)
                                 .request()
                                 .header("Content-Type", "application/json")
@@ -99,5 +99,9 @@ public class GoogleClient implements LlmClient {
                         .get()
                 )
                 .get();
+
+        logger.info(result);
+
+        return result;
     }
 }
