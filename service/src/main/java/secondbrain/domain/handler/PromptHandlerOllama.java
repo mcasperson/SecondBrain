@@ -118,6 +118,10 @@ public class PromptHandlerOllama implements PromptHandler {
                 .recover(e -> false)
                 .get();
 
+        logger.log(Level.INFO, "Using minSimilarity: " + parsedMinSimilarity
+                + ", minWords: " + parsedMinWords
+                + ", argumentDebugging: " + argumentDebugging);
+
         /*
             The tools respond with a RagMultiDocumentContext, which contains the text response from the LLM
             and the context that was used to build the prompt, including things like IDs of the context items,
@@ -126,7 +130,7 @@ public class PromptHandlerOllama implements PromptHandler {
             We use this information to generate a standardized output that includes the text response from the LLM,
             links to the context items, and annotations that link the LLM output to the original context.
          */
-        return Try.of(() -> toolCall.call(context, prompt))
+        return Try.of(() -> toolCall.call(context, prompt, logger))
                 .map(document -> generateAnnotatedResponse(
                         document,
                         parsedMinSimilarity,

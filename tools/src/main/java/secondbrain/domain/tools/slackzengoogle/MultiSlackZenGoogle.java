@@ -41,6 +41,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -210,6 +211,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
+        logger.log(Level.INFO, "Getting context for " + getName());
 
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -252,6 +254,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
+        logger.log(Level.INFO, "Calling " + getName());
 
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -400,6 +403,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        logger.log(Level.INFO, "Getting context for " + positionalEntity.entity().name());
+
         final Entity entity = positionalEntity.entity();
 
         if (entity.disabled()) {
@@ -497,7 +502,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
      * to slack by the salesforce integration.
      */
     private List<RagDocumentContext<Void>> getSlackKeywordContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context, final String id) {
-        logger.info("Getting Slack keywords for " + positionalEntity.entity().name());
+        logger.log(Level.INFO, "Getting Slack keywords for " + positionalEntity.entity().name());
 
         // Add any specific keywords
         final List<String> keywords = new ArrayList<>(Arrays.stream(parsedArgs.getKeywords().split(",")).toList());
@@ -521,7 +526,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         prompt,
                         args))
                 // We continue on even if one tool fails, so log and swallow the exception
-                .onFailure(InternalFailure.class, ex -> logger.info("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                 .onFailure(ExternalFailure.class, ex -> logger.warning("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                 // If anything fails, get an empty list
                 .getOrElse(List::of)
@@ -535,7 +540,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getGongContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.info("Getting Gong transcripts for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.log(Level.INFO, "Getting Gong transcripts for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         return Objects.requireNonNullElse(positionalEntity.entity().salesforce(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -551,7 +556,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> logger.info("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
@@ -564,7 +569,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getPlanhatContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.info("Getting PlanHat activities for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.log(Level.INFO, "Getting PlanHat activities for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         return Objects.requireNonNullElse(positionalEntity.entity().getPlanHat(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -581,7 +586,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> logger.info("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
@@ -594,7 +599,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getPlanhatUsageContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.info("Getting PlanHat usage for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.log(Level.INFO, "Getting PlanHat usage for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         return Objects.requireNonNullElse(positionalEntity.entity().getPlanHat(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -617,7 +622,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getGoogleContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.info("Getting Google Docs for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.log(Level.INFO, "Getting Google Docs for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         return Objects.requireNonNullElse(positionalEntity.entity().getGoogleDcos(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -632,7 +637,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> logger.info("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
@@ -644,7 +649,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getSlackContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.info("Getting Slack channel for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.log(Level.INFO, "Getting Slack channel for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
         return Objects.requireNonNullElse(positionalEntity.entity().getSlack(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -661,7 +666,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> logger.info("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
@@ -673,7 +678,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getZenContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.info("Getting ZenDesk tickets for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.log(Level.INFO, "Getting ZenDesk tickets for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         return Objects.requireNonNullElse(positionalEntity.entity().getZenDesk(), List.<String>of())
                 .stream()
@@ -690,7 +695,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 prompt,
                                 args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> logger.info("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
@@ -710,11 +715,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final Integer rating = getContextRating(ragContext, parsedArgs);
 
         if (rating >= parsedArgs.getContextFilterMinimumRating()) {
-            logger.info("The context rating for entity " + entityName + " (" + rating + ") meets the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
+            logger.log(Level.INFO, "The context rating for entity " + entityName + " (" + rating + ") meets the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
             return ragContext;
         }
 
-        logger.info("The context rating for entity " + entityName + " (" + rating + ") did not meet the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
+        logger.log(Level.INFO, "The context rating for entity " + entityName + " (" + rating + ") did not meet the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
         return List.of();
     }
 
