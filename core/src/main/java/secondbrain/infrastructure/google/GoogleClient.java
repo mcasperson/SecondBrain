@@ -20,8 +20,7 @@ import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.*;
 
 /**
  * GoogleClient provides access to the Google AI studio API.
@@ -38,7 +37,7 @@ public class GoogleClient implements LlmClient {
     @Inject
     @ConfigProperty(name = "sb.googlellm.url", defaultValue = "https://generativelanguage.googleapis.com/v1beta/models/")
     private Optional<String> url;
-    
+
     @Inject
     @ConfigProperty(name = "sb.googlellm.model", defaultValue = DEFAULT_MODEL)
     private Optional<String> model;
@@ -98,17 +97,9 @@ public class GoogleClient implements LlmClient {
     }
 
     private String call(final GoogleRequest request) {
-        if (apiKey.isEmpty()) {
-            throw new IllegalStateException("Google API key is not configured.");
-        }
-
-        if (url.isEmpty()) {
-            throw new IllegalStateException("Google URL is not configured.");
-        }
-
-        if (model.isEmpty()) {
-            throw new IllegalStateException("Google model is not configured.");
-        }
+        checkState(apiKey.isPresent());
+        checkState(url.isPresent());
+        checkState(model.isPresent());
 
         logger.info("Calling Google LLM");
         logger.info(request.generatePromptText());

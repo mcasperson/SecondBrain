@@ -21,8 +21,7 @@ import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.*;
 
 /**
  * AzureClient provides access to the Azure AI foundry API.
@@ -98,13 +97,9 @@ public class AzureClient implements LlmClient {
     }
 
     private String call(final AzureRequest request) {
-        if (apiKey.isEmpty()) {
-            throw new IllegalStateException("Azure API key is not configured.");
-        }
-
-        if (url.isEmpty()) {
-            throw new IllegalStateException("Azure URL is not configured.");
-        }
+        checkState(apiKey.isPresent());
+        checkState(url.isPresent());
+        checkState(model.isPresent());
 
         logger.info("Calling Azure LLM");
         logger.info(request.generatePromptText());
