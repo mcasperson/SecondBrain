@@ -34,7 +34,7 @@ public class AliasTool implements Tool<Void> {
             You are given the name of an entity.
             You must generate a list of aliases for the entity based on the context provided.
             You will be penalized for returning generic or irrelevant aliases.
-            You will be penalized for returning markup or any other formatting.
+            You will be penalized for returning markdown or any other formatting.
             The response must be a JSON array of strings, with each string being an alias.
             You will be penalized for returning any text in the response that is not a valid JSON array.
             For example, if the entity is "Microsoft", you might return ["Microsoft Corporation", "MSFT"].
