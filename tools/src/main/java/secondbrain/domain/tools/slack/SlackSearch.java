@@ -14,7 +14,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -29,12 +28,11 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.limit.DocumentTrimmer;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
 import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 
@@ -57,16 +55,10 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
             """;
 
     @Inject
-    private ModelConfig modelConfig;
-
-    @Inject
     private SlackSearchConfig config;
 
     @Inject
-    private OllamaClient ollamaClient;
-
-    @Inject
-    private PromptBuilderSelector promptBuilderSelector;
+    private LlmClient llmClient;
 
     @Inject
     private SentenceSplitter sentenceSplitter;
@@ -162,7 +154,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
         final List<RagDocumentContext<SlackSearchResultResource>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final Try<RagMultiDocumentContext<SlackSearchResultResource>> result = Try.of(() -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, contextList))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));

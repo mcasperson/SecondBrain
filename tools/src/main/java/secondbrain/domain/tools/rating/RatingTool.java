@@ -5,20 +5,17 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import secondbrain.domain.args.ArgsAccessor;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateList;
-import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.List;
 import java.util.Map;
@@ -45,16 +42,7 @@ public class RatingTool implements Tool<Void> {
     private RatingConfig config;
 
     @Inject
-    private PromptBuilderSelector promptBuilderSelector;
-
-    @Inject
-    private ModelConfig modelConfig;
-
-    @Inject
-    private OllamaClient ollamaClient;
-
-    @Inject
-    private ValidateString validateString;
+    private LlmClient llmClient;
 
     @Inject
     private ValidateList validateList;
@@ -86,7 +74,7 @@ public class RatingTool implements Tool<Void> {
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(validateList::throwIfEmpty)
                 .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()))

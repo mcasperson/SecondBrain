@@ -29,13 +29,12 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
 import secondbrain.infrastructure.slack.api.SlackChannelResource;
 
@@ -84,10 +83,7 @@ public class SlackChannel implements Tool<Void> {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
-    private OllamaClient ollamaClient;
-
-    @Inject
-    private PromptBuilderSelector promptBuilderSelector;
+    private LlmClient llmClient;
 
     @Inject
     @Preferred
@@ -199,7 +195,7 @@ public class SlackChannel implements Tool<Void> {
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
@@ -283,7 +279,7 @@ public class SlackChannel implements Tool<Void> {
                 List.of()
         );
 
-        return ollamaClient.callOllamaWithCache(
+        return llmClient.callWithCache(
                 new RagMultiDocumentContext<>(parsedArgs.getDocumentSummaryPrompt(),
                         "You are a helpful agent",
                         List.of(context)),

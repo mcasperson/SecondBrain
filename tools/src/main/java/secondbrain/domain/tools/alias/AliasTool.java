@@ -14,7 +14,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.List;
 import java.util.Map;
@@ -40,7 +40,7 @@ public class AliasTool implements Tool<Void> {
     private AliasConfig config;
 
     @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Override
     public String getName() {
@@ -66,7 +66,7 @@ public class AliasTool implements Tool<Void> {
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragDoc -> mergeContext(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()))

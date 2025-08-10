@@ -24,13 +24,12 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
 import secondbrain.infrastructure.zendesk.api.IdToString;
 import secondbrain.infrastructure.zendesk.api.ZenDeskOrganizationItemResponse;
@@ -71,7 +70,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     private SanitizeDocument removeSpacing;
 
     @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Inject
     @Preferred
@@ -85,12 +84,6 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
     @Inject
     private SentenceVectorizer sentenceVectorizer;
-
-    @Inject
-    private PromptBuilderSelector promptBuilderSelector;
-
-    @Inject
-    private ValidateString validateString;
 
     @Inject
     private ValidateList validateList;
@@ -196,7 +189,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
                 .map(tickets -> new RagMultiDocumentContext<ZenDeskTicket>(prompt, INSTRUCTIONS, tickets))
                 // Call Ollama with the final prompt
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()))

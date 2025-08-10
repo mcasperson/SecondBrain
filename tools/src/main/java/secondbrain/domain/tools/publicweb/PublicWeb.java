@@ -24,13 +24,12 @@ import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -74,10 +73,7 @@ public class PublicWeb implements Tool<Void> {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
-    private PromptBuilderSelector promptBuilderSelector;
-
-    @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Inject
     private ValidateString validateString;
@@ -162,7 +158,7 @@ public class PublicWeb implements Tool<Void> {
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));

@@ -23,12 +23,11 @@ import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -69,10 +68,7 @@ public class UploadedDoc implements Tool<Void> {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
-    private PromptBuilderSelector promptBuilderSelector;
-
-    @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Inject
     private UploadDocConfig config;
@@ -131,7 +127,7 @@ public class UploadedDoc implements Tool<Void> {
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));

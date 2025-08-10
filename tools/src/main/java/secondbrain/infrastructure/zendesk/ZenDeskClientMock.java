@@ -3,7 +3,7 @@ package secondbrain.infrastructure.zendesk;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.zendesk.api.*;
 
 import java.util.ArrayList;
@@ -14,7 +14,7 @@ import java.util.UUID;
 @ApplicationScoped
 public class ZenDeskClientMock implements ZenDeskClient {
     @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Override
     public List<ZenDeskTicket> getTickets(
@@ -59,7 +59,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
         List<ZenDeskCommentResponse> comments = new ArrayList<>();
 
         for (int i = 0; i < 3; i++) {
-            String comment = ollamaClient.callOllamaSimple("Generate a customer support comment for a ZenDesk ticket. Make it sound like a real customer support conversation.");
+            String comment = llmClient.call("Generate a customer support comment for a ZenDesk ticket. Make it sound like a real customer support conversation.");
             comments.add(new ZenDeskCommentResponse(comment, new Random().nextLong(), ""));
         }
 
@@ -72,7 +72,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
             final String authorization,
             final String url,
             final String orgId) {
-        final String name = ollamaClient.callOllamaSimple("Generate a company or organization name. Return only the name, nothing else.");
+        final String name = llmClient.call("Generate a company or organization name. Return only the name, nothing else.");
         return new ZenDeskOrganizationItemResponse(name, orgId != null ? orgId : UUID.randomUUID().toString());
     }
 
@@ -82,7 +82,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
             final String authorization,
             final String url,
             final String userId) {
-        final String name = ollamaClient.callOllamaSimple("Generate a person's full name. Return only the name, nothing else.");
+        final String name = llmClient.call("Generate a person's full name. Return only the name, nothing else.");
         return new ZenDeskUserItemResponse(name, userId != null ? userId : UUID.randomUUID().toString(), "user@example.org", 1L);
     }
 
@@ -90,8 +90,8 @@ public class ZenDeskClientMock implements ZenDeskClient {
         final List<ZenDeskTicket> tickets = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
-            final String subject = ollamaClient.callOllamaSimple("Generate a subject line for a customer support ticket. Keep it concise.");
-            final String email = ollamaClient.callOllamaSimple("Generate a random email address. Return only the email address, nothing else.");
+            final String subject = llmClient.call("Generate a subject line for a customer support ticket. Keep it concise.");
+            final String email = llmClient.call("Generate a random email address. Return only the email address, nothing else.");
 
             final String id = UUID.randomUUID().toString();
             final String submitterId = UUID.randomUUID().toString();

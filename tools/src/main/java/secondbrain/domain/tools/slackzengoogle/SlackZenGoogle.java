@@ -13,7 +13,6 @@ import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.*;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -21,7 +20,7 @@ import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,10 +62,7 @@ public class SlackZenGoogle implements Tool<Void> {
     private PlanHat planHat;
 
     @Inject
-    private OllamaClient ollamaClient;
-
-    @Inject
-    private PromptBuilderSelector promptBuilderSelector;
+    private LlmClient llmClient;
 
     @Inject
     private SlackZenGoogleConfig config;
@@ -172,7 +168,7 @@ public class SlackZenGoogle implements Tool<Void> {
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()))

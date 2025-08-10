@@ -34,7 +34,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -96,7 +96,7 @@ public class DirectoryScan implements Tool<Void> {
     @Inject
     private DebugToolArgs debugToolArgs;
     @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
     @Inject
     private ListLimiter listLimiter;
     @Inject
@@ -182,7 +182,7 @@ public class DirectoryScan implements Tool<Void> {
                         RagDocumentContext::document,
                         modelConfig.getCalculatedContextWindow(environmentSettings)))
                 .map(ragDocs -> mergeContext(prompt, INSTRUCTIONS, ragDocs, debugArgs))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
@@ -325,7 +325,7 @@ public class DirectoryScan implements Tool<Void> {
                 List.of()
         );
 
-        return ollamaClient.callOllamaWithCache(
+        return llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getIndividualDocumentPrompt(),
                         FILE_INSTRUCTIONS,

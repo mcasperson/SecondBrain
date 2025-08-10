@@ -12,17 +12,15 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.api.Company;
 
@@ -68,13 +66,7 @@ public class PlanHatUsage implements Tool<Company> {
     private PlanHatClient planHatClient;
 
     @Inject
-    private ModelConfig modelConfig;
-
-    @Inject
-    private PromptBuilderSelector promptBuilderSelector;
-
-    @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Override
     public String getName() {
@@ -187,7 +179,7 @@ public class PlanHatUsage implements Tool<Company> {
 
         final Try<RagMultiDocumentContext<Company>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));

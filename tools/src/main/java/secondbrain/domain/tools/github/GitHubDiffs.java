@@ -31,7 +31,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.api.GitHubCommitAndDiff;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -84,7 +84,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     private GitHubClient gitHubClient;
 
     @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Inject
     private ListLimiter listLimiter;
@@ -194,7 +194,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                         RagDocumentContext::document,
                         modelConfig.getCalculatedContextWindow(environmentSettings)))
                 .map(ragDocs -> mergeContext(prompt, INSTRUCTIONS, ragDocs, debugArgs))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
@@ -269,7 +269,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 List.of()
         );
 
-        return ollamaClient.callOllamaWithCache(
+        return llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         "Provide a one paragraph summary of the changes in the Git Diff.",
                         "You are a helpful agent",

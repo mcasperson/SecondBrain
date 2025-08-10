@@ -27,10 +27,8 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.MetaObjectResults;
@@ -40,7 +38,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
 import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 
@@ -114,7 +112,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     private SanitizeDocument removeSpacing;
 
     @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Inject
     @Preferred
@@ -127,9 +125,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     private DebugToolArgs debugToolArgs;
 
     @Inject
-    private PromptBuilderSelector promptBuilderSelector;
-
-    @Inject
     private ValidateString validateString;
 
     @Inject
@@ -140,9 +135,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
     @Inject
     private Logger log;
-
-    @Inject
-    private JsonDeserializer jsonDeserializer;
 
     @Override
     public String getName() {
@@ -307,7 +299,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
                 .map(tickets -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, tickets))
                 // Call Ollama with the final prompt
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()))
@@ -391,7 +383,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 List.of()
         );
 
-        return ollamaClient.callOllamaWithCache(
+        return llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getTicketSummaryPrompt(),
                         "You are a helpful agent",

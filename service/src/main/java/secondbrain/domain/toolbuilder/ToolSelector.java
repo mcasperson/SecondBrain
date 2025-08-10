@@ -8,7 +8,6 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.json.JsonDeserializer;
@@ -17,15 +16,12 @@ import secondbrain.domain.tooldefs.ToolCall;
 import secondbrain.domain.tooldefs.ToolDefinition;
 import secondbrain.domain.tooldefs.ToolDefinitionFallback;
 import secondbrain.domain.validate.ValidateList;
-import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.ollama.OllamaGenerateBody;
-import secondbrain.infrastructure.ollama.OllamaResponse;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 @ApplicationScoped
@@ -51,7 +47,7 @@ public class ToolSelector {
     private Instance<Tool<?>> tools;
 
     @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Inject
     private JsonDeserializer jsonDeserializer;
@@ -94,7 +90,6 @@ public class ToolSelector {
      */
     private ToolDefinition selectOllamaTool(final String toolPrompt) {
         return Try.of(() -> callOllama(toolPrompt))
-                .map(OllamaResponse::response)
                 .mapTry(this::parseResponseAsToolDefinitions)
                 .mapTry(validateList::throwIfEmpty)
                 .mapTry(List::getFirst)
@@ -113,12 +108,10 @@ public class ToolSelector {
         return toolBuilder.buildToolPrompt(tools.stream().toList(), prompt);
     }
 
-    private OllamaResponse callOllama(final String llmPrompt) {
+    private String callOllama(final String llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client ->
-                        ollamaClient.callOllama(
-                                client,
-                                new OllamaGenerateBody(toolModel.get(), llmPrompt, false)))
+                        llmClient.call(llmPrompt, toolModel.get()))
                 .get();
     }
 

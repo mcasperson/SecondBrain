@@ -24,6 +24,7 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.prompt.PromptBuilder;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
 import static io.vavr.control.Try.of;
 
 @ApplicationScoped
-public class OllamaClient {
+public class OllamaClient implements LlmClient {
     private static final int MAX_RETIES = 3;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
     private static final Long RETRY_DELAY = 10000L; // 10 second delay for retries
@@ -73,6 +74,49 @@ public class OllamaClient {
 
     public synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body) {
         return callOllama(client, body, 0);
+    }
+
+    public String call(final String prompt) {
+        return call(prompt, modelConfig.getModel());
+    }
+
+    public String call(final String prompt, final String model) {
+        return callOllama(new RagMultiDocumentContext<Void>(
+                        promptBuilderSelector.getPromptBuilder(modelConfig.getModel())
+                                .buildFinalPrompt("", "", prompt)),
+                model,
+                2048)
+                .response();
+    }
+
+    public <T> RagMultiDocumentContext<T> callWithCache(
+            final RagMultiDocumentContext<T> ragDoc,
+            final Map<String, String> environmentSettings,
+            final String tool) {
+        final String model = modelConfig.getCalculatedModel(environmentSettings);
+        final Integer contextWindow = modelConfig.getCalculatedContextWindow(environmentSettings);
+
+        final String prompt = getPromptFromDocument(ragDoc);
+
+        final String promptHash = DigestUtils.sha256Hex(prompt + model + contextWindow);
+
+        final String result = localStorage.getOrPutString(
+                tool,
+                "LLM",
+                promptHash,
+                NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
+                () -> {
+                    final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
+                    final String responseText = response.response();
+
+                    // Don't cache errors
+                    return resultOrDefaultOnError(responseText, null);
+                });
+
+        // Don't return cached errors
+        return valueOrDefaultOnError(result,
+                ragDoc.updateResponse(result),
+                ragDoc.updateResponse(callOllama(ragDoc, model, contextWindow).response()));
     }
 
     /**
@@ -123,7 +167,7 @@ public class OllamaClient {
         return result;
     }
 
-    public <T> RagMultiDocumentContext<T> callOllama(final Client client, final OllamaGenerateBodyWithContext<T> body) {
+    private <T> RagMultiDocumentContext<T> callOllama(final Client client, final OllamaGenerateBodyWithContext<T> body) {
         final String prompt = getPromptFromDocument(body.prompt());
 
         final OllamaResponse response = callOllama(client, new OllamaGenerateBody(
@@ -134,16 +178,7 @@ public class OllamaClient {
         return body.prompt().updateResponse(response.response());
     }
 
-    public String callOllamaSimple(final String prompt) {
-        return callOllama(new RagMultiDocumentContext<Void>(
-                        promptBuilderSelector.getPromptBuilder(modelConfig.getModel())
-                                .buildFinalPrompt("", "", prompt)),
-                modelConfig.getModel(),
-                2048)
-                .response();
-    }
-
-    public <T> RagMultiDocumentContext<T> callOllama(
+    private <T> RagMultiDocumentContext<T> callOllama(
             final RagMultiDocumentContext<T> ragDoc,
             final String model,
             @Nullable final Integer contextWindow) {
@@ -152,36 +187,6 @@ public class OllamaClient {
                         client,
                         new OllamaGenerateBodyWithContext<>(model, contextWindow, ragDoc, false)))
                 .get();
-    }
-
-    public <T> RagMultiDocumentContext<T> callOllamaWithCache(
-            final RagMultiDocumentContext<T> ragDoc,
-            final Map<String, String> environmentSettings,
-            final String tool) {
-        final String model = modelConfig.getCalculatedModel(environmentSettings);
-        final Integer contextWindow = modelConfig.getCalculatedContextWindow(environmentSettings);
-
-        final String prompt = getPromptFromDocument(ragDoc);
-
-        final String promptHash = DigestUtils.sha256Hex(prompt + model + contextWindow);
-
-        final String result = localStorage.getOrPutString(
-                tool,
-                "LLM",
-                promptHash,
-                NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
-                () -> {
-                    final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
-                    final String responseText = response.response();
-
-                    // Don't cache errors
-                    return resultOrDefaultOnError(responseText, null);
-                });
-
-        // Don't return cached errors
-        return valueOrDefaultOnError(result,
-                ragDoc.updateResponse(result),
-                ragDoc.updateResponse(callOllama(ragDoc, model, contextWindow).response()));
     }
 
     private boolean resultIsError(final String result) {

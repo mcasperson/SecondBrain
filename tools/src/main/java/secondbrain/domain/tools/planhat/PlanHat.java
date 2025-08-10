@@ -15,7 +15,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -29,12 +28,11 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.api.Conversation;
 
@@ -87,13 +85,7 @@ public class PlanHat implements Tool<Conversation> {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
-    private ModelConfig modelConfig;
-
-    @Inject
-    private PromptBuilderSelector promptBuilderSelector;
-
-    @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Inject
     private HtmlToText htmlToText;
@@ -194,7 +186,7 @@ public class PlanHat implements Tool<Conversation> {
 
         final Try<RagMultiDocumentContext<Conversation>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
@@ -248,7 +240,7 @@ public class PlanHat implements Tool<Conversation> {
                 List.of()
         );
 
-        return ollamaClient.callOllamaWithCache(
+        return llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getDocumentSummaryPrompt(),
                         "You are a helpful agent",

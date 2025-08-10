@@ -33,7 +33,7 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.gong.GongClient;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -89,7 +89,7 @@ public class Gong implements Tool<GongCallDetails> {
     private PromptBuilderSelector promptBuilderSelector;
 
     @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Inject
     private ValidateString validateString;
@@ -180,7 +180,7 @@ public class Gong implements Tool<GongCallDetails> {
 
         final Try<RagMultiDocumentContext<GongCallDetails>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
@@ -220,7 +220,7 @@ public class Gong implements Tool<GongCallDetails> {
                 List.of()
         );
 
-        return ollamaClient.callOllamaWithCache(
+        return llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getTranscriptSummaryPrompt(),
                         "You are a helpful agent",

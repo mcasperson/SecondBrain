@@ -21,7 +21,6 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.*;
 import secondbrain.domain.json.JsonDeserializer;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.alias.AliasTool;
@@ -34,7 +33,7 @@ import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.yaml.YamlDeserializer;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -156,10 +155,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private AliasTool aliasTool;
 
     @Inject
-    private OllamaClient ollamaClient;
-
-    @Inject
-    private PromptBuilderSelector promptBuilderSelector;
+    private LlmClient llmClient;
 
     @Inject
     private YamlDeserializer yamlDeserializer;
@@ -257,7 +253,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragContext -> mergeContext(prompt, INSTRUCTIONS, ragContext, modelConfig.getCalculatedModel(environmentSettings), parsedArgs))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()))

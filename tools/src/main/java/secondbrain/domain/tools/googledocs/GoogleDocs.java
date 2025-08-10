@@ -41,7 +41,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.infrastructure.llm.LlmClient;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -92,7 +92,7 @@ public class GoogleDocs implements Tool<Void> {
     private Encryptor textEncryptor;
 
     @Inject
-    private OllamaClient ollamaClient;
+    private LlmClient llmClient;
 
     @Inject
     private SentenceSplitter sentenceSplitter;
@@ -197,7 +197,7 @@ public class GoogleDocs implements Tool<Void> {
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragDoc -> mergeContext(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> ollamaClient.callOllamaWithCache(
+                .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
@@ -337,7 +337,7 @@ public class GoogleDocs implements Tool<Void> {
                 List.of(context)
         );
 
-        return ollamaClient.callOllamaWithCache(
+        return llmClient.callWithCache(
                 multiDoc,
                 environmentSettings,
                 getName()
