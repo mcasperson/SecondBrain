@@ -18,6 +18,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.infrastructure.azure.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -38,6 +39,8 @@ import static com.google.common.base.Preconditions.*;
 public class AzureClient implements LlmClient {
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
     private static final String DEFAULT_MODEL = "Phi-4";
+    private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
+    private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS + " seconds";
 
     @Inject
     @ConfigProperty(name = "sb.azurellm.apikey")
@@ -62,6 +65,9 @@ public class AzureClient implements LlmClient {
     @Inject
     @ConfigProperty(name = "sb.azurellm.ttldays", defaultValue = "30")
     private String ttlDays;
+
+    @Inject
+    private TimeoutService timeoutService;
 
     @Inject
     private ResponseValidation responseValidation;
@@ -98,7 +104,10 @@ public class AzureClient implements LlmClient {
                 model
         );
 
-        return call(request);
+        return timeoutService.executeWithTimeout(
+                () -> call(request),
+                () -> API_CALL_TIMEOUT_MESSAGE,
+                API_CALL_TIMEOUT_SECONDS);
     }
 
     @Override
@@ -152,7 +161,10 @@ public class AzureClient implements LlmClient {
                 "AzureLLM",
                 promptHash,
                 NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
-                () -> call(request));
+                () -> timeoutService.executeWithTimeout(
+                        () -> call(request),
+                        () -> API_CALL_TIMEOUT_MESSAGE,
+                        API_CALL_TIMEOUT_SECONDS));
 
         return ragDocs.updateResponse(result);
     }

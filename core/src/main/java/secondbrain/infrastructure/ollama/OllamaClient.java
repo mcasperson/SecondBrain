@@ -25,6 +25,7 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.prompt.PromptBuilder;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.ollama.api.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.api.OllamaGenerateBodyOptions;
@@ -47,6 +48,8 @@ public class OllamaClient implements LlmClient {
     private static final int MAX_RETIES = 3;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
     private static final Long RETRY_DELAY = 10000L; // 10 second delay for retries
+    private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
+    private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS + " seconds";
 
     /**
      * Common error messages that we don't want to cache.
@@ -79,7 +82,10 @@ public class OllamaClient implements LlmClient {
     @Inject
     private ModelConfig modelConfig;
 
-    public synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body) {
+    @Inject
+    private TimeoutService timeoutService;
+
+    private synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body) {
         return callOllama(client, body, 0);
     }
 
@@ -199,9 +205,11 @@ public class OllamaClient implements LlmClient {
             final String model,
             @Nullable final Integer contextWindow) {
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> callOllama(
-                        client,
-                        new OllamaGenerateBodyWithContext<>(model, contextWindow, ragDoc, false)))
+                .of(client -> timeoutService.executeWithTimeout(() -> callOllama(
+                                client,
+                                new OllamaGenerateBodyWithContext<>(model, contextWindow, ragDoc, false)),
+                        () -> ragDoc.updateResponse(API_CALL_TIMEOUT_MESSAGE),
+                        API_CALL_TIMEOUT_SECONDS))
                 .get();
     }
 

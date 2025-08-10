@@ -13,6 +13,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.infrastructure.google.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -32,6 +33,9 @@ import static com.google.common.base.Preconditions.*;
 public class GoogleClient implements LlmClient {
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
     private static final String DEFAULT_MODEL = "gemini-2.0-flash";
+
+    private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
+    private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS + " seconds";
 
     @Inject
     @ConfigProperty(name = "sb.googlellm.apikey")
@@ -55,6 +59,9 @@ public class GoogleClient implements LlmClient {
     @Inject
     private LocalStorage localStorage;
 
+    @Inject
+    private TimeoutService timeoutService;
+
     @Override
     public String call(final String prompt) {
         checkArgument(StringUtils.isNotBlank(prompt));
@@ -73,7 +80,10 @@ public class GoogleClient implements LlmClient {
                 ))
         );
 
-        return call(request);
+        return timeoutService.executeWithTimeout(
+                () -> call(request),
+                () -> API_CALL_TIMEOUT_MESSAGE,
+                API_CALL_TIMEOUT_SECONDS);
     }
 
     @Override
@@ -109,7 +119,10 @@ public class GoogleClient implements LlmClient {
                 "GoogleLLM",
                 promptHash,
                 NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
-                () -> call(request));
+                () -> timeoutService.executeWithTimeout(
+                        () -> call(request),
+                        () -> API_CALL_TIMEOUT_MESSAGE,
+                        API_CALL_TIMEOUT_SECONDS));
 
         return ragDocs.updateResponse(result);
     }
