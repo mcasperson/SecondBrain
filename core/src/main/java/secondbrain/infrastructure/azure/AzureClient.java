@@ -52,8 +52,12 @@ public class AzureClient implements LlmClient {
     private Optional<String> model;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.contextwindow", defaultValue = AzureRequest.DEFAULT_TOKENS + "")
-    private Optional<String> contextWindow;
+    @ConfigProperty(name = "sb.azurellm.maxOutputTokens", defaultValue = AzureRequest.DEFAULT_OUTPUT_TOKENS + "")
+    private Optional<String> outputTokens;
+
+    @Inject
+    @ConfigProperty(name = "sb.azurellm.maxInputTokens", defaultValue = AzureRequest.DEFAULT_INPUT_TOKENS + "")
+    private Optional<String> inputTokens;
 
     @Inject
     @ConfigProperty(name = "sb.azure.ttldays", defaultValue = "30")
@@ -107,11 +111,15 @@ public class AzureClient implements LlmClient {
         checkNotNull(environmentSettings);
         checkArgument(StringUtils.isNotBlank(tool));
 
-        final Integer maxTokens = contextWindow
+        final int maxOutputTokens = outputTokens
                 .map(Integer::parseInt)
-                .orElse(AzureRequest.DEFAULT_TOKENS);
+                .orElse(AzureRequest.DEFAULT_OUTPUT_TOKENS);
 
-        final int maxChars = maxTokens * 4; // Assume 4 chars per token
+        final int maxInputTokens = inputTokens
+                .map(Integer::parseInt)
+                .orElse(AzureRequest.DEFAULT_INPUT_TOKENS);
+
+        final int maxChars = maxInputTokens * 4; // Assume 4 chars per token
 
         final List<AzureRequestMessage> messages = new ArrayList<>();
         messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
@@ -125,7 +133,7 @@ public class AzureClient implements LlmClient {
         // Limit the total size of the context messages to maxChars
         final List<RagDocumentContext<T>> trimmedList = listLimiter.limitListContent(trimmedItems,
                 RagDocumentContext::document,
-                maxTokens * 4); // Assume 4 chars per token
+                maxChars);
 
         messages.addAll(trimmedList.stream()
                 .map(ragDoc -> new AzureRequestMessage(
@@ -135,9 +143,9 @@ public class AzureClient implements LlmClient {
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
 
-        final AzureRequest request = new AzureRequest(messages, model.orElse(DEFAULT_MODEL), maxTokens);
+        final AzureRequest request = new AzureRequest(messages, model.orElse(DEFAULT_MODEL), maxOutputTokens);
 
-        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model + contextWindow);
+        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model + outputTokens);
 
         final String result = localStorage.getOrPutString(
                 tool,
