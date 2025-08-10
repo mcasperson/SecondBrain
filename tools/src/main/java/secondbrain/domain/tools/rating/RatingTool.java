@@ -52,8 +52,8 @@ public class RatingTool implements Tool<Void> {
     private ValidateList validateList;
 
     @Inject
-    @Identifier("removeMarkdownBlock")
-    private SanitizeDocument removeMarkdownBlock;
+    @Identifier("findFirstMarkdownBlock")
+    private SanitizeDocument findFirstMarkdownBlock;
 
     @Override
     public String getName() {
@@ -90,7 +90,7 @@ public class RatingTool implements Tool<Void> {
                  We expect a single value, but might get some whitespace from a thinking model that had the
                  thinking response removed.
                  */
-                .map(ragDoc -> ragDoc.updateResponse(removeMarkdownBlock.sanitize(ragDoc.getResponse()).trim()));
+                .map(ragDoc -> ragDoc.updateResponse(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411

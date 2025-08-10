@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
  */
 @ApplicationScoped
 @Identifier("findFirstMarkdownBlock")
-public class RemoveMarkdownBlock implements SanitizeDocument {
+public class GetFirstMarkdownBlock implements SanitizeDocument {
     private static final Pattern MARKDOWN_BLOCK_START_REGEX = Pattern.compile("```(.*?)\n(.*?)\n```", Pattern.DOTALL);
 
     @Override
@@ -24,7 +24,7 @@ public class RemoveMarkdownBlock implements SanitizeDocument {
         final String trimmedDocument = document.trim();
         final Matcher matcher = MARKDOWN_BLOCK_START_REGEX.matcher(trimmedDocument);
 
-        if (matcher.matches()) {
+        if (matcher.find()) {
             return matcher.group(2);
         }
 

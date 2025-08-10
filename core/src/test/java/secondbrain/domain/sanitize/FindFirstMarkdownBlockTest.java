@@ -5,9 +5,9 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-class RemoveMarkdownBlockTest {
+class FindFirstMarkdownBlockTest {
 
-    private final RemoveMarkdownBlock removeMarkdownBlock = new RemoveMarkdownBlock();
+    private final GetFirstMarkdownBlock removeMarkdownBlock = new GetFirstMarkdownBlock();
 
     @Test
     void testSanitizeWithEmptyString() {
@@ -62,7 +62,7 @@ class RemoveMarkdownBlockTest {
     void testSanitizeWithPreamble() {
         String document = "hi there\n```\nsome code here\n```";
         String result = removeMarkdownBlock.sanitize(document);
-        assertEquals(document, result);
+        assertEquals("some code here", result);
     }
 
     @Test

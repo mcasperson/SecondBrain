@@ -48,8 +48,8 @@ public class AliasTool implements Tool<Void> {
     private LlmClient llmClient;
 
     @Inject
-    @Identifier("removeMarkdownBlock")
-    private SanitizeDocument removeMarkdownBlock;
+    @Identifier("findFirstMarkdownBlock")
+    private SanitizeDocument findFirstMarkdownBlock;
 
     @Override
     public String getName() {
@@ -82,7 +82,7 @@ public class AliasTool implements Tool<Void> {
                 /*
                  We expect a JSON array, but some LLMs return markdown blocks, which we
                  */
-                .map(ragDoc -> ragDoc.updateResponse(removeMarkdownBlock.sanitize(ragDoc.getResponse()).trim()));
+                .map(ragDoc -> ragDoc.updateResponse(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411

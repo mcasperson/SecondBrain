@@ -177,8 +177,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private JsonDeserializer jsonDeserializer;
 
     @Inject
-    @Identifier("removeMarkdownBlock")
-    private SanitizeDocument removeMarkdownBlock;
+    @Identifier("findFirstMarkdownBlock")
+    private SanitizeDocument findFirstMarkdownBlock;
 
     @Override
     public String getName() {
@@ -273,7 +273,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                     See https://community.n8n.io/t/psa-extracting-output-from-gemini-models/83374
                     Se we do this manually if required.
                  */
-                .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(removeMarkdownBlock.sanitize(ragDoc.getResponse()).trim()) : ragDoc)
+                .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim()) : ragDoc)
                 /*
                     InsufficientContext is expected when there is not enough information to answer the prompt.
                     It is not passed up though, as it is not a failure, but rather a lack of information.
