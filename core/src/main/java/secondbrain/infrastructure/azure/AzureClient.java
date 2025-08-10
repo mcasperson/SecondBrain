@@ -7,13 +7,16 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.answer.AnswerFormatter;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.limit.ListLimiter;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.azure.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -53,6 +56,10 @@ public class AzureClient implements LlmClient {
     private Optional<String> contextWindow;
 
     @Inject
+    @ConfigProperty(name = "sb.azure.ttldays", defaultValue = "30")
+    private String ttlDays;
+
+    @Inject
     private ResponseValidation responseValidation;
 
     @Inject
@@ -63,6 +70,9 @@ public class AzureClient implements LlmClient {
 
     @Inject
     private ListLimiter listLimiter;
+
+    @Inject
+    private LocalStorage localStorage;
 
     @Override
     public String call(final String prompt) {
@@ -125,8 +135,18 @@ public class AzureClient implements LlmClient {
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
 
+        final AzureRequest request = new AzureRequest(messages, model.orElse(DEFAULT_MODEL), maxTokens);
 
-        return ragDocs.updateResponse(call(new AzureRequest(messages, model.orElse(DEFAULT_MODEL), maxTokens)));
+        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model + contextWindow);
+
+        final String result = localStorage.getOrPutString(
+                tool,
+                "AzureLLM",
+                promptHash,
+                NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
+                () -> call(request));
+
+        return ragDocs.updateResponse(result);
     }
 
     private String call(final AzureRequest request) {

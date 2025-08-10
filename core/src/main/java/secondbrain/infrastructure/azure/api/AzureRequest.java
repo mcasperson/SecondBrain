@@ -17,7 +17,7 @@ public record AzureRequest(
         @JsonProperty("presence_penalty") Float presencePenalty,
         @JsonProperty("frequency_penalty") Float frequencyPenalty) {
 
-    public static final int DEFAULT_TOKENS = 120000;
+    public static final int DEFAULT_TOKENS = 16000;
     private static final float DEFAULT_TEMPERATURE = 0.8f;
     private static final float DEFAULT_TOP_P = 0.1f;
     private static final float DEFAULT_PRESSURE_PENALTY = 0;

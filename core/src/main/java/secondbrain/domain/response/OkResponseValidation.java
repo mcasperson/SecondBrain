@@ -19,14 +19,20 @@ public class OkResponseValidation implements ResponseValidation {
             throw new UnauthorizedResponse("Expected status code 200, but got 401");
         }
 
-        if (response.getStatus() != 200) {
+        if (response.getStatus() != 200 && response.getStatus() != 201) {
+            final String responseBody = getResponseBody(response);
             throw new InvalidResponse("Expected status code 200, but got "
                     + response.getStatus()
-                    + " from URI " + uri,
-                    Try.of(() -> response.readEntity(String.class)).getOrElse(""),
+                    + " from URI " + uri + ". " + responseBody,
+                    responseBody,
                     response.getStatus());
         }
 
         return response;
+    }
+
+    private String getResponseBody(Response response) {
+        return Try.of(() -> response.readEntity(String.class))
+                .getOrElse("No response body available");
     }
 }
