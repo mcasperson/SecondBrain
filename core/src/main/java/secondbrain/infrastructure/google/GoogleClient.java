@@ -91,6 +91,7 @@ public class GoogleClient implements LlmClient {
                                 .post(Entity.entity(request, MediaType.APPLICATION_JSON))))
                         .of(wrapped -> Try.of(wrapped::getWrapped)
                                 .map(response -> response.readEntity(GoogleResponse.class))
+                                .map(this::isError)
                                 .map(response -> response.getCandidates().stream()
                                         .map(GoogleResponseCandidates::getContent)
                                         .flatMap(content -> content.getParts().stream())
@@ -107,5 +108,22 @@ public class GoogleClient implements LlmClient {
         logger.info(result);
 
         return result;
+    }
+
+    private GoogleResponse isError(final GoogleResponse response) {
+        if (response == null) {
+            throw new IllegalStateException("Google LLM response is empty or invalid.");
+        }
+
+        if (response.error() != null) {
+            final List<String> errorMessage = new ArrayList<>();
+            errorMessage.add("Google LLM Error: " + response.error().message());
+            if (response.error().code() != null) {
+                errorMessage.add("(Code: " + response.error().code() + ")");
+            }
+            throw new IllegalStateException(String.join(" ", errorMessage));
+        }
+
+        return response;
     }
 }

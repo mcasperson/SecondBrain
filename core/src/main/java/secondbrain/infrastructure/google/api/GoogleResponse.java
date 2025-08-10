@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record GoogleResponse(List<GoogleResponseCandidates> candidates) {
+public record GoogleResponse(List<GoogleResponseCandidates> candidates, GoogleResponseError error) {
 
     public List<GoogleResponseCandidates> getCandidates() {
         return Objects.requireNonNullElse(candidates, List.of());

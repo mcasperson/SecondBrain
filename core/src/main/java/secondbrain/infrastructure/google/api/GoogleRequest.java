@@ -18,10 +18,19 @@ public record GoogleRequest(List<GoogleRequestContents> contents,
         return contents != null ? contents : List.of();
     }
 
+    public GoogleRequestSystemInstruction getSystemInstruction() {
+        return systemInstruction != null ? systemInstruction : new GoogleRequestSystemInstruction(List.of());
+    }
+
     public String getPromptText() {
-        return getContents().stream()
-                .flatMap(content -> content.getParts().stream())
+        return getSystemInstruction().getParts().stream()
                 .map(GoogleRequestContentsParts::getText)
-                .collect(Collectors.joining("\n"));
+                .map(String::trim)
+                .collect(Collectors.joining("\n\n")) + "\n\n" +
+                getContents().stream()
+                        .flatMap(content -> content.getParts().stream())
+                        .map(GoogleRequestContentsParts::getText)
+                        .map(String::trim)
+                        .collect(Collectors.joining("\n\n"));
     }
 }
