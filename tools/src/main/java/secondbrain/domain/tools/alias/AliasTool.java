@@ -5,19 +5,15 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import secondbrain.domain.args.ArgsAccessor;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.validate.ValidateList;
-import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.List;
@@ -38,26 +34,13 @@ public class AliasTool implements Tool<Void> {
             The response must be a JSON array of strings, with each string being an alias.
             You will be penalized for returning any text in the response that is not a valid JSON array.
             For example, if the entity is "Microsoft", you might return ["Microsoft Corporation", "MSFT"].
-            If the entity has no aliases, return an empty array: [].
-            """.stripLeading();
+            If the entity has no aliases, return an empty array: [].""".stripLeading();
 
     @Inject
     private AliasConfig config;
 
     @Inject
-    private PromptBuilderSelector promptBuilderSelector;
-
-    @Inject
-    private ModelConfig modelConfig;
-
-    @Inject
     private OllamaClient ollamaClient;
-
-    @Inject
-    private ValidateString validateString;
-
-    @Inject
-    private ValidateList validateList;
 
     @Override
     public String getName() {
@@ -82,7 +65,6 @@ public class AliasTool implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(validateList::throwIfEmpty)
                 .map(ragDoc -> mergeContext(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
