@@ -47,7 +47,7 @@ public class AzureClient implements LlmClient {
     private Optional<String> model;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.contextwindow", defaultValue = "120000")
+    @ConfigProperty(name = "sb.azurellm.contextwindow", defaultValue = AzureRequest.DEFAULT_TOKENS + "")
     private Optional<String> contextWindow;
 
     @Inject
