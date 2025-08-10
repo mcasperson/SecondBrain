@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -19,26 +20,44 @@ import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+
+/**
+ * GoogleClient provides access to the Google AI studio API.
+ */
 @ApplicationScoped
 public class GoogleClient implements LlmClient {
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
-    private static final String MODEL = "gemini-2.0-flash";
-    private static final String URL = "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent";
+    private static final String DEFAULT_MODEL = "gemini-2.0-flash";
 
     @Inject
     @ConfigProperty(name = "sb.googlellm.apikey")
     private Optional<String> apiKey;
 
     @Inject
+    @ConfigProperty(name = "sb.googlellm.url", defaultValue = "https://generativelanguage.googleapis.com/v1beta/models/")
+    private Optional<String> url;
+    
+    @Inject
+    @ConfigProperty(name = "sb.googlellm.model", defaultValue = DEFAULT_MODEL)
+    private Optional<String> model;
+
+    @Inject
     private Logger logger;
 
     @Override
     public String call(final String prompt) {
-        return call(prompt, MODEL);
+        checkArgument(StringUtils.isNotBlank(prompt));
+
+        return call(prompt, model.orElse(DEFAULT_MODEL));
     }
 
     @Override
     public String call(final String prompt, final String model) {
+        checkArgument(StringUtils.isNotBlank(prompt));
+        checkArgument(StringUtils.isNotBlank(model));
+
         final GoogleRequest request = new GoogleRequest(
                 List.of(new GoogleRequestContents(
                         List.of(new GoogleRequestContentsParts(prompt))
@@ -53,6 +72,10 @@ public class GoogleClient implements LlmClient {
             final RagMultiDocumentContext<T> ragDocs,
             final Map<String, String> environmentSettings,
             final String tool) {
+
+        checkNotNull(ragDocs);
+        checkNotNull(environmentSettings);
+        checkArgument(StringUtils.isNotBlank(tool));
 
         final List<GoogleRequestContentsParts> parts = ragDocs.individualContexts().stream()
                 .map(ragDoc -> new GoogleRequestContentsParts(ragDoc.contextLabel() + ": " + ragDoc.document()))
@@ -79,11 +102,19 @@ public class GoogleClient implements LlmClient {
             throw new IllegalStateException("Google API key is not configured.");
         }
 
+        if (url.isEmpty()) {
+            throw new IllegalStateException("Google URL is not configured.");
+        }
+
+        if (model.isEmpty()) {
+            throw new IllegalStateException("Google model is not configured.");
+        }
+
         logger.info("Calling Google LLM");
         logger.info(request.generatePromptText());
 
         final String result = Try.withResources(ClientBuilder::newClient)
-                .of(client -> Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(URL)
+                .of(client -> Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(url.get() + model.get() + ":generateContent")
                                 .request()
                                 .header("Content-Type", "application/json")
                                 .header("Accept", "application/json")
