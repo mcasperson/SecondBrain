@@ -60,7 +60,7 @@ public class AzureClient implements LlmClient {
     private Optional<String> inputTokens;
 
     @Inject
-    @ConfigProperty(name = "sb.azure.ttldays", defaultValue = "30")
+    @ConfigProperty(name = "sb.azurellm.ttldays", defaultValue = "30")
     private String ttlDays;
 
     @Inject

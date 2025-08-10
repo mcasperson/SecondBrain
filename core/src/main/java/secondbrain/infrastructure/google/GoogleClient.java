@@ -6,10 +6,13 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.infrastructure.google.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -43,7 +46,14 @@ public class GoogleClient implements LlmClient {
     private Optional<String> model;
 
     @Inject
+    @ConfigProperty(name = "sb.googlellm.ttldays", defaultValue = "30")
+    private String ttlDays;
+
+    @Inject
     private Logger logger;
+
+    @Inject
+    private LocalStorage localStorage;
 
     @Override
     public String call(final String prompt) {
@@ -82,18 +92,26 @@ public class GoogleClient implements LlmClient {
 
         parts.add(new GoogleRequestContentsParts(ragDocs.prompt()));
 
-        return ragDocs.updateResponse(call(
-                        new GoogleRequest(
-                                List.of(new GoogleRequestContents(parts)
-                                ),
-                                new GoogleRequestSystemInstruction(
-                                        List.of(
-                                                new GoogleRequestContentsParts(ragDocs.instructions())
-                                        )
-                                )
+        final GoogleRequest request = new GoogleRequest(
+                List.of(new GoogleRequestContents(parts)
+                ),
+                new GoogleRequestSystemInstruction(
+                        List.of(
+                                new GoogleRequestContentsParts(ragDocs.instructions())
                         )
                 )
         );
+
+        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model);
+
+        final String result = localStorage.getOrPutString(
+                tool,
+                "GoogleLLM",
+                promptHash,
+                NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
+                () -> call(request));
+
+        return ragDocs.updateResponse(result);
     }
 
     private String call(final GoogleRequest request) {
