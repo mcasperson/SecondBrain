@@ -74,7 +74,7 @@ public class AliasTool implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragDoc -> mergeContext(prompt, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
@@ -97,13 +97,6 @@ public class AliasTool implements Tool<Void> {
     @Override
     public String getContextLabel() {
         return "Entity Name";
-    }
-
-    private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context) {
-        return new RagMultiDocumentContext<>(
-                prompt,
-                instructions,
-                context);
     }
 }
 
