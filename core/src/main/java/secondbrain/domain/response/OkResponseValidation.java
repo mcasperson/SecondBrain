@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.core.Response;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
+import secondbrain.domain.exceptions.UnauthorizedResponse;
 
 @ApplicationScoped
 public class OkResponseValidation implements ResponseValidation {
@@ -12,6 +13,10 @@ public class OkResponseValidation implements ResponseValidation {
     public Response validate(final Response response, final String uri) {
         if (response.getStatus() == 404) {
             throw new MissingResponse("Expected status code 200, but got 404");
+        }
+
+        if (response.getStatus() == 401) {
+            throw new UnauthorizedResponse("Expected status code 200, but got 401");
         }
 
         if (response.getStatus() != 200) {

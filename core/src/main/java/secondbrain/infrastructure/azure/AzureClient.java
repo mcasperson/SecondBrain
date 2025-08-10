@@ -10,6 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.azure.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -42,6 +43,9 @@ public class AzureClient implements LlmClient {
     @Inject
     @ConfigProperty(name = "sb.azurellm.model", defaultValue = "Phi-4")
     private Optional<String> model;
+
+    @Inject
+    private ResponseValidation responseValidation;
 
     @Inject
     private Logger logger;
@@ -110,9 +114,10 @@ public class AzureClient implements LlmClient {
                                 .request()
                                 .header("Content-Type", "application/json")
                                 .header("Accept", "application/json")
-                                .header("X-goog-api-key", apiKey.get())
+                                .header("Authorization", "Bearer " + apiKey.get())
                                 .post(Entity.entity(request, MediaType.APPLICATION_JSON))))
                         .of(wrapped -> Try.of(wrapped::getWrapped)
+                                .map(response -> responseValidation.validate(response, url.get()))
                                 .map(response -> response.readEntity(AzureResponse.class))
                                 .map(response -> response.getChoices().stream()
                                         .map(AzureResponseChoices::getMessage)

@@ -10,6 +10,7 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
@@ -37,6 +38,8 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static io.vavr.control.Try.of;
 
 @ApplicationScoped
@@ -81,10 +84,15 @@ public class OllamaClient implements LlmClient {
     }
 
     public String call(final String prompt) {
+        checkArgument(StringUtils.isNotBlank(prompt));
+
         return call(prompt, modelConfig.getModel());
     }
 
     public String call(final String prompt, final String model) {
+        checkArgument(StringUtils.isNotBlank(prompt));
+        checkArgument(StringUtils.isNotBlank(model));
+
         return callOllama(new RagMultiDocumentContext<Void>(
                         promptBuilderSelector.getPromptBuilder(modelConfig.getModel())
                                 .buildFinalPrompt("", "", prompt)),
@@ -97,6 +105,10 @@ public class OllamaClient implements LlmClient {
             final RagMultiDocumentContext<T> ragDoc,
             final Map<String, String> environmentSettings,
             final String tool) {
+        checkNotNull(ragDoc);
+        checkNotNull(environmentSettings);
+        checkArgument(StringUtils.isNotBlank(tool));
+
         final String model = modelConfig.getCalculatedModel(environmentSettings);
         final Integer contextWindow = modelConfig.getCalculatedContextWindow(environmentSettings);
 
