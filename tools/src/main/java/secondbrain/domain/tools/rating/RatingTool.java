@@ -1,5 +1,6 @@
 package secondbrain.domain.tools.rating;
 
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -12,6 +13,7 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -49,6 +51,10 @@ public class RatingTool implements Tool<Void> {
     @Inject
     private ValidateList validateList;
 
+    @Inject
+    @Identifier("removeMarkdownBlock")
+    private SanitizeDocument removeMarkdownBlock;
+
     @Override
     public String getName() {
         return RatingTool.class.getSimpleName();
@@ -84,7 +90,7 @@ public class RatingTool implements Tool<Void> {
                  We expect a single value, but might get some whitespace from a thinking model that had the
                  thinking response removed.
                  */
-                .map(ragDoc -> ragDoc.updateResponse(ragDoc.getResponse().trim()));
+                .map(ragDoc -> ragDoc.updateResponse(removeMarkdownBlock.sanitize(ragDoc.getResponse()).trim()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411

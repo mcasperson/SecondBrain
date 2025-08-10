@@ -2,19 +2,20 @@ package secondbrain.domain.tools.slackzengoogle;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.google.common.collect.ImmutableList;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -23,6 +24,7 @@ import secondbrain.domain.exceptions.*;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.reader.FileReader;
+import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.alias.AliasTool;
 import secondbrain.domain.tools.gong.Gong;
@@ -39,7 +41,6 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -67,6 +68,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_WINDOW_ARG = "keywordWindow";
     public static final String MULTI_SLACK_ZEN_URL_ARG = "url";
     public static final String MULTI_SLACK_ZEN_DAYS_ARG = "days";
+    public static final String MULTI_SLACK_ZEN_ADDITIONAL_SYSTEM_PROMPT = "additionalSystemPrompt";
+    public static final String MULTI_SLACK_ZEN_STRIP_MARKDOWN_CODE_BLOCK = "stripMarkdownCodeBlock";
     public static final String MULTI_SLACK_ZEN_ENTITY_NAME_ARG = "entityName";
     public static final String MULTI_SLACK_ZEN_MAX_ENTITIES_ARG = "maxEntities";
     public static final String MULTI_SLACK_ZEN_MAX_ANNOTATION_PREFIX_ARG = "annotationPrefix";
@@ -123,11 +126,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             You must answer the prompt based on the information provided.
             """;
 
-    private static final AtomicInteger COUNTER = new AtomicInteger(0);
-
-    @Inject
-    private ModelConfig modelConfig;
-
     @Inject
     private SlackChannel slackChannel;
 
@@ -176,6 +174,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private JsonDeserializer jsonDeserializer;
+
+    @Inject
+    @Identifier("removeMarkdownBlock")
+    private SanitizeDocument removeMarkdownBlock;
 
     @Override
     public String getName() {
@@ -254,11 +256,21 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragContext -> mergeContext(prompt, INSTRUCTIONS, ragContext, modelConfig.getCalculatedModel(environmentSettings), parsedArgs))
+                .map(ragContext -> mergeContext(
+                        prompt,
+                        INSTRUCTIONS + "\n" + parsedArgs.getAdditionalSystemPrompt(),
+                        ragContext,
+                        parsedArgs))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()))
+                /*
+                    Some LLMs, like Gemini flash, just will not strip the markdown code block.
+                    See https://community.n8n.io/t/psa-extracting-output-from-gemini-models/83374
+                    Se we do this manually if required.
+                 */
+                .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(removeMarkdownBlock.sanitize(ragDoc.getResponse()).trim()) : ragDoc)
                 /*
                     InsufficientContext is expected when there is not enough information to answer the prompt.
                     It is not passed up though, as it is not a failure, but rather a lack of information.
@@ -763,7 +775,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return result;
     }
 
-    private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context, final String customModel, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+    private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
 
         // Elevate the metadata extracted from the planhat usage. This is considered "top-level" metadata
         // that applies to all the context.
@@ -1071,6 +1083,14 @@ class MultiSlackZenGoogleConfig {
     @ConfigProperty(name = "sb.multislackzengoogle.metaField20")
     private Optional<String> configMetaField20;
 
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.additionalSystemPrompt")
+    private Optional<String> configAdditionalSystemPrompt;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.stripMarkdownCodeBlock")
+    private Optional<String> configStripMarkdownCodeBlock;
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -1273,6 +1293,14 @@ class MultiSlackZenGoogleConfig {
 
     public Optional<String> getConfigMetaField20() {
         return configMetaField20;
+    }
+
+    public Optional<String> additionalSystemPrompt() {
+        return configAdditionalSystemPrompt;
+    }
+
+    public Optional<String> getConfigStripMarkdownCodeBlock() {
+        return configStripMarkdownCodeBlock;
     }
 
     public Optional<String> getConfigIndividualContextFilterQuestion() {
@@ -1909,6 +1937,29 @@ class MultiSlackZenGoogleConfig {
                             "multislackzengoogle_meta_prompt_20",
                             "")
                     .value();
+        }
+
+        public String getAdditionalSystemPrompt() {
+            return getArgsAccessor().getArgument(
+                            additionalSystemPrompt()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_ADDITIONAL_SYSTEM_PROMPT,
+                            "multislackzengoogle_additional_system_prompt",
+                            "")
+                    .value();
+        }
+
+        public Boolean getStripMarkdownCodeBlock() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigStripMarkdownCodeBlock()::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_STRIP_MARKDOWN_CODE_BLOCK,
+                    "multislackzengoogle_strip_markdown_code_block",
+                    "false");
+
+            return BooleanUtils.toBoolean(argument.value());
         }
     }
 }
