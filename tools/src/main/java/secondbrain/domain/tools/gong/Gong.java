@@ -89,6 +89,7 @@ public class Gong implements Tool<GongCallDetails> {
     private PromptBuilderSelector promptBuilderSelector;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

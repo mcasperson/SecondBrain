@@ -3,6 +3,7 @@ package secondbrain.infrastructure.zendesk;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.zendesk.api.*;
 
@@ -14,6 +15,7 @@ import java.util.UUID;
 @ApplicationScoped
 public class ZenDeskClientMock implements ZenDeskClient {
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Override

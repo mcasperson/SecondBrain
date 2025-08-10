@@ -84,6 +84,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     private GitHubClient gitHubClient;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

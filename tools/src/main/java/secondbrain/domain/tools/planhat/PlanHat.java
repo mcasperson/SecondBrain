@@ -85,6 +85,7 @@ public class PlanHat implements Tool<Conversation> {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

@@ -58,6 +58,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     private SlackSearchConfig config;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

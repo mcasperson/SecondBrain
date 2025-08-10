@@ -10,6 +10,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolCall;
@@ -47,6 +48,7 @@ public class ToolSelector {
     private Instance<Tool<?>> tools;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

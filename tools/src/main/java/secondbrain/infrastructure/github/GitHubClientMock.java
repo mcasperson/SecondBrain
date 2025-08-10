@@ -3,6 +3,7 @@ package secondbrain.infrastructure.github;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.github.api.GitHubCommitAndDiff;
 import secondbrain.infrastructure.github.api.GitHubCommitResponse;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -14,6 +15,7 @@ import java.util.UUID;
 @ApplicationScoped
 public class GitHubClientMock implements GitHubClient {
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Override

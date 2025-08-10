@@ -22,6 +22,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.reader.FileReader;
@@ -73,6 +74,7 @@ public class PublicWeb implements Tool<Void> {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

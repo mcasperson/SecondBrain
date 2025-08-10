@@ -11,6 +11,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -42,6 +43,7 @@ public class RatingTool implements Tool<Void> {
     private RatingConfig config;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

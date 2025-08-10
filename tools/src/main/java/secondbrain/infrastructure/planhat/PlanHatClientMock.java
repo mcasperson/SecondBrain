@@ -3,6 +3,7 @@ package secondbrain.infrastructure.planhat;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @ApplicationScoped
 public class PlanHatClientMock implements PlanHatClient {
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Override

@@ -20,6 +20,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.*;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.*;
@@ -155,6 +156,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private AliasTool aliasTool;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

@@ -3,6 +3,7 @@ package secondbrain.infrastructure.slack;
 import com.slack.api.methods.AsyncMethodsClient;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.api.SlackChannelResource;
 import secondbrain.infrastructure.slack.api.SlackConversationResource;
@@ -17,6 +18,7 @@ import java.util.Set;
 @ApplicationScoped
 public class SlackClientMock implements SlackClient {
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Override

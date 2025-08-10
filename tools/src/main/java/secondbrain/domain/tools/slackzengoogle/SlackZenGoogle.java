@@ -13,6 +13,7 @@ import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.*;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -62,6 +63,7 @@ public class SlackZenGoogle implements Tool<Void> {
     private PlanHat planHat;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

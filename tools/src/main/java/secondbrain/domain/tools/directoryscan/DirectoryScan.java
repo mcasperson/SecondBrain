@@ -24,6 +24,7 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.files.PathSpec;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.limit.TrimResult;
@@ -96,6 +97,7 @@ public class DirectoryScan implements Tool<Void> {
     @Inject
     private DebugToolArgs debugToolArgs;
     @Inject
+    @Preferred
     private LlmClient llmClient;
     @Inject
     private ListLimiter listLimiter;

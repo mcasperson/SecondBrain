@@ -1,5 +1,6 @@
 package secondbrain.domain.tools.alias;
 
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -11,6 +12,8 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -31,6 +34,7 @@ public class AliasTool implements Tool<Void> {
             You are given the name of an entity.
             You must generate a list of aliases for the entity based on the context provided.
             You will be penalized for returning generic or irrelevant aliases.
+            You will be penalized for returning markup or any other formatting.
             The response must be a JSON array of strings, with each string being an alias.
             You will be penalized for returning any text in the response that is not a valid JSON array.
             For example, if the entity is "Microsoft", you might return ["Microsoft Corporation", "MSFT"].
@@ -40,7 +44,12 @@ public class AliasTool implements Tool<Void> {
     private AliasConfig config;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
+
+    @Inject
+    @Identifier("removeMarkdownBlock")
+    private SanitizeDocument removeMarkdownBlock;
 
     @Override
     public String getName() {
@@ -71,10 +80,9 @@ public class AliasTool implements Tool<Void> {
                         environmentSettings,
                         getName()))
                 /*
-                 We expect a single value, but might get some whitespace from a thinking model that had the
-                 thinking response removed.
+                 We expect a JSON array, but some LLMs return markdown blocks, which we
                  */
-                .map(ragDoc -> ragDoc.updateResponse(ragDoc.getResponse().trim()));
+                .map(ragDoc -> ragDoc.updateResponse(removeMarkdownBlock.sanitize(ragDoc.getResponse()).trim()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411

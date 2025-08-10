@@ -83,6 +83,7 @@ public class SlackChannel implements Tool<Void> {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

@@ -1,4 +1,4 @@
-package secondbrain.infrastructure.ollama;
+package secondbrain.infrastructure.ollama.api;
 
 import java.util.List;
 

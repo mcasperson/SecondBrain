@@ -25,6 +25,10 @@ import secondbrain.domain.prompt.PromptBuilder;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.llm.LlmClient;
+import secondbrain.infrastructure.ollama.api.OllamaGenerateBody;
+import secondbrain.infrastructure.ollama.api.OllamaGenerateBodyOptions;
+import secondbrain.infrastructure.ollama.api.OllamaGenerateBodyWithContext;
+import secondbrain.infrastructure.ollama.api.OllamaResponse;
 
 import java.util.Arrays;
 import java.util.Map;

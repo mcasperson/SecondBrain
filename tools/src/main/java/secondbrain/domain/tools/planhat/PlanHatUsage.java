@@ -66,6 +66,7 @@ public class PlanHatUsage implements Tool<Company> {
     private PlanHatClient planHatClient;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Override

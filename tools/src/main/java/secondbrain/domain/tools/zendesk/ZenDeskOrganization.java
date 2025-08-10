@@ -112,6 +112,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     private SanitizeDocument removeSpacing;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

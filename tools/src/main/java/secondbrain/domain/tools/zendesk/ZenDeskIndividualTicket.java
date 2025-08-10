@@ -70,6 +70,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     private SanitizeDocument removeSpacing;
 
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Inject

@@ -3,6 +3,7 @@ package secondbrain.infrastructure.gong;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -14,6 +15,7 @@ import java.util.List;
 @ApplicationScoped
 public class GongClientMock implements GongClient {
     @Inject
+    @Preferred
     private LlmClient llmClient;
 
     @Override
