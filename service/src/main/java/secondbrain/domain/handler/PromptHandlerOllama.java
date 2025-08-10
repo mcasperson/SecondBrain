@@ -145,7 +145,7 @@ public class PromptHandlerOllama implements PromptHandler {
                 sentenceVectorizer);
 
         return new PromptResponseSimple(
-                disableAnnotations ? document.combinedDocument() : result.annotatedContent(),
+                disableAnnotations ? document.getResponse() : result.annotatedContent(),
                 disableAnnotations ? "" : result.annotations(),
                 disableLinks ? "" : getLinks(document),
                 debug ? getDebugLinks(document) : "",

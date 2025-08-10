@@ -256,21 +256,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragContext -> mergeContext(ragContext, modelConfig.getCalculatedModel(environmentSettings), parsedArgs))
-                .map(multiRagDoc -> multiRagDoc.updateDocument(
-                        promptBuilderSelector
-                                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                                .buildFinalPrompt(getInstructions(multiRagDoc),
-                                        // I've opted to get the end of the document if it is larger than the context window.
-                                        // The end of the document is typically given more weight by LLMs, and so any long
-                                        // document being processed should place the most relevant content towards the end.
-                                        multiRagDoc.getDocumentRight(modelConfig.getCalculatedContextWindow(environmentSettings)),
-                                        prompt)))
+                .map(ragContext -> mergeContext(prompt, INSTRUCTIONS, ragContext, modelConfig.getCalculatedModel(environmentSettings), parsedArgs))
                 .map(ragDoc -> ollamaClient.callOllamaWithCache(
                         ragDoc,
-                        modelConfig.getCalculatedModel(environmentSettings),
-                        getName(),
-                        modelConfig.getCalculatedContextWindow(environmentSettings)))
+                        environmentSettings,
+                        getName()))
                 /*
                     InsufficientContext is expected when there is not enough information to answer the prompt.
                     It is not passed up though, as it is not a failure, but rather a lack of information.
@@ -471,20 +461,14 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         for (final Pair<String, String> metaField : metaFields) {
 
             if (StringUtils.isNotBlank(metaField.getLeft()) && StringUtils.isNotBlank(metaField.getRight()) && !ragContext.isEmpty()) {
-                final RagMultiDocumentContext<Void> multiRagDoc = new RagMultiDocumentContext<>(
-                        ragContext.stream()
-                                .map(ragDoc -> promptBuilderSelector
-                                        .getPromptBuilder("plain")
-                                        .buildContextPrompt(
-                                                ragDoc.contextLabel(),
-                                                ragDoc.document()))
-                                .collect(Collectors.joining("\n")),
-                        ragContext);
+                final String content = ragContext.stream()
+                        .map(RagDocumentContext::document)
+                        .collect(Collectors.joining("\n"));
 
                 final int value = Try.of(() -> ratingTool.call(
-                                Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, multiRagDoc.combinedDocument()),
+                                Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, content),
                                 metaField.getRight(),
-                                List.of()).combinedDocument())
+                                List.of()).getResponse())
                         .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                         .onFailure(ex -> logger.warning("Rating tool failed for " + metaField.getLeft() + ": " + exceptionHandler.getExceptionMessage(ex)))
                         // Meta-fields are a best effort, and we default to 0
@@ -726,7 +710,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     private List<String> getAliases(final String name) {
         return Try.of(() -> aliasTool.call(Map.of(), name, List.of()))
-                .map(doc -> jsonDeserializer.deserialize(doc.getCombinedDocument(), String[].class))
+                .map(doc -> jsonDeserializer.deserialize(doc.getResponse(), String[].class))
                 .map(array -> Arrays.stream(array)
                         .filter(StringUtils::isNotBlank)
                         .toList())
@@ -743,7 +727,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return Try.of(() -> ratingTool.call(
                         Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, context.document()),
                         parsedArgs.getIndividualContextFilterQuestion(),
-                        List.of()).combinedDocument())
+                        List.of()).getResponse())
                 .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
                 // Ratings are provided on a best effort basis, so we ignore any failures
                 .recover(InternalFailure.class, ex -> 10)
@@ -756,20 +740,14 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             return 10;
         }
 
-        final RagMultiDocumentContext<Void> multiRagDoc = new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(ragDoc -> promptBuilderSelector
-                                .getPromptBuilder("plain")
-                                .buildContextPrompt(
-                                        ragDoc.contextLabel(),
-                                        ragDoc.document()))
-                        .collect(Collectors.joining("\n")),
-                context);
+        final String content = context.stream()
+                .map(RagDocumentContext::document)
+                .collect(Collectors.joining("\n"));
 
         return Try.of(() -> ratingTool.call(
-                        Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, multiRagDoc.combinedDocument()),
+                        Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, content),
                         parsedArgs.getContextFilterQuestion(),
-                        List.of()).combinedDocument())
+                        List.of()).getResponse())
                 .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
                 // Ratings are provided on a best effort basis, so we ignore any failures
                 .recover(InternalFailure.class, ex -> 10)
@@ -787,7 +765,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return result;
     }
 
-    private RagMultiDocumentContext<Void> mergeContext(final List<RagDocumentContext<Void>> context, final String customModel, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+    private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context, final String customModel, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
 
         // Elevate the metadata extracted from the planhat usage. This is considered "top-level" metadata
         // that applies to all the context.
@@ -806,12 +784,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         results.addAll(getMetaResults(context, parsedArgs));
 
         return new RagMultiDocumentContext<>(
-                context.stream()
-                        .map(ragDoc ->
-                                promptBuilderSelector.getPromptBuilder(customModel).buildContextPrompt(
-                                        ragDoc.contextLabel(), ragDoc.document()))
-                        .collect(Collectors.joining("\n")),
+                prompt,
+                instructions,
                 context,
+                null,
                 null,
                 parsedArgs.getAnnotationPrefix(),
                 new MetaObjectResults(results, parsedArgs.getMetaReport(), ""));
