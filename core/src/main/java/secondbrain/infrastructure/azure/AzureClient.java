@@ -11,7 +11,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.answer.AnswerFormatter;
 import secondbrain.domain.concurrency.SemaphoreLender;
+import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.azure.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -59,6 +61,9 @@ public class AzureClient implements LlmClient {
     @Inject
     private Logger logger;
 
+    @Inject
+    private ListLimiter listLimiter;
+
     @Override
     public String call(final String prompt) {
         checkArgument(StringUtils.isNotBlank(prompt));
@@ -92,10 +97,27 @@ public class AzureClient implements LlmClient {
         checkNotNull(environmentSettings);
         checkArgument(StringUtils.isNotBlank(tool));
 
+        final Integer maxTokens = contextWindow
+                .map(Integer::parseInt)
+                .orElse(AzureRequest.DEFAULT_TOKENS);
+
+        final Integer maxChars = maxTokens * 4; // Assume 4 chars per token
+
         final List<AzureRequestMessage> messages = new ArrayList<>();
         messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
 
-        messages.addAll(ragDocs.individualContexts().stream()
+        // No individual context can be longer than the maxChars.
+        // This ensures we always have at least some of the context available.
+        final List<RagDocumentContext<T>> trimmedItems = ragDocs.individualContexts().stream()
+                .map(ragDoc -> ragDoc.updateDocument(ragDoc.document().substring(0, Math.min(maxChars, ragDoc.document().length()))))
+                .toList();
+
+        // Limit the total size of the context messages to maxChars
+        final List<RagDocumentContext<T>> trimmedList = listLimiter.limitListContent(trimmedItems,
+                RagDocumentContext::document,
+                maxTokens * 4); // Assume 4 chars per token
+
+        messages.addAll(trimmedList.stream()
                 .map(ragDoc -> new AzureRequestMessage(
                         "user",
                         ragDoc.contextLabel() + ": " + ragDoc.document()))
@@ -103,9 +125,6 @@ public class AzureClient implements LlmClient {
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
 
-        final Integer maxTokens = contextWindow
-                .map(Integer::parseInt)
-                .orElse(AzureRequest.DEFAULT_TOKENS);
 
         return ragDocs.updateResponse(call(new AzureRequest(messages, model.orElse(DEFAULT_MODEL), maxTokens)));
     }
