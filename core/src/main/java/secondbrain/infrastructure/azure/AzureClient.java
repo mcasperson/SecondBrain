@@ -47,6 +47,10 @@ public class AzureClient implements LlmClient {
     private Optional<String> model;
 
     @Inject
+    @ConfigProperty(name = "sb.azurellm.contextwindow", defaultValue = "120000")
+    private Optional<String> contextWindow;
+
+    @Inject
     private ResponseValidation responseValidation;
 
     @Inject
@@ -99,7 +103,11 @@ public class AzureClient implements LlmClient {
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
 
-        return ragDocs.updateResponse(call(new AzureRequest(messages, model.orElse(DEFAULT_MODEL))));
+        final Integer maxTokens = contextWindow
+                .map(Integer::parseInt)
+                .orElse(AzureRequest.DEFAULT_TOKENS);
+
+        return ragDocs.updateResponse(call(new AzureRequest(messages, model.orElse(DEFAULT_MODEL), maxTokens)));
     }
 
     private String call(final AzureRequest request) {
