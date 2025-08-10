@@ -145,7 +145,7 @@ public class AzureClient implements LlmClient {
 
         final AzureRequest request = new AzureRequest(messages, model.orElse(DEFAULT_MODEL), maxOutputTokens);
 
-        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model + outputTokens);
+        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens);
 
         final String result = localStorage.getOrPutString(
                 tool,
