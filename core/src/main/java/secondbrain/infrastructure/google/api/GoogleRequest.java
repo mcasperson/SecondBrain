@@ -22,7 +22,7 @@ public record GoogleRequest(List<GoogleRequestContents> contents,
         return systemInstruction != null ? systemInstruction : new GoogleRequestSystemInstruction(List.of());
     }
 
-    public String getPromptText() {
+    public String generatePromptText() {
         return getSystemInstruction().getParts().stream()
                 .map(GoogleRequestContentsParts::getText)
                 .map(String::trim)

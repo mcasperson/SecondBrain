@@ -80,7 +80,7 @@ public class GoogleClient implements LlmClient {
         }
 
         logger.info("Calling Google LLM");
-        logger.info(request.getPromptText());
+        logger.info(request.generatePromptText());
 
         final String result = Try.withResources(ClientBuilder::newClient)
                 .of(client -> Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(URL)
