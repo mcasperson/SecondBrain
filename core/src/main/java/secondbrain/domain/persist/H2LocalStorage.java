@@ -83,6 +83,7 @@ public class H2LocalStorage implements LocalStorage {
                         .getOrNull();
             }
         }
+        logger.info("Initialized local storage");
     }
 
     @PreDestroy
