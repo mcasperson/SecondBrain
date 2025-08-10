@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  * Remove a markdown block from a document.
  */
 @ApplicationScoped
-@Identifier("findFirstMarkdownBlock")
+@Identifier("removeMarkdownBlock")
 public class RemoveMarkdownBlock implements SanitizeDocument {
     private static final Pattern MARKDOWN_BLOCK_START_REGEX = Pattern.compile("```(.*?)\n(.*?)\n```", Pattern.DOTALL);
 
