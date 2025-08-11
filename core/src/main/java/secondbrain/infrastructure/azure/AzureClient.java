@@ -42,6 +42,8 @@ public class AzureClient implements LlmClient {
     private static final int API_RETRY_COUNT = 3;
     private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS + " seconds";
+    private static final Long RETRY_DELAY_SECONDS = 10L;
+    private static final int RETRY_COUNT = 3;
 
     @Inject
     @ConfigProperty(name = "sb.azurellm.apikey")
@@ -109,7 +111,8 @@ public class AzureClient implements LlmClient {
                 () -> call(request),
                 () -> API_CALL_TIMEOUT_MESSAGE,
                 API_CALL_TIMEOUT_SECONDS,
-                API_RETRY_COUNT);
+                RETRY_COUNT,
+                RETRY_DELAY_SECONDS);
     }
 
     @Override
@@ -163,10 +166,12 @@ public class AzureClient implements LlmClient {
                 "AzureLLM",
                 promptHash,
                 NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
-                () -> timeoutService.executeWithTimeout(
+                () -> timeoutService.executeWithTimeoutAndRetry(
                         () -> call(request),
                         () -> API_CALL_TIMEOUT_MESSAGE,
-                        API_CALL_TIMEOUT_SECONDS));
+                        API_CALL_TIMEOUT_SECONDS,
+                        RETRY_COUNT,
+                        RETRY_DELAY_SECONDS));
 
         return ragDocs.updateResponse(result);
     }

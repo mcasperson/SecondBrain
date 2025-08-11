@@ -38,7 +38,15 @@ public class CompletableFutureTimeoutService implements TimeoutService {
         return executeWithTimeoutAndRetry(callback, onTimeout, timeoutSeconds, retryCount, 0);
     }
 
-    private <T> T executeWithTimeoutAndRetry(TimeoutFunctionCallback<T> callback, TimeoutFunctionCallback<T> onTimeout, long timeoutSeconds, int retryCount, int retryAttempt) {
+    @Override
+    public <T> T executeWithTimeoutAndRetry(TimeoutFunctionCallback<T> callback, TimeoutFunctionCallback<T> onTimeout, long timeoutSeconds, int retryCount, long retryDelaySeconds) {
+        checkNotNull(callback, "callback must not be null");
+        checkNotNull(onTimeout, "onTimeout must not be null");
+
+        return executeWithTimeoutAndRetry(callback, onTimeout, timeoutSeconds, retryCount, retryDelaySeconds, 0);
+    }
+
+    private <T> T executeWithTimeoutAndRetry(TimeoutFunctionCallback<T> callback, TimeoutFunctionCallback<T> onTimeout, long timeoutSeconds, int retryCount, long retryDelaySeconds, int retryAttempt) {
         checkNotNull(callback, "callback must not be null");
         checkNotNull(onTimeout, "onTimeout must not be null");
 
@@ -52,8 +60,11 @@ public class CompletableFutureTimeoutService implements TimeoutService {
                         .orTimeout(timeoutSeconds, TimeUnit.SECONDS)
                         .get())
                 .onFailure(TimeoutException.class, e -> logger.warning("Operation timed out after " + timeoutSeconds + " seconds"))
-                .recover(TimeoutException.class, e -> executeWithTimeoutAndRetry(
-                        callback, onTimeout, timeoutSeconds, retryCount, retryAttempt + 1))
+                .recover(TimeoutException.class, e -> {
+                    Try.run(() -> Thread.sleep(retryDelaySeconds * 1000));
+                    return executeWithTimeoutAndRetry(
+                            callback, onTimeout, timeoutSeconds, retryCount, retryDelaySeconds, retryAttempt + 1);
+                })
                 .get();
     }
 }
