@@ -34,10 +34,10 @@ public class GoogleClient implements LlmClient {
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
     private static final String DEFAULT_MODEL = "gemini-2.0-flash";
 
-    private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
-    private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS + " seconds";
-    private static final Long RETRY_DELAY_SECONDS = 10L;
-    private static final int RETRY_COUNT = 3;
+    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // 10 minutes
+    private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
+    private static final long RETRY_DELAY_SECONDS_DEFAULT = 10L;
+    private static final int RETRY_COUNT_DEFAULT = 3;
 
     @Inject
     @ConfigProperty(name = "sb.googlellm.apikey")
@@ -52,8 +52,20 @@ public class GoogleClient implements LlmClient {
     private Optional<String> model;
 
     @Inject
-    @ConfigProperty(name = "sb.googlellm.ttldays", defaultValue = "30")
+    @ConfigProperty(name = "sb.googlellm.ttldDays", defaultValue = "30")
     private String ttlDays;
+
+    @Inject
+    @ConfigProperty(name = "sb.googlellm.timeOutSeconds", defaultValue = API_CALL_TIMEOUT_SECONDS_DEFAULT + "")
+    private Long timeout;
+
+    @Inject
+    @ConfigProperty(name = "sb.googlellm.retryCount", defaultValue = RETRY_COUNT_DEFAULT + "")
+    private Integer retryCount;
+
+    @Inject
+    @ConfigProperty(name = "sb.googlellm.retryDelaySeconds", defaultValue = RETRY_DELAY_SECONDS_DEFAULT + "")
+    private Long retryDelay;
 
     @Inject
     private Logger logger;
@@ -85,9 +97,9 @@ public class GoogleClient implements LlmClient {
         return timeoutService.executeWithTimeoutAndRetry(
                 () -> call(request),
                 () -> API_CALL_TIMEOUT_MESSAGE,
-                API_CALL_TIMEOUT_SECONDS,
-                RETRY_COUNT,
-                RETRY_DELAY_SECONDS);
+                timeout,
+                retryCount,
+                retryDelay);
     }
 
     @Override
@@ -126,9 +138,9 @@ public class GoogleClient implements LlmClient {
                 () -> timeoutService.executeWithTimeoutAndRetry(
                         () -> call(request),
                         () -> API_CALL_TIMEOUT_MESSAGE,
-                        API_CALL_TIMEOUT_SECONDS,
-                        RETRY_COUNT,
-                        RETRY_DELAY_SECONDS));
+                        timeout,
+                        retryCount,
+                        retryDelay));
 
         return ragDocs.updateResponse(result);
     }
