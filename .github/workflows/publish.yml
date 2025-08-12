@@ -101,7 +101,7 @@ jobs:
 
       - name: Configure maven-repository-aws-s3
         run: |
-          cat <<EOT > ~/.m2/settings.xml
+          cat <<EOT > settings.xml
           <settings>
             <servers>
               <server>
@@ -113,10 +113,9 @@ jobs:
           </settings>
           EOT
         shell: bash
-        working-directory: java
 
       - name: Publish to GitHub Packages
-        run: mvn --batch-mode -DskipTests deploy
+        run: mvn -s settings.xml --batch-mode -DskipTests deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
