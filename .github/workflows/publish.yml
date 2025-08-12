@@ -99,7 +99,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configure maven-repository-aws-s3
+      - name: Configure maven settings
         run: |
           cat <<EOT > settings.xml
           <settings>
