@@ -89,7 +89,8 @@ jobs:
 
   publish:
     needs: [ build, version ] # rely on build to run tests and version to determine the version
-    runs-on: self-hosted
+    #runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
