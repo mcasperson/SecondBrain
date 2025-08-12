@@ -99,6 +99,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Configure maven-repository-aws-s3
+        run: |
+          cat <<EOT > ~/.m2/settings.xml
+          <settings>
+            <servers>
+              <server>
+                <id>github</id>
+                <username>mcasperson</username>
+                <password>${{ secrets.GITHUB_TOKEN }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOT
+        shell: bash
+        working-directory: java
+
       - name: Publish to GitHub Packages
         run: mvn --batch-mode -DskipTests deploy
         env:
