@@ -2,7 +2,6 @@ package secondbrain.infrastructure.ollama;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
@@ -14,7 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
-import secondbrain.domain.answer.AnswerFormatter;
+import secondbrain.domain.answer.AnswerFormatterService;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -36,7 +35,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -68,7 +66,7 @@ public class OllamaClient implements LlmClient {
     private ResponseValidation responseValidation;
 
     @Inject
-    private Instance<AnswerFormatter> answerFormatters;
+    private AnswerFormatterService answerFormatterService;
 
     @Inject
     private Logger logger;
@@ -175,7 +173,8 @@ public class OllamaClient implements LlmClient {
                                     + "or 'docker exec -it secondbrain-ollama-1 ollama pull " + body.model() + "'");
                         })
                         .map(r -> r.readEntity(OllamaResponse.class))
-                        .map(ollamaResponse -> ollamaResponse.replaceResponse(formatResponse(body.model(), ollamaResponse.response())))
+                        .map(ollamaResponse -> ollamaResponse.replaceResponse(
+                                answerFormatterService.formatResponse(body.model(), ollamaResponse.response())))
                         .get())
                 .recover(ex -> {
                     logger.warning("Retrying Ollama call, attempt " + (retryCount + 1));
@@ -223,14 +222,6 @@ public class OllamaClient implements LlmClient {
 
     private String resultOrDefaultOnError(final String result, final String defaultValue) {
         return resultIsError(result) ? defaultValue : result;
-    }
-
-    private String formatResponse(final String model, final String response) {
-        return answerFormatters.stream()
-                .filter(b -> Pattern.compile(b.modelRegex()).matcher(model).matches())
-                .findFirst()
-                .map(formatter -> formatter.formatAnswer(response))
-                .orElse(response);
     }
 
     private String getPromptFromDocument(final RagMultiDocumentContext<?> ragDoc) {
