@@ -149,9 +149,9 @@ public class Main {
 
         final StandardOpenOption option = appendToOutputFile
                 ? StandardOpenOption.APPEND
-                : StandardOpenOption.CREATE;
+                : StandardOpenOption.TRUNCATE_EXISTING;
 
-        Try.run(() -> Files.write(Paths.get(file.get()), content.getResponseText().getBytes(), option, StandardOpenOption.TRUNCATE_EXISTING))
+        Try.run(() -> Files.write(Paths.get(file.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, option))
                 .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
     }
 
