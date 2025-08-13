@@ -1,7 +1,9 @@
 package secondbrain.domain.answer;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.poi.util.StringUtil;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.constants.ModelRegex;
 
 /**
@@ -9,9 +11,13 @@ import secondbrain.domain.constants.ModelRegex;
  */
 @ApplicationScoped
 public class AnswerFormatterDeepseek implements AnswerFormatter {
+    @Inject
+    @ConfigProperty(name = "sb.answerformatter.deepseekregex", defaultValue = ModelRegex.DEEPSEEK_REGEX)
+    private String modelRegex;
+
     @Override
     public String modelRegex() {
-        return ModelRegex.DEEPSEEK_REGEX;
+        return modelRegex;
     }
 
     @Override
