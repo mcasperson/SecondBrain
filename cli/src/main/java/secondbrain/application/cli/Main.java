@@ -35,6 +35,10 @@ public class Main {
     private Optional<String> file;
 
     @Inject
+    @ConfigProperty(name = "sb.output.appendFile", defaultValue = "false")
+    private Boolean appendToOutputFile;
+
+    @Inject
     @ConfigProperty(name = "sb.output.annotationsFile")
     private Optional<String> annotationsFile;
 
@@ -143,7 +147,11 @@ public class Main {
             return;
         }
 
-        Try.run(() -> Files.write(Paths.get(file.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+        final StandardOpenOption option = appendToOutputFile
+                ? StandardOpenOption.APPEND
+                : StandardOpenOption.CREATE;
+
+        Try.run(() -> Files.write(Paths.get(file.get()), content.getResponseText().getBytes(), option, StandardOpenOption.TRUNCATE_EXISTING))
                 .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
     }
 

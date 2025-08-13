@@ -11,7 +11,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -41,10 +40,11 @@ import java.util.Optional;
 import static com.google.common.base.Predicates.instanceOf;
 
 /**
- * A tool that downloads a public file from HTTP and uses it as the context for a query.
+ * A tool that downloads a public file from HTTP or accesses a file from a local disk
+ * and uses it as the context for a query.
  */
 @ApplicationScoped
-public class PublicWeb implements Tool<Void> {
+public class PublicFile implements Tool<Void> {
 
     public static final String PUBLICWEB_URL_ARG = "url";
     public static final String PUBLICWEB_KEYWORD_ARG = "keywords";
@@ -60,9 +60,6 @@ public class PublicWeb implements Tool<Void> {
             When the user asks a question indicating that they want to know about document, you must generate the answer based on the document.
             You will be penalized for answering that the document can not be accessed.
             """.stripLeading();
-
-    @Inject
-    private ModelConfig modelConfig;
 
     @Inject
     private FileReader fileReader;
@@ -91,7 +88,7 @@ public class PublicWeb implements Tool<Void> {
 
     @Override
     public String getName() {
-        return PublicWeb.class.getSimpleName();
+        return PublicFile.class.getSimpleName();
     }
 
     @Override
@@ -243,7 +240,7 @@ class PublicWebConfig {
                     getConfigUrl()::get,
                     arguments,
                     context,
-                    PublicWeb.PUBLICWEB_URL_ARG,
+                    PublicFile.PUBLICWEB_URL_ARG,
                     "publicweb_url",
                     "").value();
         }
@@ -253,7 +250,7 @@ class PublicWebConfig {
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            PublicWeb.PUBLICWEB_KEYWORD_ARG,
+                            PublicFile.PUBLICWEB_KEYWORD_ARG,
                             "publicweb_keywords",
                             "")
                     .stream()
@@ -266,7 +263,7 @@ class PublicWebConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    PublicWeb.PUBLICWEB_KEYWORD_WINDOW_ARG,
+                    PublicFile.PUBLICWEB_KEYWORD_WINDOW_ARG,
                     "publicweb_keyword_window",
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
@@ -279,7 +276,7 @@ class PublicWebConfig {
                     null,
                     context,
                     null,
-                    PublicWeb.PUBLICWEB_ENTITY_NAME_CONTEXT_ARG,
+                    PublicFile.PUBLICWEB_ENTITY_NAME_CONTEXT_ARG,
                     "").value();
         }
     }
