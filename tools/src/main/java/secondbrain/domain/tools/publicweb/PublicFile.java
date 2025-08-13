@@ -192,15 +192,15 @@ public class PublicFile implements Tool<Void> {
 class PublicWebConfig {
 
     @Inject
-    @ConfigProperty(name = "sb.publicweb.url")
+    @ConfigProperty(name = "sb.publicfile.url")
     private Optional<String> configUrl;
 
     @Inject
-    @ConfigProperty(name = "sb.publicweb.keywords")
+    @ConfigProperty(name = "sb.publicfile.keywords")
     private Optional<String> configKeywords;
 
     @Inject
-    @ConfigProperty(name = "sb.publicweb.keywordwindow")
+    @ConfigProperty(name = "sb.publicfile.keywordwindow")
     private Optional<String> configKeywordWindow;
 
     @Inject
