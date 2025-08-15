@@ -32,10 +32,7 @@ import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.timeout.TimeoutService;
-import secondbrain.domain.tooldefs.MetaObjectResults;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
@@ -372,6 +369,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .map(ticket -> ticket.intermediateResult() != null
                         ? ticket.updateIntermediateResult(ticket.intermediateResult().updateContent(ticket.document()))
                         : ticket)
+                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "ZenDesk" + ragDoc.id() + ".txt")))
                 .collect(Collectors.toList());
     }
 

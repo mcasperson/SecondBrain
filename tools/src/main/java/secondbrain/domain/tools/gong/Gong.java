@@ -26,6 +26,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.timeout.TimeoutService;
+import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -116,7 +117,7 @@ public class Gong implements Tool<GongCallDetails> {
     public List<RagDocumentContext<GongCallDetails>> getContext(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         logger.log(Level.INFO, "Getting context for " + getName());
-        
+
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final List<Pair<GongCallDetails, String>> calls = Try.withResources(ClientBuilder::newClient)
@@ -168,6 +169,9 @@ public class Gong implements Tool<GongCallDetails> {
                         call,
                         "[Gong " + call.id() + "](" + call.url() + ")",
                         trimmedConversationResult.keywordMatches()))
+                // Capture the gong transcript or transcript summary as an intermediate result
+                // This is useful for debugging and understanding the context of the call
+                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "Gong" + ragDoc.id() + ".txt")))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }

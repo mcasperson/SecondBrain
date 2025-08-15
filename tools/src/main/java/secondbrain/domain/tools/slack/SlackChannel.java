@@ -15,7 +15,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -30,6 +29,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.sanitize.SanitizeDocument;
+import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -67,9 +67,6 @@ public class SlackChannel implements Tool<Void> {
             The tokens "<!here>" and "<!channel>" are used to notify all members of the channel.
             You must consider any message with the tokens "<!here>" or "<!channel>" to be important.
             """;
-
-    @Inject
-    private ModelConfig modelConfig;
 
     @Inject
     private SlackChannelConfig config;
@@ -235,6 +232,7 @@ public class SlackChannel implements Tool<Void> {
                 .map(doc -> parsedArgs.getSummarizeDocument()
                         ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
                         : doc)
+                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "Slack" + ragDoc.id() + ".txt")))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }

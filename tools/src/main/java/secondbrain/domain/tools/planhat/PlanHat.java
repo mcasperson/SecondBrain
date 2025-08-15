@@ -28,6 +28,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
+import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -175,6 +176,7 @@ public class PlanHat implements Tool<Conversation> {
                 .map(doc -> parsedArgs.getSummarizeDocument()
                         ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
                         : doc)
+                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "PlanHat" + ragDoc.id() + ".txt")))
                 .toList();
     }
 
