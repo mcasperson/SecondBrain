@@ -173,10 +173,10 @@ public class PlanHat implements Tool<Conversation> {
                 )
                 .map(conversation -> getDocumentContext(conversation, parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "PlanHat" + ragDoc.id() + ".txt")))
                 .map(doc -> parsedArgs.getSummarizeDocument()
                         ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
                         : doc)
-                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "PlanHat" + ragDoc.id() + ".txt")))
                 .toList();
     }
 
