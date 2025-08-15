@@ -57,7 +57,7 @@ public class HelloWorld implements Tool<Void> {
             final List<ToolArgs> arguments) {
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> arguments.size() != 1 ? arguments.getFirst().argValue() : "Hello, World!")
-                .map(RagMultiDocumentContext::new);
+                .map(response -> new RagMultiDocumentContext<Void>(prompt).updateResponse(response));
 
         /*
             It is the responsibility of the tool to return either an InternalFailure or an ExternalFailure.
