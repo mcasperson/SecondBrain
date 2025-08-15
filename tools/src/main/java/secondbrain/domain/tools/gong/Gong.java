@@ -43,7 +43,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Predicates.instanceOf;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
@@ -138,14 +137,6 @@ public class Gong implements Tool<GongCallDetails> {
                                         call,
                                         gongClient.getCallTranscript(client, parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), call)))
                                 .toList())
-                        /*
-                            Take the raw transcript and summarize them with individual calls to the LLM.
-                            The transcripts are then combined into a single context.
-                            This was necessary because the private LLMs didn't do a very good job of summarizing
-                            raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
-                            call transcripts.
-                         */
-                        .map(transcripts -> parsedArgs.getSummarizeTranscript() ? summariseCalls(transcripts, environmentSettings, parsedArgs) : transcripts)
                         .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                         .get())
                 .get();
@@ -153,6 +144,14 @@ public class Gong implements Tool<GongCallDetails> {
         return calls.stream()
                 .map(pair -> getDocumentContext(pair.getLeft(), pair.getRight(), parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                /*
+                            Take the raw transcript and summarize them with individual calls to the LLM.
+                            The transcripts are then combined into a single context.
+                            This was necessary because the private LLMs didn't do a very good job of summarizing
+                            raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
+                            call transcripts.
+                         */
+                .map(ragDoc -> parsedArgs.getSummarizeTranscript() ? ragDoc.updateDocument(getCallSummary(ragDoc.document(), environmentSettings, parsedArgs)) : ragDoc)
                 .toList();
     }
 
@@ -208,15 +207,6 @@ public class Gong implements Tool<GongCallDetails> {
     @Override
     public String getContextLabel() {
         return "Gong Call";
-    }
-
-    /**
-     * Summarise the calls by passing them through the LLM
-     */
-    private List<Pair<GongCallDetails, String>> summariseCalls(final List<Pair<GongCallDetails, String>> tickets, final Map<String, String> context, final GongConfig.LocalArguments parsedArgs) {
-        return tickets.stream()
-                .map(pair -> Pair.of(pair.getLeft(), getCallSummary(pair.getRight(), context, parsedArgs)))
-                .collect(Collectors.toList());
     }
 
     /**
