@@ -260,7 +260,7 @@ public class PlanHat implements Tool<Conversation> {
 
         return ragDoc.updateDocument(response)
                 .addIntermediateResult(new IntermediateResult(
-                        response,
+                        "Prompt: " + parsedArgs.getDocumentSummaryPrompt() + "\n\n" + response,
                         "PlanHat" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getDocumentSummaryPrompt()) + ".txt"));
     }
 }

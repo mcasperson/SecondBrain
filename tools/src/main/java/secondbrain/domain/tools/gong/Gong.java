@@ -234,7 +234,7 @@ public class Gong implements Tool<GongCallDetails> {
 
         return ragDoc.updateDocument(response)
                 .addIntermediateResult(new IntermediateResult(
-                        response,
+                        "Prompt: " + parsedArgs.getTranscriptSummaryPrompt() + "\n\n" + response,
                         "Gong" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTranscriptSummaryPrompt()) + ".txt"
                 ));
     }

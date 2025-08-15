@@ -367,7 +367,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 // Replace the raw ticket text with the summarized ticket
                 .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), context, parsedArgs)))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(
-                        ragDoc.document(),
+                        "Prompt: " + parsedArgs.getTicketSummaryPrompt() + "\n\n" + ragDoc.document(),
                         "ZenDesk" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTicketSummaryPrompt()) + ".txt")))
                 .collect(Collectors.toList());
     }

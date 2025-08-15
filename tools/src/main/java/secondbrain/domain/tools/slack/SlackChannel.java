@@ -297,7 +297,7 @@ public class SlackChannel implements Tool<Void> {
 
         return ragDoc.updateDocument(response)
                 .addIntermediateResult(new IntermediateResult(
-                        response,
+                        "Prompt: " + parsedArgs.getDocumentSummaryPrompt() + "\n\n" + response,
                         "Slack" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getDocumentSummaryPrompt()) + ".txt"
                 ));
     }
