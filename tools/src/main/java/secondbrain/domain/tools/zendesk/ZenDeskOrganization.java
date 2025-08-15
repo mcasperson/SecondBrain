@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -365,11 +366,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         return tickets.stream()
                 // Replace the raw ticket text with the summarized ticket
                 .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), context, parsedArgs)))
-                // Replace the intermediate result with the summarized ticket
-                .map(ticket -> ticket.intermediateResult() != null
-                        ? ticket.updateIntermediateResult(ticket.intermediateResult().updateContent(ticket.document()))
-                        : ticket)
-                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "ZenDesk" + ragDoc.id() + ".txt")))
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(
+                        ragDoc.document(),
+                        "ZenDesk" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTicketSummaryPrompt()) + ".txt")))
                 .collect(Collectors.toList());
     }
 

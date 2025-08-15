@@ -6,6 +6,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
@@ -173,9 +174,9 @@ public class PlanHat implements Tool<Conversation> {
                 )
                 .map(conversation -> getDocumentContext(conversation, parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
-                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "PlanHat" + ragDoc.id() + ".txt")))
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "PlanHat" + ragDoc.id() + ".txt")))
                 .map(doc -> parsedArgs.getSummarizeDocument()
-                        ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
+                        ? getDocumentSummary(doc, environmentSettings, parsedArgs)
                         : doc)
                 .toList();
     }
@@ -240,15 +241,15 @@ public class PlanHat implements Tool<Conversation> {
                 .get();
     }
 
-    private String getDocumentSummary(final String document, final Map<String, String> environmentSettings, final PlanHatConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<Conversation> getDocumentSummary(final RagDocumentContext<Conversation> ragDoc, final Map<String, String> environmentSettings, final PlanHatConfig.LocalArguments parsedArgs) {
         final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),
                 getContextLabel(),
-                document,
+                ragDoc.document(),
                 List.of()
         );
 
-        return llmClient.callWithCache(
+        final String response = llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getDocumentSummaryPrompt(),
                         "You are a helpful agent",
@@ -256,6 +257,11 @@ public class PlanHat implements Tool<Conversation> {
                 environmentSettings,
                 getName()
         ).getResponse();
+
+        return ragDoc.updateDocument(response)
+                .addIntermediateResult(new IntermediateResult(
+                        response,
+                        "PlanHat" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getDocumentSummaryPrompt()) + ".txt"));
     }
 }
 

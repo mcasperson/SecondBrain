@@ -5,6 +5,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -151,7 +152,7 @@ public class Gong implements Tool<GongCallDetails> {
                             raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
                             call transcripts.
                          */
-                .map(ragDoc -> parsedArgs.getSummarizeTranscript() ? ragDoc.updateDocument(getCallSummary(ragDoc.document(), environmentSettings, parsedArgs)) : ragDoc)
+                .map(ragDoc -> parsedArgs.getSummarizeTranscript() ? getCallSummary(ragDoc, environmentSettings, parsedArgs) : ragDoc)
                 .toList();
     }
 
@@ -170,7 +171,7 @@ public class Gong implements Tool<GongCallDetails> {
                         trimmedConversationResult.keywordMatches()))
                 // Capture the gong transcript or transcript summary as an intermediate result
                 // This is useful for debugging and understanding the context of the call
-                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "Gong" + ragDoc.id() + ".txt")))
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Gong" + ragDoc.id() + ".txt")))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }
@@ -212,17 +213,17 @@ public class Gong implements Tool<GongCallDetails> {
     /**
      * Summarise an individual ticket
      */
-    private String getCallSummary(final String transcript, final Map<String, String> environmentSettings, final GongConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<GongCallDetails> getCallSummary(final RagDocumentContext<GongCallDetails> ragDoc, final Map<String, String> environmentSettings, final GongConfig.LocalArguments parsedArgs) {
         logger.log(Level.INFO, "Summarising Gong call transcript");
 
         final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),
                 getContextLabel(),
-                transcript,
+                ragDoc.document(),
                 List.of()
         );
 
-        return llmClient.callWithCache(
+        final String response = llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getTranscriptSummaryPrompt(),
                         "You are a helpful agent",
@@ -230,6 +231,12 @@ public class Gong implements Tool<GongCallDetails> {
                 environmentSettings,
                 getName()
         ).getResponse();
+
+        return ragDoc.updateDocument(response)
+                .addIntermediateResult(new IntermediateResult(
+                        response,
+                        "Gong" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTranscriptSummaryPrompt()) + ".txt"
+                ));
     }
 }
 

@@ -124,7 +124,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         parsedArgs.getNumComments(),
                         parsedArgs))
                 .map(ticket -> ticket.updateMetadata(getMetadata(ticket, parsedArgs)))
-                .map(ticket -> ticket.updateIntermediateResult(
+                .map(ticket -> ticket.addIntermediateResult(
                         new IntermediateResult(ticket.document(), ticketToFileName(ticket))))
                 .map(List::of);
 

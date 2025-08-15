@@ -206,7 +206,7 @@ public record RagMultiDocumentContext<T>(String prompt,
     public List<IntermediateResult> getIntermediateResults() {
         return individualContexts
                 .stream()
-                .map(RagDocumentContext::intermediateResult)
+                .flatMap(ragDocumentContext -> ragDocumentContext.getIntermediateResults().stream())
                 .filter(Objects::nonNull)
                 .toList();
     }

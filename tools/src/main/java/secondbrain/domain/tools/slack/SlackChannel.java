@@ -8,6 +8,7 @@ import io.vavr.Tuple;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -229,9 +230,9 @@ public class SlackChannel implements Tool<Void> {
                         null,
                         matchToUrl(channelDetails),
                         trimResult.keywordMatches()))
-                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "Slack" + ragDoc.id() + ".txt")))
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Slack" + ragDoc.id() + ".txt")))
                 .map(doc -> parsedArgs.getSummarizeDocument()
-                        ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
+                        ? getDocumentSummary(doc, environmentSettings, parsedArgs)
                         : doc)
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
@@ -278,21 +279,27 @@ public class SlackChannel implements Tool<Void> {
                 .recover(error -> messages);
     }
 
-    private String getDocumentSummary(final String document, final Map<String, String> environmentSettings, final SlackChannelConfig.LocalArguments parsedArgs) {
+    private RagDocumentContext<Void> getDocumentSummary(final RagDocumentContext<Void> ragDoc, final Map<String, String> environmentSettings, final SlackChannelConfig.LocalArguments parsedArgs) {
         final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),
                 getContextLabel(),
-                document,
+                ragDoc.document(),
                 List.of()
         );
 
-        return llmClient.callWithCache(
+        final String response = llmClient.callWithCache(
                 new RagMultiDocumentContext<>(parsedArgs.getDocumentSummaryPrompt(),
                         "You are a helpful agent",
                         List.of(context)),
                 environmentSettings,
                 getName()
         ).getResponse();
+
+        return ragDoc.updateDocument(response)
+                .addIntermediateResult(new IntermediateResult(
+                        response,
+                        "Slack" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getDocumentSummaryPrompt()) + ".txt"
+                ));
     }
 
     private String matchToUrl(final SlackChannelResource channel) {
