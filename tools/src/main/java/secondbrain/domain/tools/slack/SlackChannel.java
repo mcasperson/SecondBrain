@@ -229,10 +229,10 @@ public class SlackChannel implements Tool<Void> {
                         null,
                         matchToUrl(channelDetails),
                         trimResult.keywordMatches()))
+                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "Slack" + ragDoc.id() + ".txt")))
                 .map(doc -> parsedArgs.getSummarizeDocument()
                         ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
                         : doc)
-                .map(ragDoc -> ragDoc.updateIntermediateResult(new IntermediateResult(ragDoc.document(), "Slack" + ragDoc.id() + ".txt")))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }
