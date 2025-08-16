@@ -517,6 +517,7 @@ if ($GenerateCompanyReports)
     "--space=AI Server"
     "--project=Dossier"
     "--version=$version"
+    "--git-ref=main"
     --no-prompt
 "@)
     Invoke-CustomCommand octopus $arguments
