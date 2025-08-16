@@ -13,6 +13,7 @@ import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
@@ -53,6 +54,10 @@ public class Main {
     @Inject
     @ConfigProperty(name = "sb.output.printAnnotations", defaultValue = "true")
     private Boolean printAnnotations;
+
+    @Inject
+    @ConfigProperty(name = "sb.output.directory", defaultValue = ".")
+    private String directory;
 
     public static void main(final String[] args) {
         final Weld weld = new Weld();
@@ -115,7 +120,7 @@ public class Main {
         final String annotations = content.getAnnotations() + content.getDebugInfo();
 
         if (StringUtils.isNotBlank(annotations)) {
-            Try.run(() -> Files.write(Paths.get(annotationsFile.get()), annotations.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+            Try.run(() -> Files.write(getFilePath(annotationsFile.get()), annotations.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
         }
     }
@@ -126,7 +131,7 @@ public class Main {
         }
 
         if (StringUtils.isNotBlank(content.getLinks())) {
-            Try.run(() -> Files.write(Paths.get(linksFile.get()), content.getLinks().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+            Try.run(() -> Files.write(getFilePath(linksFile.get()), content.getLinks().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
         }
     }
@@ -137,7 +142,7 @@ public class Main {
         }
 
         if (StringUtils.isNotBlank(content.getDebugInfo())) {
-            Try.run(() -> Files.write(Paths.get(debugFile.get()), content.getDebugInfo().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+            Try.run(() -> Files.write(getFilePath(debugFile.get()), content.getDebugInfo().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
         }
     }
@@ -151,7 +156,7 @@ public class Main {
                 ? StandardOpenOption.APPEND
                 : StandardOpenOption.TRUNCATE_EXISTING;
 
-        Try.run(() -> Files.write(Paths.get(file.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, option))
+        Try.run(() -> Files.write(getFilePath(file.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, option))
                 .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
     }
 
@@ -162,7 +167,7 @@ public class Main {
                 .filter(Objects::nonNull)
                 .filter(meta -> StringUtils.isNotBlank(meta.getFilename()))
                 .forEach(meta -> Try.of(() -> Files.write(
-                                Paths.get(meta.getFilename()),
+                                getFilePath(meta.getFilename()),
                                 jsonDeserializer.serialize(meta).getBytes(),
                                 StandardOpenOption.CREATE,
                                 StandardOpenOption.TRUNCATE_EXISTING))
@@ -176,10 +181,21 @@ public class Main {
                 .filter(Objects::nonNull)
                 .filter(meta -> StringUtils.isNotBlank(meta.filename()) && meta.content() != null)
                 .forEach(meta -> Try.of(() -> Files.write(
-                                Paths.get(meta.filename()),
+                                getFilePath(meta.filename()),
                                 meta.content().getBytes(),
                                 StandardOpenOption.CREATE,
                                 StandardOpenOption.TRUNCATE_EXISTING))
                         .onFailure(e -> System.err.println("Failed to write intermediate result to files: " + e.getMessage())));
+    }
+
+    private Path getFilePath(final String path) {
+        final Path directoryPath = Paths.get(path);
+        if (directoryPath.isAbsolute()) {
+            return directoryPath;
+        } else if (StringUtils.isNotBlank(directory)) {
+            return Paths.get(directory, path);
+        } else {
+            return directoryPath;
+        }
     }
 }
