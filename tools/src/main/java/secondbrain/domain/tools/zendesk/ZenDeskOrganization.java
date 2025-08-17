@@ -368,7 +368,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), context, parsedArgs)))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(
                         "Prompt: " + parsedArgs.getTicketSummaryPrompt() + "\n\n" + ragDoc.document(),
-                        "ZenDesk" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTicketSummaryPrompt()) + ".txt")))
+                        "ZenDesk-" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTicketSummaryPrompt()) + ".txt")))
                 .collect(Collectors.toList());
     }
 

@@ -171,7 +171,7 @@ public class Gong implements Tool<GongCallDetails> {
                         trimmedConversationResult.keywordMatches()))
                 // Capture the gong transcript or transcript summary as an intermediate result
                 // This is useful for debugging and understanding the context of the call
-                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Gong" + ragDoc.id() + ".txt")))
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Gong-" + ragDoc.id() + ".txt")))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }
@@ -235,7 +235,7 @@ public class Gong implements Tool<GongCallDetails> {
         return ragDoc.updateDocument(response)
                 .addIntermediateResult(new IntermediateResult(
                         "Prompt: " + parsedArgs.getTranscriptSummaryPrompt() + "\n\n" + response,
-                        "Gong" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTranscriptSummaryPrompt()) + ".txt"
+                        "Gong-" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTranscriptSummaryPrompt()) + ".txt"
                 ));
     }
 }
