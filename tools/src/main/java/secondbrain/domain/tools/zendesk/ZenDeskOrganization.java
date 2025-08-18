@@ -62,7 +62,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String EXCLUDE_SUBMITTERS_ARG = "excludeSubmitters";
     public static final String RECIPIENT_ARG = "recipient";
     public static final String NUM_COMMENTS_ARG = "numComments";
-    public static final String SAVE_INDIVIDUAL_ARG = "saveIndividual";
     public static final String DAYS_ARG = "days";
     public static final String HOURS_ARG = "hours";
     public static final String START_PERIOD_ARG = "start";
@@ -71,10 +70,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String ZENDESK_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String ZENDESK_TICKET_SUMMARY_PROMPT_ARG = "ticketSummaryPrompt";
+    public static final String ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG = "ticketFilterQuestion";
+    public static final String ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG = "ticketFilterMinimumRating";
     public static final String ZENDESK_SUMMARIZE_TICKET_ARG = "summarizeTicket";
     public static final String ZENDESK_MAX_TICKETS_ARG = "maxTickets";
-    public static final String ZENDESK_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
-    public static final String ZENDESK_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
     public static final String ZENDESK_CONTEXT_FILTER_BY_RECIPIENT_ARG = "filterByRecipient";
     private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
@@ -431,7 +430,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ASSIGNEE_ARG, ticket.assignee_id(), true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_URL_ARG, url, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_EMAIL_ARG, email, true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG, token, true)
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG, token, true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_RATING_QUESTION_ARG, parsedArgs.getTicketFilterQuestion(), true)
                         )
                 ).stream())
                 // Get a list of context strings
@@ -441,6 +441,11 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     private List<RagDocumentContext<ZenDeskTicket>> contextMeetsRating(
             final List<RagDocumentContext<ZenDeskTicket>> tickets,
             final ZenDeskConfig.LocalArguments parsedArgs) {
+        // If there was no filter question, then return the whole list
+        if (StringUtils.isBlank(parsedArgs.getTicketFilterQuestion())) {
+            return tickets;
+        }
+
         return tickets
                 .stream()
                 .filter(ticket ->
@@ -557,6 +562,14 @@ class ZenDeskConfig {
     @Inject
     @ConfigProperty(name = "sb.zendesk.maxtickets")
     private Optional<String> configMaxTickets;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.ticketFilterQuestion")
+    private Optional<String> configTicketFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.ticketFilterMinimumRating")
+    private Optional<String> configTicketFilterMinimumRating;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -701,6 +714,14 @@ class ZenDeskConfig {
         return configMaxTickets;
     }
 
+    public Optional<String> getConfigTicketFilterQuestion() {
+        return configTicketFilterQuestion;
+    }
+
+    public Optional<String> getConfigTicketFilterMinimumRating() {
+        return configTicketFilterMinimumRating;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -714,12 +735,23 @@ class ZenDeskConfig {
             this.context = context;
         }
 
+        public String getTicketFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigTicketFilterQuestion()::get,
+                            arguments,
+                            context,
+                            ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
+                            "multislackzengoogle_context_filter_question",
+                            "")
+                    .value();
+        }
+
         public Integer getContextFilterMinimumRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "multislackzengoogle_context_filter_minimum_rating",
                     "0");
 

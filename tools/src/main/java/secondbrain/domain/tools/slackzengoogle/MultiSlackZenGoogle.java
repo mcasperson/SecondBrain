@@ -428,17 +428,21 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> planHatUsageContext = getPlanhatUsageContext(positionalEntity, parsedArgs, prompt, context);
 
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
-        retValue.addAll(slackKeywordSearch);
-        retValue.addAll(slackContext);
-        retValue.addAll(googleContext);
+
+        // ZenDesk will filter its own context
         retValue.addAll(zenContext);
-        retValue.addAll(planHatContext);
-        retValue.addAll(gongContext);
+
+        // It doesn't make sense to filter planhat usage
         retValue.addAll(planHatUsageContext);
 
-        final List<RagDocumentContext<Void>> filteredContext = contextMeetsRating(validateSufficientContext(retValue, parsedArgs), entity.name(), parsedArgs);
+        // All these sources need to be filtered for relevance
+        retValue.addAll(contextMeetsRating(slackKeywordSearch, entity.name(), parsedArgs));
+        retValue.addAll(contextMeetsRating(slackContext, entity.name(), parsedArgs));
+        retValue.addAll(contextMeetsRating(googleContext, entity.name(), parsedArgs));
+        retValue.addAll(contextMeetsRating(planHatContext, entity.name(), parsedArgs));
+        retValue.addAll(contextMeetsRating(gongContext, entity.name(), parsedArgs));
 
-        return filteredContext;
+        return validateSufficientContext(retValue, parsedArgs);
     }
 
     private MetaObjectResult getContextCount(final List<RagDocumentContext<Void>> ragContext) {
@@ -684,6 +688,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating().toString(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_TICKET_SUMMARY_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_SUMMARIZE_TICKET_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
@@ -739,7 +745,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             return 10;
         }
 
-        return Try.of(() -> ratingTool.call(
+        final Integer score = Try.of(() -> ratingTool.call(
                         Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, context.document()),
                         parsedArgs.getIndividualContextFilterQuestion(),
                         List.of()).getResponse())
@@ -748,6 +754,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .recover(InternalFailure.class, ex -> 10)
                 .get();
 
+        return score;
     }
 
     private Integer getContextRating(final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {

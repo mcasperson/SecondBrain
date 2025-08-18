@@ -45,6 +45,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 @ApplicationScoped
 public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_FILTER_RATING_META = "FilterRating";
+    public static final String ZENDESK_RATING_QUESTION_ARG = "ticketRatingQuestion";
     public static final String ZENDESK_TICKET_ID_ARG = "ticketId";
     public static final String ZENDESK_TICKET_SUBJECT_ARG = "ticketSubject";
     public static final String ZENDESK_TICKET_SUBMITTER_ARG = "ticketSubmitter";
@@ -658,22 +659,10 @@ class ZenDeskTicketConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_QUESTION_ARG,
-                            "zendesk_context_filter_question",
+                            ZenDeskIndividualTicket.ZENDESK_RATING_QUESTION_ARG,
+                            "zendesk_rating_question",
                             "")
                     .value();
-        }
-
-        public Integer getContextFilterMinimumRating() {
-            final Argument argument = getArgsAccessor().getArgument(
-                    getConfigContextFilterMinimumRating()::get,
-                    arguments,
-                    context,
-                    ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_MINIMUM_RATING_ARG,
-                    "multislackzengoogle_context_filter_minimum_rating",
-                    "0");
-
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
     }
 }
