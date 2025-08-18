@@ -59,15 +59,11 @@ public class AzureClient implements LlmClient {
     private Optional<String> model;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.useMaxCompletionTokens", defaultValue = "true")
-    private Boolean useMaxCompletionTokens;
-
-    @Inject
-    @ConfigProperty(name = "sb.azurellm.maxOutputTokens", defaultValue = AzureRequest.DEFAULT_OUTPUT_TOKENS + "")
+    @ConfigProperty(name = "sb.azurellm.maxOutputTokens", defaultValue = AzureRequestMaxCompletionTokens.DEFAULT_OUTPUT_TOKENS + "")
     private Optional<String> outputTokens;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.maxInputTokens", defaultValue = AzureRequest.DEFAULT_INPUT_TOKENS + "")
+    @ConfigProperty(name = "sb.azurellm.maxInputTokens", defaultValue = AzureRequestMaxCompletionTokens.DEFAULT_INPUT_TOKENS + "")
     private Optional<String> inputTokens;
 
     @Inject
@@ -116,15 +112,7 @@ public class AzureClient implements LlmClient {
         checkArgument(StringUtils.isNotBlank(prompt));
         checkArgument(StringUtils.isNotBlank(model));
 
-        final PromptTextGenerator request = useMaxCompletionTokens
-                ? new AzureRequestMaxCompletionTokens(
-                List.of(new AzureRequestMessage(
-                        "user",
-                        prompt
-                )),
-                model
-        )
-                : new AzureRequest(
+        final PromptTextGenerator request = new AzureRequestMaxCompletionTokens(
                 List.of(new AzureRequestMessage(
                         "user",
                         prompt
@@ -152,13 +140,13 @@ public class AzureClient implements LlmClient {
 
         final int maxOutputTokens = outputTokens
                 .map(Integer::parseInt)
-                .orElse(AzureRequest.DEFAULT_OUTPUT_TOKENS);
+                .orElse(AzureRequestMaxCompletionTokens.DEFAULT_OUTPUT_TOKENS);
 
         final int maxInputTokens = inputTokens
                 .map(Integer::parseInt)
-                .orElse(AzureRequest.DEFAULT_INPUT_TOKENS);
+                .orElse(AzureRequestMaxCompletionTokens.DEFAULT_INPUT_TOKENS);
 
-        final int maxChars = (int) (maxInputTokens * AzureRequest.DEFAULT_CHARS_PER_INPUT_TOKENS);
+        final int maxChars = (int) (maxInputTokens * AzureRequestMaxCompletionTokens.DEFAULT_CHARS_PER_INPUT_TOKENS);
 
         final List<AzureRequestMessage> messages = new ArrayList<>();
         messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
@@ -182,9 +170,7 @@ public class AzureClient implements LlmClient {
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
 
-        final PromptTextGenerator request = useMaxCompletionTokens
-                ? new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, model.orElse(DEFAULT_MODEL))
-                : new AzureRequest(messages, maxOutputTokens, model.orElse(DEFAULT_MODEL));
+        final PromptTextGenerator request = new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, model.orElse(DEFAULT_MODEL));
 
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens);
 
