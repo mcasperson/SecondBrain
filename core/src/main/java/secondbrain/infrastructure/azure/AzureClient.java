@@ -54,6 +54,11 @@ public class AzureClient implements LlmClient {
     @ConfigProperty(name = "sb.azurellm.model", defaultValue = "Phi-4")
     private Optional<String> model;
 
+
+    @Inject
+    @ConfigProperty(name = "sb.azurellm.useMaxCompletionTokens", defaultValue = "false")
+    private Boolean useMaxCompletionTokens;
+
     @Inject
     @ConfigProperty(name = "sb.azurellm.maxOutputTokens", defaultValue = AzureRequest.DEFAULT_OUTPUT_TOKENS + "")
     private Optional<String> outputTokens;
@@ -108,7 +113,15 @@ public class AzureClient implements LlmClient {
         checkArgument(StringUtils.isNotBlank(prompt));
         checkArgument(StringUtils.isNotBlank(model));
 
-        final AzureRequest request = new AzureRequest(
+        final PromptTextGenerator request = useMaxCompletionTokens
+                ? new AzureRequestMaxCompletionTokens(
+                List.of(new AzureRequestMessage(
+                        "user",
+                        prompt
+                )),
+                model
+        )
+                : new AzureRequest(
                 List.of(new AzureRequestMessage(
                         "user",
                         prompt
@@ -166,7 +179,9 @@ public class AzureClient implements LlmClient {
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
 
-        final AzureRequest request = new AzureRequest(messages, model.orElse(DEFAULT_MODEL), maxOutputTokens);
+        final PromptTextGenerator request = useMaxCompletionTokens
+                ? new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, model.orElse(DEFAULT_MODEL))
+                : new AzureRequest(messages, maxOutputTokens, model.orElse(DEFAULT_MODEL));
 
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens);
 
@@ -185,7 +200,7 @@ public class AzureClient implements LlmClient {
         return ragDocs.updateResponse(result);
     }
 
-    private String call(final AzureRequest request) {
+    private String call(final PromptTextGenerator request) {
         checkState(apiKey.isPresent());
         checkState(url.isPresent());
         checkState(model.isPresent());
