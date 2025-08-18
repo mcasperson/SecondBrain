@@ -429,18 +429,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
 
-        // ZenDesk will filter its own context
         retValue.addAll(zenContext);
-
-        // It doesn't make sense to filter planhat usage
         retValue.addAll(planHatUsageContext);
-
-        // All these sources need to be filtered for relevance
-        retValue.addAll(contextMeetsRating(slackKeywordSearch, entity.name(), parsedArgs));
-        retValue.addAll(contextMeetsRating(slackContext, entity.name(), parsedArgs));
-        retValue.addAll(contextMeetsRating(googleContext, entity.name(), parsedArgs));
-        retValue.addAll(contextMeetsRating(planHatContext, entity.name(), parsedArgs));
-        retValue.addAll(contextMeetsRating(gongContext, entity.name(), parsedArgs));
+        retValue.addAll(slackKeywordSearch);
+        retValue.addAll(slackContext);
+        retValue.addAll(googleContext);
+        retValue.addAll(planHatContext);
+        retValue.addAll(gongContext);
 
         return validateSufficientContext(retValue, parsedArgs);
     }
@@ -620,8 +615,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
-                // We filter here if there is a rating each individual content source must meet
-                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
@@ -708,25 +701,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
-                // We filter here if there is a rating each individual content source must meet
-                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
-    }
-
-    private List<RagDocumentContext<Void>> contextMeetsRating(final List<RagDocumentContext<Void>> ragContext, final String entityName, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return ragContext;
-        }
-
-        final Integer rating = getContextRating(ragContext, parsedArgs);
-
-        if (rating >= parsedArgs.getContextFilterMinimumRating()) {
-            logger.log(Level.INFO, "The context rating for entity " + entityName + " (" + rating + ") meets the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
-            return ragContext;
-        }
-
-        logger.log(Level.INFO, "The context rating for entity " + entityName + " (" + rating + ") did not meet the rating threshold (" + parsedArgs.getContextFilterMinimumRating() + ")");
-        return List.of();
     }
 
     private List<String> getAliases(final String name) {
