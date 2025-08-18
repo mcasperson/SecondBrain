@@ -1,5 +1,6 @@
 package secondbrain.infrastructure.azure;
 
+import com.google.common.util.concurrent.RateLimiter;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -42,6 +43,9 @@ public class AzureClient implements LlmClient {
     private static final long RETRY_DELAY_SECONDS_DEFAULT = 10L;
     private static final int RETRY_COUNT_DEFAULT = 3;
 
+    // Default rate is around 250 requests per minute. 2 requests per second keeps us well under that.
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(2);
+
     @Inject
     @ConfigProperty(name = "sb.azurellm.apikey")
     private Optional<String> apiKey;
@@ -53,7 +57,6 @@ public class AzureClient implements LlmClient {
     @Inject
     @ConfigProperty(name = "sb.azurellm.model", defaultValue = "Phi-4")
     private Optional<String> model;
-
 
     @Inject
     @ConfigProperty(name = "sb.azurellm.useMaxCompletionTokens", defaultValue = "true")
@@ -204,6 +207,8 @@ public class AzureClient implements LlmClient {
         checkState(apiKey.isPresent());
         checkState(url.isPresent());
         checkState(model.isPresent());
+
+        RATE_LIMITER.acquire();
 
         logger.info("Calling Azure LLM");
         logger.info(request.generatePromptText());
