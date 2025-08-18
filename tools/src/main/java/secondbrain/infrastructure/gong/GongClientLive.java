@@ -111,7 +111,7 @@ public class GongClientLive implements GongClient {
             final String username,
             final String password,
             final String cursor) {
-        logger.log(Level.INFO, "Getting Gong calls extensive from " + fromDateTime + " to " + toDateTime + " with callId " + callId);
+        logger.log(Level.INFO, "Getting Gong calls extensive from " + fromDateTime + " to " + toDateTime + " with cursor " + cursor);
 
         RATE_LIMITER.acquire();
 
