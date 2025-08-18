@@ -71,7 +71,7 @@ public class PlanHatUsage implements Tool<Company> {
 
     @Override
     public String getName() {
-        return PlanHat.class.getSimpleName();
+        return PlanHatUsage.class.getSimpleName();
     }
 
     @Override
