@@ -56,7 +56,7 @@ public class AzureClient implements LlmClient {
 
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.useMaxCompletionTokens", defaultValue = "false")
+    @ConfigProperty(name = "sb.azurellm.useMaxCompletionTokens", defaultValue = "true")
     private Boolean useMaxCompletionTokens;
 
     @Inject
