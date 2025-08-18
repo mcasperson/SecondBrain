@@ -40,3 +40,7 @@ out
 report.json
 *.json
 *.md
+
+ZenDesk*
+Gong*
+*.lck
