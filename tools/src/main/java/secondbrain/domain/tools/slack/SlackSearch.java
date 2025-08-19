@@ -28,9 +28,8 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.limit.DocumentTrimmer;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
@@ -46,6 +45,10 @@ import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class SlackSearch implements Tool<SlackSearchResultResource> {
+
+    public static final String SLACK_FILTER_RATING_META = "FilterRating";
+    public static final String SLACK_FILTER_QUESTION_ARG = "contentRatingQuestion";
+    public static final String SLACK_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String SLACK_SEARCH_DAYS_ARG = "days";
     public static final String SLACK_SEARCH_KEYWORDS_ARG = "searchKeywords";
     public static final String SLACK_SEARCH_FILTER_KEYWORDS_ARG = "keywords";
@@ -85,6 +88,9 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private RatingTool ratingTool;
 
     @Override
     public String getName() {
@@ -149,6 +155,10 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                                 parsedArgs.getFilterKeywords(),
                                 parsedArgs.getKeywordWindow())))
                 .filter(ragDoc -> validateString.isNotEmpty(ragDoc.document()))
+                // Get the metadata, which includes a rating against the filter question if present
+                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(ragDoc, parsedArgs)))
+                // Filter out any documents that don't meet the rating criteria
+                .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
                 .toList();
 
     }
@@ -201,6 +211,45 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                         .replaceAll("[^A-Za-z0-9-._ ]", " ")
                         .trim(),
                 0, 75) + "](" + matchedItem.permalink() + ")";
+    }
+
+    private MetaObjectResults getMetadata(
+            final RagDocumentContext<SlackSearchResultResource> message,
+            final SlackSearchConfig.LocalArguments parsedArgs) {
+
+        final List<MetaObjectResult> metadata = new ArrayList<>();
+
+        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
+            final int filterRating = Try.of(() -> ratingTool.call(
+                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, message.document()),
+                                    parsedArgs.getContextFilterQuestion(),
+                                    List.of())
+                            .getResponse())
+                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
+                    // Ratings are provided on a best effort basis, so we ignore any failures
+                    .recover(InternalFailure.class, ex -> 10)
+                    .get();
+
+            metadata.add(new MetaObjectResult(SLACK_FILTER_RATING_META, filterRating));
+        }
+
+        return new MetaObjectResults(
+                metadata,
+                "SlackSearch-" + message.id() + ".json",
+                message.id());
+    }
+
+    private boolean contextMeetsRating(
+            final RagDocumentContext<SlackSearchResultResource> call,
+            final SlackSearchConfig.LocalArguments parsedArgs) {
+        // If there was no filter question, then return the whole list
+        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return true;
+        }
+
+        return Objects.requireNonNullElse(call.metadata(), new MetaObjectResults())
+                .getIntValueByName(SLACK_FILTER_RATING_META, 10)
+                >= parsedArgs.getContextFilterMinimumRating();
     }
 }
 
@@ -259,6 +308,14 @@ class SlackSearchConfig {
     @ConfigProperty(name = "sb.slack.apidelay")
     private Optional<String> configApiDelay;
 
+    @Inject
+    @ConfigProperty(name = "sb.slack.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.contextFilterMinimumRating")
+    private Optional<String> configContextFilterMinimumRating;
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -305,6 +362,14 @@ class SlackSearchConfig {
 
     public Optional<String> getConfigApiDelay() {
         return configApiDelay;
+    }
+
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
+    }
+
+    public Optional<String> getConfigContextFilterMinimumRating() {
+        return configContextFilterMinimumRating;
     }
 
     public class LocalArguments {
@@ -455,6 +520,29 @@ class SlackSearchConfig {
                     null,
                     SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG,
                     "").value();
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            SlackSearch.SLACK_FILTER_QUESTION_ARG,
+                            "slack_rating_question",
+                            "")
+                    .value();
+        }
+
+        public Integer getContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    SlackSearch.SLACK_FILTER_MINIMUM_RATING_ARG,
+                    "slack_filter_minimum_rating",
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
     }
 }

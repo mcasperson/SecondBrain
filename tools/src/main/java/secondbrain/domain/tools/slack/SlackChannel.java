@@ -30,10 +30,8 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tooldefs.IntermediateResult;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
@@ -41,18 +39,19 @@ import secondbrain.infrastructure.slack.api.SlackChannelResource;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class SlackChannel implements Tool<Void> {
+    public static final String SLACK_CHANNEL_FILTER_RATING_META = "FilterRating";
+    public static final String SLACK_CHANNEL_FILTER_QUESTION_ARG = "contentRatingQuestion";
+    public static final String SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String SLACK_CHANEL_ARG = "slackChannel";
     public static final String DAYS_ARG = "days";
     public static final String SLACK_KEYWORD_ARG = "keywords";
@@ -98,6 +97,9 @@ public class SlackChannel implements Tool<Void> {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private RatingTool ratingTool;
 
     @Override
     public String getName() {
@@ -188,7 +190,12 @@ public class SlackChannel implements Tool<Void> {
                 .map(messages::replaceDocument)
                 .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
 
-        return List.of(getDocumentContext(messagesWithUsersReplaced, channel, environmentSettings, parsedArgs));
+        return Stream.of(getDocumentContext(messagesWithUsersReplaced, channel, environmentSettings, parsedArgs))
+                // Get the metadata, which includes a rating against the filter question if present
+                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(ragDoc, parsedArgs)))
+                // Filter out any documents that don't meet the rating criteria
+                .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
+                .toList();
     }
 
     @Override
@@ -305,6 +312,45 @@ public class SlackChannel implements Tool<Void> {
     private String matchToUrl(final SlackChannelResource channel) {
         return "[Slack " + channel.channelName() + "](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")";
     }
+
+    private MetaObjectResults getMetadata(
+            final RagDocumentContext<Void> message,
+            final SlackChannelConfig.LocalArguments parsedArgs) {
+
+        final List<MetaObjectResult> metadata = new ArrayList<>();
+
+        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
+            final int filterRating = Try.of(() -> ratingTool.call(
+                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, message.document()),
+                                    parsedArgs.getContextFilterQuestion(),
+                                    List.of())
+                            .getResponse())
+                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
+                    // Ratings are provided on a best effort basis, so we ignore any failures
+                    .recover(InternalFailure.class, ex -> 10)
+                    .get();
+
+            metadata.add(new MetaObjectResult(SLACK_CHANNEL_FILTER_RATING_META, filterRating));
+        }
+
+        return new MetaObjectResults(
+                metadata,
+                "SlackChannel-" + message.id() + ".json",
+                message.id());
+    }
+
+    private boolean contextMeetsRating(
+            final RagDocumentContext<Void> call,
+            final SlackChannelConfig.LocalArguments parsedArgs) {
+        // If there was no filter question, then return the whole list
+        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return true;
+        }
+
+        return Objects.requireNonNullElse(call.metadata(), new MetaObjectResults())
+                .getIntValueByName(SLACK_CHANNEL_FILTER_RATING_META, 10)
+                >= parsedArgs.getContextFilterMinimumRating();
+    }
 }
 
 @ApplicationScoped
@@ -340,7 +386,6 @@ class SlackChannelConfig {
     @ConfigProperty(name = "sb.slack.apidelay")
     private Optional<String> configApiDelay;
 
-
     @Inject
     @ConfigProperty(name = "sb.slack.summarizedocument", defaultValue = "false")
     private Optional<String> configSummarizeDocument;
@@ -348,6 +393,14 @@ class SlackChannelConfig {
     @Inject
     @ConfigProperty(name = "sb.slack.summarizedocumentprompt")
     private Optional<String> configSummarizeDocumentPrompt;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.contextFilterMinimumRating")
+    private Optional<String> configContextFilterMinimumRating;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -397,6 +450,14 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigSummarizeDocumentPrompt() {
         return configSummarizeDocumentPrompt;
+    }
+
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
+    }
+
+    public Optional<String> getConfigContextFilterMinimumRating() {
+        return configContextFilterMinimumRating;
     }
 
     public class LocalArguments {
@@ -531,6 +592,29 @@ class SlackChannelConfig {
                             "slack_summarizedocument_prompt",
                             "Summarise the document in three paragraphs")
                     .value();
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            SlackChannel.SLACK_CHANNEL_FILTER_QUESTION_ARG,
+                            "slack_rating_question",
+                            "")
+                    .value();
+        }
+
+        public Integer getContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    SlackChannel.SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG,
+                    "slack_filter_minimum_rating",
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
     }
 }

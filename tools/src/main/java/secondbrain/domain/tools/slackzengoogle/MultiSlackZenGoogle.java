@@ -516,6 +516,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return Try
                 // Combine all the keywords we are going to search for
                 .of(() -> List.of(
+                        new ToolArgs(SlackSearch.SLACK_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(SlackSearch.SLACK_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, String.join(",", keywords), true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + parsedArgs.getDays(), true)))
@@ -533,8 +535,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
-                // We filter here if there is a rating each individual content source must meet
-                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
@@ -651,6 +651,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(SlackChannel.SLACK_CHANNEL_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(SlackChannel.SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
@@ -669,8 +671,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                // We filter here if there is a rating each individual content source must meet
-                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
