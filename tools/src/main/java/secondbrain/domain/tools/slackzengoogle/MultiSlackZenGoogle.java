@@ -544,6 +544,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(Gong.GONG_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(Gong.GONG_SUMMARIZE_TRANSCRIPT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(Gong.GONG_KEYWORD_ARG, parsedArgs.getKeywords(), true),
@@ -563,7 +564,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
                 // We filter here if there is a rating each individual content source must meet
-                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
+                .filter(doc -> doc.getMetadata().getIntValueByName(Gong.GONG_FILTER_RATING_META).orElse(10)
+                        >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 

@@ -27,11 +27,9 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.timeout.TimeoutService;
-import secondbrain.domain.tooldefs.IntermediateResult;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
+import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -39,6 +37,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -50,6 +49,8 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class Gong implements Tool<GongCallDetails> {
+    public static final String GONG_FILTER_RATING_META = "FilterRating";
+    public static final String GONG_RATING_QUESTION_ARG = "callRatingQuestion";
     public static final String DAYS_ARG = "days";
     public static final String COMPANY_ARG = "company";
     public static final String CALLID_ARG = "callId";
@@ -97,6 +98,9 @@ public class Gong implements Tool<GongCallDetails> {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private RatingTool ratingTool;
 
     @Override
     public String getName() {
@@ -210,6 +214,32 @@ public class Gong implements Tool<GongCallDetails> {
         return "Gong Call";
     }
 
+    private MetaObjectResults getMetadata(
+            final RagDocumentContext<GongCallDetails> gongCall,
+            final GongConfig.LocalArguments parsedArgs) {
+
+        final List<MetaObjectResult> metadata = new ArrayList<>();
+
+        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
+            final int filterRating = Try.of(() -> ratingTool.call(
+                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, gongCall.document()),
+                                    parsedArgs.getContextFilterQuestion(),
+                                    List.of())
+                            .getResponse())
+                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
+                    // Ratings are provided on a best effort basis, so we ignore any failures
+                    .recover(InternalFailure.class, ex -> 10)
+                    .get();
+
+            metadata.add(new MetaObjectResult(GONG_FILTER_RATING_META, filterRating));
+        }
+
+        return new MetaObjectResults(
+                metadata,
+                "Gong-" + gongCall.id() + ".json",
+                gongCall.id());
+    }
+
     /**
      * Summarise an individual ticket
      */
@@ -279,6 +309,10 @@ class GongConfig {
     private Optional<String> configSummarizeTranscriptPrompt;
 
     @Inject
+    @ConfigProperty(name = "sb.gong.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -333,6 +367,10 @@ class GongConfig {
 
     public Optional<String> getConfigSummarizeTranscriptPrompt() {
         return configSummarizeTranscriptPrompt;
+    }
+
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
     }
 
     public class LocalArguments {
@@ -493,6 +531,17 @@ class GongConfig {
                             Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
                             "gong_transcript_summary_prompt",
                             "Summarise the Gong call transcript in three paragraphs")
+                    .value();
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            Gong.GONG_RATING_QUESTION_ARG,
+                            "zendesk_rating_question",
+                            "")
                     .value();
         }
     }
