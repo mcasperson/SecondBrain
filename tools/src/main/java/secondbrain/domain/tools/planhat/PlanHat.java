@@ -29,10 +29,8 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.tooldefs.IntermediateResult;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
@@ -40,9 +38,7 @@ import secondbrain.infrastructure.planhat.api.Conversation;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -51,6 +47,9 @@ import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class PlanHat implements Tool<Conversation> {
+    public static final String PLANHAT_FILTER_RATING_META = "FilterRating";
+    public static final String PLANHAT_FILTER_QUESTION_ARG = "contentRatingQuestion";
+    public static final String PLANHAT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String DAYS_ARG = "days";
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String COMPANY_ID_ARGS = "companyId";
@@ -105,6 +104,9 @@ public class PlanHat implements Tool<Conversation> {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private RatingTool ratingTool;
 
     @Override
     public String getName() {
@@ -174,6 +176,10 @@ public class PlanHat implements Tool<Conversation> {
                 )
                 .map(conversation -> getDocumentContext(conversation, parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                // Get the metadata, which includes a rating against the filter question if present
+                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(ragDoc, parsedArgs)))
+                // Filter out any documents that don't meet the rating criteria
+                .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "PlanHat" + ragDoc.id() + ".txt")))
                 .map(doc -> parsedArgs.getSummarizeDocument()
                         ? getDocumentSummary(doc, environmentSettings, parsedArgs)
@@ -263,6 +269,45 @@ public class PlanHat implements Tool<Conversation> {
                         "Prompt: " + parsedArgs.getDocumentSummaryPrompt() + "\n\n" + response,
                         "PlanHat" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getDocumentSummaryPrompt()) + ".txt"));
     }
+
+    private MetaObjectResults getMetadata(
+            final RagDocumentContext<Conversation> email,
+            final PlanHatConfig.LocalArguments parsedArgs) {
+
+        final List<MetaObjectResult> metadata = new ArrayList<>();
+
+        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
+            final int filterRating = Try.of(() -> ratingTool.call(
+                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, email.document()),
+                                    parsedArgs.getContextFilterQuestion(),
+                                    List.of())
+                            .getResponse())
+                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
+                    // Ratings are provided on a best effort basis, so we ignore any failures
+                    .recover(InternalFailure.class, ex -> 10)
+                    .get();
+
+            metadata.add(new MetaObjectResult(PLANHAT_FILTER_RATING_META, filterRating));
+        }
+
+        return new MetaObjectResults(
+                metadata,
+                "Gong-" + email.id() + ".json",
+                email.id());
+    }
+
+    private boolean contextMeetsRating(
+            final RagDocumentContext<Conversation> call,
+            final PlanHatConfig.LocalArguments parsedArgs) {
+        // If there was no filter question, then return the whole list
+        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return true;
+        }
+
+        return Objects.requireNonNullElse(call.metadata(), new MetaObjectResults())
+                .getIntValueByName(PlanHat.PLANHAT_FILTER_RATING_META, 10)
+                >= parsedArgs.getContextFilterMinimumRating();
+    }
 }
 
 @ApplicationScoped
@@ -320,6 +365,14 @@ class PlanHatConfig {
     @ConfigProperty(name = "sb.planhat.summarizedocumentprompt")
     private Optional<String> configSummarizeDocumentPrompt;
 
+    @Inject
+    @ConfigProperty(name = "sb.planhat.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.contextFilterMinimumRating")
+    private Optional<String> configContextFilterMinimumRating;
+
     public Optional<String> getConfigCompany() {
         return configCompany;
     }
@@ -370,6 +423,14 @@ class PlanHatConfig {
 
     public Optional<String> getConfigSummarizeDocumentPrompt() {
         return configSummarizeDocumentPrompt;
+    }
+
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
+    }
+
+    public Optional<String> getConfigContextFilterMinimumRating() {
+        return configContextFilterMinimumRating;
     }
 
     public class LocalArguments {
@@ -515,6 +576,29 @@ class PlanHatConfig {
                             "planhat_summarizedocument_prompt",
                             "Summarise the document in three paragraphs")
                     .value();
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            PlanHat.PLANHAT_FILTER_QUESTION_ARG,
+                            "planhat_rating_question",
+                            "")
+                    .value();
+        }
+
+        public Integer getContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    PlanHat.PLANHAT_FILTER_MINIMUM_RATING_ARG,
+                    "planhat_filter_minimum_rating",
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
     }
 }

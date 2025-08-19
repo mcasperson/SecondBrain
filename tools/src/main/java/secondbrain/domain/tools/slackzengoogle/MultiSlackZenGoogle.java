@@ -573,6 +573,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(PlanHat.PLANHAT_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(PlanHat.PLANHAT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(PlanHat.PLANHAT_KEYWORD_ARG, parsedArgs.getKeywords(), true),
@@ -592,8 +594,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(RagDocumentContext::getRagDocumentContextVoid)
-                // We filter here if there is a rating each individual content source must meet
-                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
