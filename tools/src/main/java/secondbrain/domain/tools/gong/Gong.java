@@ -37,10 +37,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -50,7 +47,8 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 @ApplicationScoped
 public class Gong implements Tool<GongCallDetails> {
     public static final String GONG_FILTER_RATING_META = "FilterRating";
-    public static final String GONG_RATING_QUESTION_ARG = "callRatingQuestion";
+    public static final String GONG_FILTER_QUESTION_ARG = "callRatingQuestion";
+    public static final String GONG_FILTER_MINIMUM_RATING_ARG = "callFilterMinimumRating";
     public static final String DAYS_ARG = "days";
     public static final String COMPANY_ARG = "company";
     public static final String CALLID_ARG = "callId";
@@ -149,13 +147,17 @@ public class Gong implements Tool<GongCallDetails> {
         return calls.stream()
                 .map(pair -> getDocumentContext(pair.getLeft(), pair.getRight(), parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                // Get the metadata, which includes a rating against the filter question if present
+                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(ragDoc, parsedArgs)))
+                // Filter out any documents that don't meet the rating criteria
+                .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
                 /*
-                            Take the raw transcript and summarize them with individual calls to the LLM.
-                            The transcripts are then combined into a single context.
-                            This was necessary because the private LLMs didn't do a very good job of summarizing
-                            raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
-                            call transcripts.
-                         */
+                    Take the raw transcript and summarize them with individual calls to the LLM.
+                    The transcripts are then combined into a single context.
+                    This was necessary because the private LLMs didn't do a very good job of summarizing
+                    raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
+                    call transcripts.
+                 */
                 .map(ragDoc -> parsedArgs.getSummarizeTranscript() ? getCallSummary(ragDoc, environmentSettings, parsedArgs) : ragDoc)
                 .toList();
     }
@@ -240,6 +242,19 @@ public class Gong implements Tool<GongCallDetails> {
                 gongCall.id());
     }
 
+    private boolean contextMeetsRating(
+            final RagDocumentContext<GongCallDetails> call,
+            final GongConfig.LocalArguments parsedArgs) {
+        // If there was no filter question, then return the whole list
+        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return true;
+        }
+
+        return Objects.requireNonNullElse(call.metadata(), new MetaObjectResults())
+                .getIntValueByName(Gong.GONG_FILTER_RATING_META, 10)
+                >= parsedArgs.getContextFilterMinimumRating();
+    }
+
     /**
      * Summarise an individual ticket
      */
@@ -313,6 +328,10 @@ class GongConfig {
     private Optional<String> configContextFilterQuestion;
 
     @Inject
+    @ConfigProperty(name = "sb.gong.contextFilterMinimumRating")
+    private Optional<String> configContextFilterMinimumRating;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -371,6 +390,10 @@ class GongConfig {
 
     public Optional<String> getConfigContextFilterQuestion() {
         return configContextFilterQuestion;
+    }
+
+    public Optional<String> getConfigContextFilterMinimumRating() {
+        return configContextFilterMinimumRating;
     }
 
     public class LocalArguments {
@@ -539,10 +562,22 @@ class GongConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            Gong.GONG_RATING_QUESTION_ARG,
-                            "zendesk_rating_question",
+                            Gong.GONG_FILTER_QUESTION_ARG,
+                            "gong_rating_question",
                             "")
                     .value();
+        }
+
+        public Integer getContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_FILTER_MINIMUM_RATING_ARG,
+                    "gong_filter_minimum_rating",
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
     }
 }
