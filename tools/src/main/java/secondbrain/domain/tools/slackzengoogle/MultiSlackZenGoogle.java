@@ -624,6 +624,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(GoogleDocs.GOOGLE_DOC_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(GoogleDocs.GOOGLE_DOC_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
@@ -640,8 +642,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                // We filter here if there is a rating each individual content source must meet
-                .filter(doc -> getContextRating(doc, parsedArgs) >= parsedArgs.getIndividualContextFilterMinimumRating())
                 .toList();
     }
 
@@ -713,23 +713,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .onFailure(InternalFailure.class, ex -> logger.warning("Getting aliases failed: " + ex.getMessage()))
                 .getOrElse(List::of);
 
-    }
-
-    private Integer getContextRating(final RagDocumentContext<Void> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getIndividualContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getIndividualContextFilterQuestion())) {
-            return 10;
-        }
-
-        final Integer score = Try.of(() -> ratingTool.call(
-                        Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, context.document()),
-                        parsedArgs.getIndividualContextFilterQuestion(),
-                        List.of()).getResponse())
-                .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
-                // Ratings are provided on a best effort basis, so we ignore any failures
-                .recover(InternalFailure.class, ex -> 10)
-                .get();
-
-        return score;
     }
 
     private Integer getContextRating(final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {

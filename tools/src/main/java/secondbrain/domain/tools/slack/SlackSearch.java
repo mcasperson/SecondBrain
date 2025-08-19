@@ -240,14 +240,14 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     }
 
     private boolean contextMeetsRating(
-            final RagDocumentContext<SlackSearchResultResource> call,
+            final RagDocumentContext<SlackSearchResultResource> message,
             final SlackSearchConfig.LocalArguments parsedArgs) {
         // If there was no filter question, then return the whole list
         if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
             return true;
         }
 
-        return Objects.requireNonNullElse(call.metadata(), new MetaObjectResults())
+        return Objects.requireNonNullElse(message.metadata(), new MetaObjectResults())
                 .getIntValueByName(SLACK_FILTER_RATING_META, 10)
                 >= parsedArgs.getContextFilterMinimumRating();
     }

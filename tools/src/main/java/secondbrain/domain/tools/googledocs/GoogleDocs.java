@@ -38,9 +38,8 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.prompt.PromptBuilderSelector;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -59,6 +58,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 @ApplicationScoped
 public class GoogleDocs implements Tool<Void> {
+    public static final String GOOGLE_DOC_FILTER_RATING_META = "FilterRating";
+    public static final String GOOGLE_DOC_FILTER_QUESTION_ARG = "contentRatingQuestion";
+    public static final String GOOGLE_DOC_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String GOOGLE_DOC_ID_ARG = "googleDocumentId";
     public static final String GOOGLE_KEYWORD_ARG = "keywords";
     public static final String GOOGLE_KEYWORD_WINDOW_ARG = "keywordWindow";
@@ -107,6 +109,9 @@ public class GoogleDocs implements Tool<Void> {
 
     @Inject
     private ValidateString validateString;
+
+    @Inject
+    private RatingTool ratingTool;
 
     @Override
     public String getName() {
@@ -180,6 +185,10 @@ public class GoogleDocs implements Tool<Void> {
                                 document, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
                         .map(trimResult -> validateString.throwIfEmpty(trimResult, TrimResult::document))
                         .map(trimResult -> getDocumentContext(trimResult, parsedArgs))
+                        // Get the metadata, which includes a rating against the filter question if present
+                        .map(ragDoc -> ragDoc.updateMetadata(getMetadata(ragDoc, parsedArgs)))
+                        // Filter out any documents that don't meet the rating criteria
+                        .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
                         .map(doc -> parsedArgs.getSummarizeDocument()
                                 ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
                                 : doc)
@@ -345,6 +354,45 @@ public class GoogleDocs implements Tool<Void> {
                 getName()
         ).response();
     }
+
+    private MetaObjectResults getMetadata(
+            final RagDocumentContext<Void> document,
+            final GoogleDocsConfig.LocalArguments parsedArgs) {
+
+        final List<MetaObjectResult> metadata = new ArrayList<>();
+
+        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
+            final int filterRating = Try.of(() -> ratingTool.call(
+                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, document.document()),
+                                    parsedArgs.getContextFilterQuestion(),
+                                    List.of())
+                            .getResponse())
+                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
+                    // Ratings are provided on a best effort basis, so we ignore any failures
+                    .recover(InternalFailure.class, ex -> 10)
+                    .get();
+
+            metadata.add(new MetaObjectResult(GOOGLE_DOC_FILTER_RATING_META, filterRating));
+        }
+
+        return new MetaObjectResults(
+                metadata,
+                "GoogleDoc-" + document.id() + ".json",
+                document.id());
+    }
+
+    private boolean contextMeetsRating(
+            final RagDocumentContext<Void> document,
+            final GoogleDocsConfig.LocalArguments parsedArgs) {
+        // If there was no filter question, then return the whole list
+        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return true;
+        }
+
+        return Objects.requireNonNullElse(document.metadata(), new MetaObjectResults())
+                .getIntValueByName(GOOGLE_DOC_FILTER_RATING_META, 10)
+                >= parsedArgs.getContextFilterMinimumRating();
+    }
 }
 
 @ApplicationScoped
@@ -372,6 +420,14 @@ class GoogleDocsConfig {
     @Inject
     @ConfigProperty(name = "sb.google.summarizedocumentprompt")
     private Optional<String> configSummarizeDocumentPrompt;
+
+    @Inject
+    @ConfigProperty(name = "sb.google.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.google.contextFilterMinimumRating")
+    private Optional<String> configContextFilterMinimumRating;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -402,6 +458,14 @@ class GoogleDocsConfig {
 
     public Optional<String> getConfigSummarizeDocumentPrompt() {
         return configSummarizeDocumentPrompt;
+    }
+
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
+    }
+
+    public Optional<String> getConfigContextFilterMinimumRating() {
+        return configContextFilterMinimumRating;
     }
 
     public class LocalArguments {
@@ -494,6 +558,29 @@ class GoogleDocsConfig {
                             "google_summarizedocument_prompt",
                             "Summarise the document in three paragraphs")
                     .value();
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            GoogleDocs.GOOGLE_DOC_FILTER_QUESTION_ARG,
+                            "google_rating_question",
+                            "")
+                    .value();
+        }
+
+        public Integer getContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    GoogleDocs.GOOGLE_DOC_FILTER_MINIMUM_RATING_ARG,
+                    "google_filter_minimum_rating",
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
     }
 }
