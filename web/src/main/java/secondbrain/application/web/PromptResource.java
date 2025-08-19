@@ -69,7 +69,11 @@ public class PromptResource {
             Try.of(() -> promptHandler.handlePrompt(combinedContext, Objects.requireNonNullElse(prompt, "")))
                     .onSuccess(result -> asyncResults.addResult(
                             resultKey,
-                            result.getResponseText() + result.getLinks() + result.getAnnotations() + result.getDebugInfo()))
+                            result.getResponseText()
+                                    + "Links:" + System.lineSeparator()
+                                    + result.getLinks()
+                                    + result.getAnnotations()
+                                    + result.getDebugInfo()))
                     .onFailure(throwable -> asyncResults.addResult(resultKey, exceptionHandler.getExceptionMessage(throwable)));
         });
 

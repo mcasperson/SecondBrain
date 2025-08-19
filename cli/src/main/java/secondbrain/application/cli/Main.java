@@ -104,6 +104,7 @@ public class Main {
                 System.out.println(content.getAnnotations());
             }
             if (StringUtils.isNotBlank(content.getLinks())) {
+                System.out.println("Links:");
                 System.out.println(content.getLinks());
             }
             if (StringUtils.isNotBlank(content.getDebugInfo())) {
@@ -131,7 +132,11 @@ public class Main {
         }
 
         if (StringUtils.isNotBlank(content.getLinks())) {
-            Try.run(() -> Files.write(getFilePath(linksFile.get()), content.getLinks().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+            Try.run(() -> Files.write(
+                            getFilePath(linksFile.get()),
+                            ("Links:" + System.lineSeparator() + content.getLinks()).getBytes(),
+                            StandardOpenOption.CREATE,
+                            StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
         }
     }
