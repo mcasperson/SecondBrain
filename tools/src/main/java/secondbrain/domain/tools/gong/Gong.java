@@ -4,7 +4,6 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -122,26 +121,23 @@ public class Gong implements Tool<GongCallDetails> {
 
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final List<Pair<GongCallDetails, String>> calls = Try.withResources(ClientBuilder::newClient)
-                .of(client -> Try.of(() ->
-                                timeoutService.executeWithTimeout(() ->
-                                                gongClient.getCallsExtensive(
-                                                        client,
-                                                        parsedArgs.getCompany(),
-                                                        parsedArgs.getCallId(),
-                                                        parsedArgs.getAccessKey(),
-                                                        parsedArgs.getAccessSecretKey(),
-                                                        parsedArgs.getStartDate(),
-                                                        parsedArgs.getEndDate()),
-                                        List::<GongCallDetails>of,
-                                        API_CALL_TIMEOUT_SECONDS))
-                        .map(c -> c.stream()
-                                .map(call -> Pair.of(
-                                        call,
-                                        gongClient.getCallTranscript(client, parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), call)))
-                                .toList())
-                        .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
-                        .get())
+        final List<Pair<GongCallDetails, String>> calls = Try.of(() ->
+                        timeoutService.executeWithTimeout(() ->
+                                        gongClient.getCallsExtensive(
+                                                parsedArgs.getCompany(),
+                                                parsedArgs.getCallId(),
+                                                parsedArgs.getAccessKey(),
+                                                parsedArgs.getAccessSecretKey(),
+                                                parsedArgs.getStartDate(),
+                                                parsedArgs.getEndDate()),
+                                List::<GongCallDetails>of,
+                                API_CALL_TIMEOUT_SECONDS))
+                .map(c -> c.stream()
+                        .map(call -> Pair.of(
+                                call,
+                                gongClient.getCallTranscript(parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), call)))
+                        .toList())
+                .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
 
         return calls.stream()

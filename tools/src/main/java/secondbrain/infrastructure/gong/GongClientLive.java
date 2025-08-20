@@ -5,6 +5,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -21,6 +22,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,6 +30,11 @@ import java.util.logging.Logger;
 public class GongClientLive implements GongClient {
     private static final int TTL = 60 * 60 * 24 * 31;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
+    private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
+    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
+    private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
+    private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
+    private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
 
     @Inject
     private ResponseValidation responseValidation;
@@ -42,9 +49,16 @@ public class GongClientLive implements GongClient {
     @Inject
     private Logger logger;
 
+    private Client getClient() {
+        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
+        clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
+        // We want to use the timeoutService to handle timeouts, so we set the client timeout slightly longer.
+        clientBuilder.readTimeout(API_CALL_TIMEOUT_SECONDS_DEFAULT + CLIENT_TIMEOUT_BUFFER_SECONDS, TimeUnit.SECONDS);
+        return clientBuilder.build();
+    }
+
     @Override
     public List<GongCallDetails> getCallsExtensive(
-            final Client client,
             final String company,
             final String callId,
             final String username,
@@ -62,7 +76,7 @@ public class GongClientLive implements GongClient {
                 DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
                 TTL,
                 GongCallExtensive[].class,
-                () -> getCallsExtensiveApi(client, fromDateTime, toDateTime, callId, username, password, ""));
+                () -> getCallsExtensiveApi(fromDateTime, toDateTime, callId, username, password, ""));
 
         if (calls == null) {
             return List.of();
@@ -86,7 +100,6 @@ public class GongClientLive implements GongClient {
 
     @Override
     public String getCallTranscript(
-            final Client client,
             final String username,
             final String password,
             final GongCallDetails call) {
@@ -96,7 +109,7 @@ public class GongClientLive implements GongClient {
                         "GongAPICallTranscript",
                         call.id(),
                         GongCallTranscript.class,
-                        () -> getCallTranscriptApi(client, call.id(), username, password))
+                        () -> getCallTranscriptApi(call.id(), username, password))
                 .getTranscript(call);
     }
 
@@ -104,7 +117,6 @@ public class GongClientLive implements GongClient {
      * https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/extensive
      */
     private GongCallExtensive[] getCallsExtensiveApi(
-            final Client client,
             final String fromDateTime,
             final String toDateTime,
             final String callId,
@@ -128,19 +140,21 @@ public class GongClientLive implements GongClient {
                 cursor
         );
 
-        return Try.withResources(() -> client.target(target)
-                        .request(MediaType.APPLICATION_JSON_TYPE)
-                        .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
-                        .post(Entity.entity(body, MediaType.APPLICATION_JSON)))
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(GongCallsExtensive.class))
-                        // Recurse if there is a next page, and we have not gone too far
-                        .map(r -> ArrayUtils.addAll(
-                                r.calls(),
-                                StringUtils.isNotBlank(r.records().cursor())
-                                        ? getCallsExtensiveApi(client, fromDateTime, toDateTime, callId, username, password, r.records().cursor())
-                                        : new GongCallExtensive[]{}))
-                        .get())
+        return Try.withResources(this::getClient)
+                .of(client -> Try.withResources(() -> client.target(target)
+                                .request(MediaType.APPLICATION_JSON_TYPE)
+                                .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
+                                .post(Entity.entity(body, MediaType.APPLICATION_JSON)))
+                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                                .map(r -> r.readEntity(GongCallsExtensive.class))
+                                // Recurse if there is a next page, and we have not gone too far
+                                .map(r -> ArrayUtils.addAll(
+                                        r.calls(),
+                                        StringUtils.isNotBlank(r.records().cursor())
+                                                ? getCallsExtensiveApi(fromDateTime, toDateTime, callId, username, password, r.records().cursor())
+                                                : new GongCallExtensive[]{}))
+                                .get()))
+                .get()
                 .getOrElseThrow(e -> new RuntimeException("Failed to get calls from Gong API", e));
     }
 
@@ -148,7 +162,6 @@ public class GongClientLive implements GongClient {
      * https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/transcript
      */
     private GongCallTranscript getCallTranscriptApi(
-            final Client client,
             final String id,
             final String username,
             final String password) {
@@ -162,14 +175,16 @@ public class GongClientLive implements GongClient {
                 new GongCallTranscriptQueryFilter(List.of(id))
         );
 
-        return Try.withResources(() -> client.target(target)
-                        .request()
-                        .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
-                        .header("Accept", MediaType.APPLICATION_JSON)
-                        .post(Entity.entity(body, MediaType.APPLICATION_JSON)))
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(GongCallTranscript.class))
-                        .get())
+        return Try.withResources(this::getClient)
+                .of(client -> Try.withResources(() -> client.target(target)
+                                .request()
+                                .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
+                                .header("Accept", MediaType.APPLICATION_JSON)
+                                .post(Entity.entity(body, MediaType.APPLICATION_JSON)))
+                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                                .map(r -> r.readEntity(GongCallTranscript.class))
+                                .get()))
+                .get()
                 .getOrElseThrow(e -> new RuntimeException("Failed to get call transcript from Gong API", e));
     }
 }
