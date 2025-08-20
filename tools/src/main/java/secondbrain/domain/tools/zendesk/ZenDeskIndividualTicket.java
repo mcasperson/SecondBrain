@@ -37,6 +37,7 @@ import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
@@ -118,7 +119,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
         final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.withResources(ClientBuilder::newClient)
+        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.withResources(this::getClient)
                 .of(client -> ticketToComments(
                         client,
                         parsedArgs.getAuthHeader(),
@@ -215,7 +216,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
      * @return A Markdown link to the source ticket
      */
     private String ticketToLink(final String url, final ZenDeskTicket meta, final String authHeader) {
-        return Try.withResources(ClientBuilder::newClient)
+        return Try.withResources(this::getClient)
                 .of(client -> replaceLineBreaks(meta.subject())
                         + " - "
                         + getOrganization(client, authHeader, url, meta)
@@ -253,7 +254,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
     @Nullable
     private String getOrganizationName(final ZenDeskTicket meta, final String authHeader, final String url) {
-        return Try.withResources(ClientBuilder::newClient)
+        return Try.withResources(this::getClient)
                 .of(client -> Try
                         .of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
                         .map(ZenDeskOrganizationItemResponse::name)
@@ -356,6 +357,13 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         ticketToLink(parsedArgs.getUrl(), meta, authHeader)))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
+    }
+
+    private Client getClient() {
+        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
+        clientBuilder.connectTimeout(10, TimeUnit.SECONDS);
+        clientBuilder.readTimeout(120, TimeUnit.SECONDS);
+        return clientBuilder.build();
     }
 }
 
