@@ -25,7 +25,6 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.domain.tools.rating.RatingTool;
@@ -66,9 +65,6 @@ public class Gong implements Tool<GongCallDetails> {
             When the user asks a question indicating that they want to know about transcripts, you must generate the answer based on the transcripts.
             You will be penalized for answering that the transcripts can not be accessed.
             """.stripLeading();
-
-    @Inject
-    private TimeoutService timeoutService;
 
     @Inject
     private GongConfig config;
@@ -122,16 +118,13 @@ public class Gong implements Tool<GongCallDetails> {
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final List<Pair<GongCallDetails, String>> calls = Try.of(() ->
-                        timeoutService.executeWithTimeout(() ->
-                                        gongClient.getCallsExtensive(
-                                                parsedArgs.getCompany(),
-                                                parsedArgs.getCallId(),
-                                                parsedArgs.getAccessKey(),
-                                                parsedArgs.getAccessSecretKey(),
-                                                parsedArgs.getStartDate(),
-                                                parsedArgs.getEndDate()),
-                                List::<GongCallDetails>of,
-                                API_CALL_TIMEOUT_SECONDS))
+                        gongClient.getCallsExtensive(
+                                parsedArgs.getCompany(),
+                                parsedArgs.getCallId(),
+                                parsedArgs.getAccessKey(),
+                                parsedArgs.getAccessSecretKey(),
+                                parsedArgs.getStartDate(),
+                                parsedArgs.getEndDate()))
                 .map(c -> c.stream()
                         .map(call -> Pair.of(
                                 call,
