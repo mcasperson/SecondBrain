@@ -22,17 +22,17 @@ public class TimeoutTryHttpClientCalled implements TimeoutHttpClientCaller {
             final long timeoutSeconds,
             final long retryDelaySeconds,
             final int maxRetries) {
-        return Try.withResources(builder::buildClient)
-                .of(client -> timeoutService.executeWithTimeoutAndRetry(
-                                () -> Try.withResources(() -> callback.call(client))
-                                        .of(responseCallback::<T>handleResponse)
-                                        .get(),
-                                timeoutCallback,
-                                timeoutSeconds,
-                                maxRetries,
-                                retryDelaySeconds
+        // Clients are not guaranteed to be thread safe, so we build a new client for each call.
+        return timeoutService.executeWithTimeoutAndRetry(() -> Try.withResources(builder::buildClient)
+                        .of(client -> Try.withResources(() -> callback.call(client))
+                                .of(responseCallback::<T>handleResponse)
+                                .get()
                         )
-                )
-                .getOrElseThrow(exceptionBuilder::buildException);
+                        .getOrElseThrow(exceptionBuilder::buildException),
+                timeoutCallback,
+                timeoutSeconds,
+                maxRetries,
+                retryDelaySeconds
+        );
     }
 }
