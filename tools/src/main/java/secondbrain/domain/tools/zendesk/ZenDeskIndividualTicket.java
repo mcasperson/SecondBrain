@@ -5,8 +5,6 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -37,7 +35,6 @@ import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
@@ -119,9 +116,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
         final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.withResources(this::getClient)
-                .of(client -> ticketToComments(
-                        client,
+        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.of(() -> ticketToComments(
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
                         parsedArgs))
@@ -216,14 +211,12 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
      * @return A Markdown link to the source ticket
      */
     private String ticketToLink(final String url, final ZenDeskTicket meta, final String authHeader) {
-        return Try.withResources(this::getClient)
-                .of(client -> replaceLineBreaks(meta.subject())
-                        + " - "
-                        + getOrganization(client, authHeader, url, meta)
-                        + " - "
-                        + getUser(client, authHeader, url, meta)
-                        + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")")
-                .get();
+        return replaceLineBreaks(meta.subject())
+                + " - "
+                + getOrganization(authHeader, url, meta)
+                + " - "
+                + getUser(authHeader, url, meta)
+                + " [" + meta.id() + "](" + idToLink(url, meta.id()) + ")";
     }
 
     private String replaceLineBreaks(final String text) {
@@ -234,16 +227,16 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         return text.replaceAll("\\r\\n|\\r|\\n", " ");
     }
 
-    private String getOrganization(final Client client, final String authHeader, final String url, final ZenDeskTicket meta) {
+    private String getOrganization(final String authHeader, final String url, final ZenDeskTicket meta) {
         // Best effort to get the organization name, but don't treat this as a failure
-        return Try.of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
+        return Try.of(() -> zenDeskClient.getOrganization(authHeader, url, meta.organization_id()))
                 .map(ZenDeskOrganizationItemResponse::name)
                 .getOrElse("Unknown Organization");
     }
 
-    private String getUser(final Client client, final String authHeader, final String url, final ZenDeskTicket meta) {
+    private String getUser(final String authHeader, final String url, final ZenDeskTicket meta) {
         // Best effort to get the username, but don't treat this as a failure
-        return Try.of(() -> zenDeskClient.getUser(client, authHeader, url, meta.assignee_id()))
+        return Try.of(() -> zenDeskClient.getUser(authHeader, url, meta.assignee_id()))
                 .map(ZenDeskUserItemResponse::name)
                 .getOrElse("Unknown User");
     }
@@ -254,11 +247,9 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
     @Nullable
     private String getOrganizationName(final ZenDeskTicket meta, final String authHeader, final String url) {
-        return Try.withResources(this::getClient)
-                .of(client -> Try
-                        .of(() -> zenDeskClient.getOrganization(client, authHeader, url, meta.organization_id()))
-                        .map(ZenDeskOrganizationItemResponse::name)
-                        .get())
+        return Try
+                .of(() -> zenDeskClient.getOrganization(authHeader, url, meta.organization_id()))
+                .map(ZenDeskOrganizationItemResponse::name)
                 // Do a best effort here - we don't want to fail the whole process because we can't get the organization name
                 .getOrNull();
     }
@@ -270,37 +261,31 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     /**
      * Take a ZenDesk ticket, get all the comments associated with it, and convert them into a RagDocumentContext.
      *
-     * @param client        The JAX-RS client to use for API calls
      * @param authorization The authorization header to use for API calls
      * @param numComments   The number of comments to fetch for the ticket
      * @param parsedArgs    The parsed arguments containing configuration details
      * @return A RagDocumentContext containing the ticket and its comments
      */
-    private RagDocumentContext<ZenDeskTicket> ticketToComments(final Client client,
-                                                               final String authorization,
+    private RagDocumentContext<ZenDeskTicket> ticketToComments(final String authorization,
                                                                final int numComments,
                                                                final ZenDeskTicketConfig.LocalArguments parsedArgs) {
         final IdToString idToName = id -> Try.of(() -> zenDeskClient.getUser(
-                        client,
                         authorization,
                         parsedArgs.getUrl(),
                         id.toString()).name())
                 .getOrElse("Unknown User");
 
         final IdToString idToEmail = id -> Try.of(() -> zenDeskClient.getUser(
-                        client,
                         authorization,
                         parsedArgs.getUrl(),
                         id.toString()).email())
                 .getOrElse("Unknown Email");
 
         final IdToString authorIdToOrganizationName = id -> Try.of(() -> zenDeskClient.getUser(
-                        client,
                         authorization,
                         parsedArgs.getUrl(),
                         id.toString()))
                 .map(author -> zenDeskClient.getOrganization(
-                        client,
                         authorization,
                         parsedArgs.getUrl(),
                         author.organization_id().toString()))
@@ -311,7 +296,6 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         parsedArgs.getTicketId(),
                         zenDeskClient
                                 .getComments(
-                                        client,
                                         authorization,
                                         parsedArgs.getUrl(),
                                         parsedArgs.getTicketId(),
@@ -359,12 +343,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                 .get();
     }
 
-    private Client getClient() {
-        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-        clientBuilder.connectTimeout(10, TimeUnit.SECONDS);
-        clientBuilder.readTimeout(120, TimeUnit.SECONDS);
-        return clientBuilder.build();
-    }
+
 }
 
 @ApplicationScoped

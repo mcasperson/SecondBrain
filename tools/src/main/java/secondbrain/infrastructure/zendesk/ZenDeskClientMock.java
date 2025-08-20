@@ -2,7 +2,6 @@ package secondbrain.infrastructure.zendesk;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.zendesk.api.*;
@@ -20,7 +19,6 @@ public class ZenDeskClientMock implements ZenDeskClient {
 
     @Override
     public List<ZenDeskTicket> getTickets(
-            final Client client,
             final String authorization,
             final String url,
             final String query,
@@ -29,7 +27,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
     }
 
     @Override
-    public ZenDeskTicket getTicket(Client client, String authorization, String url, String ticketId, int ttlSeconds) {
+    public ZenDeskTicket getTicket(String authorization, String url, String ticketId, int ttlSeconds) {
         return new ZenDeskTicket(
                 ticketId,
                 UUID.randomUUID().toString(),
@@ -41,7 +39,6 @@ public class ZenDeskClientMock implements ZenDeskClient {
     }
 
     private List<ZenDeskTicket> getTickets(
-            final Client client,
             final String authorization,
             final String url,
             final String query,
@@ -53,7 +50,6 @@ public class ZenDeskClientMock implements ZenDeskClient {
 
     @Override
     public ZenDeskCommentsResponse getComments(
-            final Client client,
             final String authorization,
             final String url,
             final String ticketId,
@@ -70,7 +66,6 @@ public class ZenDeskClientMock implements ZenDeskClient {
 
     @Override
     public ZenDeskOrganizationItemResponse getOrganization(
-            final Client client,
             final String authorization,
             final String url,
             final String orgId) {
@@ -80,7 +75,6 @@ public class ZenDeskClientMock implements ZenDeskClient {
 
     @Override
     public ZenDeskUserItemResponse getUser(
-            final Client client,
             final String authorization,
             final String url,
             final String userId) {

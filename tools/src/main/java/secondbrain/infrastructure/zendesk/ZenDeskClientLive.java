@@ -5,6 +5,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -17,13 +18,16 @@ import secondbrain.infrastructure.zendesk.api.*;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @ApplicationScoped
 public class ZenDeskClientLive implements ZenDeskClient {
 
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
+    private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
+    private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
 
     /*
@@ -46,13 +50,20 @@ public class ZenDeskClientLive implements ZenDeskClient {
     @Inject
     private TimeoutService timeoutService;
 
+    private Client getClient() {
+        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
+        clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
+        // We want to use the timeoutService to handle timeouts, so we set the client timeout slightly longer.
+        clientBuilder.readTimeout(API_CALL_TIMEOUT_SECONDS_DEFAULT + CLIENT_TIMEOUT_BUFFER_SECONDS, TimeUnit.SECONDS);
+        return clientBuilder.build();
+    }
+
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
     @Override
     public List<ZenDeskTicket> getTickets(
-            final Client client,
             final String authorization,
             final String url,
             final String query,
@@ -62,18 +73,22 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Query is required");
         }
 
-        return getTickets(client, authorization, url, query, 1, MAX_PAGES, ttlSeconds);
+        return Try.withResources(this::getClient)
+                .of(client -> getTickets(client, authorization, url, query, 1, MAX_PAGES, ttlSeconds))
+                .get();
     }
 
     @Override
-    public ZenDeskTicket getTicket(final Client client, final String authorization, final String url, final String ticketId, final int ttlSeconds) {
-        return localStorage.getOrPutObject(
-                ZenDeskClientLive.class.getSimpleName(),
-                "ZenDeskApiTicket",
-                DigestUtils.sha256Hex(url + ticketId),
-                ttlSeconds,
-                ZenDeskTicket.class,
-                () -> getTicketApi(client, authorization, url, ticketId).ticket());
+    public ZenDeskTicket getTicket(final String authorization, final String url, final String ticketId, final int ttlSeconds) {
+        return Try.withResources(this::getClient)
+                .of(client -> localStorage.getOrPutObject(
+                        ZenDeskClientLive.class.getSimpleName(),
+                        "ZenDeskApiTicket",
+                        DigestUtils.sha256Hex(url + ticketId),
+                        ttlSeconds,
+                        ZenDeskTicket.class,
+                        () -> getTicketApi(client, authorization, url, ticketId).ticket()))
+                .get();
     }
 
     /**
@@ -191,7 +206,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
      */
     @Override
     public ZenDeskCommentsResponse getComments(
-            final Client client,
             final String authorization,
             final String url,
             final String ticketId,
@@ -201,13 +215,15 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Ticket ID is required");
         }
 
-        return localStorage.getOrPutObject(
-                ZenDeskClientLive.class.getSimpleName(),
-                "ZenDeskApiCommentsV2",
-                DigestUtils.sha256Hex(ticketId + url),
-                0,
-                ZenDeskCommentsResponse.class,
-                () -> getCommentsFromApi(client, authorization, url, ticketId));
+        return Try.withResources(this::getClient)
+                .of(client -> localStorage.getOrPutObject(
+                        ZenDeskClientLive.class.getSimpleName(),
+                        "ZenDeskApiCommentsV2",
+                        DigestUtils.sha256Hex(ticketId + url),
+                        0,
+                        ZenDeskCommentsResponse.class,
+                        () -> getCommentsFromApi(client, authorization, url, ticketId)))
+                .get();
     }
 
     private ZenDeskCommentsResponse getCommentsFromApi(
@@ -280,7 +296,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
     @Override
     public ZenDeskOrganizationItemResponse getOrganization(
-            final Client client,
             final String authorization,
             final String url,
             final String orgId) {
@@ -289,12 +304,14 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Organization ID is required");
         }
 
-        return localStorage.getOrPutObject(
-                ZenDeskClientLive.class.getSimpleName(),
-                "ZenDeskAPIOrganizations",
-                DigestUtils.sha256Hex(orgId + url),
-                ZenDeskOrganizationResponse.class,
-                () -> getOrganizationFromApi(client, authorization, url, orgId)).organization();
+        return Try.withResources(this::getClient)
+                .of(client -> localStorage.getOrPutObject(
+                        ZenDeskClientLive.class.getSimpleName(),
+                        "ZenDeskAPIOrganizations",
+                        DigestUtils.sha256Hex(orgId + url),
+                        ZenDeskOrganizationResponse.class,
+                        () -> getOrganizationFromApi(client, authorization, url, orgId)).organization())
+                .get();
     }
 
     /**
@@ -335,7 +352,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
     @Override
     public ZenDeskUserItemResponse getUser(
-            final Client client,
             final String authorization,
             final String url,
             final String userId) {
@@ -344,11 +360,13 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("User ID is required");
         }
 
-        return localStorage.getOrPutObject(
-                ZenDeskClientLive.class.getSimpleName(),
-                "ZenDeskAPIUsersV2",
-                DigestUtils.sha256Hex(userId + url),
-                ZenDeskUserResponse.class,
-                () -> getUserFromApi(client, authorization, url, userId)).user();
+        return Try.withResources(this::getClient)
+                .of(client -> localStorage.getOrPutObject(
+                        ZenDeskClientLive.class.getSimpleName(),
+                        "ZenDeskAPIUsersV2",
+                        DigestUtils.sha256Hex(userId + url),
+                        ZenDeskUserResponse.class,
+                        () -> getUserFromApi(client, authorization, url, userId)).user())
+                .get();
     }
 }

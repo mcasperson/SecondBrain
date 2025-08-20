@@ -5,8 +5,6 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
@@ -212,16 +210,14 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .filter(ZenDeskCreds::isValid)
                 .toList();
 
-        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.withResources(ClientBuilder::newClient)
-                .of(client -> zenDeskCreds
-                        .stream()
-                        .flatMap(zenDeskCred -> getContext(
-                                parsedArgs,
-                                environmentSettings,
-                                zenDeskCred,
-                                String.join(" ", query),
-                                client).stream())
-                        .toList());
+        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.of(() -> zenDeskCreds
+                .stream()
+                .flatMap(zenDeskCred -> getContext(
+                        parsedArgs,
+                        environmentSettings,
+                        zenDeskCred,
+                        String.join(" ", query)).stream())
+                .toList());
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -238,12 +234,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             final ZenDeskConfig.LocalArguments parsedArgs,
             final Map<String, String> environmentSettings,
             final ZenDeskCreds creds,
-            final String query,
-            final Client client) {
+            final String query) {
         final List<RagDocumentContext<ZenDeskTicket>> context = Try.of(() ->
                         timeoutService.executeWithTimeout(() ->
                                         zenDeskClient.getTickets(
-                                                client,
                                                 creds.auth(),
                                                 creds.url(),
                                                 String.join(" ", query),
