@@ -6,14 +6,16 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
+import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.exceptions.Timeout;
+import secondbrain.domain.httpclient.ResponseCallback;
+import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
-import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.infrastructure.zendesk.api.*;
 
 import java.util.Arrays;
@@ -28,6 +30,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
+    private static final int API_RETRIES = 3;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
 
     /*
@@ -48,7 +51,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
     private LocalStorage localStorage;
 
     @Inject
-    private TimeoutService timeoutService;
+    private TimeoutHttpClientCaller httpClientCaller;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -73,22 +76,18 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Query is required");
         }
 
-        return Try.withResources(this::getClient)
-                .of(client -> getTickets(client, authorization, url, query, 1, MAX_PAGES, ttlSeconds))
-                .get();
+        return getTickets(authorization, url, query, 1, MAX_PAGES, ttlSeconds);
     }
 
     @Override
     public ZenDeskTicket getTicket(final String authorization, final String url, final String ticketId, final int ttlSeconds) {
-        return Try.withResources(this::getClient)
-                .of(client -> localStorage.getOrPutObject(
-                        ZenDeskClientLive.class.getSimpleName(),
-                        "ZenDeskApiTicket",
-                        DigestUtils.sha256Hex(url + ticketId),
-                        ttlSeconds,
-                        ZenDeskTicket.class,
-                        () -> getTicketApi(client, authorization, url, ticketId).ticket()))
-                .get();
+        return localStorage.getOrPutObject(
+                ZenDeskClientLive.class.getSimpleName(),
+                "ZenDeskApiTicket",
+                DigestUtils.sha256Hex(url + ticketId),
+                ttlSeconds,
+                ZenDeskTicket.class,
+                () -> getTicketApi(authorization, url, ticketId).ticket());
     }
 
     /**
@@ -97,7 +96,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * This method is synchronized to have one tool populate the cache and let the others read from it.
      */
     private List<ZenDeskTicket> getTickets(
-            Client client,
             String authorization,
             String url,
             String query,
@@ -111,7 +109,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 DigestUtils.sha256Hex(url + query + maxPage),
                 ttlSeconds,
                 ZenDeskTicket[].class,
-                () -> getTicketsApi(client, authorization, url, query, page, maxPage));
+                () -> getTicketsApi(authorization, url, query, page, maxPage));
 
         return Arrays.asList(value);
     }
@@ -121,7 +119,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * attempt to retry a few times with a delay.
      */
     private ZenDeskTicket[] getTicketsApi(
-            final Client client,
             final String authorization,
             final String url,
             final String query,
@@ -136,32 +133,38 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final String target = url + "/api/v2/search.json";
 
-        return timeoutService.executeWithTimeoutAndRetry(
-                () -> Try.withResources(() -> client.target(target)
-                                .queryParam("query", query)
-                                .queryParam("sort_by", "created_at")
-                                .queryParam("sort_order", "desc")
-                                .queryParam("page", page)
-                                .request()
-                                .header("Authorization", authorization)
-                                .header("Accept", "application/json")
-                                .get())
-                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
+        return httpClientCaller.call(
+                this::getClient,
+                client -> client.target(target)
+                        .queryParam("query", query)
+                        .queryParam("sort_by", "created_at")
+                        .queryParam("sort_order", "desc")
+                        .queryParam("page", page)
+                        .request()
+                        .header("Authorization", authorization)
+                        .header("Accept", "application/json")
+                        .get(),
+                new ResponseCallback() {
+                    @Override
+                    public ZenDeskTicket[] handleResponse(Response response) {
+                        return Try.of(() -> responseValidation.validate(response, target))
                                 .map(r -> r.readEntity(ZenDeskResponse.class))
                                 // Recurse if there is a next page, and we have not gone too far
                                 .map(r -> ArrayUtils.addAll(
                                         r.getResultsArray(),
                                         r.next_page() != null && page < maxPage
-                                                ? getTicketsApi(client, authorization, url, query, page + 1, maxPage)
+                                                ? getTicketsApi(authorization, url, query, page + 1, maxPage)
                                                 : new ZenDeskTicket[]{}))
-                                .get())
-                        .get(),
+                                .get();
+                    }
+                },
+                e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                 },
                 API_CALL_TIMEOUT_SECONDS_DEFAULT,
-                3,
-                API_CALL_DELAY_SECONDS_DEFAULT);
+                API_CALL_DELAY_SECONDS_DEFAULT,
+                API_RETRIES);
     }
 
     /**
@@ -169,7 +172,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * attempt to retry a few times with a delay.
      */
     private ZenDeskTicketResponse getTicketApi(
-            final Client client,
             final String authorization,
             final String url,
             final String id) {
@@ -182,22 +184,28 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final String target = url + "/api/v2/tickets/" + id + ".json";
 
-        return timeoutService.executeWithTimeoutAndRetry(
-                () -> Try.withResources(() -> client.target(target)
-                                .request()
-                                .header("Authorization", authorization)
-                                .header("Accept", "application/json")
-                                .get())
-                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(ZenDeskTicketResponse.class))
-                                .get())
+        return httpClientCaller.call(
+                this::getClient,
+                client -> client.target(target)
+                        .request()
+                        .header("Authorization", authorization)
+                        .header("Accept", "application/json")
                         .get(),
+                new ResponseCallback() {
+                    @Override
+                    public ZenDeskTicketResponse handleResponse(Response response) {
+                        return Try.of(() -> responseValidation.validate(response, target))
+                                .map(r -> r.readEntity(ZenDeskTicketResponse.class))
+                                .get();
+                    }
+                },
+                e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                 },
                 API_CALL_TIMEOUT_SECONDS_DEFAULT,
-                3,
-                API_CALL_DELAY_SECONDS_DEFAULT);
+                API_CALL_DELAY_SECONDS_DEFAULT,
+                API_RETRIES);
     }
 
     /**
@@ -215,19 +223,16 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Ticket ID is required");
         }
 
-        return Try.withResources(this::getClient)
-                .of(client -> localStorage.getOrPutObject(
-                        ZenDeskClientLive.class.getSimpleName(),
-                        "ZenDeskApiCommentsV2",
-                        DigestUtils.sha256Hex(ticketId + url),
-                        0,
-                        ZenDeskCommentsResponse.class,
-                        () -> getCommentsFromApi(client, authorization, url, ticketId)))
-                .get();
+        return localStorage.getOrPutObject(
+                ZenDeskClientLive.class.getSimpleName(),
+                "ZenDeskApiCommentsV2",
+                DigestUtils.sha256Hex(ticketId + url),
+                0,
+                ZenDeskCommentsResponse.class,
+                () -> getCommentsFromApi(authorization, url, ticketId));
     }
 
     private ZenDeskCommentsResponse getCommentsFromApi(
-            final Client client,
             final String authorization,
             final String url,
             final String ticketId) {
@@ -240,22 +245,29 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final String target = url + "/api/v2/tickets/" + ticketId + "/comments";
 
-        return timeoutService.executeWithTimeoutAndRetry(
-                () -> Try.withResources(() -> client.target(target)
-                                .request()
-                                .header("Authorization", authorization)
-                                .header("Accept", "application/json")
-                                .get())
-                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(ZenDeskCommentsResponse.class))
-                                .get())
+        return httpClientCaller.call(
+                this::getClient,
+                client -> client.target(target)
+                        .request()
+                        .header("Authorization", authorization)
+                        .header("Accept", "application/json")
                         .get(),
+                new ResponseCallback() {
+                    @Override
+                    public ZenDeskCommentsResponse handleResponse(Response response) {
+                        return Try.of(() -> responseValidation.validate(response, target))
+                                .map(r -> r.readEntity(ZenDeskCommentsResponse.class))
+                                .get();
+                    }
+                },
+                e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                 },
                 API_CALL_TIMEOUT_SECONDS_DEFAULT,
-                3,
-                API_CALL_DELAY_SECONDS_DEFAULT);
+                API_CALL_DELAY_SECONDS_DEFAULT,
+                API_RETRIES
+        );
     }
 
     /**
@@ -263,7 +275,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * attempt to retry a few times with a delay.
      */
     private ZenDeskOrganizationResponse getOrganizationFromApi(
-            final Client client,
             final String authorization,
             final String url,
             final String orgId) {
@@ -276,22 +287,28 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final String target = url + "/api/v2/organizations/" + orgId;
 
-        return timeoutService.executeWithTimeoutAndRetry(
-                () -> Try.withResources(() -> client.target(target)
-                                .request()
-                                .header("Authorization", authorization)
-                                .header("Accept", "application/json")
-                                .get())
-                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(ZenDeskOrganizationResponse.class))
-                                .get())
+        return httpClientCaller.call(
+                this::getClient,
+                client -> client.target(target)
+                        .request()
+                        .header("Authorization", authorization)
+                        .header("Accept", "application/json")
                         .get(),
+                new ResponseCallback() {
+                    @Override
+                    public ZenDeskOrganizationResponse handleResponse(Response response) {
+                        return Try.of(() -> responseValidation.validate(response, target))
+                                .map(r -> r.readEntity(ZenDeskOrganizationResponse.class))
+                                .get();
+                    }
+                },
+                e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                 },
                 API_CALL_TIMEOUT_SECONDS_DEFAULT,
-                3,
-                API_CALL_DELAY_SECONDS_DEFAULT);
+                API_CALL_DELAY_SECONDS_DEFAULT,
+                API_RETRIES);
     }
 
     @Override
@@ -304,14 +321,12 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Organization ID is required");
         }
 
-        return Try.withResources(this::getClient)
-                .of(client -> localStorage.getOrPutObject(
-                        ZenDeskClientLive.class.getSimpleName(),
-                        "ZenDeskAPIOrganizations",
-                        DigestUtils.sha256Hex(orgId + url),
-                        ZenDeskOrganizationResponse.class,
-                        () -> getOrganizationFromApi(client, authorization, url, orgId)).organization())
-                .get();
+        return localStorage.getOrPutObject(
+                ZenDeskClientLive.class.getSimpleName(),
+                "ZenDeskAPIOrganizations",
+                DigestUtils.sha256Hex(orgId + url),
+                ZenDeskOrganizationResponse.class,
+                () -> getOrganizationFromApi(authorization, url, orgId)).organization();
     }
 
     /**
@@ -319,7 +334,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * attempt to retry a few times with a delay.
      */
     private ZenDeskUserResponse getUserFromApi(
-            final Client client,
             final String authorization,
             final String url,
             final String userId) {
@@ -332,22 +346,28 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final String target = url + "/api/v2/users/" + userId;
 
-        return timeoutService.executeWithTimeoutAndRetry(
-                () -> Try.withResources(() -> client.target(target)
-                                .request()
-                                .header("Authorization", authorization)
-                                .header("Accept", "application/json")
-                                .get())
-                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(ZenDeskUserResponse.class))
-                                .get())
+        return httpClientCaller.call(
+                this::getClient,
+                client -> client.target(target)
+                        .request()
+                        .header("Authorization", authorization)
+                        .header("Accept", "application/json")
                         .get(),
+                new ResponseCallback() {
+                    @Override
+                    public ZenDeskUserResponse handleResponse(Response response) {
+                        return Try.of(() -> responseValidation.validate(response, target))
+                                .map(r -> r.readEntity(ZenDeskUserResponse.class))
+                                .get();
+                    }
+                },
+                e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                 },
                 API_CALL_TIMEOUT_SECONDS_DEFAULT,
-                3,
-                API_CALL_DELAY_SECONDS_DEFAULT);
+                API_CALL_DELAY_SECONDS_DEFAULT,
+                API_RETRIES);
     }
 
     @Override
@@ -360,13 +380,11 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("User ID is required");
         }
 
-        return Try.withResources(this::getClient)
-                .of(client -> localStorage.getOrPutObject(
-                        ZenDeskClientLive.class.getSimpleName(),
-                        "ZenDeskAPIUsersV2",
-                        DigestUtils.sha256Hex(userId + url),
-                        ZenDeskUserResponse.class,
-                        () -> getUserFromApi(client, authorization, url, userId)).user())
-                .get();
+        return localStorage.getOrPutObject(
+                ZenDeskClientLive.class.getSimpleName(),
+                "ZenDeskAPIUsersV2",
+                DigestUtils.sha256Hex(userId + url),
+                ZenDeskUserResponse.class,
+                () -> getUserFromApi(authorization, url, userId)).user();
     }
 }
