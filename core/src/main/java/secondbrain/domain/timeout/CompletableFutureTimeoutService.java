@@ -31,7 +31,11 @@ public class CompletableFutureTimeoutService implements TimeoutService {
     }
 
     @Override
-    public <T> T executeWithTimeoutAndRetry(TimeoutFunctionCallback<T> callback, TimeoutFunctionCallback<T> onTimeout, long timeoutSeconds, int retryCount) {
+    public <T> T executeWithTimeoutAndRetry(
+            final TimeoutFunctionCallback<T> callback,
+            final TimeoutFunctionCallback<T> onTimeout,
+            final long timeoutSeconds,
+            final int retryCount) {
         checkNotNull(callback, "callback must not be null");
         checkNotNull(onTimeout, "onTimeout must not be null");
 
@@ -39,14 +43,25 @@ public class CompletableFutureTimeoutService implements TimeoutService {
     }
 
     @Override
-    public <T> T executeWithTimeoutAndRetry(TimeoutFunctionCallback<T> callback, TimeoutFunctionCallback<T> onTimeout, long timeoutSeconds, int retryCount, long retryDelaySeconds) {
+    public <T> T executeWithTimeoutAndRetry(
+            final TimeoutFunctionCallback<T> callback,
+            final TimeoutFunctionCallback<T> onTimeout,
+            final long timeoutSeconds,
+            final int retryCount,
+            final long retryDelaySeconds) {
         checkNotNull(callback, "callback must not be null");
         checkNotNull(onTimeout, "onTimeout must not be null");
 
         return executeWithTimeoutAndRetry(callback, onTimeout, timeoutSeconds, retryCount, retryDelaySeconds, 0);
     }
 
-    private <T> T executeWithTimeoutAndRetry(TimeoutFunctionCallback<T> callback, TimeoutFunctionCallback<T> onTimeout, long timeoutSeconds, int retryCount, long retryDelaySeconds, int retryAttempt) {
+    private <T> T executeWithTimeoutAndRetry(
+            final TimeoutFunctionCallback<T> callback,
+            final TimeoutFunctionCallback<T> onTimeout,
+            final long timeoutSeconds,
+            final int retryCount,
+            final long retryDelaySeconds,
+            final int retryAttempt) {
         checkNotNull(callback, "callback must not be null");
         checkNotNull(onTimeout, "onTimeout must not be null");
 
