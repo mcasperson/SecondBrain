@@ -8,10 +8,11 @@ import jakarta.ws.rs.client.Client;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.constants.Constants;
+import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.infrastructure.zendesk.api.*;
 
 import java.util.Arrays;
@@ -21,6 +22,9 @@ import java.util.List;
 public class ZenDeskClientLive implements ZenDeskClient {
 
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
+    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
+    private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
+    private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
 
     /*
         Don't recurse forever, because LLMs can't deal with large results anyway.
@@ -38,6 +42,9 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
     @Inject
     private LocalStorage localStorage;
+
+    @Inject
+    private TimeoutService timeoutService;
 
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
@@ -98,7 +105,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 120000, maxRetries = 3, abortOn = {IllegalArgumentException.class})
     private ZenDeskTicket[] getTicketsApi(
             final Client client,
             final String authorization,
@@ -115,32 +121,38 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final String target = url + "/api/v2/search.json";
 
-        return Try.withResources(() -> client.target(target)
-                        .queryParam("query", query)
-                        .queryParam("sort_by", "created_at")
-                        .queryParam("sort_order", "desc")
-                        .queryParam("page", page)
-                        .request()
-                        .header("Authorization", authorization)
-                        .header("Accept", "application/json")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(ZenDeskResponse.class))
-                        // Recurse if there is a next page, and we have not gone too far
-                        .map(r -> ArrayUtils.addAll(
-                                r.getResultsArray(),
-                                r.next_page() != null && page < maxPage
-                                        ? getTicketsApi(client, authorization, url, query, page + 1, maxPage)
-                                        : new ZenDeskTicket[]{}))
-                        .get())
-                .get();
+        return timeoutService.executeWithTimeoutAndRetry(
+                () -> Try.withResources(() -> client.target(target)
+                                .queryParam("query", query)
+                                .queryParam("sort_by", "created_at")
+                                .queryParam("sort_order", "desc")
+                                .queryParam("page", page)
+                                .request()
+                                .header("Authorization", authorization)
+                                .header("Accept", "application/json")
+                                .get())
+                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                                .map(r -> r.readEntity(ZenDeskResponse.class))
+                                // Recurse if there is a next page, and we have not gone too far
+                                .map(r -> ArrayUtils.addAll(
+                                        r.getResultsArray(),
+                                        r.next_page() != null && page < maxPage
+                                                ? getTicketsApi(client, authorization, url, query, page + 1, maxPage)
+                                                : new ZenDeskTicket[]{}))
+                                .get())
+                        .get(),
+                () -> {
+                    throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                },
+                API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                3,
+                API_CALL_DELAY_SECONDS_DEFAULT);
     }
 
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 120000, maxRetries = 3, abortOn = {IllegalArgumentException.class})
     private ZenDeskTicketResponse getTicketApi(
             final Client client,
             final String authorization,
@@ -155,15 +167,22 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final String target = url + "/api/v2/tickets/" + id + ".json";
 
-        return Try.withResources(() -> client.target(target)
-                        .request()
-                        .header("Authorization", authorization)
-                        .header("Accept", "application/json")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(ZenDeskTicketResponse.class))
-                        .get())
-                .get();
+        return timeoutService.executeWithTimeoutAndRetry(
+                () -> Try.withResources(() -> client.target(target)
+                                .request()
+                                .header("Authorization", authorization)
+                                .header("Accept", "application/json")
+                                .get())
+                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                                .map(r -> r.readEntity(ZenDeskTicketResponse.class))
+                                .get())
+                        .get(),
+                () -> {
+                    throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                },
+                API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                3,
+                API_CALL_DELAY_SECONDS_DEFAULT);
     }
 
     /**
@@ -191,7 +210,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 () -> getCommentsFromApi(client, authorization, url, ticketId));
     }
 
-    @Retry(delay = 120000, maxRetries = 3, abortOn = {IllegalArgumentException.class})
     private ZenDeskCommentsResponse getCommentsFromApi(
             final Client client,
             final String authorization,
@@ -206,22 +224,28 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final String target = url + "/api/v2/tickets/" + ticketId + "/comments";
 
-        return Try.withResources(() -> client.target(target)
-                        .request()
-                        .header("Authorization", authorization)
-                        .header("Accept", "application/json")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(ZenDeskCommentsResponse.class))
-                        .get())
-                .get();
+        return timeoutService.executeWithTimeoutAndRetry(
+                () -> Try.withResources(() -> client.target(target)
+                                .request()
+                                .header("Authorization", authorization)
+                                .header("Accept", "application/json")
+                                .get())
+                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                                .map(r -> r.readEntity(ZenDeskCommentsResponse.class))
+                                .get())
+                        .get(),
+                () -> {
+                    throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                },
+                API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                3,
+                API_CALL_DELAY_SECONDS_DEFAULT);
     }
 
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 120000, maxRetries = 3, abortOn = {IllegalArgumentException.class})
     private ZenDeskOrganizationResponse getOrganizationFromApi(
             final Client client,
             final String authorization,
@@ -236,15 +260,22 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final String target = url + "/api/v2/organizations/" + orgId;
 
-        return Try.withResources(() -> client.target(target)
-                        .request()
-                        .header("Authorization", authorization)
-                        .header("Accept", "application/json")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(ZenDeskOrganizationResponse.class))
-                        .get())
-                .get();
+        return timeoutService.executeWithTimeoutAndRetry(
+                () -> Try.withResources(() -> client.target(target)
+                                .request()
+                                .header("Authorization", authorization)
+                                .header("Accept", "application/json")
+                                .get())
+                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                                .map(r -> r.readEntity(ZenDeskOrganizationResponse.class))
+                                .get())
+                        .get(),
+                () -> {
+                    throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                },
+                API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                3,
+                API_CALL_DELAY_SECONDS_DEFAULT);
     }
 
     @Override
@@ -270,7 +301,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    @Retry(delay = 120000, maxRetries = 3, abortOn = {IllegalArgumentException.class})
     private ZenDeskUserResponse getUserFromApi(
             final Client client,
             final String authorization,
@@ -285,15 +315,22 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final String target = url + "/api/v2/users/" + userId;
 
-        return Try.withResources(() -> client.target(target)
-                        .request()
-                        .header("Authorization", authorization)
-                        .header("Accept", "application/json")
-                        .get())
-                .of(response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(ZenDeskUserResponse.class))
-                        .get())
-                .get();
+        return timeoutService.executeWithTimeoutAndRetry(
+                () -> Try.withResources(() -> client.target(target)
+                                .request()
+                                .header("Authorization", authorization)
+                                .header("Accept", "application/json")
+                                .get())
+                        .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                                .map(r -> r.readEntity(ZenDeskUserResponse.class))
+                                .get())
+                        .get(),
+                () -> {
+                    throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                },
+                API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                3,
+                API_CALL_DELAY_SECONDS_DEFAULT);
     }
 
     @Override
