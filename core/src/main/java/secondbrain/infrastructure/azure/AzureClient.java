@@ -4,9 +4,11 @@ import com.google.common.util.concurrent.RateLimiter;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -15,10 +17,12 @@ import secondbrain.domain.answer.AnswerFormatterService;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.exceptions.Timeout;
+import secondbrain.domain.httpclient.ResponseCallback;
+import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
-import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.infrastructure.azure.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -26,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -38,10 +43,12 @@ import static com.google.common.base.Preconditions.*;
 public class AzureClient implements LlmClient {
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
     private static final String DEFAULT_MODEL = "Phi-4";
-    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // 10 minutes
+    private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
+    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
+    private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
+    private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
+    private static final int API_RETRIES = 3;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
-    private static final long RETRY_DELAY_SECONDS_DEFAULT = 10L;
-    private static final int RETRY_COUNT_DEFAULT = 3;
 
     // Default rate is around 250 requests per minute. 2 requests per second keeps us well under that.
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(2);
@@ -75,15 +82,15 @@ public class AzureClient implements LlmClient {
     private Long timeout;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.retryCount", defaultValue = RETRY_COUNT_DEFAULT + "")
+    @ConfigProperty(name = "sb.azurellm.retryCount", defaultValue = API_RETRIES + "")
     private Integer retryCount;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.retryDelaySeconds", defaultValue = RETRY_DELAY_SECONDS_DEFAULT + "")
+    @ConfigProperty(name = "sb.azurellm.retryDelaySeconds", defaultValue = API_CALL_DELAY_SECONDS_DEFAULT + "")
     private Long retryDelay;
 
     @Inject
-    private TimeoutService timeoutService;
+    private TimeoutHttpClientCaller httpClientCaller;
 
     @Inject
     private ResponseValidation responseValidation;
@@ -99,6 +106,14 @@ public class AzureClient implements LlmClient {
 
     @Inject
     private LocalStorage localStorage;
+
+    private Client getClient() {
+        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
+        clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
+        // We want to use the timeoutService to handle timeouts, so we set the client timeout slightly longer.
+        clientBuilder.readTimeout(API_CALL_TIMEOUT_SECONDS_DEFAULT + CLIENT_TIMEOUT_BUFFER_SECONDS, TimeUnit.SECONDS);
+        return clientBuilder.build();
+    }
 
     @Override
     public String call(final String prompt) {
@@ -120,12 +135,7 @@ public class AzureClient implements LlmClient {
                 model
         );
 
-        return timeoutService.executeWithTimeoutAndRetry(
-                () -> call(request),
-                () -> API_CALL_TIMEOUT_MESSAGE,
-                timeout,
-                retryCount,
-                retryDelay);
+        return call(request);
     }
 
     @Override
@@ -179,12 +189,7 @@ public class AzureClient implements LlmClient {
                 "AzureLLM",
                 promptHash,
                 NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
-                () -> timeoutService.executeWithTimeoutAndRetry(
-                        () -> call(request),
-                        () -> API_CALL_TIMEOUT_MESSAGE,
-                        timeout,
-                        retryCount,
-                        retryDelay));
+                () -> call(request));
 
         return ragDocs.updateResponse(result);
     }
@@ -199,27 +204,35 @@ public class AzureClient implements LlmClient {
         logger.info("Calling Azure LLM");
         logger.info(request.generatePromptText());
 
-        final String result = Try.withResources(ClientBuilder::newClient)
-                .of(client -> Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(url.get())
-                                .request()
-                                .header("Content-Type", "application/json")
-                                .header("Accept", "application/json")
-                                .header("Authorization", "Bearer " + apiKey.get())
-                                .post(Entity.entity(request, MediaType.APPLICATION_JSON))))
-                        .of(wrapped -> Try.of(wrapped::getWrapped)
-                                .map(response -> responseValidation.validate(response, url.get()))
-                                .map(response -> response.readEntity(AzureResponse.class))
-                                .map(response -> response.getChoices().stream()
+        final String result = httpClientCaller.call(
+                this::getClient,
+                client -> client.target(url.get())
+                        .request()
+                        .header("Content-Type", "application/json")
+                        .header("Accept", "application/json")
+                        .header("Authorization", "Bearer " + apiKey.get())
+                        .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
+                new ResponseCallback() {
+                    @Override
+                    public String handleResponse(Response response) {
+                        return Try.of(() -> responseValidation.validate(response, url.get()))
+                                .map(r -> r.readEntity(AzureResponse.class))
+                                .map(r -> r.getChoices().stream()
                                         .map(AzureResponseChoices::getMessage)
                                         .map(AzureResponseChoicesMessage::getContent)
                                         .reduce("", String::concat))
-                                .map(response -> answerFormatterService.formatResponse(model.get(), response))
+                                .map(r -> answerFormatterService.formatResponse(model.get(), r))
                                 .onFailure(e -> logger.severe(e.getMessage()))
-                                .get()
-                        )
-                        .get()
-                )
-                .get();
+                                .get();
+                    }
+                },
+                e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
+                () -> {
+                    throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                },
+                API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                retryDelay,
+                retryCount);
 
         logger.info("LLM Response");
         logger.info(result);

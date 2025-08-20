@@ -1,19 +1,24 @@
 package secondbrain.infrastructure.google;
 
+import com.google.common.util.concurrent.RateLimiter;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import secondbrain.domain.concurrency.SemaphoreLender;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.exceptions.Timeout;
+import secondbrain.domain.httpclient.ResponseCallback;
+import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.persist.LocalStorage;
-import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.infrastructure.google.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -21,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -31,13 +37,14 @@ import static com.google.common.base.Preconditions.*;
  */
 @ApplicationScoped
 public class GoogleClient implements LlmClient {
-    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
     private static final String DEFAULT_MODEL = "gemini-2.0-flash";
-
-    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // 10 minutes
+    private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
+    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
+    private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
+    private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
+    private static final int API_RETRIES = 3;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
-    private static final long RETRY_DELAY_SECONDS_DEFAULT = 10L;
-    private static final int RETRY_COUNT_DEFAULT = 3;
 
     @Inject
     @ConfigProperty(name = "sb.googlellm.apikey")
@@ -60,11 +67,11 @@ public class GoogleClient implements LlmClient {
     private Long timeout;
 
     @Inject
-    @ConfigProperty(name = "sb.googlellm.retryCount", defaultValue = RETRY_COUNT_DEFAULT + "")
+    @ConfigProperty(name = "sb.googlellm.retryCount", defaultValue = API_RETRIES + "")
     private Integer retryCount;
 
     @Inject
-    @ConfigProperty(name = "sb.googlellm.retryDelaySeconds", defaultValue = RETRY_DELAY_SECONDS_DEFAULT + "")
+    @ConfigProperty(name = "sb.googlellm.retryDelaySeconds", defaultValue = API_CALL_DELAY_SECONDS_DEFAULT + "")
     private Long retryDelay;
 
     @Inject
@@ -74,7 +81,15 @@ public class GoogleClient implements LlmClient {
     private LocalStorage localStorage;
 
     @Inject
-    private TimeoutService timeoutService;
+    private TimeoutHttpClientCaller httpClientCaller;
+
+    private Client getClient() {
+        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
+        clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
+        // We want to use the timeoutService to handle timeouts, so we set the client timeout slightly longer.
+        clientBuilder.readTimeout(API_CALL_TIMEOUT_SECONDS_DEFAULT + CLIENT_TIMEOUT_BUFFER_SECONDS, TimeUnit.SECONDS);
+        return clientBuilder.build();
+    }
 
     @Override
     public String call(final String prompt) {
@@ -94,12 +109,7 @@ public class GoogleClient implements LlmClient {
                 ))
         );
 
-        return timeoutService.executeWithTimeoutAndRetry(
-                () -> call(request),
-                () -> API_CALL_TIMEOUT_MESSAGE,
-                timeout,
-                retryCount,
-                retryDelay);
+        return call(request);
     }
 
     @Override
@@ -135,13 +145,7 @@ public class GoogleClient implements LlmClient {
                 "GoogleLLM",
                 promptHash,
                 NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
-                () -> timeoutService.executeWithTimeoutAndRetry(
-                        () -> call(request),
-                        () -> API_CALL_TIMEOUT_MESSAGE,
-                        timeout,
-                        retryCount,
-                        retryDelay));
-
+                () -> call(request));
         return ragDocs.updateResponse(result);
     }
 
@@ -153,27 +157,38 @@ public class GoogleClient implements LlmClient {
         logger.info("Calling Google LLM");
         logger.info(request.generatePromptText());
 
-        final String result = Try.withResources(ClientBuilder::newClient)
-                .of(client -> Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(url.get() + model.get() + ":generateContent")
-                                .request()
-                                .header("Content-Type", "application/json")
-                                .header("Accept", "application/json")
-                                .header("X-goog-api-key", apiKey.get())
-                                .post(Entity.entity(request, MediaType.APPLICATION_JSON))))
-                        .of(wrapped -> Try.of(wrapped::getWrapped)
-                                .map(response -> response.readEntity(GoogleResponse.class))
-                                .map(this::isError)
-                                .map(response -> response.getCandidates().stream()
+        RATE_LIMITER.acquire();
+
+        final String result = httpClientCaller.call(
+                this::getClient,
+                client -> client.target(url.get() + model.get() + ":generateContent")
+                        .request()
+                        .header("Content-Type", "application/json")
+                        .header("Accept", "application/json")
+                        .header("X-goog-api-key", apiKey.get())
+                        .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
+                new ResponseCallback() {
+                    @Override
+                    public String handleResponse(Response response) {
+                        final GoogleResponse googleResponse = response.readEntity(GoogleResponse.class);
+                        return Try.of(() -> googleResponse)
+                                .map(r -> isError(r))
+                                .map(r -> r.getCandidates().stream()
                                         .map(GoogleResponseCandidates::getContent)
                                         .flatMap(content -> content.getParts().stream())
                                         .map(GoogleResponseCandidatesContentParts::getText)
                                         .reduce("", String::concat))
                                 .onFailure(e -> logger.severe(e.getMessage()))
-                                .get()
-                        )
-                        .get()
-                )
-                .get();
+                                .get();
+                    }
+                },
+                e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
+                () -> {
+                    throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                },
+                API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                retryDelay,
+                retryCount);
 
         logger.info("LLM Response");
         logger.info(result);
