@@ -587,7 +587,7 @@ if ($GenerateCompanyReports)
 
                 $lastDeployment = Get-LastDeploymentTime $tenantName
 
-                if ($null -ne $lastDeployment -and $lastDeployment -lt $threeMonthsAgo)
+                if ($null -ne $lastDeployment -and $lastDeployment -gt $threeMonthsAgo)
                 {
                     Write-Host "Skipping $( $jsonFile.Name ) as it was already deployed in the last 3 months"
                     continue
@@ -613,7 +613,6 @@ if ($GenerateCompanyReports)
             Write-Error "Failed to process $( $jsonFile.Name ): $( $_.Exception.Message )"
         }
     }
-
 }
 
 function Get-LastDeploymentTime
@@ -645,7 +644,7 @@ function Get-LastDeploymentTime
     $completedDeployments = $deployments.Items |
             ? {
                 (Invoke-RestMethod "$octopusUrl/api/tasks/$( $_.TaskId )" -Headers $headers) |
-                        ? { $_.State -eq "Succeeded" -or $_.State -eq "Queued" -or $_.State -eq "Executing" }
+                        ? { $_.State -eq "Success" -or $_.State -eq "Queued" -or $_.State -eq "Executing" }
             }
 
 
