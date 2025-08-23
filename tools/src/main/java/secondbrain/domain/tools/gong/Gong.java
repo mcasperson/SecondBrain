@@ -245,7 +245,7 @@ public class Gong implements Tool<GongCallDetails> {
     }
 
     /**
-     * Summarise an individual ticket
+     * Summarise an individual call transcript
      */
     private RagDocumentContext<GongCallDetails> getCallSummary(final RagDocumentContext<GongCallDetails> ragDoc, final Map<String, String> environmentSettings, final GongConfig.LocalArguments parsedArgs) {
         logger.log(Level.INFO, "Summarising Gong call transcript");

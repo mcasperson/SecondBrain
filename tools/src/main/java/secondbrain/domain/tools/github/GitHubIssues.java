@@ -4,6 +4,7 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -20,9 +21,8 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.githubissues.GitHubIssuesClient;
 import secondbrain.infrastructure.githubissues.api.GitHubIssue;
@@ -31,9 +31,12 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static com.google.common.base.Predicates.instanceOf;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
@@ -82,6 +85,12 @@ public class GitHubIssues implements Tool<GitHubIssue> {
     @Preferred
     private LlmClient llmClient;
 
+    @Inject
+    private Logger logger;
+
+    @Inject
+    private RatingTool ratingTool;
+
     @Override
     public String getName() {
         return GitHubIssues.class.getSimpleName();
@@ -110,6 +119,8 @@ public class GitHubIssues implements Tool<GitHubIssue> {
                         parsedArgs.getIssueLabels(),
                         parsedArgs.getIssueState()))
                 .map(issues -> convertIssueToRagDoc(issues, parsedArgs, environmentSettings))
+                .map(ragDocs -> updateMetadata(ragDocs, parsedArgs))
+                .map(ragDocs -> parsedArgs.getSummarizeIssue() ? getSummary(ragDocs, environmentSettings, parsedArgs) : ragDocs)
                 .get();
     }
 
@@ -167,6 +178,72 @@ public class GitHubIssues implements Tool<GitHubIssue> {
     @Override
     public String getContextLabel() {
         return "GitHub Issue";
+    }
+
+    private List<RagDocumentContext<GitHubIssue>> updateMetadata(
+            final List<RagDocumentContext<GitHubIssue>> issues,
+            final GitHubIssueConfig.LocalArguments parsedArgs) {
+        return issues.stream()
+                .map(issue -> issue.updateMetadata(getMetadata(issue, parsedArgs)))
+                .toList();
+    }
+
+    private MetaObjectResults getMetadata(
+            final RagDocumentContext<GitHubIssue> issue,
+            final GitHubIssueConfig.LocalArguments parsedArgs) {
+
+        final List<MetaObjectResult> metadata = new ArrayList<>();
+
+        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
+            final int filterRating = Try.of(() -> ratingTool.call(
+                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, issue.document()),
+                                    parsedArgs.getContextFilterQuestion(),
+                                    List.of())
+                            .getResponse())
+                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
+                    // Ratings are provided on a best effort basis, so we ignore any failures
+                    .recover(InternalFailure.class, ex -> 10)
+                    .get();
+
+            metadata.add(new MetaObjectResult(GITHUB_ISSUE_FILTER_RATING_META, filterRating));
+        }
+
+        return new MetaObjectResults(
+                metadata,
+                "GitHubIssue-" + issue.id() + ".json",
+                issue.id());
+    }
+
+    private List<RagDocumentContext<GitHubIssue>> getSummary(final List<RagDocumentContext<GitHubIssue>> ragDocs, final Map<String, String> environmentSettings, final GitHubIssueConfig.LocalArguments parsedArgs) {
+        return ragDocs.stream()
+                .map(ragDoc -> getSummary(ragDoc, environmentSettings, parsedArgs))
+                .toList();
+    }
+
+    private RagDocumentContext<GitHubIssue> getSummary(final RagDocumentContext<GitHubIssue> ragDoc, final Map<String, String> environmentSettings, final GitHubIssueConfig.LocalArguments parsedArgs) {
+        logger.log(Level.INFO, "Summarising GitHub issues");
+
+        final RagDocumentContext<String> context = new RagDocumentContext<>(
+                getName(),
+                getContextLabel(),
+                ragDoc.document(),
+                List.of()
+        );
+
+        final String response = llmClient.callWithCache(
+                new RagMultiDocumentContext<>(
+                        parsedArgs.getIssueSummaryPrompt(),
+                        "You are a helpful agent",
+                        List.of(context)),
+                environmentSettings,
+                getName()
+        ).getResponse();
+
+        return ragDoc.updateDocument(response)
+                .addIntermediateResult(new IntermediateResult(
+                        "Prompt: " + parsedArgs.getIssueSummaryPrompt() + "\n\n" + response,
+                        "GitHubIssue-" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getIssueSummaryPrompt()) + ".txt"
+                ));
     }
 }
 
