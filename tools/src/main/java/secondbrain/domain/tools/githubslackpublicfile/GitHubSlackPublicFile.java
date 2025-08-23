@@ -187,7 +187,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getGitHubContext(final Entity entity, final GitHubSlackPublicFileConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.log(Level.INFO, "Getting GitHub issues for " + entity.getRepos());
+        logger.log(Level.INFO, "Getting GitHub issues for " + entity.getIssues());
         return Objects.requireNonNullElse(entity.getRepos(), List.<GitHubRepo>of())
                 .stream()
                 .map(id -> List.of(
@@ -218,7 +218,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record Entity(String name, List<String> slack, List<GitHubRepo> repos, boolean disabled) {
+    record Entity(String name, List<String> slack, List<GitHubRepo> repos, List<GitHubRepo> issues, boolean disabled) {
         public List<String> getSlack() {
             return Objects.requireNonNullElse(slack, List.<String>of())
                     .stream()
@@ -228,6 +228,13 @@ public class GitHubSlackPublicFile implements Tool<Void> {
 
         public List<GitHubRepo> getRepos() {
             return Objects.requireNonNullElse(repos, List.<GitHubRepo>of())
+                    .stream()
+                    .filter(GitHubRepo::isValid)
+                    .toList();
+        }
+
+        public List<GitHubRepo> getIssues() {
+            return Objects.requireNonNullElse(issues, List.<GitHubRepo>of())
                     .stream()
                     .filter(GitHubRepo::isValid)
                     .toList();
