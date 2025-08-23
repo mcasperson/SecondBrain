@@ -22,9 +22,7 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.ListUtilsEx;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -86,15 +84,6 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     @Inject
     @Preferred
     private LlmClient llmClient;
-
-    @Inject
-    private ListLimiter listLimiter;
-
-    @Inject
-    private PromptBuilderSelector promptBuilderSelector;
-
-    @Inject
-    private ValidateString validateString;
 
     @Inject
     private SentenceSplitter sentenceSplitter;
@@ -190,11 +179,11 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
         final Try<RagMultiDocumentContext<GitHubCommitAndDiff>> result = Try
                 .of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(list -> listLimiter.limitListContent(
-                        list,
-                        RagDocumentContext::document,
-                        modelConfig.getCalculatedContextWindow(environmentSettings)))
-                .map(ragDocs -> mergeContext(prompt, INSTRUCTIONS, ragDocs, debugArgs))
+                .map(ragDocs -> new RagMultiDocumentContext<>(
+                        prompt,
+                        INSTRUCTIONS,
+                        ragDocs,
+                        debugArgs))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
@@ -210,14 +199,6 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                         API.Case(API.$(),
                                 throwable -> new ExternalFailure("Failed to get diffs: " + throwable.getMessage() + "\n" + debugArgs)))
                 .get();
-    }
-
-    private RagMultiDocumentContext<GitHubCommitAndDiff> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<GitHubCommitAndDiff>> context, final String debug) {
-        return new RagMultiDocumentContext<>(
-                prompt,
-                instructions,
-                context,
-                debug);
     }
 
     private List<RagDocumentContext<GitHubCommitAndDiff>> convertCommitsToDiffSummaries(
