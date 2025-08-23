@@ -60,7 +60,7 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
     public List<GitHubIssue> getIssues(final String token, final String organisation, final String repo, final String since, final List<String> labels, final String state) {
         return Arrays.stream(localStorage.getOrPutObject(
                         GitHubIssuesClientLive.class.getSimpleName(),
-                        "GitHubIssues",
+                        "GitHubIssuesV2",
                         DigestUtils.sha256Hex(organisation + repo + since + labels + state),
                         TTL_SECONDS,
                         GitHubIssue[].class,

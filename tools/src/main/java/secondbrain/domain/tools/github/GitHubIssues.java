@@ -128,9 +128,9 @@ public class GitHubIssues implements Tool<GitHubIssue> {
                                 .stream()
                                 .map(sentenceVectorizer::vectorize)
                                 .toList(),
-                        issue.id().toString(),
+                        issue.getNumber().toString(),
                         issue,
-                        "[" + issue.id() + "](" + issue.htmlUrl() + ")"))
+                        "[" + issue.getNumber() + "](" + issue.htmlUrl() + ")"))
                 .toList();
     }
 
