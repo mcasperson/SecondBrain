@@ -74,8 +74,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_ENTITY_NAME_ARG = "entityName";
     public static final String MULTI_SLACK_ZEN_MAX_ENTITIES_ARG = "maxEntities";
     public static final String MULTI_SLACK_ZEN_MAX_ANNOTATION_PREFIX_ARG = "annotationPrefix";
-    public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
-    public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG = "individualContextFilterQuestion";
     public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG = "individualContextFilterMinimumRating";
     public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_SUMMARY_PROMPT_ARG = "individualContextSummaryPrompt";
@@ -715,26 +713,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     }
 
-    private Integer getContextRating(final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
-        if (parsedArgs.getContextFilterMinimumRating() <= 0 || StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return 10;
-        }
-
-        final String content = context.stream()
-                .map(RagDocumentContext::document)
-                .collect(Collectors.joining("\n"));
-
-        return Try.of(() -> ratingTool.call(
-                        Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, content),
-                        parsedArgs.getContextFilterQuestion(),
-                        List.of()).getResponse())
-                .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating, 0))
-                // Ratings are provided on a best effort basis, so we ignore any failures
-                .recover(InternalFailure.class, ex -> 10)
-                .get();
-
-    }
-
     private Map<String, String> addItemToMap(@Nullable final Map<String, String> map, final String key, final String value) {
         final Map<String, String> result = map == null ? new HashMap<>() : new HashMap<>(map);
 
@@ -872,14 +850,6 @@ class MultiSlackZenGoogleConfig {
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.annotationPrefix")
     private Optional<String> configAnnotationPrefix;
-
-    @Inject
-    @ConfigProperty(name = "sb.multislackzengoogle.contextFilterQuestion")
-    private Optional<String> configContextFilterQuestion;
-
-    @Inject
-    @ConfigProperty(name = "sb.multislackzengoogle.contextFilterMinimumRating")
-    private Optional<String> configContextFilterMinimumRating;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.individualContextFilterQuestion")
@@ -1091,14 +1061,6 @@ class MultiSlackZenGoogleConfig {
 
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
-    }
-
-    public Optional<String> getConfigContextFilterQuestion() {
-        return configContextFilterQuestion;
-    }
-
-    public Optional<String> getConfigContextFilterMinimumRating() {
-        return configContextFilterMinimumRating;
     }
 
     public Optional<String> getConfigMetaReport() {
@@ -1399,29 +1361,6 @@ class MultiSlackZenGoogleConfig {
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
-        }
-
-        public String getContextFilterQuestion() {
-            return getArgsAccessor().getArgument(
-                            getConfigContextFilterQuestion()::get,
-                            arguments,
-                            context,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG,
-                            "multislackzengoogle_context_filter_question",
-                            "")
-                    .value();
-        }
-
-        public Integer getContextFilterMinimumRating() {
-            final Argument argument = getArgsAccessor().getArgument(
-                    getConfigContextFilterMinimumRating()::get,
-                    arguments,
-                    context,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG,
-                    "multislackzengoogle_context_filter_minimum_rating",
-                    "0");
-
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
 
         public String getIndividualContextSummaryPrompt() {

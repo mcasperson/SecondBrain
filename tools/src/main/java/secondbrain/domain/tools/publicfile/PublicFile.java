@@ -1,4 +1,4 @@
-package secondbrain.domain.tools.publicweb;
+package secondbrain.domain.tools.publicfile;
 
 import com.google.common.collect.ImmutableList;
 import io.vavr.API;
