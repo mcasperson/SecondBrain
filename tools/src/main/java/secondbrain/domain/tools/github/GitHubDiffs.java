@@ -35,6 +35,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -484,7 +485,10 @@ class GitHubDiffConfig {
                     context,
                     "since",
                     "github_since",
-                    ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays()).format(FORMATTER)).value();
+                    ZonedDateTime.now(ZoneOffset.UTC)
+                            .truncatedTo(ChronoUnit.DAYS)
+                            .minusDays(getDays())
+                            .format(FORMATTER)).value();
         }
 
         public String getEndDate() {
@@ -494,7 +498,10 @@ class GitHubDiffConfig {
                     context,
                     "until",
                     "github_until",
-                    ZonedDateTime.now(ZoneOffset.UTC).format(FORMATTER)).value();
+                    ZonedDateTime.now(ZoneOffset.UTC)
+                            .plusDays(1)
+                            .truncatedTo(ChronoUnit.DAYS)
+                            .format(FORMATTER)).value();
         }
 
         public String getOwner() {
