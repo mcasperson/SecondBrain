@@ -237,7 +237,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                         .toList(),
                 commit.commit().sha(),
                 commit,
-                "[" + GitHubUrlParser.urlToCommitHash(commit.commit().html_url()) + "](" + commit.commit().html_url() + ")");
+                "[" + parsedArgs.getOwner() + "/" + parsedArgs.getRepo() + " " + GitHubUrlParser.urlToCommitHash(commit.commit().html_url()) + "](" + commit.commit().html_url() + ")");
     }
 
     /**
