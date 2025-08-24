@@ -116,6 +116,7 @@ public class GitHubIssues implements Tool<GitHubIssue> {
                         parsedArgs.getGitHubOrganization(),
                         parsedArgs.getGitHubRepo(),
                         parsedArgs.getStartDate(),
+                        parsedArgs.getEndDate(),
                         parsedArgs.getIssueLabels(),
                         parsedArgs.getIssueState()))
                 .map(issues -> convertIssueToRagDoc(issues, parsedArgs, environmentSettings))
@@ -523,6 +524,7 @@ class GitHubIssueConfig {
 
             return OffsetDateTime.now(ZoneId.systemDefault())
                     .truncatedTo(ChronoUnit.DAYS)
+                    .plusDays(1)
                     .format(ISO_OFFSET_DATE_TIME);
         }
 

@@ -26,7 +26,7 @@ import java.util.logging.Logger;
 
 @ApplicationScoped
 public class GitHubIssuesClientLive implements GitHubIssuesClient {
-    private static final int TTL_SECONDS = 60 * 60 * 24 * 31;
+    private static final int TTL_SECONDS = 60 * 60 * 24 * 90;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
@@ -57,18 +57,18 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
 
 
     @Override
-    public List<GitHubIssue> getIssues(final String token, final String organisation, final String repo, final String since, final List<String> labels, final String state) {
+    public List<GitHubIssue> getIssues(final String token, final String organisation, final String repo, final String since, final String to, final List<String> labels, final String state) {
         return Arrays.stream(localStorage.getOrPutObject(
                         GitHubIssuesClientLive.class.getSimpleName(),
                         "GitHubIssuesV2",
-                        DigestUtils.sha256Hex(organisation + repo + since + labels + state),
+                        DigestUtils.sha256Hex(organisation + repo + since + to + labels + state),
                         TTL_SECONDS,
                         GitHubIssue[].class,
-                        () -> getIssuesApi(token, organisation, repo, since, labels, state, 1)))
+                        () -> getIssuesApi(token, organisation, repo, since, to, labels, state, 1)))
                 .toList();
     }
 
-    private GitHubIssue[] getIssuesApi(final String token, final String organisation, final String repo, final String since, final List<String> labels, final String state, final int page) {
+    private GitHubIssue[] getIssuesApi(final String token, final String organisation, final String repo, final String since, final String to, final List<String> labels, final String state, final int page) {
         RATE_LIMITER.acquire();
 
         final String target = "https://api.github.com/repos/"
@@ -97,7 +97,7 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
                                 .map(r -> ArrayUtils.addAll(
                                         r,
                                         r.length == 100
-                                                ? getIssuesApi(token, organisation, repo, since, labels, state, page + 1)
+                                                ? getIssuesApi(token, organisation, repo, since, to, labels, state, page + 1)
                                                 : new GitHubIssue[]{}))
                                 .get();
                     }
