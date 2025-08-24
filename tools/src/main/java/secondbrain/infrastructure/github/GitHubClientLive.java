@@ -15,6 +15,7 @@ import secondbrain.infrastructure.github.api.GitHubCommitResponse;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class GitHubClientLive implements GitHubClient {
@@ -22,6 +23,9 @@ public class GitHubClientLive implements GitHubClient {
 
     @Inject
     private ResponseValidation responseValidation;
+
+    @Inject
+    private Logger logger;
 
     @Retry
     @Override
@@ -40,6 +44,7 @@ public class GitHubClientLive implements GitHubClient {
                         .get()))
                 .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> List.of(r.readEntity(GitHubCommitResponse[].class)))
+                        .onFailure(e -> logger.warning("Failed to get commits in range from GitHub: " + e.getMessage()))
                         .get())
                 .get();
     }
@@ -59,6 +64,7 @@ public class GitHubClientLive implements GitHubClient {
                         .get()))
                 .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> r.readEntity(GitHubCommitResponse.class))
+                        .onFailure(e -> logger.warning("Failed to get commit from GitHub: " + e.getMessage()))
                         .get())
                 .get();
     }
@@ -88,6 +94,7 @@ public class GitHubClientLive implements GitHubClient {
                         .get()))
                 .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .map(r -> r.readEntity(String.class))
+                        .onFailure(e -> logger.warning("Failed to get diff from GitHub: " + e.getMessage()))
                         .get())
                 .get();
     }

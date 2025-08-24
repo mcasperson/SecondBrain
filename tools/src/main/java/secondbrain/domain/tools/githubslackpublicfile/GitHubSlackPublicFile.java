@@ -171,7 +171,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
 
     private List<RagDocumentContext<Void>> getSlackContext(final Entity entity, final GitHubSlackPublicFileConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
         logger.log(Level.INFO, "Getting Slack channels for " + String.join(", "), entity.getSlack());
-        return Objects.requireNonNullElse(entity.getSlack(), List.<String>of())
+        return entity.getSlack()
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
@@ -194,7 +194,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
 
     private List<RagDocumentContext<Void>> getGitHubContext(final Entity entity, final GitHubSlackPublicFileConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
         logger.log(Level.INFO, "Getting GitHub issues for " + entity.getIssues());
-        return Objects.requireNonNullElse(entity.getRepos(), List.<GitHubRepo>of())
+        return entity.getIssues()
                 .stream()
                 .map(id -> List.of(
                         new ToolArgs(GitHubIssues.GITHUB_ISSUE_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
@@ -218,7 +218,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
 
     private List<RagDocumentContext<Void>> getGitHubDiffContext(final Entity entity, final GitHubSlackPublicFileConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
         logger.log(Level.INFO, "Getting GitHub diffs for " + entity.getRepos());
-        return Objects.requireNonNullElse(entity.getRepos(), List.<GitHubRepo>of())
+        return entity.getRepos()
                 .stream()
                 .map(id -> Pair.of(
                         StringUtils.isBlank(id.prompt()) ? prompt : id.prompt(),

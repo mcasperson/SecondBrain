@@ -19,7 +19,7 @@ public class GitHubClientMock implements GitHubClient {
     private LlmClient llmClient;
 
     @Override
-    public List<GitHubCommitResponse> getCommitsInRange(Client client, String owner, String repo, String sha, String until, String since, String authorization) {
+    public List<GitHubCommitResponse> getCommitsInRange(final Client client, final String owner, final String repo, final String sha, final String until, final String since, final String authorization) {
         int commitCount = 3 + (int) (Math.random() * 5); // Random number of commits between 3-7
         List<GitHubCommitResponse> commits = new ArrayList<>();
 
@@ -28,7 +28,7 @@ public class GitHubClientMock implements GitHubClient {
             String repoUrl = "https://github.com/" + owner + "/" + repo;
             String commitUrl = repoUrl + "/commit/" + mockSha;
 
-            commits.add(new GitHubCommitResponse(mockSha, commitUrl));
+            commits.add(new GitHubCommitResponse(mockSha, commitUrl, null));
         }
 
         return commits;
@@ -39,7 +39,7 @@ public class GitHubClientMock implements GitHubClient {
         String repoUrl = "https://github.com/" + owner + "/" + repo;
         String commitUrl = repoUrl + "/commit/" + sha;
 
-        return new GitHubCommitResponse(sha, commitUrl);
+        return new GitHubCommitResponse(sha, commitUrl, null);
     }
 
     @Override

@@ -38,6 +38,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -84,6 +85,9 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
     @Inject
     private SentenceVectorizer sentenceVectorizer;
+
+    @Inject
+    private Logger logger;
 
     @Override
     public String getName() {
@@ -218,7 +222,9 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
              when there are a lot of large diffs.
          */
         final String summary = parsedArgs.getSummarizeDiff()
-                ? getDiffSummary(commit.diff(), parsedArgs, environmentSettings)
+                ? Try.of(() -> getDiffSummary(commit.diff(), parsedArgs, environmentSettings))
+                .onFailure(throwable -> logger.warning("Failed to summarize diff for commit " + commit.commit().sha() + ": " + throwable.getMessage()))
+                .getOrElse("Failed to summarize diff")
                 : commit.diff();
 
         return new RagDocumentContext<>(
