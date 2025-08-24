@@ -226,7 +226,7 @@ public class AzureClient implements LlmClient {
                                 .get();
                     }
                 },
-                e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
+                e -> new RuntimeException("Failed to call the Azure AI service", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                 },

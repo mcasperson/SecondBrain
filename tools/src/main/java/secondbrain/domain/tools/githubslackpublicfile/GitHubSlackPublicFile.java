@@ -7,7 +7,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
@@ -128,8 +127,6 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         logger.log(Level.INFO, "Calling " + getName());
 
-        final GitHubSlackPublicFileConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragContext -> new RagMultiDocumentContext<>(
                         prompt,
@@ -162,10 +159,13 @@ public class GitHubSlackPublicFile implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final GitHubSlackPublicFileConfig.LocalArguments parsedArgs) {
+
+        final String promptOverride = StringUtils.isNotBlank(entity.prompt) ? entity.prompt : prompt;
+
         final List<RagDocumentContext<Void>> contexts = new ArrayList<>();
-        contexts.addAll(getSlackContext(entity, parsedArgs, prompt, context));
-        contexts.addAll(getGitHubContext(entity, parsedArgs, prompt, context));
-        contexts.addAll(getGitHubDiffContext(entity, parsedArgs, prompt, context));
+        contexts.addAll(getSlackContext(entity, parsedArgs, promptOverride, context));
+        contexts.addAll(getGitHubContext(entity, parsedArgs, promptOverride, context));
+        contexts.addAll(getGitHubDiffContext(entity, parsedArgs, promptOverride, context));
         return contexts;
     }
 
@@ -199,15 +199,14 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(GitHubIssues.GITHUB_ISSUE_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(GitHubIssues.GITHUB_ISSUE_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
-                        new ToolArgs(GitHubIssues.GITHUB_SUMMARIZE_ISSUE_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
-                        new ToolArgs(GitHubIssues.GITHUB_ISSUE_SUMMARY_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(GitHubIssues.GITHUB_SUMMARIZE_ISSUE_ARG, "" + !id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()).isBlank(), true),
+                        new ToolArgs(GitHubIssues.GITHUB_ISSUE_SUMMARY_PROMPT_ARG, id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()), true),
                         new ToolArgs(GitHubIssues.GITHUB_ORGANIZATION_ARG, id.organization(), true),
                         new ToolArgs(GitHubIssues.GITHUB_REPO_ARG, id.repository(), true),
-                        new ToolArgs(GitHubIssues.GITHUB_DAYS_ARG, "" + parsedArgs.getDays(), true)))
-                .flatMap(args -> Try.of(() -> gitHubIssues.getContext(
-                                context,
-                                prompt,
-                                args))
+                        new ToolArgs(GitHubIssues.GITHUB_DAYS_ARG, "" + parsedArgs.getDays(), true))
+
+                )
+                .flatMap(args -> Try.of(() -> gitHubIssues.getContext(context, prompt, args))
                         .onFailure(InternalFailure.class, ex -> logger.warning("GitHub issues failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("GitHub issues failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
@@ -220,18 +219,17 @@ public class GitHubSlackPublicFile implements Tool<Void> {
         logger.log(Level.INFO, "Getting GitHub diffs for " + entity.getRepos());
         return entity.getRepos()
                 .stream()
-                .map(id -> Pair.of(
-                        StringUtils.isBlank(id.prompt()) ? prompt : id.prompt(),
+                .map(id ->
                         List.of(
-                                new ToolArgs(GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG, StringUtils.isNotBlank(id.prompt()) + "", true),
-                                new ToolArgs(GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG, id.prompt(), true),
+                                new ToolArgs(GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG, !id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()).isBlank() + "", true),
+                                new ToolArgs(GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG, id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()), true),
                                 new ToolArgs("owner", id.organization(), true),
                                 new ToolArgs("repo", id.repository(), true),
-                                new ToolArgs("days", "" + parsedArgs.getDays(), true))))
+                                new ToolArgs("days", "" + parsedArgs.getDays(), true)))
                 .flatMap(args -> Try.of(() -> gitHubDiffs.getContext(
                                 context,
-                                args.getLeft(),
-                                args.getRight()))
+                                prompt,
+                                args))
                         .onFailure(InternalFailure.class, ex -> logger.warning("GitHub diffs failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("GitHub diffs failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
@@ -248,7 +246,8 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record Entity(String name, List<String> slack, List<GitHubRepo> repos, List<GitHubRepo> issues, boolean disabled) {
+    record Entity(String name, String prompt, List<String> slack, List<GitHubRepo> repos, List<GitHubRepo> issues,
+                  boolean disabled) {
         public List<String> getSlack() {
             return Objects.requireNonNullElse(slack, List.<String>of())
                     .stream()
@@ -272,9 +271,16 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GitHubRepo(String organization, String repository, String prompt) {
+    record GitHubRepo(String organization, String repository, String individualPrompt) {
         public boolean isValid() {
             return StringUtils.isNotBlank(organization) && StringUtils.isNotBlank(repository);
+        }
+
+        public String getIndividualPromptOrDefault(final String defaultPrompt) {
+            if (StringUtils.isBlank(individualPrompt)) {
+                return defaultPrompt;
+            }
+            return individualPrompt;
         }
     }
 }
