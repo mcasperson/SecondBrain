@@ -21,7 +21,7 @@
         Note macos x86 is not supported from 0.30.0 onwards
         https://github.com/deepjavalibrary/djl/blob/master/engines/pytorch/pytorch-engine/README.md#macos
         -->
-        <djl.version>0.33.0</djl.version>
+        <djl.version>0.34.0</djl.version>
     </properties>
 
     <modules>
