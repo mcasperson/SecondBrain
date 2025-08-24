@@ -5,6 +5,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class MarkdnParser implements StringConverter {
+    @Override
+    public String getFormat() {
+        return "markdn";
+    }
+
     public String convert(final String response) {
         final String markdn = new DownParser(response, true).toSlack().toString();
         // The markdown parser seems to let a bunch of strong text through, so clean that up manually

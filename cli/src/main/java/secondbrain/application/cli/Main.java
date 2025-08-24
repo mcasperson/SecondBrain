@@ -7,7 +7,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 import secondbrain.Marker;
-import secondbrain.domain.converter.MarkdnParser;
+import secondbrain.domain.converter.StringConverter;
+import secondbrain.domain.converter.StringConverterSelector;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.json.JsonDeserializer;
@@ -26,7 +27,7 @@ public class Main {
     private PromptHandler promptHandler;
 
     @Inject
-    private MarkdnParser markdnParser;
+    private StringConverterSelector stringConverterSelector;
 
     @Inject
     private JsonDeserializer jsonDeserializer;
@@ -81,11 +82,11 @@ public class Main {
     }
 
     public void entry(final String[] args) {
-        final boolean markdownParsing = args.length > 1 && "markdn".equals(args[1]);
+        final String format = args.length > 1 ? args[1] : "no-op";
+        final StringConverter converter = stringConverterSelector.getStringConverter(format);
+
         Try.of(() -> promptHandler.handlePrompt(Map.of(), getPrompt(args)))
-                .map(response -> markdownParsing
-                        ? response.updateResponseText(markdnParser)
-                        : response)
+                .map(response -> response.updateResponseText(converter))
                 .onSuccess(this::printOutput)
                 .onSuccess(this::writeAnnotations)
                 .onSuccess(this::writeLinks)
