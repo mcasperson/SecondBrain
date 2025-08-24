@@ -176,7 +176,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
             return List.of();
         }
 
-        logger.log(Level.INFO, "Getting Slack channels for " + String.join(", "), entity.getSlack());
+        logger.log(Level.INFO, "Getting Slack channels for " + String.join(", ", entity.getSlack()));
         return entity.getSlack()
                 .stream()
                 .filter(StringUtils::isNotBlank)
