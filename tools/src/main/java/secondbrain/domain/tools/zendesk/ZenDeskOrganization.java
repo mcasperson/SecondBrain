@@ -444,7 +444,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 @ApplicationScoped
 class ZenDeskConfig {
     private static final int MAX_TICKETS = 100;
-    private static final String DEFAULT_TTL_SECONDS = (60 * 60 * 24 * 14) + "";
+    private static final String DEFAULT_TTL_SECONDS = (60 * 60 * 24 * 90) + "";
 
     /**
      * Set this to true to include the organization in the query sent to the ZenDesk API.

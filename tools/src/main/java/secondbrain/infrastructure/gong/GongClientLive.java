@@ -31,7 +31,7 @@ import java.util.logging.Logger;
 
 @ApplicationScoped
 public class GongClientLive implements GongClient {
-    private static final int TTL = 60 * 60 * 24 * 31;
+    private static final int TTL = 60 * 60 * 24 * 90;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
