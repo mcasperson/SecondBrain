@@ -142,7 +142,7 @@ public class GitHubIssues implements Tool<GitHubIssue> {
                                 .toList(),
                         issue.getNumber().toString(),
                         issue,
-                        "[" + issue.getNumber() + "](" + issue.htmlUrl() + ")"))
+                        "[" + parsedArgs.getGitHubOrganization() + "/" + parsedArgs.getGitHubRepo() + " " + issue.getNumber() + "](" + issue.htmlUrl() + ")"))
                 .toList();
     }
 
