@@ -54,16 +54,15 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     public static final String GITHUB_DIFF_SUMMARIZE_ARG = "githubSummarizeDiff";
     private static final String INSTRUCTIONS = """
             You are an expert in reading Git diffs.
-            You are given a question and a list of summaries of Git Diffs.
+            You are given a question and a list of summaries of Git Diffs and their associated commit messages.
             You must assume the Git Diffs capture the changes to the Git repository mentioned in the question.
-            You must assume the information required to answer the question is present in the Git Diffs.
-            You must answer the question based on the Git Diffs provided.
-            You must consider every Git Diff when providing the answer.
-            When the user asks a question indicating that they want to know the changes in the repository, you must generate the answer based on the Git Diffs.
+            You must assume the information required to answer the question is present in the Git Diffs or commit messages.
+            You must answer the question based on the Git Diffs or commit messages provided.
+            You must consider every Git Diff and commit message when providing the answer.
+            When the user asks a question indicating that they want to know the changes in the repository, you must generate the answer based on the Git Diffs or commit messages.
             You will be penalized for suggesting manual steps to generate the answer.
             You will be penalized for responding that you don't have access to real-time data or repositories.
-            If there are no Git Diffs, you must indicate that in the answer.
-            The summary must include all classes, functions, and variables found in the Git Diff.
+            If there are no Git Diffs or commit messages, you must indicate that in the answer.
             """;
 
     @Inject
@@ -222,10 +221,10 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
              when there are a lot of large diffs.
          */
         final String summary = parsedArgs.getSummarizeDiff()
-                ? Try.of(() -> getDiffSummary(commit.diff(), parsedArgs, environmentSettings))
+                ? Try.of(() -> getDiffSummary(commit.getMessageAndDiff(), parsedArgs, environmentSettings))
                 .onFailure(throwable -> logger.warning("Failed to summarize diff for commit " + commit.commit().sha() + ": " + throwable.getMessage()))
                 .getOrElse("Failed to summarize diff")
-                : commit.diff();
+                : commit.getMessageAndDiff();
 
         return new RagDocumentContext<>(
                 getName(),
