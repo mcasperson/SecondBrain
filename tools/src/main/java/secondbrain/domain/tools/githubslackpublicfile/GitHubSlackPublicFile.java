@@ -7,6 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
@@ -19,6 +20,7 @@ import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.github.GitHubDiffs;
 import secondbrain.domain.tools.github.GitHubIssues;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.yaml.YamlDeserializer;
@@ -54,6 +56,9 @@ public class GitHubSlackPublicFile implements Tool<Void> {
 
     @Inject
     private GitHubIssues gitHubIssues;
+
+    @Inject
+    private GitHubDiffs gitHubDiffs;
 
     @Inject
     private SlackChannel slackChannel;
@@ -160,6 +165,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
         final List<RagDocumentContext<Void>> contexts = new ArrayList<>();
         contexts.addAll(getSlackContext(entity, parsedArgs, prompt, context));
         contexts.addAll(getGitHubContext(entity, parsedArgs, prompt, context));
+        contexts.addAll(getGitHubDiffContext(entity, parsedArgs, prompt, context));
         return contexts;
     }
 
@@ -210,6 +216,29 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                 .toList();
     }
 
+    private List<RagDocumentContext<Void>> getGitHubDiffContext(final Entity entity, final GitHubSlackPublicFileConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        logger.log(Level.INFO, "Getting GitHub diffs for " + entity.getRepos());
+        return Objects.requireNonNullElse(entity.getRepos(), List.<GitHubRepo>of())
+                .stream()
+                .map(id -> Pair.of(
+                        StringUtils.isBlank(id.prompt()) ? prompt : id.prompt(),
+                        List.of(
+                                new ToolArgs("summarizeIndividualDiffs", "False", true),
+                                new ToolArgs("owner", id.organization(), true),
+                                new ToolArgs("repo", id.repository(), true),
+                                new ToolArgs("days", "" + parsedArgs.getDays(), true))))
+                .flatMap(args -> Try.of(() -> gitHubDiffs.getContext(
+                                context,
+                                args.getLeft(),
+                                args.getRight()))
+                        .onFailure(InternalFailure.class, ex -> logger.warning("GitHub diffs failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> logger.warning("GitHub diffs failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .getOrElse(List::of)
+                        .stream())
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     record EntityDirectory(List<Entity> entities) {
         public List<Entity> getEntities() {
@@ -242,7 +271,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record GitHubRepo(String organization, String repository) {
+    record GitHubRepo(String organization, String repository, String prompt) {
         public boolean isValid() {
             return StringUtils.isNotBlank(organization) && StringUtils.isNotBlank(repository);
         }
