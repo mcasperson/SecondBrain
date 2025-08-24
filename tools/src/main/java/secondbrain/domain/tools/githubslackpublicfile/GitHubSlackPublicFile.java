@@ -172,6 +172,10 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getSlackContext(final Entity entity, final GitHubSlackPublicFileConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        if (entity.getSlack().isEmpty()) {
+            return List.of();
+        }
+
         logger.log(Level.INFO, "Getting Slack channels for " + String.join(", "), entity.getSlack());
         return entity.getSlack()
                 .stream()
@@ -195,6 +199,10 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getGitHubContext(final Entity entity, final GitHubSlackPublicFileConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        if (entity.getIssues().isEmpty()) {
+            return List.of();
+        }
+
         logger.log(Level.INFO, "Getting GitHub issues for " + entity.getIssues());
         return entity.getIssues()
                 .stream()
@@ -218,6 +226,10 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getGitHubDiffContext(final Entity entity, final GitHubSlackPublicFileConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        if (entity.getRepos().isEmpty()) {
+            return List.of();
+        }
+
         logger.log(Level.INFO, "Getting GitHub diffs for " + entity.getRepos());
         return entity.getRepos()
                 .stream()
