@@ -37,6 +37,7 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
 @ApplicationScoped
 public class GitHubSlackPublicFile implements Tool<Void> {
 
+    public static final String GITHUB_SLACK_PUBLICFILE_ENTITY_NAME_ARG = "entityName";
     public static final String GITHUB_SLACK_PUBLICFILE_URL_ARG = "url";
     public static final String GITHUB_SLACK_PUBLICFILE_DAYS_ARG = "days";
     public static final String GITHUB_SLACK_PUBLICFILE_CONTEXT_FILTER_QUESTION_ARG = "individualContextFilterQuestion";
@@ -108,6 +109,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> ragContext = entityDirectory.getEntities()
                 .stream()
+                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.name.toLowerCase()))
                 // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
                 // We batch here to interleave API requests to the various external data sources
                 .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))
@@ -117,7 +119,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                 .toList();
 
         if (ragContext.isEmpty()) {
-            throw new InsufficientContext("No ZenDesk tickets, Slack messages, or PlanHat activities found.");
+            throw new InsufficientContext("No GitHub issues, GitHub diffs, or Slack messages found.");
         }
 
         return ragContext;
@@ -327,6 +329,10 @@ class GitHubSlackPublicFileConfig {
     @ConfigProperty(name = "sb.githubslackpublicfile.metaReport")
     private Optional<String> configMetaReport;
 
+    @Inject
+    @ConfigProperty(name = "sb.githubslackpublicfile.entity")
+    private Optional<String> configEntity;
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -365,6 +371,11 @@ class GitHubSlackPublicFileConfig {
 
     public Optional<String> getConfigMetaReport() {
         return configMetaReport;
+    }
+
+
+    public Optional<String> getConfigEntity() {
+        return configEntity;
     }
 
     public class LocalArguments {
@@ -480,6 +491,20 @@ class GitHubSlackPublicFileConfig {
                             "githubslackpublicfile_meta_report",
                             "")
                     .value();
+        }
+
+        public List<String> getEntityName() {
+            return getArgsAccessor().getArgumentList(
+                            getConfigEntity()::get,
+                            arguments,
+                            context,
+                            GitHubSlackPublicFile.GITHUB_SLACK_PUBLICFILE_ENTITY_NAME_ARG,
+                            "githubslackpublicfile_entity_name",
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .map(String::toLowerCase)
+                    .toList();
         }
     }
 }
