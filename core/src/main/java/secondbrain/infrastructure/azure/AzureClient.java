@@ -14,7 +14,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.answer.AnswerFormatterService;
-import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.Timeout;
@@ -41,8 +40,8 @@ import static com.google.common.base.Preconditions.*;
  */
 @ApplicationScoped
 public class AzureClient implements LlmClient {
-    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
     private static final String DEFAULT_MODEL = "Phi-4";
+    private static final int DEFAULT_CACHE_TTL_DAYS = 90;
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
@@ -188,7 +187,7 @@ public class AzureClient implements LlmClient {
                 tool,
                 "AzureLLM",
                 promptHash,
-                NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
+                NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
                 () -> call(request));
 
         return ragDocs.updateResponse(result);

@@ -43,6 +43,7 @@ import static io.vavr.control.Try.of;
 
 @ApplicationScoped
 public class OllamaClient implements LlmClient {
+    private static final int DEFAULT_CACHE_TTL_DAYS = 90;
     private static final int MAX_RETIES = 3;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
     private static final Long RETRY_DELAY = 10000L; // 10 second delay for retries
@@ -124,7 +125,7 @@ public class OllamaClient implements LlmClient {
                 tool,
                 "LLM",
                 promptHash,
-                NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
+                NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
                 () -> {
                     final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
                     final String responseText = response.response();

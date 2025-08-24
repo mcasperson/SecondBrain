@@ -39,6 +39,7 @@ import static com.google.common.base.Preconditions.*;
 public class GoogleClient implements LlmClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
     private static final String DEFAULT_MODEL = "gemini-2.0-flash";
+    private static final int DEFAULT_CACHE_TTL_DAYS = 90;
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
@@ -144,7 +145,7 @@ public class GoogleClient implements LlmClient {
                 tool,
                 "GoogleLLM",
                 promptHash,
-                NumberUtils.toInt(ttlDays, 30) * 24 * 60 * 60,
+                NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
                 () -> call(request));
         return ragDocs.updateResponse(result);
     }
