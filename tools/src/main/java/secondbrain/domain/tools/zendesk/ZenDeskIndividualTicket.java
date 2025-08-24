@@ -349,7 +349,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 @ApplicationScoped
 class ZenDeskTicketConfig {
     private static final int MAX_TICKETS = 100;
-    private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
+    private static final String DEFAULT_TTL_SECONDS = (60 * 60 * 24 * 90) + "";
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.ticketid")
@@ -618,7 +618,7 @@ class ZenDeskTicketConfig {
                     context,
                     "historyTtl",
                     "zen_historyttl",
-                    DEFAULT_TTL);
+                    DEFAULT_TTL_SECONDS);
 
             return Try.of(argument::value)
                     .map(i -> Math.max(0, Integer.parseInt(i)))

@@ -72,8 +72,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_SUMMARIZE_TICKET_ARG = "summarizeTicket";
     public static final String ZENDESK_MAX_TICKETS_ARG = "maxTickets";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
-    public static final String ZENDESK_CONTEXT_FILTER_BY_RECIPIENT_ARG = "filterByRecipient";
-    private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
 
 
     private static final String INSTRUCTIONS = """
@@ -173,17 +171,21 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         final List<String> query = new ArrayList<>();
         query.add("type:ticket");
 
+        // This is a manually supplied start date
         if (StringUtils.isNotBlank(parsedArgs.getStartPeriod())) {
             query.add("created>" + parsedArgs.getStartPeriod());
         }
 
+        // This is a manually supplied end date
         if (StringUtils.isNotBlank(parsedArgs.getEndPeriod())) {
             query.add("created<" + parsedArgs.getEndPeriod());
         }
 
-        // The explicit dates take precedence over a day range
+        // This is a start and end date calculated from the day range.
+        // The explicit dates above take precedence over a day range.
         if (StringUtils.isBlank(parsedArgs.getStartPeriod()) && StringUtils.isBlank(parsedArgs.getEndPeriod())) {
             query.add("created>" + parsedArgs.getStartDate());
+            query.add("created<" + parsedArgs.getEndDate());
         }
 
         if (parsedArgs.getZenDeskFilterByOrganization() && StringUtils.isNoneBlank(parsedArgs.getOrganization())) {
@@ -1035,6 +1037,13 @@ class ZenDeskConfig {
                     // Assume one day if nothing was specified
                     .minusDays(getDays() + getHours() == 0 ? 1 : getDays())
                     .minusHours(getHours())
+                    .format(ISO_OFFSET_DATE_TIME);
+        }
+
+        public String getEndDate() {
+            return OffsetDateTime.now(ZoneId.systemDefault())
+                    .truncatedTo(ChronoUnit.DAYS)
+                    .plusDays(1)
                     .format(ISO_OFFSET_DATE_TIME);
         }
 
