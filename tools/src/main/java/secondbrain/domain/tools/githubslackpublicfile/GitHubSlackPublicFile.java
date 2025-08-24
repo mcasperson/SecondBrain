@@ -109,7 +109,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> ragContext = entityDirectory.getEntities()
                 .stream()
-                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.name.toLowerCase()))
+                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.getName().toLowerCase()))
                 // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
                 // We batch here to interleave API requests to the various external data sources
                 .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))
@@ -262,6 +262,11 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     @JsonIgnoreProperties(ignoreUnknown = true)
     record Entity(String name, String prompt, List<String> slack, List<GitHubRepo> repos, List<GitHubRepo> issues,
                   boolean disabled) {
+
+        public String getName() {
+            return StringUtils.defaultIfBlank(name, "").trim();
+        }
+
         public List<String> getSlack() {
             return Objects.requireNonNullElse(slack, List.<String>of())
                     .stream()
