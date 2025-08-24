@@ -5,6 +5,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
@@ -48,6 +49,8 @@ import static com.google.common.base.Predicates.instanceOf;
  */
 @ApplicationScoped
 public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
+    public static final String GITHUB_DIFF_SUMMARY_PROMPT_ARG = "githubIssueSummaryPrompt";
+    public static final String GITHUB_DIFF_SUMMARIZE_ARG = "githubSummarizeDiff";
     private static final String INSTRUCTIONS = """
             You are an expert in reading Git diffs.
             You are given a question and a list of summaries of Git Diffs.
@@ -61,15 +64,6 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
             If there are no Git Diffs, you must indicate that in the answer.
             The summary must include all classes, functions, and variables found in the Git Diff.
             """;
-    private static final String DIFF_INSTRUCTIONS = """
-            You are an expert in reading Git diffs.
-            You are given a Git Diff.
-            You will be penalized for including a header or title in the output.
-            You will be penalized for including any markdown or HTML in the output.
-            The summary must include all classes, functions, and variables found in the Git Diff.
-            """;
-    @Inject
-    private ModelConfig modelConfig;
 
     @Inject
     private GitHubDiffConfig config;
@@ -121,7 +115,8 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 new ToolArguments("until", "The optional date to stop checking at", ""),
                 new ToolArguments("days", "The optional number of days worth of diffs to return", "0"),
                 new ToolArguments("maxDiffs", "The optional number of diffs to return", "0"),
-                new ToolArguments("summarizeIndividualDiffs", "Set to true to first summarize each diff", "true")
+                new ToolArguments(GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG, "Set to true to first summarize each diff", "true"),
+                new ToolArguments(GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG, "The prompt used to summarize the diff", "true")
         );
     }
 
@@ -222,7 +217,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
              We can optionally summarize each commit as a way of reducing the context size of
              when there are a lot of large diffs.
          */
-        final String summary = parsedArgs.getSummarizeIndividualDiffs()
+        final String summary = parsedArgs.getSummarizeDiff()
                 ? getDiffSummary(commit.diff(), parsedArgs, environmentSettings)
                 : commit.diff();
 
@@ -253,7 +248,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
         return llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
-                        "Provide a one paragraph summary of the changes in the Git Diff.",
+                        parsedArgs.getDiffSummaryPrompt(),
                         "You are a helpful agent",
                         List.of(context)),
                 environmentSettings,
@@ -346,8 +341,12 @@ class GitHubDiffConfig {
     private Optional<String> configGithubBranch;
 
     @Inject
-    @ConfigProperty(name = "sb.github.summarizeindividualdiffs")
-    private Optional<String> configSummarizeIndividualDiffs;
+    @ConfigProperty(name = "sb.github.diffSummaryPrompt")
+    private Optional<String> configDiffSummaryPrompt;
+
+    @Inject
+    @ConfigProperty(name = "sb.github.summarizeDiff")
+    private Optional<String> configSummarizeDiff;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -405,8 +404,12 @@ class GitHubDiffConfig {
         return configGithubBranch;
     }
 
-    public Optional<String> getConfigSummarizeIndividualDiffs() {
-        return configSummarizeIndividualDiffs;
+    public Optional<String> getConfigDiffSummaryPrompt() {
+        return configDiffSummaryPrompt;
+    }
+
+    public Optional<String> getConfigSummarizeDiff() {
+        return configSummarizeDiff;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -436,18 +439,6 @@ class GitHubDiffConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
-        }
-
-        public boolean getSummarizeIndividualDiffs() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigSummarizeIndividualDiffs()::get,
-                    arguments,
-                    context,
-                    "summarizeIndividualDiffs",
-                    "github_summarize_individual_diffs",
-                    "").value();
-
-            return Boolean.parseBoolean(stringValue);
         }
 
         public int getDays() {
@@ -573,6 +564,30 @@ class GitHubDiffConfig {
                     .map(Integer::parseInt)
                     .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
                     .get();
+        }
+
+        public String getDiffSummaryPrompt() {
+            return getArgsAccessor()
+                    .getArgument(
+                            getConfigDiffSummaryPrompt()::get,
+                            arguments,
+                            context,
+                            GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG,
+                            "github_diff_summary_prompt",
+                            "Summarise the GitHub issue in three paragraphs")
+                    .value();
+        }
+
+        public boolean getSummarizeDiff() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigSummarizeDiff()::get,
+                    arguments,
+                    context,
+                    GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG,
+                    "github_summarize_diff",
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
         }
     }
 }

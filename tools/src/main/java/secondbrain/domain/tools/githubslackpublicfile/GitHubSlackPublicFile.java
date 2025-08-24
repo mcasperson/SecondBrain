@@ -223,7 +223,8 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                 .map(id -> Pair.of(
                         StringUtils.isBlank(id.prompt()) ? prompt : id.prompt(),
                         List.of(
-                                new ToolArgs("summarizeIndividualDiffs", "False", true),
+                                new ToolArgs(GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG, StringUtils.isNotBlank(id.prompt()) + "", true),
+                                new ToolArgs(GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG, id.prompt(), true),
                                 new ToolArgs("owner", id.organization(), true),
                                 new ToolArgs("repo", id.repository(), true),
                                 new ToolArgs("days", "" + parsedArgs.getDays(), true))))
