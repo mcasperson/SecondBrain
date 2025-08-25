@@ -8,10 +8,8 @@ import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.config.ModelConfig;
-import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
@@ -311,14 +309,6 @@ class GitHubDiffConfig {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.gitdiffmodel")
-    private Optional<String> configDiffModel;
-
-    @Inject
-    @ConfigProperty(name = "sb.ollama.diffcontextwindow")
-    private Optional<String> configDiffContextWindow;
-
-    @Inject
     @ConfigProperty(name = "sb.github.accesstoken")
     private Optional<String> configGithubAccessToken;
 
@@ -373,14 +363,6 @@ class GitHubDiffConfig {
 
     @Inject
     private ModelConfig modelConfig;
-
-    public Optional<String> getConfigDiffModel() {
-        return configDiffModel;
-    }
-
-    public Optional<String> getConfigDiffContextWindow() {
-        return configDiffContextWindow;
-    }
 
     public Optional<String> getConfigGithubAccessToken() {
         return configGithubAccessToken;
@@ -461,7 +443,7 @@ class GitHubDiffConfig {
                     arguments,
                     context,
                     GitHubDiffs.GITHUB_DIFF_DAYS_ARG,
-                    "github_days",
+                    GitHubDiffs.GITHUB_DIFF_DAYS_ARG,
                     DEFAULT_DURATION).value();
 
             return Try.of(() -> stringValue)
@@ -476,7 +458,7 @@ class GitHubDiffConfig {
                     arguments,
                     context,
                     GitHubDiffs.GITHUB_DIFF_MAX_DIFFS_ARG,
-                    "github_max_diffs",
+                    GitHubDiffs.GITHUB_DIFF_MAX_DIFFS_ARG,
                     "0").value();
 
             return Try.of(() -> stringValue)
@@ -492,7 +474,7 @@ class GitHubDiffConfig {
                     arguments,
                     context,
                     GitHubDiffs.GITHUB_DIFF_SINCE_ARG,
-                    "github_since",
+                    GitHubDiffs.GITHUB_DIFF_SINCE_ARG,
                     ZonedDateTime.now(ZoneOffset.UTC)
                             .truncatedTo(ChronoUnit.DAYS)
                             .minusDays(getDays())
@@ -505,7 +487,7 @@ class GitHubDiffConfig {
                     arguments,
                     context,
                     GitHubDiffs.GITHUB_DIFF_UNTIL_ARG,
-                    "github_until",
+                    GitHubDiffs.GITHUB_DIFF_UNTIL_ARG,
                     ZonedDateTime.now(ZoneOffset.UTC)
                             .plusDays(1)
                             .truncatedTo(ChronoUnit.DAYS)
@@ -518,7 +500,7 @@ class GitHubDiffConfig {
                     arguments,
                     context,
                     GitHubDiffs.GITHUB_DIFF_OWNER_ARG,
-                    "github_owner",
+                    GitHubDiffs.GITHUB_DIFF_OWNER_ARG,
                     DEFAULT_OWNER).value();
         }
 
@@ -528,7 +510,7 @@ class GitHubDiffConfig {
                     arguments,
                     context,
                     GitHubDiffs.GITHUB_DIFF_REPO_ARG,
-                    "github_repo",
+                    GitHubDiffs.GITHUB_DIFF_REPO_ARG,
                     DEFAULT_REPO).value();
         }
 
@@ -538,7 +520,7 @@ class GitHubDiffConfig {
                     arguments,
                     context,
                     GitHubDiffs.GITHUB_DIFF_SHA_ARG,
-                    "github_sha",
+                    GitHubDiffs.GITHUB_DIFF_SHA_ARG,
                     "").value();
         }
 
@@ -548,7 +530,7 @@ class GitHubDiffConfig {
                     arguments,
                     context,
                     GitHubDiffs.GITHUB_DIFF_BRANCH_ARG,
-                    "github_branch",
+                    GitHubDiffs.GITHUB_DIFF_BRANCH_ARG,
                     DEFAULT_BRANCH).value();
         }
 
@@ -560,32 +542,6 @@ class GitHubDiffConfig {
                     .getOrElseThrow(ex -> new InternalFailure("Failed to get GitHub access token", ex));
         }
 
-        public String getDiffCustomModel() {
-            return getArgsAccessor().getArgument(
-                    getConfigDiffModel()::get,
-                    arguments,
-                    context,
-                    "diffModel",
-                    "github_diff_custom_model",
-                    getModelConfig().getCalculatedModel(context)).value();
-        }
-
-        @Nullable
-        public Integer getDiffContextWindow() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigDiffContextWindow()::get,
-                    arguments,
-                    context,
-                    "diffContextWindow",
-                    "github_diff_context_window",
-                    Constants.DEFAULT_CONTENT_WINDOW + "").value();
-
-            return Try.of(() -> stringValue)
-                    .map(Integer::parseInt)
-                    .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
-                    .get();
-        }
-
         public String getDiffSummaryPrompt() {
             return getArgsAccessor()
                     .getArgument(
@@ -593,7 +549,7 @@ class GitHubDiffConfig {
                             arguments,
                             context,
                             GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG,
-                            "github_diff_summary_prompt",
+                            GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG,
                             "Summarise the GitHub issue in three paragraphs")
                     .value();
         }
@@ -604,7 +560,7 @@ class GitHubDiffConfig {
                     arguments,
                     context,
                     GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG,
-                    "github_summarize_diff",
+                    GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG,
                     "").value();
 
             return BooleanUtils.toBoolean(value);
