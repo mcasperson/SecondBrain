@@ -177,27 +177,18 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
         final Try<RagMultiDocumentContext<ZenDeskTicket>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                // Limit the content of the ticket to the configured context window
-                .map(list -> list
-                        .stream()
-                        .map(ticket -> ticket
-                                .updateDocument(ticket.document().substring(0, modelConfig.getCalculatedContextWindow(environmentSettings))))
-                        .toList())
                 .map(validateList::throwIfEmpty)
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
                 .map(tickets -> new RagMultiDocumentContext<ZenDeskTicket>(prompt, INSTRUCTIONS, tickets))
                 // Call Ollama with the final prompt
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()))
+                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
                 // Clean up the response
-                .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())))
-                .recover(EmptyString.class, e -> new RagMultiDocumentContext<>("", "", null, "The ticket is empty", null, null, null));
+                .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("No matching tickets were found", throwable)),
                         API.Case(API.$(), throwable -> new ExternalFailure("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
                 .get();
     }
