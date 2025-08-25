@@ -14,7 +14,11 @@ public class LoggingExceptionHandler implements ExceptionHandler {
     private String printStackTrace;
 
     @Override
-    public String getExceptionMessage(Throwable e) {
+    public String getExceptionMessage(final Throwable e) {
+        if (e == null) {
+            return "Unknown error";
+        }
+
         if (Boolean.parseBoolean(printStackTrace) || e instanceof ExternalFailure) {
             return ExceptionUtils.getStackTrace(e);
         }

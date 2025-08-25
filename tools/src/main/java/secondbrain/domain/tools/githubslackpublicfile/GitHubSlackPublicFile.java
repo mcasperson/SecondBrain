@@ -130,14 +130,8 @@ public class GitHubSlackPublicFile implements Tool<Void> {
         logger.log(Level.INFO, "Calling " + getName());
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragContext -> new RagMultiDocumentContext<>(
-                        prompt,
-                        INSTRUCTIONS,
-                        ragContext))
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()));
+                .map(ragContext -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragContext))
+                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -187,10 +181,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                         new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
                         new ToolArgs(SlackChannel.DAYS_ARG, "" + parsedArgs.getDays(), true)))
-                .flatMap(args -> Try.of(() -> slackChannel.getContext(
-                                context,
-                                prompt,
-                                args))
+                .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt, args))
                         .onFailure(InternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
@@ -214,7 +205,6 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                         new ToolArgs(GitHubIssues.GITHUB_ORGANIZATION_ARG, id.organization(), true),
                         new ToolArgs(GitHubIssues.GITHUB_REPO_ARG, id.repository(), true),
                         new ToolArgs(GitHubIssues.GITHUB_DAYS_ARG, "" + parsedArgs.getDays(), true))
-
                 )
                 .flatMap(args -> Try.of(() -> gitHubIssues.getContext(context, prompt, args))
                         .onFailure(InternalFailure.class, ex -> logger.warning("GitHub issues failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -240,10 +230,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                                 new ToolArgs("owner", id.organization(), true),
                                 new ToolArgs("repo", id.repository(), true),
                                 new ToolArgs("days", "" + parsedArgs.getDays(), true)))
-                .flatMap(args -> Try.of(() -> gitHubDiffs.getContext(
-                                context,
-                                prompt,
-                                args))
+                .flatMap(args -> Try.of(() -> gitHubDiffs.getContext(context, prompt, args))
                         .onFailure(InternalFailure.class, ex -> logger.warning("GitHub diffs failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("GitHub diffs failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)

@@ -186,7 +186,8 @@ public class SlackChannel implements Tool<Void> {
                     + "* [Slack Channel](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")");
         }
 
-        final TrimResult messagesWithUsersReplaced = replaceIds(client, parsedArgs.getAccessToken(), messages.document(), parsedArgs)
+        final TrimResult messagesWithUsersReplaced = replaceUserIds(client, parsedArgs.getAccessToken(), messages.document(), parsedArgs)
+                .flatMap(message -> replaceChannelIds(client, parsedArgs.getAccessToken(), message, parsedArgs))
                 .map(messages::replaceDocument)
                 .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
 
@@ -245,9 +246,8 @@ public class SlackChannel implements Tool<Void> {
                 .get();
     }
 
-    private Try<String> replaceIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
+    private Try<String> replaceUserIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
         final Pattern userPattern = Pattern.compile("<@(?<username>\\w+)>");
-        final Pattern channelPattern = Pattern.compile("<#(?<channelname>\\w+)\\|?>");
 
         /*
             Start with a pairing of the original messages the results of the regex matching for user IDs.
@@ -268,18 +268,32 @@ public class SlackChannel implements Tool<Void> {
                                 // This is required to allow the reduce function to take a matcher but return a string.
                                 (s, s2) -> s + s2))
                 /*
-                The string with user ids replaces is then mapped to a tuple with the original string and a list of regex
-                matching channel IDs.
+                 If any of the previous steps failed, we return the original messages.
                  */
-                .map(messagesWithUsersReplaced -> Tuple.of(messagesWithUsersReplaced, channelPattern.matcher(messagesWithUsersReplaced).results()))
+                .recover(error -> messages);
+    }
+
+    private Try<String> replaceChannelIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
+        final Pattern channelPattern = Pattern.compile("<#(?<channelname>\\w+)\\|?>");
+
+        /*
+            Start with a pairing of the original messages the results of the regex matching for user IDs.
+         */
+        return Try.of(() -> Tuple.of(messages, channelPattern.matcher(messages).results()))
                 /*
-                 The regex results for channel IDs are then reduced to a string with the channel IDs replaced with their
-                 names.
+                We map the original message and the list of regex matches for user IDs to a string with
+                the user IDs replaced with their usernames.
                  */
-                .map(results -> results._2().reduce(
-                        results._1(),
-                        (m, match) -> m.replace(match.group(), slackClient.channel(client, token, match.group("channelname"), parsedArgs.getApiDelay()).channelName()),
-                        (s, s2) -> s + s2))
+                .map(results ->
+                        // We want to take each username ID match, replace it with a username, and reduce the results down to a single string.
+                        results._2().reduce(
+                                // The starting point is the original message.
+                                results._1(),
+                                // Each user id match is replaced with the username retrieved from the Slack API.
+                                // The original message with the user IDs replaced is returned.
+                                (m, match) -> m.replace(match.group(), slackClient.channel(client, token, match.group("channelname"), parsedArgs.getApiDelay()).channelName()),
+                                // This is required to allow the reduce function to take a matcher but return a string.
+                                (s, s2) -> s + s2))
                 /*
                  If any of the previous steps failed, we return the original messages.
                  */
