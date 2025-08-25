@@ -51,6 +51,14 @@ import static com.google.common.base.Predicates.instanceOf;
  */
 @ApplicationScoped
 public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
+    public static final String GITHUB_DIFF_OWNER_ARG = "owner";
+    public static final String GITHUB_DIFF_REPO_ARG = "repo";
+    public static final String GITHUB_DIFF_BRANCH_ARG = "branch";
+    public static final String GITHUB_DIFF_SHA_ARG = "sha";
+    public static final String GITHUB_DIFF_SINCE_ARG = "since";
+    public static final String GITHUB_DIFF_UNTIL_ARG = "until";
+    public static final String GITHUB_DIFF_DAYS_ARG = "days";
+    public static final String GITHUB_DIFF_MAX_DIFFS_ARG = "maxDiffs";
     public static final String GITHUB_DIFF_SUMMARY_PROMPT_ARG = "githubIssueSummaryPrompt";
     public static final String GITHUB_DIFF_SUMMARIZE_ARG = "githubSummarizeDiff";
     private static final String INSTRUCTIONS = """
@@ -111,16 +119,16 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments("owner", "The github owner to check", "mcasperson"),
-                new ToolArguments("repo", "The repository to check", "SecondBrain"),
-                new ToolArguments("branch", "The branch to check", "main"),
-                new ToolArguments("sha", "The git sha to check", ""),
-                new ToolArguments("since", "The optional date to start checking from", ""),
-                new ToolArguments("until", "The optional date to stop checking at", ""),
-                new ToolArguments("days", "The optional number of days worth of diffs to return", "0"),
-                new ToolArguments("maxDiffs", "The optional number of diffs to return", "0"),
-                new ToolArguments(GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG, "Set to true to first summarize each diff", "true"),
-                new ToolArguments(GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG, "The prompt used to summarize the diff", "true")
+                new ToolArguments(GITHUB_DIFF_OWNER_ARG, "The github owner to check", "mcasperson"),
+                new ToolArguments(GITHUB_DIFF_REPO_ARG, "The repository to check", "SecondBrain"),
+                new ToolArguments(GITHUB_DIFF_BRANCH_ARG, "The branch to check", "main"),
+                new ToolArguments(GITHUB_DIFF_SHA_ARG, "The git sha to check", ""),
+                new ToolArguments(GITHUB_DIFF_SINCE_ARG, "The optional date to start checking from", ""),
+                new ToolArguments(GITHUB_DIFF_UNTIL_ARG, "The optional date to stop checking at", ""),
+                new ToolArguments(GITHUB_DIFF_DAYS_ARG, "The optional number of days worth of diffs to return", "0"),
+                new ToolArguments(GITHUB_DIFF_MAX_DIFFS_ARG, "The optional number of diffs to return", "0"),
+                new ToolArguments(GITHUB_DIFF_SUMMARIZE_ARG, "Set to true to first summarize each diff", "true"),
+                new ToolArguments(GITHUB_DIFF_SUMMARY_PROMPT_ARG, "The prompt used to summarize the diff", "true")
         );
     }
 
@@ -452,7 +460,7 @@ class GitHubDiffConfig {
                     getConfigGithubDays()::get,
                     arguments,
                     context,
-                    "days",
+                    GitHubDiffs.GITHUB_DIFF_DAYS_ARG,
                     "github_days",
                     DEFAULT_DURATION).value();
 
@@ -467,7 +475,7 @@ class GitHubDiffConfig {
                     getConfigGithubMaxDiffs()::get,
                     arguments,
                     context,
-                    "maxDiffs",
+                    GitHubDiffs.GITHUB_DIFF_MAX_DIFFS_ARG,
                     "github_max_diffs",
                     "0").value();
 
@@ -483,7 +491,7 @@ class GitHubDiffConfig {
                     getConfigGithubSince()::get,
                     arguments,
                     context,
-                    "since",
+                    GitHubDiffs.GITHUB_DIFF_SINCE_ARG,
                     "github_since",
                     ZonedDateTime.now(ZoneOffset.UTC)
                             .truncatedTo(ChronoUnit.DAYS)
@@ -496,7 +504,7 @@ class GitHubDiffConfig {
                     getConfigGithubUntil()::get,
                     arguments,
                     context,
-                    "until",
+                    GitHubDiffs.GITHUB_DIFF_UNTIL_ARG,
                     "github_until",
                     ZonedDateTime.now(ZoneOffset.UTC)
                             .plusDays(1)
@@ -509,7 +517,7 @@ class GitHubDiffConfig {
                     getConfigGithubOwner()::get,
                     arguments,
                     context,
-                    "owner",
+                    GitHubDiffs.GITHUB_DIFF_OWNER_ARG,
                     "github_owner",
                     DEFAULT_OWNER).value();
         }
@@ -519,7 +527,7 @@ class GitHubDiffConfig {
                     getConfigGithubRepo()::get,
                     arguments,
                     context,
-                    "repo",
+                    GitHubDiffs.GITHUB_DIFF_REPO_ARG,
                     "github_repo",
                     DEFAULT_REPO).value();
         }
@@ -529,7 +537,7 @@ class GitHubDiffConfig {
                     getConfigGithubSha()::get,
                     arguments,
                     context,
-                    "sha",
+                    GitHubDiffs.GITHUB_DIFF_SHA_ARG,
                     "github_sha",
                     "").value();
         }
@@ -539,7 +547,7 @@ class GitHubDiffConfig {
                     getConfigGithubBranch()::get,
                     arguments,
                     context,
-                    "branch",
+                    GitHubDiffs.GITHUB_DIFF_BRANCH_ARG,
                     "github_branch",
                     DEFAULT_BRANCH).value();
         }
@@ -603,4 +611,3 @@ class GitHubDiffConfig {
         }
     }
 }
-
