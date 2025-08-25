@@ -201,10 +201,7 @@ public class PlanHat implements Tool<Conversation> {
 
         final Try<RagMultiDocumentContext<Conversation>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()));
+                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411

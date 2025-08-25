@@ -184,15 +184,8 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
         final Try<RagMultiDocumentContext<GitHubCommitAndDiff>> result = Try
                 .of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragDocs -> new RagMultiDocumentContext<>(
-                        prompt,
-                        INSTRUCTIONS,
-                        ragDocs,
-                        debugArgs))
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()));
+                .map(ragDocs -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDocs, debugArgs))
+                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411

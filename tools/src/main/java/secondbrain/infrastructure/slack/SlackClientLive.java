@@ -105,7 +105,7 @@ public class SlackClientLive implements SlackClient {
             Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
         }
 
-        return Try.of(() -> client.conversationsHistory(r -> r
+        final Try<ConversationsHistoryResponse> result = Try.of(() -> client.conversationsHistory(r -> r
                                 .token(accessToken)
                                 .channel(channelId)
                                 .oldest(oldest))
@@ -121,7 +121,9 @@ public class SlackClientLive implements SlackClient {
                     }
 
                     throw new ExternalFailure("Could not call searchAll", ex);
-                })
+                });
+
+        return result
                 .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsHistory", ex)))
                 .get();
     }
