@@ -192,7 +192,9 @@ public class GoogleDocs implements Tool<Void> {
                         .map(doc -> parsedArgs.getSummarizeDocument()
                                 ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
                                 : doc)
-                        .map(List::of))
+                        .map(List::of)
+                        // This catches the case where the document does not meet the context filter criteria
+                        .recover(NoSuchElementException.class, ex -> List.of()))
                 .get();
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
