@@ -892,22 +892,6 @@ class ZenDeskConfig {
                     .value();
         }
 
-        public int getNumComments() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigZenDeskNumComments()::get,
-                    arguments,
-                    context,
-                    ZenDeskOrganization.NUM_COMMENTS_ARG,
-                    "zendesk_numcomments",
-                    MAX_TICKETS + "").value();
-
-            return Try.of(() -> Integer.parseInt(stringValue))
-                    .recover(throwable -> MAX_TICKETS)
-                    // Must be at least 1
-                    .map(i -> Math.max(1, i))
-                    .get();
-        }
-
         public boolean getZenDeskFilterByOrganization() {
             final String stringValue = getArgsAccessor().getArgument(
                     getConfigZenDeskFilterByOrganization()::get,
