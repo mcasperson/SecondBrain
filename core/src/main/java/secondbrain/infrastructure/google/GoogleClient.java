@@ -41,7 +41,7 @@ public class GoogleClient implements LlmClient {
     private static final String DEFAULT_MODEL = "gemini-2.0-flash";
     private static final int DEFAULT_CACHE_TTL_DAYS = 90;
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
-    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
+    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final int API_RETRIES = 3;
