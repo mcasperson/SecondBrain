@@ -203,7 +203,7 @@ public class AzureClient implements LlmClient {
 
         final PromptTextGenerator request = new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, modelName);
 
-        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens);
+        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens + outputTokens);
 
         logger.info("Calling Azure LLM");
         logger.info(request.generatePromptText());
@@ -241,7 +241,7 @@ public class AzureClient implements LlmClient {
             return Try.of(() -> localStorage.getString(
                             tool,
                             "AzureLLM",
-                            DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens)))
+                            promptHash))
                     .getOrElse(() -> new CacheResult<String>(call(request), false));
         }
 
