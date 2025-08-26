@@ -32,6 +32,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.*;
 
@@ -89,6 +90,22 @@ public class AzureClient implements LlmClient {
     @Inject
     @ConfigProperty(name = "sb.azurellm.retryDelaySeconds", defaultValue = TIMEOUT_API_CALL_DELAY_SECONDS_DEFAULT + "")
     private Long retryDelay;
+
+    /**
+     * This property is used to selectively disable reading values from the cache for a tool. The value is a comma
+     * separated list of tool names.
+     */
+    @Inject
+    @ConfigProperty(name = "sb.azurellm.disableToolReadCache", defaultValue = "")
+    private String disableToolReadCache;
+
+    /**
+     * This property is used to selectively disable writing values from the cache for a tool. The value is a comma
+     * separated list of tool names.
+     */
+    @Inject
+    @ConfigProperty(name = "sb.azurellm.disableToolWriteCache", defaultValue = "")
+    private String disableToolWriteCache;
 
     @Inject
     private TimeoutHttpClientCaller httpClientCaller;
@@ -185,14 +202,47 @@ public class AzureClient implements LlmClient {
 
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens);
 
-        final String result = localStorage.getOrPutString(
+        final String result = handleCaching(request, tool, promptHash);
+
+        return ragDocs.updateResponse(result);
+    }
+
+    private String handleCaching(final PromptTextGenerator request, final String tool, final String promptHash) {
+        final int ttl = NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60;
+
+        // Bypass cache altogether if both read and write are disabled.
+        if (getDisableToolReadCache().contains(tool) && getDisableToolWriteCache().contains(tool)) {
+            return call(request);
+        }
+
+        // We can refresh the cache with a new value, but we don't want to read from it.
+        if (getDisableToolReadCache().contains(tool)) {
+            final String result = call(request);
+            localStorage.putString(
+                    tool,
+                    "AzureLLM",
+                    DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens),
+                    ttl,
+                    result);
+            return result;
+        }
+
+        // We can get a cached value but not save it
+        if (getDisableToolWriteCache().contains(tool)) {
+            return Try.of(() -> localStorage.getString(
+                            tool,
+                            "AzureLLM",
+                            DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens)))
+                    .getOrElse(() -> call(request));
+        }
+
+        // Normal caching operation - get or put
+        return localStorage.getOrPutString(
                 tool,
                 "AzureLLM",
                 promptHash,
-                NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
+                ttl,
                 () -> call(request));
-
-        return ragDocs.updateResponse(result);
     }
 
     private String call(final PromptTextGenerator request) {
@@ -251,5 +301,23 @@ public class AzureClient implements LlmClient {
                     throw ex;
                 })
                 .get();
+    }
+
+    private List<String> getDisableToolReadCache() {
+        final String fixedString = StringUtils.isBlank(disableToolReadCache) ? "" : disableToolReadCache;
+
+        return Stream.of(fixedString.split(","))
+                .map(String::trim)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toList());
+    }
+
+    private List<String> getDisableToolWriteCache() {
+        final String fixedString = StringUtils.isBlank(disableToolWriteCache) ? "" : disableToolWriteCache;
+
+        return Stream.of(fixedString.split(","))
+                .map(String::trim)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toList());
     }
 }
