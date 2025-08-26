@@ -31,6 +31,7 @@ import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.domain.tools.zendesk.ZenDeskIndividualTicket;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
@@ -282,7 +283,7 @@ public class PlanHat implements Tool<Conversation> {
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     .onFailure(e -> logger.warning("Failed to get Planhat activity rating for ticket " + activity.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(InternalFailure.class, ex -> 10)
+                    .recover(InternalFailure.class, ex -> parsedArgs.getDefaultRating())
                     .get();
 
             metadata.add(new MetaObjectResult(PLANHAT_FILTER_RATING_META, filterRating));
@@ -311,6 +312,7 @@ public class PlanHat implements Tool<Conversation> {
 @ApplicationScoped
 class PlanHatConfig {
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
+    private static final int DEFAULT_RATING = 10;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.company")
@@ -371,6 +373,10 @@ class PlanHatConfig {
     @ConfigProperty(name = "sb.planhat.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
 
+    @Inject
+    @ConfigProperty(name = "sb.planhat.contextFilterDefaultRating")
+    private Optional<String> configContextFilterDefaultRating;
+
     public Optional<String> getConfigCompany() {
         return configCompany;
     }
@@ -429,6 +435,10 @@ class PlanHatConfig {
 
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
+    }
+
+    public Optional<String> getConfigContextFilterDefaultRating() {
+        return configContextFilterDefaultRating;
     }
 
     public class LocalArguments {
@@ -597,6 +607,18 @@ class PlanHatConfig {
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+        }
+
+        public int getDefaultRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterDefaultRating()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    DEFAULT_RATING + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
     }
 }

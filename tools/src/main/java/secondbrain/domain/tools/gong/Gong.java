@@ -28,6 +28,7 @@ import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.domain.tools.zendesk.ZenDeskIndividualTicket;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -220,7 +221,7 @@ public class Gong implements Tool<GongCallDetails> {
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     .onFailure(e -> logger.warning("Failed to get Gong call rating for ticket " + gongCall.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(InternalFailure.class, ex -> 10)
+                    .recover(InternalFailure.class, ex -> parsedArgs.getDefaultRating())
                     .get();
 
             metadata.add(new MetaObjectResult(GONG_FILTER_RATING_META, filterRating));
@@ -277,6 +278,8 @@ public class Gong implements Tool<GongCallDetails> {
 
 @ApplicationScoped
 class GongConfig {
+    private static final int DEFAULT_RATING = 10;
+
     @Inject
     @ConfigProperty(name = "sb.gong.accessKey")
     private Optional<String> configAccessKey;
@@ -320,6 +323,10 @@ class GongConfig {
     @Inject
     @ConfigProperty(name = "sb.gong.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.contextFilterDefaultRating")
+    private Optional<String> configContextFilterDefaultRating;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -384,6 +391,10 @@ class GongConfig {
 
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
+    }
+
+    public Optional<String> getConfigContextFilterDefaultRating() {
+        return configContextFilterDefaultRating;
     }
 
     public class LocalArguments {
@@ -568,6 +579,18 @@ class GongConfig {
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+        }
+
+        public int getDefaultRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterDefaultRating()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    DEFAULT_RATING + "");
+
+            return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
     }
 }

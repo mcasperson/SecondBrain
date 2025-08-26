@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jsoup.internal.StringUtil;
 import org.jspecify.annotations.Nullable;
@@ -44,6 +45,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_FILTER_RATING_META = "FilterRating";
     public static final String ZENDESK_RATING_QUESTION_ARG = "ticketRatingQuestion";
+    public static final String ZENDESK_DEFAULT_RATING_ARG = "ticketDefaultRating";
     public static final String ZENDESK_TICKET_ID_ARG = "ticketId";
     public static final String ZENDESK_TICKET_SUBJECT_ARG = "ticketSubject";
     public static final String ZENDESK_TICKET_SUBMITTER_ARG = "ticketSubmitter";
@@ -153,7 +155,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     .onFailure(e -> logger.warning("Failed to get ZenDesk ticket rating for ticket " + ticket.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(InternalFailure.class, ex -> 10)
+                    .recover(InternalFailure.class, ex -> parsedArgs.getDefaultRating())
                     .get();
 
             metadata.add(new MetaObjectResult(ZENDESK_FILTER_RATING_META, filterRating));
@@ -341,6 +343,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 @ApplicationScoped
 class ZenDeskTicketConfig {
     private static final int MAX_TICKETS = 100;
+    private static final int DEFAULT_RATING = 10;
     private static final String DEFAULT_TTL_SECONDS = (60 * 60 * 24 * 90) + "";
 
     @Inject
@@ -388,8 +391,8 @@ class ZenDeskTicketConfig {
     private Optional<String> configContextFilterQuestion;
 
     @Inject
-    @ConfigProperty(name = "sb.zendesk.contextFilterMinimumRating")
-    private Optional<String> configContextFilterMinimumRating;
+    @ConfigProperty(name = "sb.zendesk.contextFilterDefaultRating")
+    private Optional<String> configContextFilterDefaultRating;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -444,10 +447,6 @@ class ZenDeskTicketConfig {
         return configContextFilterQuestion;
     }
 
-    public Optional<String> getConfigContextFilterMinimumRating() {
-        return configContextFilterMinimumRating;
-    }
-
     public Optional<String> getConfigTicketSubmitter() {
         return configTicketSubmitter;
     }
@@ -460,6 +459,9 @@ class ZenDeskTicketConfig {
         return configTicketAssignee;
     }
 
+    public Optional<String> getConfigContextFilterDefaultRating() {
+        return configContextFilterDefaultRating;
+    }
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
@@ -486,7 +488,7 @@ class ZenDeskTicketConfig {
                     arguments,
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ID_ARG,
-                    "zendesk_ticketid",
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_ID_ARG,
                     "").value();
 
         }
@@ -497,7 +499,7 @@ class ZenDeskTicketConfig {
                     arguments,
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG,
-                    "zendesk_ticketsubject",
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG,
                     "").value();
 
         }
@@ -508,7 +510,7 @@ class ZenDeskTicketConfig {
                     arguments,
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG,
-                    "zendesk_ticketsubmitter",
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG,
                     "").value();
 
         }
@@ -519,7 +521,7 @@ class ZenDeskTicketConfig {
                     arguments,
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG,
-                    "zendesk_ticketorganization",
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG,
                     "").value();
 
         }
@@ -530,7 +532,7 @@ class ZenDeskTicketConfig {
                     arguments,
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ASSIGNEE_ARG,
-                    "zendesk_ticketassignee",
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_ASSIGNEE_ARG,
                     "").value();
 
         }
@@ -623,7 +625,7 @@ class ZenDeskTicketConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.NUM_COMMENTS_ARG,
-                    "zendesk_numcomments",
+                    ZenDeskOrganization.NUM_COMMENTS_ARG,
                     MAX_TICKETS + "").value();
 
             return Try.of(() -> Integer.parseInt(stringValue))
@@ -639,9 +641,21 @@ class ZenDeskTicketConfig {
                             arguments,
                             context,
                             ZenDeskIndividualTicket.ZENDESK_RATING_QUESTION_ARG,
-                            "zendesk_rating_question",
+                            ZenDeskIndividualTicket.ZENDESK_RATING_QUESTION_ARG,
                             "")
                     .value();
+        }
+
+        public int getDefaultRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterDefaultRating()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    DEFAULT_RATING + "");
+
+            return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
     }
 }
