@@ -255,7 +255,7 @@ public class AzureClient implements LlmClient {
                         return call(request, retry + 1);
                     }
 
-                    throw new RuntimeException("Failed to call the Azure AI service", ex);
+                    throw ex;
                 })
                 .get();
     }
