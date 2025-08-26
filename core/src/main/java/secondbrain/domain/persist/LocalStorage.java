@@ -12,7 +12,7 @@ public interface LocalStorage {
      * @param promptHash A way to identify the prompt
      * @return The value, if one was saved
      */
-    String getString(String tool, String source, String promptHash);
+    CacheResult<String> getString(String tool, String source, String promptHash);
 
     /**
      * Get the value associated with a tool, source, and prompt hash, or save a new value if one is not found.
@@ -23,7 +23,7 @@ public interface LocalStorage {
      * @param generateValue A way to generate a new value
      * @return The value, if one was saved, or the generated value
      */
-    String getOrPutString(String tool, String source, String promptHash, int ttlSeconds, GenerateValue<String> generateValue);
+    CacheResult<String> getOrPutString(String tool, String source, String promptHash, int ttlSeconds, GenerateValue<String> generateValue);
 
     /**
      * Get the value associated with a tool, source, and prompt hash, or save a new value if one is not found.
@@ -34,7 +34,7 @@ public interface LocalStorage {
      * @param generateValue A way to generate a new value
      * @return The value, if one was saved, or the generated value
      */
-    String getOrPutString(String tool, String source, String promptHash, GenerateValue<String> generateValue);
+    CacheResult<String> getOrPutString(String tool, String source, String promptHash, GenerateValue<String> generateValue);
 
     /**
      * Get the value associated with a tool, source, and prompt hash, or save a new value if one is not found.
@@ -45,7 +45,7 @@ public interface LocalStorage {
      * @param generateValue A way to generate a new value
      * @return The value, if one was saved, or the generated value
      */
-    <T> T getOrPutObject(String tool, String source, String promptHash, int ttlSeconds, Class<T> clazz, GenerateValue<T> generateValue);
+    <T> CacheResult<T> getOrPutObject(String tool, String source, String promptHash, int ttlSeconds, Class<T> clazz, GenerateValue<T> generateValue);
 
     /**
      * Get the value associated with a tool, source, and prompt hash, or save a new value if one is not found.
@@ -56,7 +56,7 @@ public interface LocalStorage {
      * @param generateValue A way to generate a new value
      * @return The value, if one was saved, or the generated value
      */
-    <T> T getOrPutObject(String tool, String source, String promptHash, Class<T> clazz, GenerateValue<T> generateValue);
+    <T> CacheResult<T> getOrPutObject(String tool, String source, String promptHash, Class<T> clazz, GenerateValue<T> generateValue);
 
     /**
      * Save a value associated with a tool, source, and prompt hash.

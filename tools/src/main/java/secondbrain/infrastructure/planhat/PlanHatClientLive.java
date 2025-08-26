@@ -38,12 +38,13 @@ public class PlanHatClientLive implements PlanHatClient {
             final String token,
             final int ttlSeconds) {
         final Conversation[] conversations = localStorage.getOrPutObject(
-                PlanHatClientLive.class.getSimpleName(),
-                "PlanHatAPIConversations",
-                DigestUtils.sha256Hex(company + url),
-                ttlSeconds,
-                Conversation[].class,
-                () -> getConversationsApi(client, company, url, token));
+                        PlanHatClientLive.class.getSimpleName(),
+                        "PlanHatAPIConversations",
+                        DigestUtils.sha256Hex(company + url),
+                        ttlSeconds,
+                        Conversation[].class,
+                        () -> getConversationsApi(client, company, url, token))
+                .result();
 
         return conversations == null
                 ? List.of()
@@ -58,12 +59,13 @@ public class PlanHatClientLive implements PlanHatClient {
             final String token,
             final int ttlSeconds) {
         return localStorage.getOrPutObject(
-                PlanHatClientLive.class.getSimpleName(),
-                "PlanHatAPICompany",
-                DigestUtils.sha256Hex(company + url),
-                ttlSeconds,
-                Company.class,
-                () -> getCompanyApi(client, company, url, token));
+                        PlanHatClientLive.class.getSimpleName(),
+                        "PlanHatAPICompany",
+                        DigestUtils.sha256Hex(company + url),
+                        ttlSeconds,
+                        Company.class,
+                        () -> getCompanyApi(client, company, url, token))
+                .result();
     }
 
     @Retry

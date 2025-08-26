@@ -140,11 +140,12 @@ public class GoogleClient implements LlmClient {
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model);
 
         final String result = localStorage.getOrPutString(
-                tool,
-                "GoogleLLM",
-                promptHash,
-                NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
-                () -> call(request));
+                        tool,
+                        "GoogleLLM",
+                        promptHash,
+                        NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
+                        () -> call(request))
+                .result();
         return ragDocs.updateResponse(result);
     }
 

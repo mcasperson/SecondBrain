@@ -75,12 +75,13 @@ public class GongClientLive implements GongClient {
          cache the result, and then filter the calls by the company ID.
          */
         final GongCallExtensive[] calls = localStorage.getOrPutObject(
-                GongClientLive.class.getSimpleName(),
-                "GongAPICallsExtensive",
-                DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
-                TTL,
-                GongCallExtensive[].class,
-                () -> getCallsExtensiveApi(fromDateTime, toDateTime, callId, username, password, ""));
+                        GongClientLive.class.getSimpleName(),
+                        "GongAPICallsExtensive",
+                        DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
+                        TTL,
+                        GongCallExtensive[].class,
+                        () -> getCallsExtensiveApi(fromDateTime, toDateTime, callId, username, password, ""))
+                .result();
 
         if (calls == null) {
             return List.of();
@@ -114,6 +115,7 @@ public class GongClientLive implements GongClient {
                         call.id(),
                         GongCallTranscript.class,
                         () -> getCallTranscriptApi(call.id(), username, password))
+                .result()
                 .getTranscript(call);
     }
 

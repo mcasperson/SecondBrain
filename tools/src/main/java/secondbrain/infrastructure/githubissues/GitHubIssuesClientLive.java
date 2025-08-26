@@ -57,12 +57,13 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
     @Override
     public List<GitHubIssue> getIssues(final String token, final String organisation, final String repo, final String since, final String to, final List<String> labels, final String state) {
         return Arrays.stream(localStorage.getOrPutObject(
-                        GitHubIssuesClientLive.class.getSimpleName(),
-                        "GitHubIssuesV2",
-                        DigestUtils.sha256Hex(organisation + repo + since + to + labels + state),
-                        TTL_SECONDS,
-                        GitHubIssue[].class,
-                        () -> getIssuesApi(token, organisation, repo, since, to, labels, state, 1)))
+                                GitHubIssuesClientLive.class.getSimpleName(),
+                                "GitHubIssuesV2",
+                                DigestUtils.sha256Hex(organisation + repo + since + to + labels + state),
+                                TTL_SECONDS,
+                                GitHubIssue[].class,
+                                () -> getIssuesApi(token, organisation, repo, since, to, labels, state, 1))
+                        .result())
                 .toList();
     }
 

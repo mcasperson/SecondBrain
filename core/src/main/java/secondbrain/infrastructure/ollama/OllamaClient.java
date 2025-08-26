@@ -132,7 +132,7 @@ public class OllamaClient implements LlmClient {
 
                     // Don't cache errors
                     return resultOrDefaultOnError(responseText, null);
-                });
+                }).result();
 
         // Don't return cached errors
         return valueOrDefaultOnError(result,

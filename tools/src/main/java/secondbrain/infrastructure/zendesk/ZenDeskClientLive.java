@@ -85,7 +85,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 DigestUtils.sha256Hex(url + ticketId),
                 ttlSeconds,
                 ZenDeskTicket.class,
-                () -> getTicketApi(authorization, url, ticketId).ticket());
+                () -> getTicketApi(authorization, url, ticketId).ticket()).result();
     }
 
     /**
@@ -107,7 +107,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 DigestUtils.sha256Hex(url + query + maxPage),
                 ttlSeconds,
                 ZenDeskTicket[].class,
-                () -> getTicketsApi(authorization, url, query, page, maxPage));
+                () -> getTicketsApi(authorization, url, query, page, maxPage)).result();
 
         return Arrays.asList(value);
     }
@@ -217,7 +217,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 DigestUtils.sha256Hex(ticketId + url),
                 0,
                 ZenDeskCommentsResponse.class,
-                () -> getCommentsFromApi(authorization, url, ticketId));
+                () -> getCommentsFromApi(authorization, url, ticketId)).result();
     }
 
     private ZenDeskCommentsResponse getCommentsFromApi(
@@ -304,7 +304,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 "ZenDeskAPIOrganizations",
                 DigestUtils.sha256Hex(orgId + url),
                 ZenDeskOrganizationResponse.class,
-                () -> getOrganizationFromApi(authorization, url, orgId)).organization();
+                () -> getOrganizationFromApi(authorization, url, orgId)).result().organization();
     }
 
     /**
@@ -358,6 +358,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 "ZenDeskAPIUsersV2",
                 DigestUtils.sha256Hex(userId + url),
                 ZenDeskUserResponse.class,
-                () -> getUserFromApi(authorization, url, userId)).user();
+                () -> getUserFromApi(authorization, url, userId)).result().user();
     }
 }

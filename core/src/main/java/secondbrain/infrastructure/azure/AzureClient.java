@@ -20,6 +20,7 @@ import secondbrain.domain.exceptions.RateLimit;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.limit.ListLimiter;
+import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.azure.api.*;
@@ -202,17 +203,23 @@ public class AzureClient implements LlmClient {
 
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens);
 
-        final String result = handleCaching(request, tool, promptHash);
+        logger.info("Calling Azure LLM");
+        logger.info(request.generatePromptText());
 
-        return ragDocs.updateResponse(result);
+        final CacheResult<String> result = handleCaching(request, tool, promptHash);
+
+        logger.info("LLM Response" + (result.fromCache() ? " (from cache)" : ""));
+        logger.info(result.result());
+
+        return ragDocs.updateResponse(result.result());
     }
 
-    private String handleCaching(final PromptTextGenerator request, final String tool, final String promptHash) {
+    private CacheResult<String> handleCaching(final PromptTextGenerator request, final String tool, final String promptHash) {
         final int ttl = NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60;
 
         // Bypass cache altogether if both read and write are disabled.
         if (getDisableToolReadCache().contains(tool) && getDisableToolWriteCache().contains(tool)) {
-            return call(request);
+            return new CacheResult<String>(call(request), false);
         }
 
         // We can refresh the cache with a new value, but we don't want to read from it.
@@ -224,7 +231,7 @@ public class AzureClient implements LlmClient {
                     DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens),
                     ttl,
                     result);
-            return result;
+            return new CacheResult<String>(result, false);
         }
 
         // We can get a cached value but not save it
@@ -233,7 +240,7 @@ public class AzureClient implements LlmClient {
                             tool,
                             "AzureLLM",
                             DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens)))
-                    .getOrElse(() -> call(request));
+                    .getOrElse(() -> new CacheResult<String>(call(request), false));
         }
 
         // Normal caching operation - get or put
@@ -252,13 +259,7 @@ public class AzureClient implements LlmClient {
 
         RATE_LIMITER.acquire();
 
-        logger.info("Calling Azure LLM");
-        logger.info(request.generatePromptText());
-
         final String result = call(request, 0);
-
-        logger.info("LLM Response");
-        logger.info(result);
 
         return result;
     }

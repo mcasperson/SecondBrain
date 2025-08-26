@@ -68,7 +68,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
                 DigestUtils.sha256Hex(text + hiddenText + DJL_PATH),
                 TTL_SECONDS,
                 RagStringContext.class,
-                () -> vectorizeApi(text, hiddenText));
+                () -> vectorizeApi(text, hiddenText)).result();
     }
 
     private RagStringContext vectorizeApi(final String text, final @Nullable String hiddenText) {

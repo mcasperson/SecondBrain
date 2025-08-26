@@ -295,10 +295,11 @@ public class DirectoryScan implements Tool<Void> {
         }
 
         final String summary = localStorage.getOrPutString(
-                this.getName(),
-                "File",
-                DigestUtils.sha256Hex(parsedArgs.getIndividualDocumentPrompt() + trimResult.document()),
-                () -> getFileSummaryLlm(trimResult.document(), parsedArgs, environmentSettings));
+                        this.getName(),
+                        "File",
+                        DigestUtils.sha256Hex(parsedArgs.getIndividualDocumentPrompt() + trimResult.document()),
+                        () -> getFileSummaryLlm(trimResult.document(), parsedArgs, environmentSettings))
+                .result();
 
         return new RagDocumentContext<>(
                 getName(),

@@ -70,12 +70,13 @@ public class SlackClientLive implements SlackClient {
 
         return Try
                 .of(() -> localStorage.getOrPutObject(
-                        SlackClientLive.class.getSimpleName(),
-                        "SlackAPIConversationHistory",
-                        hash,
-                        ttlSeconds,
-                        ConversationsHistoryResponse.class,
-                        () -> conversationHistoryFromApi(client, accessToken, channelId, oldest, 0, apiDelay)))
+                                SlackClientLive.class.getSimpleName(),
+                                "SlackAPIConversationHistory",
+                                hash,
+                                ttlSeconds,
+                                ConversationsHistoryResponse.class,
+                                () -> conversationHistoryFromApi(client, accessToken, channelId, oldest, 0, apiDelay))
+                        .result())
                 .map(this::conversationsToText)
                 .get();
     }
@@ -142,11 +143,12 @@ public class SlackClientLive implements SlackClient {
 
         return Try
                 .of(() -> localStorage.getOrPutObject(
-                        SlackClientLive.class.getSimpleName(),
-                        "SlackAPIUserInfo",
-                        hash,
-                        UsersInfoResponse.class,
-                        () -> userFromApi(client, accessToken, userId, 0, apiDelay)))
+                                SlackClientLive.class.getSimpleName(),
+                                "SlackAPIUserInfo",
+                                hash,
+                                UsersInfoResponse.class,
+                                () -> userFromApi(client, accessToken, userId, 0, apiDelay))
+                        .result())
                 .map(u -> u.getUser().getName())
                 .get();
     }
@@ -206,11 +208,12 @@ public class SlackClientLive implements SlackClient {
 
         return Try
                 .of(() -> localStorage.getOrPutObject(
-                        SlackClientLive.class.getSimpleName(),
-                        "SlackAPIConversationsInfo",
-                        hash,
-                        ConversationsInfoResponse.class,
-                        () -> channelFromApi(client, accessToken, channelId, 0, apiDelay)))
+                                SlackClientLive.class.getSimpleName(),
+                                "SlackAPIConversationsInfo",
+                                hash,
+                                ConversationsInfoResponse.class,
+                                () -> channelFromApi(client, accessToken, channelId, 0, apiDelay))
+                        .result())
                 .map(c -> new SlackConversationResource(c.getChannel().getName()))
                 .get();
     }
@@ -272,12 +275,13 @@ public class SlackClientLive implements SlackClient {
 
         return Try
                 .of(() -> localStorage.getOrPutObject(
-                        SlackClientLive.class.getSimpleName(),
-                        "SlackAPISearch",
-                        hash,
-                        ttlSeconds,
-                        SearchAllResponse.class,
-                        () -> searchFromApi(client, accessToken, keywords, apiDelay)))
+                                SlackClientLive.class.getSimpleName(),
+                                "SlackAPISearch",
+                                hash,
+                                ttlSeconds,
+                                SearchAllResponse.class,
+                                () -> searchFromApi(client, accessToken, keywords, apiDelay))
+                        .result())
                 .map(s -> s.getMessages()
                         .getMatches()
                         .stream()
@@ -354,7 +358,7 @@ public class SlackClientLive implements SlackClient {
                         "SlackAPIChannel",
                         hash,
                         ChannelDetails.class,
-                        () -> findChannelIdFromApi(client, accessToken, channel, null, apiDelay)))
+                        () -> findChannelIdFromApi(client, accessToken, channel, null, apiDelay)).result())
                 .map(c -> new SlackChannelResource(c.teamId(), c.channelId(), c.channelName()))
                 .get();
     }

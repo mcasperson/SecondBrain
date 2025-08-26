@@ -85,7 +85,7 @@ public class H2LocalStorageTest {
                 "test",
                 randomValue,
                 TestObject.class,
-                () -> new TestObject(randomValue)).value());
+                () -> new TestObject(randomValue)).result().value());
     }
 
     @Test

@@ -248,7 +248,7 @@ public class H2LocalStorage implements LocalStorage {
      * if the cache is disabled or if there was an exception attempting to get the value.
      */
     @Override
-    public String getString(final String tool, final String source, final String promptHash) {
+    public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
         synchronized (H2LocalStorage.class) {
             if (isDisabled() || isWriteOnly() || this.connection == null) {
                 return null;
@@ -261,7 +261,7 @@ public class H2LocalStorage implements LocalStorage {
 
             totalReads.incrementAndGet();
 
-            final Try<String> result = Try.withResources(() -> connection.prepareStatement("""
+            final Try<CacheResult<String>> result = Try.withResources(() -> connection.prepareStatement("""
                             SELECT response FROM LOCAL_STORAGE
                                             WHERE tool = ?
                                             AND source = ?
@@ -275,9 +275,9 @@ public class H2LocalStorage implements LocalStorage {
                                 .of(resultSet -> {
                                     if (resultSet.next()) {
                                         totalCacheHits.incrementAndGet();
-                                        return resultSet.getString(1);
+                                        return new CacheResult<String>(resultSet.getString(1), true);
                                     }
-                                    return null;
+                                    return new CacheResult<String>(null, false);
                                 }).get();
 
                     })
@@ -293,9 +293,9 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public String getOrPutString(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
+    public CacheResult<String> getOrPutString(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
         if (isDisabled() || connection == null) {
-            return generateValue.generate();
+            return new CacheResult<String>(generateValue.generate(), false);
         }
 
         logger.fine("Getting string from cache for tool " + tool + " source " + source + " prompt " + promptHash);
@@ -303,7 +303,7 @@ public class H2LocalStorage implements LocalStorage {
         return Try
                 .of(() -> getString(tool, source, promptHash))
                 // a cache miss means the string is empty, so we throw an exception
-                .filter(StringUtils::isNotBlank)
+                .filter(result -> StringUtils.isNotBlank(result.result()))
                 // cache hit
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 // recover from a cache miss by generating the value and saving it
@@ -311,7 +311,7 @@ public class H2LocalStorage implements LocalStorage {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                     final String value = generateValue.generate();
                     putString(tool, source, promptHash, ttlSeconds, value);
-                    return value;
+                    return new CacheResult<String>(value, false);
                 })
                 /*
                     Exceptions are swallowed here because caching is just a best effort. But
@@ -321,31 +321,31 @@ public class H2LocalStorage implements LocalStorage {
                 // If there was an error with the local storage, bypass it and generate the value
                 .recover(LocalStorageFailure.class, ex -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                    return generateValue.generate();
+                    return new CacheResult<String>(generateValue.generate(), false);
                 })
                 // For all other errors, we return the value or rethrow the exception
                 .get();
     }
 
     @Override
-    public String getOrPutString(final String tool, final String source, final String promptHash, final GenerateValue<String> generateValue) {
+    public CacheResult<String> getOrPutString(final String tool, final String source, final String promptHash, final GenerateValue<String> generateValue) {
         return getOrPutString(tool, source, promptHash, 0, generateValue);
     }
 
     @Override
-    public <T> T getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
+    public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
         if (isDisabled() || connection == null) {
-            return generateValue.generate();
+            return new CacheResult<T>(generateValue.generate(), false);
         }
 
         logger.fine("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
 
         return Try.of(() -> getString(tool, source, promptHash))
                 // a cache miss means the string is empty, so we throw an exception
-                .filter(StringUtils::isNotBlank)
+                .filter(result -> StringUtils.isNotBlank(result.result()))
                 // a cache hit means we deserialize the result
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
-                .mapTry(r -> jsonDeserializer.deserialize(r, clazz))
+                .mapTry(r -> new CacheResult<T>(jsonDeserializer.deserialize(r.result(), clazz), true))
                 // a cache miss means we call the API and then save the result in the cache
                 .recoverWith(ex -> Try.of(() -> {
                             logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
@@ -357,7 +357,7 @@ public class H2LocalStorage implements LocalStorage {
                                     promptHash,
                                     ttlSeconds,
                                     jsonDeserializer.serialize(value));
-                            return value;
+                            return new CacheResult<T>(value, false);
                         })
                 )
                 /*
@@ -368,14 +368,14 @@ public class H2LocalStorage implements LocalStorage {
                 // If there was an error with the local storage, bypass it and generate the value
                 .recover(LocalStorageFailure.class, ex -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                    return generateValue.generate();
+                    return new CacheResult<T>(generateValue.generate(), false);
                 })
                 // For all other errors, we return the value or rethrow the exception
                 .get();
     }
 
     @Override
-    public <T> T getOrPutObject(final String tool, final String source, final String promptHash, final Class<T> clazz, final GenerateValue<T> generateValue) {
+    public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final Class<T> clazz, final GenerateValue<T> generateValue) {
         return getOrPutObject(tool, source, promptHash, 0, clazz, generateValue);
     }
 

@@ -37,12 +37,13 @@ public class GitHubClientLive implements GitHubClient {
     @Override
     public List<GitHubCommitResponse> getCommitsInRange(final Client client, final String owner, final String repo, final String sha, final String until, final String since, final String authorization) {
         return Arrays.stream(localStorage.getOrPutObject(
-                        GitHubIssuesClientLive.class.getSimpleName(),
-                        "GitHubIssuesV2",
-                        DigestUtils.sha256Hex(owner + repo + since + until + sha),
-                        TTL_SECONDS,
-                        GitHubCommitResponse[].class,
-                        () -> getCommitsInRangeApi(client, owner, repo, sha, until, since, authorization)))
+                                GitHubIssuesClientLive.class.getSimpleName(),
+                                "GitHubIssuesV2",
+                                DigestUtils.sha256Hex(owner + repo + since + until + sha),
+                                TTL_SECONDS,
+                                GitHubCommitResponse[].class,
+                                () -> getCommitsInRangeApi(client, owner, repo, sha, until, since, authorization))
+                        .result())
                 .toList();
     }
 
@@ -71,12 +72,13 @@ public class GitHubClientLive implements GitHubClient {
     @Override
     public GitHubCommitResponse getCommit(final Client client, final String owner, final String repo, final String sha, final String authorization) {
         return localStorage.getOrPutObject(
-                GitHubIssuesClientLive.class.getSimpleName(),
-                "GitHubIssuesV2",
-                DigestUtils.sha256Hex(owner + repo + sha),
-                TTL_SECONDS,
-                GitHubCommitResponse.class,
-                () -> getCommitApi(client, owner, repo, sha, authorization));
+                        GitHubIssuesClientLive.class.getSimpleName(),
+                        "GitHubIssuesV2",
+                        DigestUtils.sha256Hex(owner + repo + sha),
+                        TTL_SECONDS,
+                        GitHubCommitResponse.class,
+                        () -> getCommitApi(client, owner, repo, sha, authorization))
+                .result();
     }
 
     private GitHubCommitResponse getCommitApi(final Client client, final String owner, final String repo, final String sha, final String authorization) {
@@ -111,14 +113,15 @@ public class GitHubClientLive implements GitHubClient {
     @Override
     public String getDiff(final Client client, final String owner, final String repo, final String sha, final String authorization) {
         return localStorage.getOrPutObject(
-                GitHubIssuesClientLive.class.getSimpleName(),
-                "GitHubIssuesV2",
-                DigestUtils.sha256Hex(owner + repo + sha),
-                TTL_SECONDS,
-                String.class,
-                () -> getDiffApi(client, owner, repo, sha, authorization));
+                        GitHubIssuesClientLive.class.getSimpleName(),
+                        "GitHubIssuesV2",
+                        DigestUtils.sha256Hex(owner + repo + sha),
+                        TTL_SECONDS,
+                        String.class,
+                        () -> getDiffApi(client, owner, repo, sha, authorization))
+                .result();
     }
-    
+
     private String getDiffApi(final Client client, final String owner, final String repo, final String sha, final String authorization) {
         RATE_LIMITER.acquire();
 
