@@ -58,34 +58,38 @@ public class H2LocalStorageTest {
     @Test
     public void testConnection() {
         Assertions.assertNull(h2LocalStorage.getString(
-                H2LocalStorageTest.class.getSimpleName(),
-                "test",
-                UUID.randomUUID().toString()));
+                        H2LocalStorageTest.class.getSimpleName(),
+                        "test",
+                        UUID.randomUUID().toString())
+                .result());
     }
 
     @Test
     public void testSave() {
         final String randomValue = UUID.randomUUID().toString();
         Assertions.assertEquals(randomValue, h2LocalStorage.getOrPutString(
-                H2LocalStorageTest.class.getSimpleName(),
-                "test",
-                randomValue,
-                () -> randomValue));
+                        H2LocalStorageTest.class.getSimpleName(),
+                        "test",
+                        randomValue,
+                        () -> randomValue)
+                .result());
         Assertions.assertEquals(randomValue, h2LocalStorage.getString(
-                H2LocalStorageTest.class.getSimpleName(),
-                "test",
-                randomValue));
+                        H2LocalStorageTest.class.getSimpleName(),
+                        "test",
+                        randomValue)
+                .result());
     }
 
     @Test
     public void testSaveObject() {
         final String randomValue = UUID.randomUUID().toString();
         Assertions.assertEquals(randomValue, h2LocalStorage.getOrPutObject(
-                H2LocalStorageTest.class.getSimpleName(),
-                "test",
-                randomValue,
-                TestObject.class,
-                () -> new TestObject(randomValue)).result().value());
+                        H2LocalStorageTest.class.getSimpleName(),
+                        "test",
+                        randomValue,
+                        TestObject.class,
+                        () -> new TestObject(randomValue))
+                .result().value());
     }
 
     @Test
