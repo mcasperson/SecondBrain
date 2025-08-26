@@ -199,7 +199,9 @@ public class AzureClient implements LlmClient {
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
 
-        final PromptTextGenerator request = new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, model.orElse(DEFAULT_MODEL));
+        final String modelName = environmentSettings.getOrDefault(MODEL_OVERRIDE_ENV, this.model.orElse(DEFAULT_MODEL));
+
+        final PromptTextGenerator request = new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, modelName);
 
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens);
 
@@ -208,7 +210,7 @@ public class AzureClient implements LlmClient {
 
         final CacheResult<String> result = handleCaching(request, tool, promptHash);
 
-        logger.info("LLM Response" + (result.fromCache() ? " (from cache)" : ""));
+        logger.info("LLM Response from " + modelName + (result.fromCache() ? " (from cache)" : ""));
         logger.info(result.result());
 
         return ragDocs.updateResponse(result.result());

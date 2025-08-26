@@ -5,6 +5,8 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import java.util.Map;
 
 public interface LlmClient {
+    String MODEL_OVERRIDE_ENV = "modelOverride";
+
     String call(final String prompt);
 
     String call(final String prompt, final String model);

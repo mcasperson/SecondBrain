@@ -5,6 +5,8 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.tika.utils.StringUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -20,8 +22,10 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.infrastructure.llm.LlmClient;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -32,6 +36,7 @@ import static com.google.common.base.Predicates.instanceOf;
 @ApplicationScoped
 public class RatingTool implements Tool<Void> {
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "rating_document";
+    public static final String RATING_SECOND_MODEL_ARG = "secondModel";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -79,6 +84,8 @@ public class RatingTool implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(validateList::throwIfEmpty)
                 .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
@@ -89,14 +96,50 @@ public class RatingTool implements Tool<Void> {
                  */
                 .map(ragDoc -> ragDoc.updateResponse(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim()));
 
+        final Try<RagMultiDocumentContext<Void>> firstResultWithMappedFailures = mapFailures(result);
+
+        final Try<RagMultiDocumentContext<Void>> secondResult = callSecondary(environmentSettings, prompt, arguments, parsedArgs);
+
+        if (secondResult == null) {
+            return firstResultWithMappedFailures.get();
+        }
+
+        // The final result is the average of the two results from the two models
+        final Try<RagMultiDocumentContext<Void>> secondResultWithMappedFailures = mapFailures(secondResult);
+
+        final int firstResultInt = Integer.parseInt(firstResultWithMappedFailures.get().getResponse());
+        final int secondResultInt = Integer.parseInt(secondResultWithMappedFailures.get().getResponse());
+
+        return firstResultWithMappedFailures.get().updateResponse((firstResultInt + secondResultInt) / 2 + "");
+    }
+
+    private Try<RagMultiDocumentContext<Void>> mapFailures(final Try<RagMultiDocumentContext<Void>> result) {
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The document was empty")),
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
-                .get();
+                API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The document was empty")),
+                API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
+                API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)));
+    }
+
+    private Try<RagMultiDocumentContext<Void>> callSecondary(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {
+        if (StringUtils.isBlank(parsedArgs.getSecondModel())) {
+            return null;
+        }
+
+        final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
+        newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, parsedArgs.getSecondModel());
+
+        return Try.of(() -> getContext(newEnvironmentSettings, prompt, arguments))
+                .map(validateList::throwIfEmpty)
+                .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
+                /*
+                 We expect a single value, but might get some whitespace from a thinking model that had the
+                 thinking response removed.
+                 */
+                .map(ragDoc -> ragDoc.updateResponse(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim()));
     }
 
     @Override
@@ -109,9 +152,19 @@ public class RatingTool implements Tool<Void> {
 class RatingConfig {
     @Inject
     private ArgsAccessor argsAccessor;
+    @Inject
+    @ConfigProperty(name = "sb.rating.secondModel", defaultValue = "")
+    private Optional<String> configSecondModel;
 
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
+    }
+
+    /**
+     * You can optionally have a second model to do a rating, with the result being the average of the two.
+     */
+    public Optional<String> getConfigSecondModel() {
+        return configSecondModel;
     }
 
     public class LocalArguments {
@@ -134,6 +187,16 @@ class RatingConfig {
                     environmentSettings,
                     null,
                     RatingTool.RATING_DOCUMENT_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getSecondModel() {
+            return getArgsAccessor().getArgument(
+                    getConfigSecondModel()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_SECOND_MODEL_ARG,
+                    RatingTool.RATING_SECOND_MODEL_ARG,
                     "").value();
         }
     }
