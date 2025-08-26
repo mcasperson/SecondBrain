@@ -84,6 +84,7 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '21'
+          cache: 'maven'
       - name: Build with Maven
         run: mvn --batch-mode clean install
 
@@ -103,6 +104,7 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '21'
+          cache: 'maven'
 
       - name: Configure maven settings
         run: |

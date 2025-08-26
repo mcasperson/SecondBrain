@@ -82,10 +82,7 @@ public class RatingTool implements Tool<Void> {
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(validateList::throwIfEmpty)
                 .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()))
+                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
                 /*
                  We expect a single value, but might get some whitespace from a thinking model that had the
                  thinking response removed.
