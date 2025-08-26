@@ -23,7 +23,6 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.concurrency.SemaphoreLender;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -37,7 +36,6 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
@@ -83,9 +81,6 @@ public class GoogleDocs implements Tool<Void> {
             """;
 
     @Inject
-    private ModelConfig modelConfig;
-
-    @Inject
     private GoogleDocsConfig config;
 
     @Inject
@@ -103,9 +98,6 @@ public class GoogleDocs implements Tool<Void> {
 
     @Inject
     private SentenceVectorizer sentenceVectorizer;
-
-    @Inject
-    private PromptBuilderSelector promptBuilderSelector;
 
     @Inject
     private ValidateString validateString;
@@ -329,20 +321,12 @@ public class GoogleDocs implements Tool<Void> {
     }
 
     private String getDocumentSummary(final String document, final Map<String, String> environmentSettings, final GoogleDocsConfig.LocalArguments parsedArgs) {
-        final String ticketContext = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildContextPrompt(this.getContextLabel(), document);
-
         final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),
                 "Document",
                 document,
                 List.of()
         );
-
-        final String prompt = promptBuilderSelector
-                .getPromptBuilder(modelConfig.getCalculatedModel(environmentSettings))
-                .buildFinalPrompt("You are a helpful agent", ticketContext, parsedArgs.getDocumentSummaryPrompt());
 
         final RagMultiDocumentContext<String> multiDoc = new RagMultiDocumentContext<>(
                 "You are a helpful agent",

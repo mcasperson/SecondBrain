@@ -9,7 +9,6 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
@@ -354,9 +353,6 @@ class GitHubDiffConfig {
     @Inject
     private ValidateString validateString;
 
-    @Inject
-    private ModelConfig modelConfig;
-
     public Optional<String> getConfigGithubAccessToken() {
         return configGithubAccessToken;
     }
@@ -411,10 +407,6 @@ class GitHubDiffConfig {
 
     public ValidateString getValidateString() {
         return validateString;
-    }
-
-    public ModelConfig getModelConfig() {
-        return modelConfig;
     }
 
     public class LocalArguments {

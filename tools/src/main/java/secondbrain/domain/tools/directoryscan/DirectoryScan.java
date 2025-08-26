@@ -11,7 +11,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -26,10 +25,8 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.files.PathSpec;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
-import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.persist.LocalStorage;
-import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -90,33 +87,38 @@ public class DirectoryScan implements Tool<Void> {
             """;
     @Inject
     LocalStorage localStorage;
-    @Inject
-    private ModelConfig modelConfig;
+
     @Inject
     private DirectoryScanConfig config;
+
     @Inject
     private DebugToolArgs debugToolArgs;
+
     @Inject
     @Preferred
     private LlmClient llmClient;
-    @Inject
-    private ListLimiter listLimiter;
-    @Inject
-    private PromptBuilderSelector promptBuilderSelector;
+
     @Inject
     private ValidateString validateString;
+
     @Inject
     private ValidateList validateList;
+
     @Inject
     private SentenceSplitter sentenceSplitter;
+
     @Inject
     private SentenceVectorizer sentenceVectorizer;
+
     @Inject
     private FileToText fileToText;
+
     @Inject
     private Logger logger;
+
     @Inject
     private DocumentTrimmer documentTrimmer;
+
     @Inject
     private PathSpec pathSpec;
 
@@ -179,10 +181,6 @@ public class DirectoryScan implements Tool<Void> {
                 .of(() -> getContext(environmentSettings, prompt, arguments))
                 // Make sure we had some content for the prompt
                 .map(validateList::throwIfEmpty)
-                .map(list -> listLimiter.limitListContent(
-                        list,
-                        RagDocumentContext::document,
-                        modelConfig.getCalculatedContextWindow(environmentSettings)))
                 .map(ragDocs -> mergeContext(prompt, INSTRUCTIONS, ragDocs, debugArgs))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
@@ -387,9 +385,6 @@ class DirectoryScanConfig {
     private ArgsAccessor argsAccessor;
 
     @Inject
-    private ModelConfig modelConfig;
-
-    @Inject
     private ValidateString validateString;
 
     public Optional<String> getConfigFileModel() {
@@ -436,10 +431,6 @@ class DirectoryScanConfig {
         return argsAccessor;
     }
 
-    public ModelConfig getModelConfig() {
-        return modelConfig;
-    }
-
     public ValidateString getValidateString() {
         return validateString;
     }
@@ -482,16 +473,6 @@ class DirectoryScanConfig {
             return NumberUtils.toInt(stringValue, -1);
         }
 
-        public String getFileCustomModel() {
-            return getArgsAccessor().getArgument(
-                    getConfigFileModel()::get,
-                    arguments,
-                    context,
-                    DirectoryScan.DIRECTORYSCAN_FILE_CUSTOM_MODEL,
-                    "directoryscan_file_custom_model",
-                    getConfigFileModel().orElse(getModelConfig().getCalculatedModel(context))).value();
-        }
-
         public String getIndividualDocumentPrompt() {
             return getArgsAccessor().getArgument(
                     getConfigDocumentPrompt()::get,
@@ -500,19 +481,6 @@ class DirectoryScanConfig {
                     DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
                     "directoryscan_individual_document_prompt",
                     prompt).value();
-        }
-
-        @Nullable
-        public Integer getFileContextWindow() {
-            final String stringValue = getArgsAccessor().getArgument(
-                    getConfigFileContextWindow()::get,
-                    arguments,
-                    context,
-                    DirectoryScan.DIRECTORYSCAN_FILE_CONTENT_WINDOW,
-                    "directoryscan_file_content_window",
-                    Constants.DEFAULT_CONTENT_WINDOW + "").value();
-
-            return NumberUtils.toInt(stringValue, Constants.DEFAULT_CONTENT_WINDOW);
         }
 
         @Nullable

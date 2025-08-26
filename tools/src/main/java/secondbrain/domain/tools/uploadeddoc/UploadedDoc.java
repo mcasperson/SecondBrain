@@ -10,7 +10,6 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -58,9 +57,6 @@ public class UploadedDoc implements Tool<Void> {
             When the user asks a question indicating that they want to know about the uploaded document, you must generate the answer based on the supplied document.
             You will be penalized for answering that the document was not uploaded.
             """.stripLeading();
-
-    @Inject
-    private ModelConfig modelConfig;
 
     @Inject
     private SentenceSplitter sentenceSplitter;

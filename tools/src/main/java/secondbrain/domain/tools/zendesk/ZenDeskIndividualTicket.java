@@ -13,7 +13,6 @@ import org.jsoup.internal.StringUtil;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
@@ -57,9 +56,6 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
     @Inject
     private RatingTool ratingTool;
-
-    @Inject
-    private ModelConfig modelConfig;
 
     @Inject
     private ZenDeskTicketConfig config;

@@ -9,7 +9,6 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.*;
@@ -46,9 +45,6 @@ public class SlackZenGoogle implements Tool<Void> {
             You will be penalized for referencing google documents that were not explicitly provided.
             You will be penalized for saying that you will monitor for tickets or messages in future.
             """;
-
-    @Inject
-    private ModelConfig modelConfig;
 
     @Inject
     private SlackChannel slackChannel;

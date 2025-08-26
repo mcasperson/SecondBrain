@@ -15,7 +15,6 @@ import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.ModelConfig;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -27,7 +26,6 @@ import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
-import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
@@ -97,9 +95,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     private ZenDeskIndividualTicket ticketTool;
 
     @Inject
-    private ModelConfig modelConfig;
-
-    @Inject
     private ZenDeskConfig config;
 
     @Inject
@@ -113,9 +108,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     @Inject
     @Preferred
     private ZenDeskClient zenDeskClient;
-
-    @Inject
-    private ListLimiter listLimiter;
 
     @Inject
     private DebugToolArgs debugToolArgs;
@@ -289,19 +281,11 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
         final Try<RagMultiDocumentContext<ZenDeskTicket>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                // Limit the list to just those that fit in the context
-                .map(list -> listLimiter.limitListContent(
-                        list,
-                        RagDocumentContext::document,
-                        modelConfig.getCalculatedContextWindow(environmentSettings)))
                 .map(validateList::throwIfEmpty)
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
                 .map(tickets -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, tickets))
                 // Call Ollama with the final prompt
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()))
+                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
                 // Clean up the response
                 .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())))
                 .recover(EmptyString.class, e -> new RagMultiDocumentContext<>(
