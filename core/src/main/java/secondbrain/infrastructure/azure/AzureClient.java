@@ -97,7 +97,7 @@ public class AzureClient implements LlmClient {
      */
     @Inject
     @ConfigProperty(name = "sb.azurellm.disableToolReadCache", defaultValue = "")
-    private String disableToolReadCache;
+    private Optional<String> disableToolReadCache;
 
     /**
      * This property is used to selectively disable writing values from the cache for a tool. The value is a comma
@@ -105,7 +105,7 @@ public class AzureClient implements LlmClient {
      */
     @Inject
     @ConfigProperty(name = "sb.azurellm.disableToolWriteCache", defaultValue = "")
-    private String disableToolWriteCache;
+    private Optional<String> disableToolWriteCache;
 
     @Inject
     private TimeoutHttpClientCaller httpClientCaller;
@@ -304,7 +304,7 @@ public class AzureClient implements LlmClient {
     }
 
     private List<String> getDisableToolReadCache() {
-        final String fixedString = StringUtils.isBlank(disableToolReadCache) ? "" : disableToolReadCache;
+        final String fixedString = disableToolReadCache.map(String::trim).orElse("");
 
         return Stream.of(fixedString.split(","))
                 .map(String::trim)
@@ -313,7 +313,7 @@ public class AzureClient implements LlmClient {
     }
 
     private List<String> getDisableToolWriteCache() {
-        final String fixedString = StringUtils.isBlank(disableToolWriteCache) ? "" : disableToolWriteCache;
+        final String fixedString = disableToolWriteCache.map(String::trim).orElse("");
 
         return Stream.of(fixedString.split(","))
                 .map(String::trim)
