@@ -92,20 +92,23 @@ public class H2LocalStorageTest {
     public void testTTL() {
         final String randomValue = UUID.randomUUID().toString();
         Assertions.assertEquals(randomValue, h2LocalStorage.getOrPutString(
-                H2LocalStorageTest.class.getSimpleName(),
-                "test",
-                randomValue,
-                10,
-                () -> randomValue));
+                        H2LocalStorageTest.class.getSimpleName(),
+                        "test",
+                        randomValue,
+                        10,
+                        () -> randomValue)
+                .result());
         Assertions.assertEquals(randomValue, h2LocalStorage.getString(
-                H2LocalStorageTest.class.getSimpleName(),
-                "test",
-                randomValue));
+                        H2LocalStorageTest.class.getSimpleName(),
+                        "test",
+                        randomValue)
+                .result());
         Try.run(() -> Thread.sleep(15000));
         Assertions.assertNull(h2LocalStorage.getString(
-                H2LocalStorageTest.class.getSimpleName(),
-                "test",
-                randomValue));
+                        H2LocalStorageTest.class.getSimpleName(),
+                        "test",
+                        randomValue)
+                .result());
     }
 
     record TestObject(String value) {
