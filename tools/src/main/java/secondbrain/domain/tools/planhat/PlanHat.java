@@ -268,18 +268,19 @@ public class PlanHat implements Tool<Conversation> {
     }
 
     private MetaObjectResults getMetadata(
-            final RagDocumentContext<Conversation> email,
+            final RagDocumentContext<Conversation> activity,
             final PlanHatConfig.LocalArguments parsedArgs) {
 
         final List<MetaObjectResult> metadata = new ArrayList<>();
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(
-                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, email.document()),
+                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, activity.document()),
                                     parsedArgs.getContextFilterQuestion(),
                                     List.of())
                             .getResponse())
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
+                    .onFailure(e -> logger.warning("Failed to get Planhat activity rating for ticket " + activity.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(InternalFailure.class, ex -> 10)
                     .get();
@@ -289,8 +290,8 @@ public class PlanHat implements Tool<Conversation> {
 
         return new MetaObjectResults(
                 metadata,
-                "Gong-" + email.id() + ".json",
-                email.id());
+                "Gong-" + activity.id() + ".json",
+                activity.id());
     }
 
     private boolean contextMeetsRating(

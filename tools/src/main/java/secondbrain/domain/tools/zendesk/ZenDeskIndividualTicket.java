@@ -34,6 +34,7 @@ import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
 import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
@@ -83,6 +84,9 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
     @Inject
     private ValidateList validateList;
+
+    @Inject
+    private Logger logger;
 
     @Override
     public String getName() {
@@ -147,6 +151,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                     List.of())
                             .getResponse())
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
+                    .onFailure(e -> logger.warning("Failed to get ZenDesk ticket rating for ticket " + ticket.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(InternalFailure.class, ex -> 10)
                     .get();
