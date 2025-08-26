@@ -230,7 +230,7 @@ public class AzureClient implements LlmClient {
             localStorage.putString(
                     tool,
                     "AzureLLM",
-                    DigestUtils.sha256Hex(request.generatePromptText() + model + inputTokens + outputTokens),
+                    promptHash,
                     ttl,
                     result);
             return new CacheResult<String>(result, false);
