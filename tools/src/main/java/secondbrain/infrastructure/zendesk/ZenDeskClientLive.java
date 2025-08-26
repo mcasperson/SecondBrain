@@ -6,13 +6,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.exceptions.Timeout;
-import secondbrain.domain.httpclient.ResponseCallback;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
@@ -144,20 +142,15 @@ public class ZenDeskClientLive implements ZenDeskClient {
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
                         .get(),
-                new ResponseCallback() {
-                    @Override
-                    public ZenDeskTicket[] handleResponse(Response response) {
-                        return Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(ZenDeskResponse.class))
-                                // Recurse if there is a next page, and we have not gone too far
-                                .map(r -> ArrayUtils.addAll(
-                                        r.getResultsArray(),
-                                        r.next_page() != null && page < maxPage
-                                                ? getTicketsApi(authorization, url, query, page + 1, maxPage)
-                                                : new ZenDeskTicket[]{}))
-                                .get();
-                    }
-                },
+                response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(ZenDeskResponse.class))
+                        // Recurse if there is a next page, and we have not gone too far
+                        .map(r -> ArrayUtils.addAll(
+                                r.getResultsArray(),
+                                r.next_page() != null && page < maxPage
+                                        ? getTicketsApi(authorization, url, query, page + 1, maxPage)
+                                        : new ZenDeskTicket[]{}))
+                        .get(),
                 e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
@@ -191,14 +184,9 @@ public class ZenDeskClientLive implements ZenDeskClient {
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
                         .get(),
-                new ResponseCallback() {
-                    @Override
-                    public ZenDeskTicketResponse handleResponse(Response response) {
-                        return Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(ZenDeskTicketResponse.class))
-                                .get();
-                    }
-                },
+                response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(ZenDeskTicketResponse.class))
+                        .get(),
                 e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
@@ -252,14 +240,9 @@ public class ZenDeskClientLive implements ZenDeskClient {
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
                         .get(),
-                new ResponseCallback() {
-                    @Override
-                    public ZenDeskCommentsResponse handleResponse(Response response) {
-                        return Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(ZenDeskCommentsResponse.class))
-                                .get();
-                    }
-                },
+                response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(ZenDeskCommentsResponse.class))
+                        .get(),
                 e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
@@ -294,14 +277,9 @@ public class ZenDeskClientLive implements ZenDeskClient {
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
                         .get(),
-                new ResponseCallback() {
-                    @Override
-                    public ZenDeskOrganizationResponse handleResponse(Response response) {
-                        return Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(ZenDeskOrganizationResponse.class))
-                                .get();
-                    }
-                },
+                response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(ZenDeskOrganizationResponse.class))
+                        .get(),
                 e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
@@ -353,14 +331,9 @@ public class ZenDeskClientLive implements ZenDeskClient {
                         .header("Authorization", authorization)
                         .header("Accept", "application/json")
                         .get(),
-                new ResponseCallback() {
-                    @Override
-                    public ZenDeskUserResponse handleResponse(Response response) {
-                        return Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(ZenDeskUserResponse.class))
-                                .get();
-                    }
-                },
+                response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(ZenDeskUserResponse.class))
+                        .get(),
                 e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);

@@ -8,7 +8,6 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -16,7 +15,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.Timeout;
-import secondbrain.domain.httpclient.ResponseCallback;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.infrastructure.google.api.*;
@@ -168,21 +166,15 @@ public class GoogleClient implements LlmClient {
                         .header("Accept", "application/json")
                         .header("X-goog-api-key", apiKey.get())
                         .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
-                new ResponseCallback() {
-                    @Override
-                    public String handleResponse(Response response) {
-                        final GoogleResponse googleResponse = response.readEntity(GoogleResponse.class);
-                        return Try.of(() -> googleResponse)
-                                .map(r -> isError(r))
-                                .map(r -> r.getCandidates().stream()
-                                        .map(GoogleResponseCandidates::getContent)
-                                        .flatMap(content -> content.getParts().stream())
-                                        .map(GoogleResponseCandidatesContentParts::getText)
-                                        .reduce("", String::concat))
-                                .onFailure(e -> logger.severe(e.getMessage()))
-                                .get();
-                    }
-                },
+                response -> Try.of(() -> response.readEntity(GoogleResponse.class))
+                        .map(r -> isError(r))
+                        .map(r -> r.getCandidates().stream()
+                                .map(GoogleResponseCandidates::getContent)
+                                .flatMap(content -> content.getParts().stream())
+                                .map(GoogleResponseCandidatesContentParts::getText)
+                                .reduce("", String::concat))
+                        .onFailure(e -> logger.severe(e.getMessage()))
+                        .get(),
                 e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);

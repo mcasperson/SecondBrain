@@ -8,14 +8,12 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.httpclient.HttpClientCaller;
-import secondbrain.domain.httpclient.ResponseCallback;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
@@ -152,20 +150,15 @@ public class GongClientLive implements GongClient {
                         .request(MediaType.APPLICATION_JSON_TYPE)
                         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
                         .post(Entity.entity(body, MediaType.APPLICATION_JSON)),
-                new ResponseCallback() {
-                    @Override
-                    public GongCallExtensive[] handleResponse(Response response) {
-                        return Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(GongCallsExtensive.class))
-                                // Recurse if there is a next page, and we have not gone too far
-                                .map(r -> ArrayUtils.addAll(
-                                        r.calls(),
-                                        StringUtils.isNotBlank(r.records().cursor())
-                                                ? getCallsExtensiveApi(fromDateTime, toDateTime, callId, username, password, r.records().cursor())
-                                                : new GongCallExtensive[]{}))
-                                .get();
-                    }
-                },
+                response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(GongCallsExtensive.class))
+                        // Recurse if there is a next page, and we have not gone too far
+                        .map(r -> ArrayUtils.addAll(
+                                r.calls(),
+                                StringUtils.isNotBlank(r.records().cursor())
+                                        ? getCallsExtensiveApi(fromDateTime, toDateTime, callId, username, password, r.records().cursor())
+                                        : new GongCallExtensive[]{}))
+                        .get(),
                 e -> new RuntimeException("Failed to get calls from Gong API", e));
     }
 
@@ -193,14 +186,9 @@ public class GongClientLive implements GongClient {
                         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
                         .header("Accept", MediaType.APPLICATION_JSON)
                         .post(Entity.entity(body, MediaType.APPLICATION_JSON)),
-                new ResponseCallback() {
-                    @Override
-                    public GongCallTranscript handleResponse(final Response response) {
-                        return Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(GongCallTranscript.class))
-                                .get();
-                    }
-                },
+                response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(GongCallTranscript.class))
+                        .get(),
                 cause -> new RuntimeException("Failed to get call transcript from Gong API", cause)
         );
     }

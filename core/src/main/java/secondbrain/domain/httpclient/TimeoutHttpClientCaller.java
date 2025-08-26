@@ -7,6 +7,6 @@ import secondbrain.domain.timeout.TimeoutFunctionCallback;
  * This service will also take care of closing any resources.
  */
 public interface TimeoutHttpClientCaller {
-    <T> T call(ClientBuilder builder, ClientCallback callback, ResponseCallback responseCallback, ExceptionBuilder exceptionBuilder,
+    <T> T call(ClientBuilder builder, ClientCallback callback, ResponseCallback<T> responseCallback, ExceptionBuilder exceptionBuilder,
                TimeoutFunctionCallback<T> timeoutCallback, long timeoutSeconds, long retryDelaySeconds, int maxRetries);
 }

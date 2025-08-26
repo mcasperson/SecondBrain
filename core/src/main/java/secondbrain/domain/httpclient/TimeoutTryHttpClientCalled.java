@@ -16,7 +16,7 @@ public class TimeoutTryHttpClientCalled implements TimeoutHttpClientCaller {
     public <T> T call(
             final ClientBuilder builder,
             final ClientCallback callback,
-            final ResponseCallback responseCallback,
+            final ResponseCallback<T> responseCallback,
             final ExceptionBuilder exceptionBuilder,
             final TimeoutFunctionCallback<T> timeoutCallback,
             final long timeoutSeconds,
@@ -25,7 +25,7 @@ public class TimeoutTryHttpClientCalled implements TimeoutHttpClientCaller {
         // Clients are not guaranteed to be thread safe, so we build a new client for each call.
         return timeoutService.executeWithTimeoutAndRetry(() -> Try.withResources(builder::buildClient)
                         .of(client -> Try.withResources(() -> callback.call(client))
-                                .of(responseCallback::<T>handleResponse)
+                                .of(responseCallback::handleResponse)
                                 .get()
                         )
                         .getOrElseThrow(exceptionBuilder::buildException),

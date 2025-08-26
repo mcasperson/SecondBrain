@@ -6,12 +6,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
-import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.exceptions.Timeout;
-import secondbrain.domain.httpclient.ResponseCallback;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
@@ -88,20 +86,15 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
                         .request("application/vnd.github+json")
                         .header("Authorization", "Bearer " + token)
                         .get(),
-                new ResponseCallback() {
-                    @Override
-                    public GitHubIssue[] handleResponse(final Response response) {
-                        return Try.of(() -> responseValidation.validate(response, target))
-                                .map(r -> r.readEntity(GitHubIssue[].class))
-                                // Recurse if there is a next page, and we have not gone too far
-                                .map(r -> ArrayUtils.addAll(
-                                        r,
-                                        r.length == 100
-                                                ? getIssuesApi(token, organisation, repo, since, to, labels, state, page + 1)
-                                                : new GitHubIssue[]{}))
-                                .get();
-                    }
-                },
+                response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(GitHubIssue[].class))
+                        // Recurse if there is a next page, and we have not gone too far
+                        .map(r -> ArrayUtils.addAll(
+                                r,
+                                r.length == 100
+                                        ? getIssuesApi(token, organisation, repo, since, to, labels, state, page + 1)
+                                        : new GitHubIssue[]{}))
+                        .get(),
                 e -> new RuntimeException("Failed to get issues from GitHub API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);

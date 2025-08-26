@@ -8,7 +8,6 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -19,7 +18,6 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.RateLimit;
 import secondbrain.domain.exceptions.Timeout;
-import secondbrain.domain.httpclient.ResponseCallback;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.persist.LocalStorage;
@@ -220,7 +218,7 @@ public class AzureClient implements LlmClient {
             throw new RateLimit("Exceeded max retries for rate limited Azure LLM calls");
         }
 
-        return Try.of(() -> httpClientCaller.<String>call(
+        return Try.of(() -> httpClientCaller.call(
                         this::getClient,
                         client -> client.target(url.get())
                                 .request()
@@ -228,20 +226,15 @@ public class AzureClient implements LlmClient {
                                 .header("Accept", "application/json")
                                 .header("Authorization", "Bearer " + apiKey.get())
                                 .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
-                        new ResponseCallback() {
-                            @Override
-                            public String handleResponse(Response response) {
-                                return Try.of(() -> responseValidation.validate(response, url.get()))
-                                        .map(r -> r.readEntity(AzureResponse.class))
-                                        .map(r -> r.getChoices().stream()
-                                                .map(AzureResponseChoices::getMessage)
-                                                .map(AzureResponseChoicesMessage::getContent)
-                                                .reduce("", String::concat))
-                                        .map(r -> answerFormatterService.formatResponse(model.get(), r))
-                                        .onFailure(e -> logger.severe(e.getMessage()))
-                                        .get();
-                            }
-                        },
+                        response -> Try.of(() -> responseValidation.validate(response, url.get()))
+                                .map(r -> r.readEntity(AzureResponse.class))
+                                .map(r -> r.getChoices().stream()
+                                        .map(AzureResponseChoices::getMessage)
+                                        .map(AzureResponseChoicesMessage::getContent)
+                                        .reduce("", String::concat))
+                                .map(r -> answerFormatterService.formatResponse(model.get(), r))
+                                .onFailure(e -> logger.severe(e.getMessage()))
+                                .get(),
                         e -> new RuntimeException("Failed to call the Azure AI service", e),
                         () -> {
                             throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
