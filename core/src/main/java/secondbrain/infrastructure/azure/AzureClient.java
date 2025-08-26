@@ -16,6 +16,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.answer.AnswerFormatterService;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.exceptions.InvalidResponse;
+import secondbrain.domain.exceptions.RateLimit;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.ResponseCallback;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
@@ -44,9 +46,11 @@ public class AzureClient implements LlmClient {
     private static final int DEFAULT_CACHE_TTL_DAYS = 90;
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
-    private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
+    private static final long TIMEOUT_API_CALL_DELAY_SECONDS_DEFAULT = 30;
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
-    private static final int API_RETRIES = 3;
+    private static final int TIMEOUT_API_RETRIES = 3;
+    private static final int RATELIMIT_API_RETRIES = 3;
+    private static final long RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT = 60;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
 
     // Default rate is around 250 requests per minute. 2 requests per second keeps us well under that.
@@ -81,11 +85,11 @@ public class AzureClient implements LlmClient {
     private Long timeout;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.retryCount", defaultValue = API_RETRIES + "")
+    @ConfigProperty(name = "sb.azurellm.retryCount", defaultValue = TIMEOUT_API_RETRIES + "")
     private Integer retryCount;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.retryDelaySeconds", defaultValue = API_CALL_DELAY_SECONDS_DEFAULT + "")
+    @ConfigProperty(name = "sb.azurellm.retryDelaySeconds", defaultValue = TIMEOUT_API_CALL_DELAY_SECONDS_DEFAULT + "")
     private Long retryDelay;
 
     @Inject
@@ -203,39 +207,56 @@ public class AzureClient implements LlmClient {
         logger.info("Calling Azure LLM");
         logger.info(request.generatePromptText());
 
-        final String result = httpClientCaller.call(
-                this::getClient,
-                client -> client.target(url.get())
-                        .request()
-                        .header("Content-Type", "application/json")
-                        .header("Accept", "application/json")
-                        .header("Authorization", "Bearer " + apiKey.get())
-                        .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
-                new ResponseCallback() {
-                    @Override
-                    public String handleResponse(Response response) {
-                        return Try.of(() -> responseValidation.validate(response, url.get()))
-                                .map(r -> r.readEntity(AzureResponse.class))
-                                .map(r -> r.getChoices().stream()
-                                        .map(AzureResponseChoices::getMessage)
-                                        .map(AzureResponseChoicesMessage::getContent)
-                                        .reduce("", String::concat))
-                                .map(r -> answerFormatterService.formatResponse(model.get(), r))
-                                .onFailure(e -> logger.severe(e.getMessage()))
-                                .get();
-                    }
-                },
-                e -> new RuntimeException("Failed to call the Azure AI service", e),
-                () -> {
-                    throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
-                },
-                API_CALL_TIMEOUT_SECONDS_DEFAULT,
-                retryDelay,
-                retryCount);
+        final String result = call(request, 0);
 
         logger.info("LLM Response");
         logger.info(result);
 
         return result;
+    }
+
+    private String call(final PromptTextGenerator request, int retry) {
+        if (retry > RATELIMIT_API_RETRIES) {
+            throw new RateLimit("Exceeded max retries for rate limited Azure LLM calls");
+        }
+
+        return Try.of(() -> httpClientCaller.<String>call(
+                        this::getClient,
+                        client -> client.target(url.get())
+                                .request()
+                                .header("Content-Type", "application/json")
+                                .header("Accept", "application/json")
+                                .header("Authorization", "Bearer " + apiKey.get())
+                                .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
+                        new ResponseCallback() {
+                            @Override
+                            public String handleResponse(Response response) {
+                                return Try.of(() -> responseValidation.validate(response, url.get()))
+                                        .map(r -> r.readEntity(AzureResponse.class))
+                                        .map(r -> r.getChoices().stream()
+                                                .map(AzureResponseChoices::getMessage)
+                                                .map(AzureResponseChoicesMessage::getContent)
+                                                .reduce("", String::concat))
+                                        .map(r -> answerFormatterService.formatResponse(model.get(), r))
+                                        .onFailure(e -> logger.severe(e.getMessage()))
+                                        .get();
+                            }
+                        },
+                        e -> new RuntimeException("Failed to call the Azure AI service", e),
+                        () -> {
+                            throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                        },
+                        API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                        retryDelay,
+                        retryCount))
+                .recover(InvalidResponse.class, ex -> {
+                    if (ex.getCode() == 429) {
+                        Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
+                        return call(request, retry + 1);
+                    }
+
+                    throw new RuntimeException("Failed to call the Azure AI service", ex);
+                })
+                .get();
     }
 }
