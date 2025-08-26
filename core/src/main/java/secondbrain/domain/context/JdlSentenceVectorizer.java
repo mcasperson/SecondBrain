@@ -6,9 +6,12 @@ import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ZooModel;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.persist.LocalStorage;
 
 import java.util.List;
 
@@ -17,11 +20,15 @@ import java.util.List;
  */
 @ApplicationScoped
 public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable {
+    private static final int TTL_SECONDS = 60 * 60 * 24 * 90;
     // https://www.sbert.net/docs/sentence_transformer/pretrained_models.html
     private static final String DJL_MODEL = "sentence-transformers/all-MiniLM-L12-v2";
     private static final String DJL_PATH = "djl://ai.djl.huggingface.pytorch/" + DJL_MODEL;
 
     private final Predictor<String, float[]> predictor;
+
+    @Inject
+    private LocalStorage localStorage;
 
     public JdlSentenceVectorizer() {
         this.predictor = Try.of(() -> Criteria.builder()
@@ -56,8 +63,16 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
             throw new InternalFailure("Predictor is not initialized");
         }
 
-        final String prefix = hiddenText == null ? "" : hiddenText + " ";
+        return localStorage.getOrPutObject(JdlSentenceVectorizer.class.getSimpleName(),
+                "vectorize",
+                DigestUtils.sha256Hex(text + hiddenText + DJL_PATH),
+                TTL_SECONDS,
+                RagStringContext.class,
+                () -> vectorizeApi(text, hiddenText));
+    }
 
+    private RagStringContext vectorizeApi(final String text, final @Nullable String hiddenText) {
+        final String prefix = hiddenText == null ? "" : hiddenText + " ";
         return Try.of(() -> predictor.predict(prefix + text))
                 .map(embeddings -> new Vector(floatToDouble(embeddings)))
                 .map(vector -> new RagStringContext(text, vector))
