@@ -403,7 +403,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_EMAIL_ARG, email, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG, token, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_RATING_QUESTION_ARG, parsedArgs.getTicketFilterQuestion(), true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating(), true)
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true)
                         )
                 ).stream())
                 // Get a list of context strings
