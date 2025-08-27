@@ -122,7 +122,6 @@ public class RatingTool implements Tool<Void> {
                                 .recover(ex -> -1)
                                 .get()
                 )
-                .filter(i -> !parsedArgs.ignoreInvalidResponses() || (i >= 0 && i <= 10))
                 .toList();
 
         if (!parsedArgs.ignoreInvalidResponses()) {
@@ -132,11 +131,15 @@ public class RatingTool implements Tool<Void> {
             }
         }
 
-        if (results.isEmpty()) {
+        final List<Integer> filteredResults = results.stream()
+                .filter(i -> i >= 0 && i <= 10)
+                .toList();
+
+        if (filteredResults.isEmpty()) {
             throw new InvalidAnswer("Both models returned invalid responses");
         }
 
-        final int average = (int) results.stream()
+        final int average = (int) filteredResults.stream()
                 .mapToInt(Integer::intValue)
                 .average()
                 .orElse(0.0);
