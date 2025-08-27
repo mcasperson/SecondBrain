@@ -342,7 +342,7 @@ public class SlackChannel implements Tool<Void> {
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     .onFailure(e -> logger.warning("Failed to get Slack message rating for ticket " + message.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(InternalFailure.class, ex -> 10)
+                    .recover(ex -> 10)
                     .get();
 
             metadata.add(new MetaObjectResult(SLACK_CHANNEL_FILTER_RATING_META, filterRating));

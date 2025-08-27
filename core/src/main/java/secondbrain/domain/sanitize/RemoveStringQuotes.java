@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 @Identifier("removeStringQuotes")
 public class RemoveStringQuotes implements SanitizeDocument {
-    private static final Pattern QUOTE_PATTERN = Pattern.compile("^[\"'](.*)[\"']$");
+    private static final Pattern QUOTE_PATTERN = Pattern.compile("^[\"']?(.*?)[\"']?$");
 
     @Override
     public String sanitize(final String document) {

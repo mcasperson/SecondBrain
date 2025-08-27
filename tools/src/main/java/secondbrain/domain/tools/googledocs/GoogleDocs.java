@@ -355,7 +355,7 @@ public class GoogleDocs implements Tool<Void> {
                             .getResponse())
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(InternalFailure.class, ex -> 10)
+                    .recover(ex -> 10)
                     .get();
 
             metadata.add(new MetaObjectResult(GOOGLE_DOC_FILTER_RATING_META, filterRating));

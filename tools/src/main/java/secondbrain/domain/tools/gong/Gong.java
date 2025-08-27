@@ -221,7 +221,7 @@ public class Gong implements Tool<GongCallDetails> {
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     .onFailure(e -> logger.warning("Failed to get Gong call rating for ticket " + gongCall.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(InternalFailure.class, ex -> parsedArgs.getDefaultRating())
+                    .recover(ex -> parsedArgs.getDefaultRating())
                     .get();
 
             metadata.add(new MetaObjectResult(GONG_FILTER_RATING_META, filterRating));
