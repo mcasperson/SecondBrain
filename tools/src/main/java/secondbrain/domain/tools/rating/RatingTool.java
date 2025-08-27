@@ -94,6 +94,28 @@ public class RatingTool implements Tool<Void> {
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        final Try<RagMultiDocumentContext<Void>> result = callLLM(environmentSettings, prompt, arguments, parsedArgs);
+
+        if (StringUtils.isBlank(parsedArgs.getSecondModel())) {
+            return result.get();
+        }
+
+        final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
+        newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, parsedArgs.getSecondModel());
+        final Try<RagMultiDocumentContext<Void>> secondResult = callLLM(newEnvironmentSettings, prompt, arguments, parsedArgs);
+
+        // The final result is the average of the two results from the two models
+        final int firstResultInt = Integer.parseInt(result.get().getResponse());
+        final int secondResultInt = Integer.parseInt(secondResult.get().getResponse());
+
+        final int average = (firstResultInt + secondResultInt) / 2;
+
+        logger.info("RatingTool: Default model result = " + firstResultInt + ", " + parsedArgs.getSecondModel() + " result = " + secondResultInt + ", Average = " + average);
+
+        return result.get().updateResponse(average + "");
+    }
+
+    private Try<RagMultiDocumentContext<Void>> callLLM(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(validateList::throwIfEmpty)
                 .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
@@ -106,54 +128,11 @@ public class RatingTool implements Tool<Void> {
                         removeStringQuotes.sanitize(
                                 findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim())));
 
-        final Try<RagMultiDocumentContext<Void>> firstResultWithMappedFailures = mapFailures(result);
-
-        final Try<RagMultiDocumentContext<Void>> secondResult = callSecondary(environmentSettings, prompt, arguments, parsedArgs);
-
-        if (secondResult == null) {
-            return firstResultWithMappedFailures.get();
-        }
-
-        // The final result is the average of the two results from the two models
-        final Try<RagMultiDocumentContext<Void>> secondResultWithMappedFailures = mapFailures(secondResult);
-
-        final int firstResultInt = Integer.parseInt(firstResultWithMappedFailures.get().getResponse());
-        final int secondResultInt = Integer.parseInt(secondResultWithMappedFailures.get().getResponse());
-
-        final int average = (firstResultInt + secondResultInt) / 2;
-
-        logger.info("RatingTool: Default model result = " + firstResultInt + ", " + parsedArgs.getSecondModel() + " result = " + secondResultInt + ", Average = " + average);
-
-        return firstResultWithMappedFailures.get().updateResponse(average + "");
-    }
-
-    private Try<RagMultiDocumentContext<Void>> mapFailures(final Try<RagMultiDocumentContext<Void>> result) {
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
         return result.mapFailure(
                 API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The document was empty")),
                 API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
                 API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
                 API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)));
-    }
-
-    private Try<RagMultiDocumentContext<Void>> callSecondary(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {
-        if (StringUtils.isBlank(parsedArgs.getSecondModel())) {
-            return null;
-        }
-
-        final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
-        newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, parsedArgs.getSecondModel());
-
-        return Try.of(() -> getContext(newEnvironmentSettings, prompt, arguments))
-                .map(validateList::throwIfEmpty)
-                .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> llmClient.callWithCache(ragDoc, newEnvironmentSettings, getName()))
-                /*
-                 We expect a single value, but might get some whitespace from a thinking model that had the
-                 thinking response removed.
-                 */
-                .map(ragDoc -> ragDoc.updateResponse(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim()));
     }
 
     @Override
