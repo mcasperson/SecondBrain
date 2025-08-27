@@ -5,15 +5,14 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.ExternalFailure;
-import secondbrain.domain.exceptions.FailedOllama;
-import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.exceptions.*;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
@@ -38,6 +37,7 @@ import static com.google.common.base.Predicates.instanceOf;
 public class RatingTool implements Tool<Void> {
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "rating_document";
     public static final String RATING_SECOND_MODEL_ARG = "secondModel";
+    public static final String IGNORE_INVALID_RESPONSES_ARG = "ignoreinvalidResponses";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -104,13 +104,37 @@ public class RatingTool implements Tool<Void> {
         newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, parsedArgs.getSecondModel());
         final Try<RagMultiDocumentContext<Void>> secondResult = callLLM(newEnvironmentSettings, prompt, arguments, parsedArgs);
 
-        // The final result is the average of the two results from the two models
-        final int firstResultInt = Integer.parseInt(result.get().getResponse());
-        final int secondResultInt = Integer.parseInt(secondResult.get().getResponse());
+        // We use multiple models to catch cases where a single model returns inaccurate responses.
+        // For example, I have seen chatgpt-5-mini return a rating of 10 for content that is clearly not a 10.
+        // We also need to account for the case where other models return invalid responses, such as a text
+        // description rather than a number. I have seen this a lot with Phi-4.
+        // If we have a secondary model and we are ignoring invalid responses, then we simply filter out
+        // any invalid responses and take the average of the valid ones.
+        final List<Integer> results = List.of(
+                        NumberUtils.toInt(result.get().getResponse(), -1),
+                        NumberUtils.toInt(secondResult.get().getResponse(), -1)
+                )
+                .stream()
+                .filter(i -> !parsedArgs.ignoreInvalidResponses() || (i >= 0 && i <= 10))
+                .toList();
 
-        final int average = (firstResultInt + secondResultInt) / 2;
+        if (!parsedArgs.ignoreInvalidResponses()) {
+            final List<String> invalidResponses = results.stream().filter(i -> i < 0 || i > 10).map(i -> i.toString()).toList();
+            if (invalidResponses.size() != 0) {
+                throw new InvalidAnswer("The following responses were invalid: " + String.join(", ", invalidResponses));
+            }
+        }
 
-        logger.info("RatingTool: Default model result = " + firstResultInt + ", " + parsedArgs.getSecondModel() + " result = " + secondResultInt + ", Average = " + average);
+        if (results.size() == 0) {
+            throw new InvalidAnswer("Both models returned invalid responses");
+        }
+
+        final int average = (int) results.stream()
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0.0);
+
+        logger.info("RatingTool: Values = " + String.join(",", results.stream().map(i -> i.toString()).toList()) + ", Average = " + average);
 
         return result.get().updateResponse(average + "");
     }
@@ -145,9 +169,20 @@ public class RatingTool implements Tool<Void> {
 class RatingConfig {
     @Inject
     private ArgsAccessor argsAccessor;
+
     @Inject
     @ConfigProperty(name = "sb.rating.secondModel", defaultValue = "")
     private Optional<String> configSecondModel;
+
+    /**
+     * Set to true to ignore invalid responses from either the primary or secondary model.
+     * If both models return invalid responses, an exception will be thrown.
+     * This setting is useful when using a small secondary model as a check against the primary model,
+     * but the secondary model is known to return invalid responses occasionally.
+     */
+    @Inject
+    @ConfigProperty(name = "sb.rating.ignoreInvalidResponses", defaultValue = "false")
+    private Optional<String> configIgnoreInvalidResponses;
 
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
@@ -158,6 +193,10 @@ class RatingConfig {
      */
     public Optional<String> getConfigSecondModel() {
         return configSecondModel;
+    }
+
+    public Optional<String> getConfigIgnoreInvalidResponses() {
+        return configIgnoreInvalidResponses;
     }
 
     public class LocalArguments {
@@ -191,6 +230,18 @@ class RatingConfig {
                     RatingTool.RATING_SECOND_MODEL_ARG,
                     RatingTool.RATING_SECOND_MODEL_ARG,
                     "").value();
+        }
+
+        public boolean ignoreInvalidResponses() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigIgnoreInvalidResponses()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.IGNORE_INVALID_RESPONSES_ARG,
+                    RatingTool.IGNORE_INVALID_RESPONSES_ARG,
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
         }
     }
 }
