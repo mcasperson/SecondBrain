@@ -66,8 +66,8 @@ public class RatingTool implements Tool<Void> {
     private SanitizeDocument findFirstMarkdownBlock;
 
     @Inject
-    @Identifier("removeStringQuotes")
-    private SanitizeDocument removeStringQuotes;
+    @Identifier("getFirstDigits")
+    private SanitizeDocument getFirstDigits;
 
     @Override
     public String getName() {
@@ -153,7 +153,7 @@ public class RatingTool implements Tool<Void> {
                  thinking response removed.
                  */
                 .map(ragDoc -> ragDoc.updateResponse(
-                        removeStringQuotes.sanitize(
+                        getFirstDigits.sanitize(
                                 findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim())));
 
         return result.mapFailure(
