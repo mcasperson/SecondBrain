@@ -97,7 +97,11 @@ public class RatingTool implements Tool<Void> {
         final Try<RagMultiDocumentContext<Void>> result = callLLM(environmentSettings, prompt, arguments, parsedArgs);
 
         if (StringUtils.isBlank(parsedArgs.getSecondModel())) {
-            return result.get();
+            final int resultInt = Integer.parseInt(result.get().getResponse();
+            if (resultInt < 0 || resultInt > 10) {
+                throw new InvalidAnswer("The rating response was invalid: " + resultInt);
+            }
+            return result.get().updateResponse(resultInt + "");
         }
 
         final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
@@ -119,7 +123,7 @@ public class RatingTool implements Tool<Void> {
                 .toList();
 
         if (!parsedArgs.ignoreInvalidResponses()) {
-            final List<String> invalidResponses = results.stream().filter(i -> i < 0 || i > 10).map(i -> i.toString()).toList();
+            final List<String> invalidResponses = results.stream().filter(i -> i < 0 || i > 10).map(Object::toString).toList();
             if (invalidResponses.size() != 0) {
                 throw new InvalidAnswer("The following responses were invalid: " + String.join(", ", invalidResponses));
             }
@@ -134,7 +138,7 @@ public class RatingTool implements Tool<Void> {
                 .average()
                 .orElse(0.0);
 
-        logger.info("RatingTool: Values = " + String.join(",", results.stream().map(i -> i.toString()).toList()) + ", Average = " + average);
+        logger.info("RatingTool: Values = " + String.join(",", results.stream().map(Object::toString).toList()) + ", Average = " + average);
 
         return result.get().updateResponse(average + "");
     }
