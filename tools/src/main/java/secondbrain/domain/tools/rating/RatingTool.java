@@ -6,7 +6,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.BooleanUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
@@ -116,8 +115,12 @@ public class RatingTool implements Tool<Void> {
         // If we have a secondary model and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
         final List<Integer> results = Stream.of(
-                        NumberUtils.toInt(result.get().getResponse(), -1),
-                        NumberUtils.toInt(secondResult.get().getResponse(), -1)
+                        Try.of(() -> Integer.parseInt(result.get().getResponse()))
+                                .recover(ex -> -1)
+                                .get(),
+                        Try.of(() -> Integer.parseInt(secondResult.get().getResponse()))
+                                .recover(ex -> -1)
+                                .get()
                 )
                 .filter(i -> !parsedArgs.ignoreInvalidResponses() || (i >= 0 && i <= 10))
                 .toList();
