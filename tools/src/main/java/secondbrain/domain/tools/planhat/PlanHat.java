@@ -304,7 +304,7 @@ public class PlanHat implements Tool<Conversation> {
         }
 
         return Objects.requireNonNullElse(call.metadata(), new MetaObjectResults())
-                .getIntValueByName(PlanHat.PLANHAT_FILTER_RATING_META, 10)
+                .getIntValueByName(PlanHat.PLANHAT_FILTER_RATING_META, parsedArgs.getDefaultRating())
                 >= parsedArgs.getContextFilterMinimumRating();
     }
 }

@@ -70,6 +70,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_SUMMARIZE_TICKET_ARG = "summarizeTicket";
     public static final String ZENDESK_MAX_TICKETS_ARG = "maxTickets";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
+    public static final String ZENDESK_TICKET_DEFAULT_RATING_ARG = "ticketDefaultRating";
 
 
     private static final String INSTRUCTIONS = """
@@ -401,7 +402,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_URL_ARG, url, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_EMAIL_ARG, email, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG, token, true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_RATING_QUESTION_ARG, parsedArgs.getTicketFilterQuestion(), true)
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_RATING_QUESTION_ARG, parsedArgs.getTicketFilterQuestion(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating(), true)
                         )
                 ).stream())
                 // Get a list of context strings
@@ -420,7 +422,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .stream()
                 .filter(ticket ->
                         Objects.requireNonNullElse(ticket.metadata(), new MetaObjectResults())
-                                .getIntValueByName(ZenDeskIndividualTicket.ZENDESK_FILTER_RATING_META, 10)
+                                .getIntValueByName(ZenDeskIndividualTicket.ZENDESK_FILTER_RATING_META, parsedArgs.getDefaultRating())
                                 >= parsedArgs.getContextFilterMinimumRating()
                 )
                 .toList();
@@ -430,6 +432,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 @ApplicationScoped
 class ZenDeskConfig {
     private static final int MAX_TICKETS = 100;
+    private static final int DEFAULT_RATING = 10;
     private static final String DEFAULT_TTL_SECONDS = (60 * 60 * 24 * 90) + "";
 
     /**
@@ -540,6 +543,11 @@ class ZenDeskConfig {
     @Inject
     @ConfigProperty(name = "sb.zendesk.ticketFilterMinimumRating")
     private Optional<String> configTicketFilterMinimumRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.ticketFilterDefaultRating")
+    private Optional<String> configTicketFilterDefaultRating;
+
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -682,6 +690,10 @@ class ZenDeskConfig {
 
     public Optional<String> getConfigMaxTickets() {
         return configMaxTickets;
+    }
+
+    public Optional<String> getConfigTicketFilterDefaultRating() {
+        return configTicketFilterDefaultRating;
     }
 
     public Optional<String> getConfigTicketFilterQuestion() {
@@ -1124,6 +1136,18 @@ class ZenDeskConfig {
                     MAX_TICKETS + "").value();
 
             return NumberUtils.min(NumberUtils.toInt(value, MAX_TICKETS), MAX_TICKETS);
+        }
+
+        public int getDefaultRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigTicketFilterDefaultRating()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    DEFAULT_RATING + "");
+
+            return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
     }
 }

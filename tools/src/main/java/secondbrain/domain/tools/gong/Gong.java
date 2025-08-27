@@ -242,7 +242,7 @@ public class Gong implements Tool<GongCallDetails> {
         }
 
         return Objects.requireNonNullElse(call.metadata(), new MetaObjectResults())
-                .getIntValueByName(Gong.GONG_FILTER_RATING_META, 10)
+                .getIntValueByName(Gong.GONG_FILTER_RATING_META, parsedArgs.getDefaultRating())
                 >= parsedArgs.getContextFilterMinimumRating();
     }
 
