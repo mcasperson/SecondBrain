@@ -60,6 +60,10 @@ public class RatingTool implements Tool<Void> {
     @Identifier("findFirstMarkdownBlock")
     private SanitizeDocument findFirstMarkdownBlock;
 
+    @Inject
+    @Identifier("removeStringQuotes")
+    private SanitizeDocument removeStringQuotes;
+
     @Override
     public String getName() {
         return RatingTool.class.getSimpleName();
@@ -94,7 +98,9 @@ public class RatingTool implements Tool<Void> {
                  We expect a single value, but might get some whitespace from a thinking model that had the
                  thinking response removed.
                  */
-                .map(ragDoc -> ragDoc.updateResponse(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim()));
+                .map(ragDoc -> ragDoc.updateResponse(
+                        removeStringQuotes.sanitize(
+                                findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim())));
 
         final Try<RagMultiDocumentContext<Void>> firstResultWithMappedFailures = mapFailures(result);
 
