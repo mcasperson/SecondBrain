@@ -77,6 +77,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG = "individualContextFilterQuestion";
     public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG = "individualContextFilterMinimumRating";
     public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_SUMMARY_PROMPT_ARG = "individualContextSummaryPrompt";
+    public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
+    public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_DEFAULT_RATING_ARG = "contextFilterDefaultRating";
     public static final String MULTI_SLACK_ZEN_META_REPORT_ARG = "metaReport";
     public static final String MULTI_SLACK_ZEN_META_FIELD_1_ARG = "contextMetaField1";
     public static final String MULTI_SLACK_ZEN_META_PROMPT_1_ARG = "contextMetaPrompt1";
@@ -276,8 +279,12 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                     InsufficientContext is expected when there is not enough information to answer the prompt.
                     It is not passed up though, as it is not a failure, but rather a lack of information.
                  */
+                .filter(regDoc -> resultMatchesRating(regDoc.getResponse(), parsedArgs))
+
                 .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<Void>(prompt)
-                        .updateResponse(e.getClass().getSimpleName() + ": No ZenDesk tickets, Slack messages, or PlanHat activities found."));
+                        .updateResponse(e.getClass().getSimpleName() + ": No ZenDesk tickets, Slack messages, or PlanHat activities found."))
+                .recover(NoSuchElementException.class, e -> new RagMultiDocumentContext<Void>(prompt)
+                        .updateResponse(e.getClass().getSimpleName() + ": Resulting content does meet minimum context rating."));
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
@@ -481,7 +488,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, content),
                                 metaField.getRight(),
                                 List.of()).getResponse())
-                        .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
+                        .map(rating -> Integer.parseInt(rating.trim()))
                         .onFailure(ex -> logger.warning("Rating tool failed for " + metaField.getLeft() + ": " + exceptionHandler.getExceptionMessage(ex)))
                         // Meta-fields are a best effort, and we default to 0
                         .recover(ex -> 0)
@@ -492,6 +499,24 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         }
 
         return results;
+    }
+
+    private boolean resultMatchesRating(final String result, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return true;
+        }
+
+        final int value = Try.of(() -> ratingTool.call(
+                        Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, result),
+                        parsedArgs.getContextFilterQuestion(),
+                        List.of()).getResponse())
+                .map(rating -> Integer.parseInt(rating.trim()))
+                .onFailure(ex -> logger.warning("Rating tool failed for " + getName() + ": " + exceptionHandler.getExceptionMessage(ex)))
+                // Meta-fields are a best effort, and we default to 0
+                .recover(ex -> parsedArgs.getDefaultRating())
+                .get();
+
+        return value >= parsedArgs.getContextFilterMinimumRating();
     }
 
     /**
@@ -812,6 +837,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 @ApplicationScoped
 class MultiSlackZenGoogleConfig {
 
+    private static final int DEFAULT_RATING = 10;
+
     @Inject
     private ArgsAccessor argsAccessor;
 
@@ -858,6 +885,18 @@ class MultiSlackZenGoogleConfig {
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.individualContextFilterMinimumRating")
     private Optional<String> configIndividualContextFilterMinimumRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.contextFilterMinimumRating")
+    private Optional<String> configContextFilterMinimumRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.contextFilterDefaultRating")
+    private Optional<String> configContextFilterDefaultRating;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.individualContextSummaryPrompt")
@@ -1235,12 +1274,25 @@ class MultiSlackZenGoogleConfig {
         return configStripMarkdownCodeBlock;
     }
 
+    public Optional<String> getConfigContextFilterDefaultRating() {
+        return configContextFilterDefaultRating;
+    }
+
     public Optional<String> getConfigIndividualContextFilterQuestion() {
         return configIndividualContextFilterQuestion;
     }
 
     public Optional<String> getConfigIndividualContextFilterMinimumRating() {
         return configIndividualContextFilterMinimumRating;
+    }
+
+    public Optional<String> getConfigContextFilterMinimumRating() {
+        return configContextFilterMinimumRating;
+    }
+
+
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
     }
 
     public Optional<String> getConfigAnnotationPrefix() {
@@ -1270,7 +1322,7 @@ class MultiSlackZenGoogleConfig {
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_URL_ARG,
-                    "multislackzengoogle_url",
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_URL_ARG,
                     "").value();
         }
 
@@ -1280,7 +1332,7 @@ class MultiSlackZenGoogleConfig {
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_MAX_ANNOTATION_PREFIX_ARG,
-                    "multislackzengoogle_annotation_prefix",
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_MAX_ANNOTATION_PREFIX_ARG,
                     "").value();
         }
 
@@ -1290,7 +1342,7 @@ class MultiSlackZenGoogleConfig {
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
-                    "multislackzengoogle_days",
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
                     "0").value();
 
             return Try.of(() -> Integer.parseInt(stringValue))
@@ -1305,7 +1357,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
-                            "multislackzengoogle_entity_name",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -1319,7 +1371,7 @@ class MultiSlackZenGoogleConfig {
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
-                    "multislackzengoogle_max_entities",
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
                     "0").value();
 
             return Try.of(() -> Integer.parseInt(stringValue))
@@ -1346,7 +1398,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_KEYWORD_ARG,
-                            "multislackzengoogle_keywords",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_KEYWORD_ARG,
                             "")
                     .value();
         }
@@ -1357,7 +1409,7 @@ class MultiSlackZenGoogleConfig {
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_WINDOW_ARG,
-                    "multislackzengoogle_keyword_window",
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -1369,7 +1421,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_SUMMARY_PROMPT_ARG,
-                            "multislackzengoogle_context_summary_prompt",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_SUMMARY_PROMPT_ARG,
                             "")
                     .value();
         }
@@ -1380,7 +1432,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
-                            "multislackzengoogle_context_filter_question",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
                             "")
                     .value();
         }
@@ -1391,7 +1443,30 @@ class MultiSlackZenGoogleConfig {
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
-                    "multislackzengoogle_context_filter_minimum_rating",
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG,
+                            "")
+                    .value();
+        }
+
+        public Integer getContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
@@ -1403,7 +1478,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_REPORT_ARG,
-                            "multislackzengoogle_meta_report",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_REPORT_ARG,
                             "")
                     .value();
         }
@@ -1414,7 +1489,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_1_ARG,
-                            "multislackzengoogle_meta_field_1",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_1_ARG,
                             "")
                     .value();
         }
@@ -1425,7 +1500,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_1_ARG,
-                            "multislackzengoogle_meta_prompt_1",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_1_ARG,
                             "")
                     .value();
         }
@@ -1436,7 +1511,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_2_ARG,
-                            "multislackzengoogle_meta_field_2",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_2_ARG,
                             "")
                     .value();
         }
@@ -1447,7 +1522,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_2_ARG,
-                            "multislackzengoogle_meta_prompt_2",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_2_ARG,
                             "")
                     .value();
         }
@@ -1458,7 +1533,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_3_ARG,
-                            "multislackzengoogle_meta_field_3",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_3_ARG,
                             "")
                     .value();
         }
@@ -1469,7 +1544,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_3_ARG,
-                            "multislackzengoogle_meta_prompt_3",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_3_ARG,
                             "")
                     .value();
         }
@@ -1480,7 +1555,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_4_ARG,
-                            "multislackzengoogle_meta_field_4",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_4_ARG,
                             "")
                     .value();
         }
@@ -1491,7 +1566,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_4_ARG,
-                            "multislackzengoogle_meta_prompt_4",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_4_ARG,
                             "")
                     .value();
         }
@@ -1502,7 +1577,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_5_ARG,
-                            "multislackzengoogle_meta_field_5",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_5_ARG,
                             "")
                     .value();
         }
@@ -1513,7 +1588,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_5_ARG,
-                            "multislackzengoogle_meta_prompt_5",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_5_ARG,
                             "")
                     .value();
         }
@@ -1524,7 +1599,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_6_ARG,
-                            "multislackzengoogle_meta_field_6",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_6_ARG,
                             "")
                     .value();
         }
@@ -1535,7 +1610,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_6_ARG,
-                            "multislackzengoogle_meta_prompt_6",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_6_ARG,
                             "")
                     .value();
         }
@@ -1546,7 +1621,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_7_ARG,
-                            "multislackzengoogle_meta_field_7",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_7_ARG,
                             "")
                     .value();
         }
@@ -1557,7 +1632,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_7_ARG,
-                            "multislackzengoogle_meta_prompt_7",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_7_ARG,
                             "")
                     .value();
         }
@@ -1568,7 +1643,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_8_ARG,
-                            "multislackzengoogle_meta_field_8",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_8_ARG,
                             "")
                     .value();
         }
@@ -1579,7 +1654,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_8_ARG,
-                            "multislackzengoogle_meta_prompt_8",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_8_ARG,
                             "")
                     .value();
         }
@@ -1590,7 +1665,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_9_ARG,
-                            "multislackzengoogle_meta_field_9",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_9_ARG,
                             "")
                     .value();
         }
@@ -1601,7 +1676,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_9_ARG,
-                            "multislackzengoogle_meta_prompt_9",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_9_ARG,
                             "")
                     .value();
         }
@@ -1612,7 +1687,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_10_ARG,
-                            "multislackzengoogle_meta_field_10",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_10_ARG,
                             "")
                     .value();
         }
@@ -1623,7 +1698,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_10_ARG,
-                            "multislackzengoogle_meta_prompt_10",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_10_ARG,
                             "")
                     .value();
         }
@@ -1634,7 +1709,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_11_ARG,
-                            "multislackzengoogle_meta_field_11",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_13_ARG,
                             "")
                     .value();
         }
@@ -1689,7 +1764,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_13_ARG,
-                            "multislackzengoogle_meta_prompt_13",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_13_ARG,
                             "")
                     .value();
         }
@@ -1700,7 +1775,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_14_ARG,
-                            "multislackzengoogle_meta_field_14",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_14_ARG,
                             "")
                     .value();
         }
@@ -1711,7 +1786,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_14_ARG,
-                            "multislackzengoogle_meta_prompt_14",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_14_ARG,
                             "")
                     .value();
         }
@@ -1722,7 +1797,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_15_ARG,
-                            "multislackzengoogle_meta_field_15",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_15_ARG,
                             "")
                     .value();
         }
@@ -1733,7 +1808,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_15_ARG,
-                            "multislackzengoogle_meta_prompt_15",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_15_ARG,
                             "")
                     .value();
         }
@@ -1744,7 +1819,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_16_ARG,
-                            "multislackzengoogle_meta_field_16",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_16_ARG,
                             "")
                     .value();
         }
@@ -1755,7 +1830,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_16_ARG,
-                            "multislackzengoogle_meta_prompt_16",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_16_ARG,
                             "")
                     .value();
         }
@@ -1766,7 +1841,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_17_ARG,
-                            "multislackzengoogle_meta_field_17",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_17_ARG,
                             "")
                     .value();
         }
@@ -1777,7 +1852,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_17_ARG,
-                            "multislackzengoogle_meta_prompt_17",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_17_ARG,
                             "")
                     .value();
         }
@@ -1788,7 +1863,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_18_ARG,
-                            "multislackzengoogle_meta_field_18",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_18_ARG,
                             "")
                     .value();
         }
@@ -1799,7 +1874,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_18_ARG,
-                            "multislackzengoogle_meta_prompt_18",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_18_ARG,
                             "")
                     .value();
         }
@@ -1810,7 +1885,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_19_ARG,
-                            "multislackzengoogle_meta_field_19",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_19_ARG,
                             "")
                     .value();
         }
@@ -1821,7 +1896,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_19_ARG,
-                            "multislackzengoogle_meta_prompt_19",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_19_ARG,
                             "")
                     .value();
         }
@@ -1832,7 +1907,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_20_ARG,
-                            "multislackzengoogle_meta_field_20",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_20_ARG,
                             "")
                     .value();
         }
@@ -1843,7 +1918,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_20_ARG,
-                            "multislackzengoogle_meta_prompt_20",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_20_ARG,
                             "")
                     .value();
         }
@@ -1854,7 +1929,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_ADDITIONAL_SYSTEM_PROMPT,
-                            "multislackzengoogle_additional_system_prompt",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_ADDITIONAL_SYSTEM_PROMPT,
                             "")
                     .value();
         }
@@ -1865,10 +1940,22 @@ class MultiSlackZenGoogleConfig {
                     arguments,
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_STRIP_MARKDOWN_CODE_BLOCK,
-                    "multislackzengoogle_strip_markdown_code_block",
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_STRIP_MARKDOWN_CODE_BLOCK,
                     "false");
 
             return BooleanUtils.toBoolean(argument.value());
+        }
+
+        public int getDefaultRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterDefaultRating()::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_DEFAULT_RATING_ARG,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_DEFAULT_RATING_ARG,
+                    DEFAULT_RATING + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
     }
 }

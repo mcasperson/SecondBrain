@@ -32,7 +32,6 @@ import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
-import secondbrain.domain.tools.zendesk.ZenDeskIndividualTicket;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
@@ -648,8 +647,8 @@ class SlackChannelConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    SlackChannel.SLACK_DEFAULT_RATING_ARG,
+                    SlackChannel.SLACK_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));

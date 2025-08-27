@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -114,22 +115,21 @@ public class RatingTool implements Tool<Void> {
         // description rather than a number. I have seen this a lot with Phi-4.
         // If we have a secondary model and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
-        final List<Integer> results = List.of(
+        final List<Integer> results = Stream.of(
                         NumberUtils.toInt(result.get().getResponse(), -1),
                         NumberUtils.toInt(secondResult.get().getResponse(), -1)
                 )
-                .stream()
                 .filter(i -> !parsedArgs.ignoreInvalidResponses() || (i >= 0 && i <= 10))
                 .toList();
 
         if (!parsedArgs.ignoreInvalidResponses()) {
             final List<String> invalidResponses = results.stream().filter(i -> i < 0 || i > 10).map(Object::toString).toList();
-            if (invalidResponses.size() != 0) {
+            if (!invalidResponses.isEmpty()) {
                 throw new InvalidAnswer("The following responses were invalid: " + String.join(", ", invalidResponses));
             }
         }
 
-        if (results.size() == 0) {
+        if (results.isEmpty()) {
             throw new InvalidAnswer("Both models returned invalid responses");
         }
 
