@@ -32,6 +32,7 @@ import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.domain.tools.zendesk.ZenDeskIndividualTicket;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
@@ -59,6 +60,7 @@ public class SlackChannel implements Tool<Void> {
     public static final String SLACK_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String SLACK_SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
     public static final String SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
+    public static final String SLACK_DEFAULT_RATING_ARG = "ticketDefaultRating";
 
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final String INSTRUCTIONS = """
@@ -342,7 +344,7 @@ public class SlackChannel implements Tool<Void> {
                     .map(rating -> Integer.parseInt(rating.trim()))
                     .onFailure(e -> logger.warning("Failed to get Slack message rating for ticket " + message.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(ex -> 10)
+                    .recover(ex -> parsedArgs.getDefaultRating())
                     .get();
 
             metadata.add(new MetaObjectResult(SLACK_CHANNEL_FILTER_RATING_META, filterRating));
@@ -372,6 +374,7 @@ public class SlackChannel implements Tool<Void> {
 class SlackChannelConfig {
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
     private static final int DEFAULT_API_DELAY = (1000 * 120);
+    private static final int DEFAULT_RATING = 10;
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
@@ -416,6 +419,10 @@ class SlackChannelConfig {
     @Inject
     @ConfigProperty(name = "sb.slack.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.contextFilterDefaultRating")
+    private Optional<String> configContextFilterDefaultRating;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -473,6 +480,10 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
+    }
+
+    public Optional<String> getConfigContextFilterDefaultRating() {
+        return configContextFilterDefaultRating;
     }
 
     public class LocalArguments {
@@ -630,6 +641,18 @@ class SlackChannelConfig {
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+        }
+
+        public int getDefaultRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterDefaultRating()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    DEFAULT_RATING + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
     }
 }
