@@ -218,7 +218,7 @@ public class Gong implements Tool<GongCallDetails> {
                                     parsedArgs.getContextFilterQuestion(),
                                     List.of())
                             .getResponse())
-                    .map(rating -> Integer.parseInt(rating.trim())
+                    .map(rating -> Integer.parseInt(rating.trim()))
                     .onFailure(e -> logger.warning("Failed to get Gong call rating for ticket " + gongCall.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(ex -> parsedArgs.getDefaultRating())
