@@ -17,10 +17,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.RagDocumentContext;
-import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
+import secondbrain.domain.context.*;
 import secondbrain.domain.converter.HtmlToText;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.exceptions.EmptyString;
@@ -178,7 +175,7 @@ public class PlanHat implements Tool<Conversation> {
                 .map(conversation -> getDocumentContext(conversation, parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
                 // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(ragDoc, parsedArgs)))
+                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "PlanHat" + ragDoc.id() + ".txt")))
@@ -269,17 +266,19 @@ public class PlanHat implements Tool<Conversation> {
     }
 
     private MetaObjectResults getMetadata(
+            final Map<String, String> environmentSettings,
             final RagDocumentContext<Conversation> activity,
             final PlanHatConfig.LocalArguments parsedArgs) {
 
         final List<MetaObjectResult> metadata = new ArrayList<>();
 
+        // build the environment settings
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
+                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, activity.document())
+                .addToolCall(getName()+ "[" + activity.id() + "]");
+
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(
-                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, activity.document()),
-                                    parsedArgs.getContextFilterQuestion(),
-                                    List.of())
-                            .getResponse())
+            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
                     .map(rating -> Integer.parseInt(rating.trim()))
                     .onFailure(e -> logger.warning("Failed to get Planhat activity rating for ticket " + activity.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures

@@ -14,10 +14,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.RagDocumentContext;
-import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
+import secondbrain.domain.context.*;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedOllama;
@@ -56,7 +53,6 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String GONG_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String GONG_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
     public static final String GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG = "summarizeTranscriptPrompt";
-    private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of call transcripts from Gong.
@@ -138,7 +134,7 @@ public class Gong implements Tool<GongCallDetails> {
                 .map(pair -> getDocumentContext(pair.getLeft(), pair.getRight(), parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
                 // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(ragDoc, parsedArgs)))
+                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
                 /*
@@ -207,17 +203,19 @@ public class Gong implements Tool<GongCallDetails> {
     }
 
     private MetaObjectResults getMetadata(
+            final Map<String, String> environmentSettings,
             final RagDocumentContext<GongCallDetails> gongCall,
             final GongConfig.LocalArguments parsedArgs) {
 
         final List<MetaObjectResult> metadata = new ArrayList<>();
 
+        // build the environment settings
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
+                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, gongCall.document())
+                .addToolCall(getName() + "[" + gongCall.id() + "]");
+
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(
-                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, gongCall.document()),
-                                    parsedArgs.getContextFilterQuestion(),
-                                    List.of())
-                            .getResponse())
+            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
                     .map(rating -> Integer.parseInt(rating.trim()))
                     .onFailure(e -> logger.warning("Failed to get Gong call rating for ticket " + gongCall.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures

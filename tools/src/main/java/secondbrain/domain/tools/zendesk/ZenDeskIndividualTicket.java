@@ -122,7 +122,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
                         parsedArgs))
-                .map(ticket -> ticket.updateMetadata(getMetadata(ticket, parsedArgs)))
+                .map(ticket -> ticket.updateMetadata(getMetadata(environmentSettings, ticket, parsedArgs)))
                 .map(ticket -> ticket.addIntermediateResult(
                         new IntermediateResult(ticket.document(), ticketToFileName(ticket))))
                 .map(List::of);
@@ -139,6 +139,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     }
 
     private MetaObjectResults getMetadata(
+            final Map<String, String> environmentSettings,
             final RagDocumentContext<ZenDeskTicket> ticket,
             final ZenDeskTicketConfig.LocalArguments parsedArgs) {
 
@@ -146,12 +147,13 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                 ? new ArrayList<>(ticket.source().toMetaObjectResult())
                 : new ArrayList<>();
 
+        // build the environment settings
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
+                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document())
+                .addToolCall(getName() + "[" + ticket.id() + "]");
+
         if (!StringUtil.isBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(
-                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document()),
-                                    parsedArgs.getContextFilterQuestion(),
-                                    List.of())
-                            .getResponse())
+            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
                     .map(rating -> Integer.parseInt(rating.trim()))
                     .onFailure(e -> logger.warning("Failed to get ZenDesk ticket rating for ticket " + ticket.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures

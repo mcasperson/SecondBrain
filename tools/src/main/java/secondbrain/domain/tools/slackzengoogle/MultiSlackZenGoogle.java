@@ -13,10 +13,11 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
+import secondbrain.domain.context.EnvironmentSettings;
+import secondbrain.domain.context.HashMapEnvironmentSettings;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
@@ -536,6 +537,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // Add any aliases for the entity
         keywords.addAll(getAliases(positionalEntity.entity.name));
 
+        // build the environment settings
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
+                .add(SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+
         return Try
                 // Combine all the keywords we are going to search for
                 .of(() -> List.of(
@@ -545,10 +551,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, String.join(",", keywords), true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 // Search for the keywords
-                .map(args -> slackSearch.getContext(
-                        addItemToMap(context, SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
-                        prompt,
-                        args))
+                .map(args -> slackSearch.getContext(envSettings, prompt, args))
                 // We continue on even if one tool fails, so log and swallow the exception
                 .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                 .onFailure(ExternalFailure.class, ex -> logger.warning("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -563,6 +566,12 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     private List<RagDocumentContext<Void>> getGongContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
         logger.log(Level.INFO, "Getting Gong transcripts for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+
+        // build the environment settings
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
+                .add(Gong.GONG_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+
         return Objects.requireNonNullElse(positionalEntity.entity().salesforce(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -575,10 +584,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(Gong.GONG_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Gong.COMPANY_ARG, id, true),
                         new ToolArgs(Gong.DAYS_ARG, parsedArgs.getDays() + "", true)))
-                .flatMap(args -> Try.of(() -> gong.getContext(
-                                addItemToMap(context, Gong.GONG_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
-                                prompt,
-                                args))
+                .flatMap(args -> Try.of(() -> gong.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -592,6 +598,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     private List<RagDocumentContext<Void>> getPlanhatContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
         logger.log(Level.INFO, "Getting PlanHat activities for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
+                .add(PlanHat.PLANHAT_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+
         return Objects.requireNonNullElse(positionalEntity.entity().getPlanHat(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -605,10 +616,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(PlanHat.PLANHAT_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
                         new ToolArgs(PlanHat.DAYS_ARG, parsedArgs.getDays() + "", true)))
-                .flatMap(args -> Try.of(() -> planHat.getContext(
-                                addItemToMap(context, PlanHat.PLANHAT_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
-                                prompt,
-                                args))
+                .flatMap(args -> Try.of(() -> planHat.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -622,15 +630,16 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     private List<RagDocumentContext<Void>> getPlanhatUsageContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
         logger.log(Level.INFO, "Getting PlanHat usage for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
+                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+
         return Objects.requireNonNullElse(positionalEntity.entity().getPlanHat(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
                         new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, id, true)))
-                .flatMap(args -> Try.of(() -> planHatUsage.getContext(
-                                context,
-                                prompt,
-                                args))
+                .flatMap(args -> Try.of(() -> planHatUsage.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(ex -> logger.warning("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
@@ -643,6 +652,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     private List<RagDocumentContext<Void>> getGoogleContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
         logger.log(Level.INFO, "Getting Google Docs for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
+                .add(GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+
         return Objects.requireNonNullElse(positionalEntity.entity().getGoogleDcos(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -654,10 +668,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
                         new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true)))
-                .flatMap(args -> Try.of(() -> googleDocs.getContext(
-                                addItemToMap(context, GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
-                                prompt,
-                                args))
+                .flatMap(args -> Try.of(() -> googleDocs.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -670,6 +681,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     private List<RagDocumentContext<Void>> getSlackContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
         logger.log(Level.INFO, "Getting Slack channel for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
+                .add(SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+
         return Objects.requireNonNullElse(positionalEntity.entity().getSlack(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -683,10 +699,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(SlackChannel.SLACK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(SlackChannel.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
-                .flatMap(args -> Try.of(() -> slackChannel.getContext(
-                                addItemToMap(context, SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
-                                prompt,
-                                args))
+                .flatMap(args -> Try.of(() -> slackChannel.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -700,6 +713,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private List<RagDocumentContext<Void>> getZenContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
         logger.log(Level.INFO, "Getting ZenDesk tickets for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
+                .add(ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+
         return Objects.requireNonNullElse(positionalEntity.entity().getZenDesk(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -712,10 +729,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + parsedArgs.getDays(), true)))
-                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(
-                                addItemToMap(context, ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
-                                prompt,
-                                args))
+                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -736,16 +750,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .onFailure(InternalFailure.class, ex -> logger.warning("Getting aliases failed: " + ex.getMessage()))
                 .getOrElse(List::of);
 
-    }
-
-    private Map<String, String> addItemToMap(@Nullable final Map<String, String> map, final String key, final String value) {
-        final Map<String, String> result = map == null ? new HashMap<>() : new HashMap<>(map);
-
-        if (key != null) {
-            result.put(key, value);
-        }
-
-        return result;
     }
 
     private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {

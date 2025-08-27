@@ -15,10 +15,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.RagDocumentContext;
-import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
+import secondbrain.domain.context.*;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
@@ -156,7 +153,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                                 parsedArgs.getKeywordWindow())))
                 .filter(ragDoc -> validateString.isNotEmpty(ragDoc.document()))
                 // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(ragDoc, parsedArgs)))
+                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
                 .toList();
@@ -214,16 +211,19 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     }
 
     private MetaObjectResults getMetadata(
+            final Map<String, String> environmentSettings,
             final RagDocumentContext<SlackSearchResultResource> message,
             final SlackSearchConfig.LocalArguments parsedArgs) {
 
         final List<MetaObjectResult> metadata = new ArrayList<>();
 
+        // build the environment settings
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
+                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, message.document())
+                .addToolCall(getName()+ "[" + message.id() + "]");
+
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(
-                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, message.document()),
-                                    parsedArgs.getContextFilterQuestion(),
-                                    List.of())
+            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of())
                             .getResponse())
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     // Ratings are provided on a best effort basis, so we ignore any failures

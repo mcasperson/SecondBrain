@@ -9,6 +9,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.context.HashMapEnvironmentSettings;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.*;
@@ -92,6 +93,7 @@ public class RatingTool implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final HashMapEnvironmentSettings myEnvironmentSettings = new HashMapEnvironmentSettings(environmentSettings);
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final Try<RagMultiDocumentContext<Void>> result = callLLM(environmentSettings, prompt, arguments, parsedArgs);
@@ -127,7 +129,7 @@ public class RatingTool implements Tool<Void> {
         if (!parsedArgs.ignoreInvalidResponses()) {
             final List<String> invalidResponses = results.stream().filter(i -> i < 0 || i > 10).map(Object::toString).toList();
             if (!invalidResponses.isEmpty()) {
-                throw new InvalidAnswer("The following responses were invalid: " + String.join(", ", invalidResponses));
+                throw new InvalidAnswer("The following responses were invalid: " + String.join(", ", invalidResponses) + ". " + myEnvironmentSettings.getToolCall());
             }
         }
 
@@ -136,7 +138,7 @@ public class RatingTool implements Tool<Void> {
                 .toList();
 
         if (filteredResults.isEmpty()) {
-            throw new InvalidAnswer("Both models returned invalid responses");
+            throw new InvalidAnswer("Both models returned invalid responses. " + myEnvironmentSettings.getToolCall());
         }
 
         final int average = (int) filteredResults.stream()
@@ -144,7 +146,7 @@ public class RatingTool implements Tool<Void> {
                 .average()
                 .orElse(0.0);
 
-        logger.info("RatingTool: Values = " + String.join(",", results.stream().map(Object::toString).toList()) + ", Average = " + average);
+        logger.info("RatingTool: Values = " + String.join(",", results.stream().map(Object::toString).toList()) + ", Average = " + average + ". " + myEnvironmentSettings.getToolCall());
 
         return result.get().updateResponse(average + "");
     }

@@ -24,10 +24,7 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.RagDocumentContext;
-import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
+import secondbrain.domain.context.*;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
@@ -178,7 +175,7 @@ public class GoogleDocs implements Tool<Void> {
                         .map(trimResult -> validateString.throwIfEmpty(trimResult, TrimResult::document))
                         .map(trimResult -> getDocumentContext(trimResult, parsedArgs))
                         // Get the metadata, which includes a rating against the filter question if present
-                        .map(ragDoc -> ragDoc.updateMetadata(getMetadata(ragDoc, parsedArgs)))
+                        .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
                         // Filter out any documents that don't meet the rating criteria
                         .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
                         .map(doc -> parsedArgs.getSummarizeDocument()
@@ -342,17 +339,19 @@ public class GoogleDocs implements Tool<Void> {
     }
 
     private MetaObjectResults getMetadata(
+            final Map<String, String> environmentSettings,
             final RagDocumentContext<Void> document,
             final GoogleDocsConfig.LocalArguments parsedArgs) {
 
         final List<MetaObjectResult> metadata = new ArrayList<>();
 
+        // build the environment settings
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
+                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, document.document())
+                .addToolCall(getName()+ "[" + document.id() + "]");
+
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(
-                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, document.document()),
-                                    parsedArgs.getContextFilterQuestion(),
-                                    List.of())
-                            .getResponse())
+            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(ex -> 10)
