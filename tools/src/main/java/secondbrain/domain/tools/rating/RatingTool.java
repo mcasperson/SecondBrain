@@ -44,7 +44,7 @@ public class RatingTool implements Tool<Void> {
             You are given a question and the contents of a document related to the question.
             You must rate the document on a scale of 1 to 10 based on how well it answers the question.
             The response must be a single number between 1 and 10.
-            You will be penalized for returning any text in the response.
+            You will be penalized for returning any additional text or markup in the response.
             """.stripLeading();
 
     @Inject
