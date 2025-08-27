@@ -97,7 +97,7 @@ public class RatingTool implements Tool<Void> {
         final Try<RagMultiDocumentContext<Void>> result = callLLM(environmentSettings, prompt, arguments, parsedArgs);
 
         if (StringUtils.isBlank(parsedArgs.getSecondModel())) {
-            final int resultInt = Integer.parseInt(result.get().getResponse();
+            final int resultInt = Integer.parseInt(result.get().getResponse());
             if (resultInt < 0 || resultInt > 10) {
                 throw new InvalidAnswer("The rating response was invalid: " + resultInt);
             }
