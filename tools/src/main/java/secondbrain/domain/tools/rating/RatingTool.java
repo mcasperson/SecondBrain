@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -55,6 +56,9 @@ public class RatingTool implements Tool<Void> {
 
     @Inject
     private ValidateList validateList;
+
+    @Inject
+    private Logger logger;
 
     @Inject
     @Identifier("findFirstMarkdownBlock")
@@ -116,7 +120,11 @@ public class RatingTool implements Tool<Void> {
         final int firstResultInt = Integer.parseInt(firstResultWithMappedFailures.get().getResponse());
         final int secondResultInt = Integer.parseInt(secondResultWithMappedFailures.get().getResponse());
 
-        return firstResultWithMappedFailures.get().updateResponse((firstResultInt + secondResultInt) / 2 + "");
+        final int average = (firstResultInt + secondResultInt) / 2;
+
+        logger.info("RatingTool: Default model result = " + firstResultInt + ", " + parsedArgs.getSecondModel() + " result = " + secondResultInt + ", Average = " + average);
+
+        return firstResultWithMappedFailures.get().updateResponse(average + "");
     }
 
     private Try<RagMultiDocumentContext<Void>> mapFailures(final Try<RagMultiDocumentContext<Void>> result) {
