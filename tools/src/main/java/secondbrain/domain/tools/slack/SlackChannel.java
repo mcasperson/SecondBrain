@@ -339,7 +339,7 @@ public class SlackChannel implements Tool<Void> {
                                     parsedArgs.getContextFilterQuestion(),
                                     List.of())
                             .getResponse())
-                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
+                    .map(rating -> Integer.parseInt(rating.trim()))
                     .onFailure(e -> logger.warning("Failed to get Slack message rating for ticket " + message.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(ex -> 10)
