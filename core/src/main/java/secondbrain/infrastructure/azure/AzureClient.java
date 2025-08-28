@@ -179,7 +179,7 @@ public class AzureClient implements LlmClient {
         final Integer modelContextWindow = Try.of(() -> Integer.parseInt(environmentSettings.getOrDefault(CONTEXT_WINDOW_OVERRIDE_ENV, maxInputTokens + "")))
                 .getOrElse(maxInputTokens);
 
-        final int maxChars = (int) (maxInputTokens * AzureRequestMaxCompletionTokens.DEFAULT_CHARS_PER_INPUT_TOKENS);
+        final int maxChars = (int) (modelContextWindow * AzureRequestMaxCompletionTokens.DEFAULT_CHARS_PER_INPUT_TOKENS);
 
         final List<AzureRequestMessage> messages = new ArrayList<>();
         messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
