@@ -5,6 +5,8 @@ import ai.djl.inference.Predictor;
 import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ZooModel;
 import io.vavr.control.Try;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -14,6 +16,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.persist.LocalStorage;
 
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * Use the Java Deep Learning library to vectorize sentences.
@@ -25,12 +28,16 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
     private static final String DJL_MODEL = "sentence-transformers/all-MiniLM-L12-v2";
     private static final String DJL_PATH = "djl://ai.djl.huggingface.pytorch/" + DJL_MODEL;
 
-    private final Predictor<String, float[]> predictor;
+    private Predictor<String, float[]> predictor;
+
+    @Inject
+    private Logger logger;
 
     @Inject
     private LocalStorage localStorage;
 
-    public JdlSentenceVectorizer() {
+    @PostConstruct
+    private void init() {
         this.predictor = Try.of(() -> Criteria.builder()
                         .setTypes(String.class, float[].class)
                         .optModelUrls(DJL_PATH)
@@ -41,6 +48,12 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
                 .mapTry(ZooModel::newPredictor)
                 .onFailure((Throwable e) -> System.err.println("Failed to initialise predictor: " + ExceptionUtils.getRootCause(e)))
                 .getOrElse(() -> null);
+    }
+
+    @PreDestroy
+    private void destroy() {
+        Try.run(() -> predictor.close())
+                .onFailure(ex -> logger.warning("Failed to close predictor: " + ExceptionUtils.getRootCause(ex)));
     }
 
     public RagStringContext vectorize(final String text) {
