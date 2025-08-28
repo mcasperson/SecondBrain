@@ -168,12 +168,16 @@ public class AzureClient implements LlmClient {
         checkArgument(StringUtils.isNotBlank(tool));
 
         final int maxOutputTokens = outputTokens
-                .map(Integer::parseInt)
+                .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
                 .orElse(AzureRequestMaxCompletionTokens.DEFAULT_OUTPUT_TOKENS);
 
         final int maxInputTokens = inputTokens
-                .map(Integer::parseInt)
+                .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
                 .orElse(AzureRequestMaxCompletionTokens.DEFAULT_INPUT_TOKENS);
+
+        final String modelName = environmentSettings.getOrDefault(MODEL_OVERRIDE_ENV, this.model.orElse(DEFAULT_MODEL));
+        final Integer modelContextWindow = Try.of(() -> Integer.parseInt(environmentSettings.getOrDefault(CONTEXT_WINDOW_OVERRIDE_ENV, maxInputTokens + "")))
+                .getOrElse(maxInputTokens);
 
         final int maxChars = (int) (maxInputTokens * AzureRequestMaxCompletionTokens.DEFAULT_CHARS_PER_INPUT_TOKENS);
 
@@ -198,8 +202,6 @@ public class AzureClient implements LlmClient {
                 .collect(Collectors.toCollection(ArrayList::new)));
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
-
-        final String modelName = environmentSettings.getOrDefault(MODEL_OVERRIDE_ENV, this.model.orElse(DEFAULT_MODEL));
 
         final PromptTextGenerator request = new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, modelName);
 

@@ -38,6 +38,7 @@ import static com.google.common.base.Predicates.instanceOf;
 public class RatingTool implements Tool<Void> {
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "rating_document";
     public static final String RATING_SECOND_MODEL_ARG = "secondModel";
+    public static final String RATING_SECOND_CONTEXT_WINDOW_ARG = "secondContextWindow";
     public static final String IGNORE_INVALID_RESPONSES_ARG = "ignoreinvalidResponses";
 
     private static final String INSTRUCTIONS = """
@@ -108,6 +109,7 @@ public class RatingTool implements Tool<Void> {
 
         final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
         newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, parsedArgs.getSecondModel());
+        newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, parsedArgs.getSecondContextWindow());
         final Try<RagMultiDocumentContext<Void>> secondResult = callLLM(newEnvironmentSettings, prompt, arguments, parsedArgs);
 
         // We use multiple models to catch cases where a single model returns inaccurate responses.
@@ -186,6 +188,10 @@ class RatingConfig {
     @ConfigProperty(name = "sb.rating.secondModel", defaultValue = "")
     private Optional<String> configSecondModel;
 
+    @Inject
+    @ConfigProperty(name = "sb.rating.secondContextWindow", defaultValue = "")
+    private Optional<String> configSecondContextWindow;
+
     /**
      * Set to true to ignore invalid responses from either the primary or secondary model.
      * If both models return invalid responses, an exception will be thrown.
@@ -205,6 +211,10 @@ class RatingConfig {
      */
     public Optional<String> getConfigSecondModel() {
         return configSecondModel;
+    }
+
+    public Optional<String> getConfigSecondContextWindow() {
+        return configSecondContextWindow;
     }
 
     public Optional<String> getConfigIgnoreInvalidResponses() {
@@ -241,6 +251,16 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.RATING_SECOND_MODEL_ARG,
                     RatingTool.RATING_SECOND_MODEL_ARG,
+                    "").value();
+        }
+
+        public String getSecondContextWindow() {
+            return getArgsAccessor().getArgument(
+                    getConfigSecondContextWindow()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_SECOND_CONTEXT_WINDOW_ARG,
+                    RatingTool.RATING_SECOND_CONTEXT_WINDOW_ARG,
                     "").value();
         }
 

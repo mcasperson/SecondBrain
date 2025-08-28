@@ -6,6 +6,7 @@ import java.util.Map;
 
 public interface LlmClient {
     String MODEL_OVERRIDE_ENV = "modelOverride";
+    String CONTEXT_WINDOW_OVERRIDE_ENV = "contextWindowOverride";
 
     String call(final String prompt);
 
