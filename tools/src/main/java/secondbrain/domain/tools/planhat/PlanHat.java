@@ -275,7 +275,7 @@ public class PlanHat implements Tool<Conversation> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
                 .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, activity.document())
-                .addToolCall(getName()+ "[" + activity.id() + "]");
+                .addToolCall(getName() + "[" + activity.id() + "]");
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
@@ -459,7 +459,7 @@ class PlanHatConfig {
                     arguments,
                     context,
                     PlanHat.COMPANY_ID_ARGS,
-                    "planhat_company",
+                    PlanHat.COMPANY_ID_ARGS,
                     "").value();
         }
 
@@ -469,7 +469,7 @@ class PlanHatConfig {
                     arguments,
                     context,
                     PlanHat.DAYS_ARG,
-                    "planhat_days",
+                    PlanHat.DAYS_ARG,
                     "");
 
             return NumberUtils.toInt(argument.value(), 1);
@@ -518,7 +518,7 @@ class PlanHatConfig {
                     arguments,
                     context,
                     PlanHat.SEARCH_TTL_ARG,
-                    "planhat_searchttl",
+                    PlanHat.SEARCH_TTL_ARG,
                     DEFAULT_TTL);
 
             return Try.of(argument::value)
@@ -532,7 +532,7 @@ class PlanHatConfig {
                             arguments,
                             context,
                             PlanHat.PLANHAT_KEYWORD_ARG,
-                            "planhat_keywords",
+                            PlanHat.PLANHAT_KEYWORD_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -545,7 +545,7 @@ class PlanHatConfig {
                     arguments,
                     context,
                     PlanHat.PLANHAT_KEYWORD_WINDOW_ARG,
-                    "upload_keyword_window",
+                    PlanHat.PLANHAT_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -567,7 +567,7 @@ class PlanHatConfig {
                     arguments,
                     context,
                     PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_ARG,
-                    "planhat_summarizedocument",
+                    PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_ARG,
                     "").value();
 
             return BooleanUtils.toBoolean(value);
@@ -580,7 +580,7 @@ class PlanHatConfig {
                             arguments,
                             context,
                             PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG,
-                            "planhat_summarizedocument_prompt",
+                            PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
                     .value();
         }
@@ -591,7 +591,7 @@ class PlanHatConfig {
                             arguments,
                             context,
                             PlanHat.PLANHAT_FILTER_QUESTION_ARG,
-                            "planhat_rating_question",
+                            PlanHat.PLANHAT_FILTER_QUESTION_ARG,
                             "")
                     .value();
         }
@@ -602,7 +602,7 @@ class PlanHatConfig {
                     arguments,
                     context,
                     PlanHat.PLANHAT_FILTER_MINIMUM_RATING_ARG,
-                    "planhat_filter_minimum_rating",
+                    PlanHat.PLANHAT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);

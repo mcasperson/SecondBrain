@@ -51,6 +51,8 @@ public class SlackChannel implements Tool<Void> {
     public static final String SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String SLACK_CHANEL_ARG = "slackChannel";
     public static final String DAYS_ARG = "days";
+    public static final String API_DELAY_ARG = "apiDelay";
+    public static final String HISTORY_TTL_ARG = "historyTtl";
     public static final String SLACK_KEYWORD_ARG = "keywords";
     public static final String SLACK_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String SLACK_ENTITY_NAME_CONTEXT_ARG = "entityName";
@@ -335,7 +337,7 @@ public class SlackChannel implements Tool<Void> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
                 .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, message.document())
-                .addToolCall(getName()+ "[" + message.id() + "]");
+                .addToolCall(getName() + "[" + message.id() + "]");
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
@@ -503,7 +505,7 @@ class SlackChannelConfig {
                             arguments,
                             context,
                             SlackChannel.SLACK_CHANEL_ARG,
-                            "slack_channel",
+                            SlackChannel.SLACK_CHANEL_ARG,
                             "")
                     .value()
                     .replaceFirst("^#", "");
@@ -515,7 +517,7 @@ class SlackChannelConfig {
                     arguments,
                     context,
                     SlackChannel.DAYS_ARG,
-                    "slack_days",
+                    SlackChannel.DAYS_ARG,
                     "30");
 
             return Try.of(argument::value)
@@ -536,8 +538,8 @@ class SlackChannelConfig {
                     getConfigHistoryttl()::get,
                     arguments,
                     context,
-                    "historyTtl",
-                    "slack_historyttl",
+                    SlackChannel.HISTORY_TTL_ARG,
+                    SlackChannel.HISTORY_TTL_ARG,
                     DEFAULT_TTL);
 
             return Try.of(argument::value)
@@ -550,8 +552,8 @@ class SlackChannelConfig {
                     getConfigApiDelay()::get,
                     arguments,
                     context,
-                    "apiDelay",
-                    "slack_api_delay",
+                    SlackChannel.API_DELAY_ARG,
+                    SlackChannel.API_DELAY_ARG,
                     DEFAULT_API_DELAY + "").value();
 
             return Try.of(() -> stringValue)
@@ -565,7 +567,7 @@ class SlackChannelConfig {
                             arguments,
                             context,
                             SlackChannel.SLACK_KEYWORD_ARG,
-                            "slack_keywords",
+                            SlackChannel.SLACK_KEYWORD_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -578,7 +580,7 @@ class SlackChannelConfig {
                     arguments,
                     context,
                     SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
-                    "slack_keyword_window",
+                    SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -600,7 +602,7 @@ class SlackChannelConfig {
                     arguments,
                     context,
                     SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG,
-                    "slack_summarizedocument",
+                    SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG,
                     "").value();
 
             return BooleanUtils.toBoolean(value);
@@ -613,7 +615,7 @@ class SlackChannelConfig {
                             arguments,
                             context,
                             SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG,
-                            "slack_summarizedocument_prompt",
+                            SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
                     .value();
         }
@@ -624,7 +626,7 @@ class SlackChannelConfig {
                             arguments,
                             context,
                             SlackChannel.SLACK_CHANNEL_FILTER_QUESTION_ARG,
-                            "slack_rating_question",
+                            SlackChannel.SLACK_CHANNEL_FILTER_QUESTION_ARG,
                             "")
                     .value();
         }
@@ -635,7 +637,7 @@ class SlackChannelConfig {
                     arguments,
                     context,
                     SlackChannel.SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG,
-                    "slack_filter_minimum_rating",
+                    SlackChannel.SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);

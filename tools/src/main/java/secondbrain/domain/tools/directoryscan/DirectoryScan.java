@@ -455,7 +455,7 @@ class DirectoryScanConfig {
                             arguments,
                             context,
                             DirectoryScan.DIRECTORYSCAN_DIRECTORY,
-                            "directoryscan_directory",
+                            DirectoryScan.DIRECTORYSCAN_DIRECTORY,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -468,7 +468,7 @@ class DirectoryScanConfig {
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_MAX_FILES,
-                    "directoryscan_maxfiles",
+                    DirectoryScan.DIRECTORYSCAN_MAX_FILES,
                     "-1").value();
 
             return NumberUtils.toInt(stringValue, -1);
@@ -480,7 +480,7 @@ class DirectoryScanConfig {
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
-                    "directoryscan_individual_document_prompt",
+                    DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
                     prompt).value();
         }
 
@@ -491,7 +491,7 @@ class DirectoryScanConfig {
                             arguments,
                             context,
                             DirectoryScan.DIRECTORYSCAN_EXCLUDE_FILES,
-                            "directoryscan_exclude_files",
+                            DirectoryScan.DIRECTORYSCAN_EXCLUDE_FILES,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -505,7 +505,7 @@ class DirectoryScanConfig {
                             arguments,
                             context,
                             DirectoryScan.DIRECTORYSCAN_PATHSPEC,
-                            "directoryscan_pathspec",
+                            DirectoryScan.DIRECTORYSCAN_PATHSPEC,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -518,7 +518,7 @@ class DirectoryScanConfig {
                             arguments,
                             context,
                             DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
-                            "directoryscan_keywords",
+                            DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -532,7 +532,7 @@ class DirectoryScanConfig {
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW,
-                    "directoryscan_summarize_keyword_window",
+                    DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "").value();
 
             return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -544,7 +544,7 @@ class DirectoryScanConfig {
                     arguments,
                     context,
                     DirectoryScan.DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG,
-                    "directoryscan_summarize_individual_files",
+                    DirectoryScan.DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG,
                     "true").value();
 
             return BooleanUtils.toBoolean(stringValue);

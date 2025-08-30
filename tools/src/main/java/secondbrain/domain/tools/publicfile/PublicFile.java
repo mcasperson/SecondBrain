@@ -241,7 +241,7 @@ class PublicWebConfig {
                     arguments,
                     context,
                     PublicFile.PUBLICWEB_URL_ARG,
-                    "publicweb_url",
+                    PublicFile.PUBLICWEB_URL_ARG,
                     "").value();
         }
 
@@ -251,7 +251,7 @@ class PublicWebConfig {
                             arguments,
                             context,
                             PublicFile.PUBLICWEB_KEYWORD_ARG,
-                            "publicweb_keywords",
+                            PublicFile.PUBLICWEB_KEYWORD_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -264,7 +264,7 @@ class PublicWebConfig {
                     arguments,
                     context,
                     PublicFile.PUBLICWEB_KEYWORD_WINDOW_ARG,
-                    "publicweb_keyword_window",
+                    PublicFile.PUBLICWEB_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);

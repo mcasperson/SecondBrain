@@ -71,6 +71,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_MAX_TICKETS_ARG = "maxTickets";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
     public static final String ZENDESK_TICKET_DEFAULT_RATING_ARG = "ticketDefaultRating";
+    public static final String ZENDESK_HISTORY_TTL_ARG = "historyTtl";
+    public static final String ZENDESK_URL2_ARG = "url2";
+    public static final String ZENDESK_USER2_ARG = "user2";
 
 
     private static final String INSTRUCTIONS = """
@@ -723,7 +726,7 @@ class ZenDeskConfig {
                             arguments,
                             context,
                             ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
-                            "multislackzengoogle_context_filter_question",
+                            ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
                             "")
                     .value();
         }
@@ -734,7 +737,7 @@ class ZenDeskConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
-                    "multislackzengoogle_context_filter_minimum_rating",
+                    ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
@@ -750,7 +753,7 @@ class ZenDeskConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG,
-                    "zendesk_organization",
+                    ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG,
                     "");
 
             if (argument.trusted()) {
@@ -777,7 +780,7 @@ class ZenDeskConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.EXCLUDE_ORGANIZATION_ARG,
-                    "zendesk_excludeorganization",
+                    ZenDeskOrganization.EXCLUDE_ORGANIZATION_ARG,
                     "");
 
             final String stringValue = argument.trusted()
@@ -800,7 +803,7 @@ class ZenDeskConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.RECIPIENT_ARG,
-                    "zendesk_recipient",
+                    ZenDeskOrganization.RECIPIENT_ARG,
                     "").value();
         }
 
@@ -819,7 +822,7 @@ class ZenDeskConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.EXCLUDE_SUBMITTERS_ARG,
-                    "zendesk_excludesubmitters",
+                    ZenDeskOrganization.EXCLUDE_SUBMITTERS_ARG,
                     "").value();
 
             return Arrays.stream(stringValue.split(","))
@@ -834,7 +837,7 @@ class ZenDeskConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.HOURS_ARG,
-                    "zendesk_hours",
+                    ZenDeskOrganization.HOURS_ARG,
                     "0");
         }
 
@@ -853,7 +856,7 @@ class ZenDeskConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.DAYS_ARG,
-                    "zendesk_days",
+                    ZenDeskOrganization.DAYS_ARG,
                     "0");
         }
 
@@ -888,7 +891,7 @@ class ZenDeskConfig {
                             arguments,
                             context,
                             ZenDeskOrganization.START_PERIOD_ARG,
-                            "zendesk_startperiod",
+                            ZenDeskOrganization.START_PERIOD_ARG,
                             "")
                     .value();
         }
@@ -899,7 +902,7 @@ class ZenDeskConfig {
                             arguments,
                             context,
                             ZenDeskOrganization.END_PERIOD_ARG,
-                            "zendesk_endperiod",
+                            ZenDeskOrganization.END_PERIOD_ARG,
                             "")
                     .value();
         }
@@ -910,7 +913,7 @@ class ZenDeskConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG,
-                    "zendesk_filterbyorganization",
+                    ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG,
                     "false").value();
 
             return Try.of(() -> BooleanUtils.toBoolean(stringValue))
@@ -991,8 +994,8 @@ class ZenDeskConfig {
                     getConfigZenDeskUrl2()::get,
                     arguments,
                     context,
-                    "url2",
-                    "zendesk_url2",
+                    ZenDeskOrganization.ZENDESK_URL2_ARG,
+                    ZenDeskOrganization.ZENDESK_URL2_ARG,
                     "").value();
         }
 
@@ -1001,8 +1004,8 @@ class ZenDeskConfig {
                     getConfigZenDeskUser2()::get,
                     arguments,
                     context,
-                    "user2",
-                    "zendesk_user2",
+                    ZenDeskOrganization.ZENDESK_USER2_ARG,
+                    ZenDeskOrganization.ZENDESK_USER2_ARG,
                     "").value();
         }
 
@@ -1057,7 +1060,7 @@ class ZenDeskConfig {
                             arguments,
                             context,
                             ZenDeskOrganization.ZENDESK_KEYWORD_ARG,
-                            "zendesk_keywords",
+                            ZenDeskOrganization.ZENDESK_KEYWORD_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -1070,7 +1073,7 @@ class ZenDeskConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG,
-                    "zendesk_keyword_window",
+                    ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -1091,8 +1094,8 @@ class ZenDeskConfig {
                     getConfigHistoryttl()::get,
                     arguments,
                     context,
-                    "historyTtl",
-                    "zen_historyttl",
+                    ZenDeskOrganization.ZENDESK_HISTORY_TTL_ARG,
+                    ZenDeskOrganization.ZENDESK_HISTORY_TTL_ARG,
                     DEFAULT_TTL_SECONDS);
 
             return Try.of(argument::value)
@@ -1107,7 +1110,7 @@ class ZenDeskConfig {
                             arguments,
                             context,
                             ZenDeskOrganization.ZENDESK_TICKET_SUMMARY_PROMPT_ARG,
-                            "zen_ticketSummaryPrompt",
+                            ZenDeskOrganization.ZENDESK_TICKET_SUMMARY_PROMPT_ARG,
                             """
                                     Summarise the ticket in one paragraph.
                                     You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.""".stripLeading())
@@ -1120,7 +1123,7 @@ class ZenDeskConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.ZENDESK_SUMMARIZE_TICKET_ARG,
-                    "zen_summarizeticket",
+                    ZenDeskOrganization.ZENDESK_SUMMARIZE_TICKET_ARG,
                     "true").value();
 
             return BooleanUtils.toBoolean(value);
@@ -1132,7 +1135,7 @@ class ZenDeskConfig {
                     arguments,
                     context,
                     ZenDeskOrganization.ZENDESK_MAX_TICKETS_ARG,
-                    "zen_maxtickets",
+                    ZenDeskOrganization.ZENDESK_MAX_TICKETS_ARG,
                     MAX_TICKETS + "").value();
 
             return NumberUtils.min(NumberUtils.toInt(value, MAX_TICKETS), MAX_TICKETS);

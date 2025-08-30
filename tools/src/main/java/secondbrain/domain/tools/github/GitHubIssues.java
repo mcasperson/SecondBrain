@@ -397,7 +397,7 @@ class GitHubIssueConfig {
                     arguments,
                     context,
                     GitHubIssues.GITHUB_ORGANIZATION_ARG,
-                    "github_organization",
+                    GitHubIssues.GITHUB_ORGANIZATION_ARG,
                     "").value();
         }
 
@@ -407,7 +407,7 @@ class GitHubIssueConfig {
                     arguments,
                     context,
                     GitHubIssues.GITHUB_REPO_ARG,
-                    "github_repo",
+                    GitHubIssues.GITHUB_REPO_ARG,
                     "").value();
         }
 
@@ -417,7 +417,7 @@ class GitHubIssueConfig {
                             arguments,
                             context,
                             GitHubIssues.GITHUB_ISSUE_LABELS_ARG,
-                            "github_issue_labels",
+                            GitHubIssues.GITHUB_ISSUE_LABELS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -430,7 +430,7 @@ class GitHubIssueConfig {
                             arguments,
                             context,
                             GitHubIssues.GITHUB_ISSUE_STATE_ARG,
-                            "github_issue_state",
+                            GitHubIssues.GITHUB_ISSUE_STATE_ARG,
                             "")
                     .value();
         }
@@ -441,7 +441,7 @@ class GitHubIssueConfig {
                             arguments,
                             context,
                             GitHubIssues.GITHUB_ISSUE_FILTER_QUESTION_ARG,
-                            "github_rating_question",
+                            GitHubIssues.GITHUB_ISSUE_FILTER_QUESTION_ARG,
                             "")
                     .value();
         }
@@ -452,7 +452,7 @@ class GitHubIssueConfig {
                     arguments,
                     context,
                     GitHubIssues.GITHUB_ISSUE_FILTER_MINIMUM_RATING_ARG,
-                    "github_filter_minimum_rating",
+                    GitHubIssues.GITHUB_ISSUE_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
@@ -465,7 +465,7 @@ class GitHubIssueConfig {
                             arguments,
                             context,
                             GitHubIssues.GITHUB_ISSUE_SUMMARY_PROMPT_ARG,
-                            "github_issue_summary_prompt",
+                            GitHubIssues.GITHUB_ISSUE_SUMMARY_PROMPT_ARG,
                             "Summarise the GitHub issue in three paragraphs")
                     .value();
         }
@@ -476,7 +476,7 @@ class GitHubIssueConfig {
                     arguments,
                     context,
                     GitHubIssues.GITHUB_SUMMARIZE_ISSUE_ARG,
-                    "github_summarize_issue",
+                    GitHubIssues.GITHUB_SUMMARIZE_ISSUE_ARG,
                     "").value();
 
             return BooleanUtils.toBoolean(value);
@@ -488,7 +488,7 @@ class GitHubIssueConfig {
                     arguments,
                     context,
                     GitHubIssues.GITHUB_START_DATE_ARG,
-                    "github_start_date",
+                    GitHubIssues.GITHUB_START_DATE_ARG,
                     "").value();
 
             if (StringUtils.isNotBlank(configuredDate)) {
@@ -511,7 +511,7 @@ class GitHubIssueConfig {
                     arguments,
                     context,
                     GitHubIssues.GITHUB_END_DATE_ARG,
-                    "github_end_date",
+                    GitHubIssues.GITHUB_END_DATE_ARG,
                     "").value();
 
             if (StringUtils.isNotBlank(configuredDate)) {
@@ -534,7 +534,7 @@ class GitHubIssueConfig {
                     arguments,
                     context,
                     GitHubIssues.GITHUB_DAYS_ARG,
-                    "github_days",
+                    GitHubIssues.GITHUB_DAYS_ARG,
                     "0").value();
 
             return Try.of(() -> Integer.parseInt(stringValue))

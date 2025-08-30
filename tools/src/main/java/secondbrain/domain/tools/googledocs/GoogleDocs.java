@@ -348,7 +348,7 @@ public class GoogleDocs implements Tool<Void> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
                 .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, document.document())
-                .addToolCall(getName()+ "[" + document.id() + "]");
+                .addToolCall(getName() + "[" + document.id() + "]");
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
@@ -472,7 +472,7 @@ class GoogleDocsConfig {
                     arguments,
                     context,
                     GoogleDocs.GOOGLE_DOC_ID_ARG,
-                    "google_document_id",
+                    GoogleDocs.GOOGLE_DOC_ID_ARG,
                     "").value();
 
             if (StringUtils.isBlank(documentId)) {
@@ -488,7 +488,7 @@ class GoogleDocsConfig {
                             arguments,
                             context,
                             GoogleDocs.GOOGLE_KEYWORD_ARG,
-                            "google_keywords",
+                            GoogleDocs.GOOGLE_KEYWORD_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -515,7 +515,7 @@ class GoogleDocsConfig {
                     arguments,
                     context,
                     GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG,
-                    "google_keyword_window",
+                    GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -527,7 +527,7 @@ class GoogleDocsConfig {
                     arguments,
                     context,
                     GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_ARG,
-                    "google_summarizedocument",
+                    GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_ARG,
                     "").value();
 
             return BooleanUtils.toBoolean(value);
@@ -540,7 +540,7 @@ class GoogleDocsConfig {
                             arguments,
                             context,
                             GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_PROMPT_ARG,
-                            "google_summarizedocument_prompt",
+                            GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
                     .value();
         }
@@ -551,7 +551,7 @@ class GoogleDocsConfig {
                             arguments,
                             context,
                             GoogleDocs.GOOGLE_DOC_FILTER_QUESTION_ARG,
-                            "google_rating_question",
+                            GoogleDocs.GOOGLE_DOC_FILTER_QUESTION_ARG,
                             "")
                     .value();
         }
@@ -562,7 +562,7 @@ class GoogleDocsConfig {
                     arguments,
                     context,
                     GoogleDocs.GOOGLE_DOC_FILTER_MINIMUM_RATING_ARG,
-                    "google_filter_minimum_rating",
+                    GoogleDocs.GOOGLE_DOC_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);

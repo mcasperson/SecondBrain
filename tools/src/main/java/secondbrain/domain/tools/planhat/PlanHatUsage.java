@@ -377,7 +377,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.COMPANY_ID_ARGS,
-                    "planhat_usage_company",
+                    PlanHatUsage.COMPANY_ID_ARGS,
                     "").value();
         }
 
@@ -423,7 +423,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.SEARCH_TTL_ARG,
-                    "planhat_searchttl",
+                    PlanHatUsage.SEARCH_TTL_ARG,
                     DEFAULT_TTL);
 
             return Try.of(argument::value)
@@ -437,7 +437,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_CUSTOM_1_ARG,
-                    "planhat_custom1",
+                    PlanHatUsage.PLANHAT_CUSTOM_1_ARG,
                     "").value();
         }
 
@@ -447,7 +447,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_CUSTOM_2_ARG,
-                    "planhat_custom2",
+                    PlanHatUsage.PLANHAT_CUSTOM_2_ARG,
                     "").value();
         }
 
@@ -457,7 +457,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_USAGE_ID_1_ARG,
-                    "planhat_usage_id1",
+                    PlanHatUsage.PLANHAT_USAGE_ID_1_ARG,
                     "").value();
         }
 
@@ -467,7 +467,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_USAGE_ID_2_ARG,
-                    "planhat_usage_id2",
+                    PlanHatUsage.PLANHAT_USAGE_ID_2_ARG,
                     "").value();
         }
 
@@ -477,7 +477,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_USAGE_ID_3_ARG,
-                    "planhat_usage_id3",
+                    PlanHatUsage.PLANHAT_USAGE_ID_3_ARG,
                     "").value();
         }
 
@@ -487,7 +487,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_USAGE_ID_4_ARG,
-                    "planhat_usage_id4",
+                    PlanHatUsage.PLANHAT_USAGE_ID_4_ARG,
                     "").value();
         }
 
@@ -497,7 +497,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_USAGE_ID_5_ARG,
-                    "planhat_usage_id5",
+                    PlanHatUsage.PLANHAT_USAGE_ID_5_ARG,
                     "").value();
         }
 
@@ -507,7 +507,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_USAGE_NAME_1_ARG,
-                    "planhat_usage_name1",
+                    PlanHatUsage.PLANHAT_USAGE_NAME_1_ARG,
                     "").value();
         }
 
@@ -517,7 +517,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_USAGE_NAME_2_ARG,
-                    "planhat_usage_name2",
+                    PlanHatUsage.PLANHAT_USAGE_NAME_2_ARG,
                     "").value();
         }
 
@@ -527,7 +527,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_USAGE_NAME_3_ARG,
-                    "planhat_usage_name3",
+                    PlanHatUsage.PLANHAT_USAGE_NAME_3_ARG,
                     "").value();
         }
 
@@ -537,7 +537,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_USAGE_NAME_4_ARG,
-                    "planhat_usage_name4",
+                    PlanHatUsage.PLANHAT_USAGE_NAME_4_ARG,
                     "").value();
         }
 
@@ -547,7 +547,7 @@ class PlanHatUsageConfig {
                     arguments,
                     context,
                     PlanHatUsage.PLANHAT_USAGE_NAME_5_ARG,
-                    "planhat_usage_name5",
+                    PlanHatUsage.PLANHAT_USAGE_NAME_5_ARG,
                     "").value();
         }
     }

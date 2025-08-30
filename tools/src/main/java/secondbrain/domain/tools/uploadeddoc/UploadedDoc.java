@@ -237,7 +237,7 @@ class UploadDocConfig {
                             arguments,
                             context,
                             UploadedDoc.UPLOADED_DOC_KEYWORD_ARG,
-                            "upload_keywords",
+                            UploadedDoc.UPLOADED_DOC_KEYWORD_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -250,7 +250,7 @@ class UploadDocConfig {
                     arguments,
                     context,
                     UploadedDoc.UPLOADED_DOC_KEYWORD_WINDOW_ARG,
-                    "upload_keyword_window",
+                    UploadedDoc.UPLOADED_DOC_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);

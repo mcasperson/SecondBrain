@@ -50,6 +50,10 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     public static final String SLACK_SEARCH_KEYWORDS_ARG = "searchKeywords";
     public static final String SLACK_SEARCH_FILTER_KEYWORDS_ARG = "keywords";
     public static final String SLACK_ENTITY_NAME_CONTEXT_ARG = "entityName";
+    public static final String SLACK_IGNORE_CHANNELS_ARG = "ignoreChannels";
+    public static final String API_DELAY_ARG = "apiDelay";
+    public static final String SEARCH_TTL_ARG = "searchTtl";
+    public static final String SLACK_GENERATE_KEYWORDS_ARG = "generateKeywords";
 
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
@@ -220,7 +224,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
                 .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, message.document())
-                .addToolCall(getName()+ "[" + message.id() + "]");
+                .addToolCall(getName() + "[" + message.id() + "]");
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of())
@@ -391,7 +395,7 @@ class SlackSearchConfig {
                             arguments,
                             context,
                             SlackSearch.SLACK_SEARCH_KEYWORDS_ARG,
-                            "slack_search_keywords",
+                            SlackSearch.SLACK_SEARCH_KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -411,7 +415,7 @@ class SlackSearchConfig {
                             arguments,
                             context,
                             SlackChannel.SLACK_KEYWORD_ARG,
-                            "slack_keywords",
+                            SlackChannel.SLACK_KEYWORD_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -423,8 +427,8 @@ class SlackSearchConfig {
                     getConfigGenerateKeywords()::get,
                     arguments,
                     context,
-                    "generateKeywords",
-                    "slack_generatekeywords",
+                    SlackSearch.SLACK_GENERATE_KEYWORDS_ARG,
+                    SlackSearch.SLACK_GENERATE_KEYWORDS_ARG,
                     "false").value();
 
             return BooleanUtils.toBoolean(stringValue);
@@ -444,7 +448,7 @@ class SlackSearchConfig {
                     arguments,
                     context,
                     SlackSearch.SLACK_SEARCH_DAYS_ARG,
-                    "slack_days",
+                    SlackSearch.SLACK_SEARCH_DAYS_ARG,
                     "").value();
 
             return Try.of(() -> stringValue)
@@ -461,8 +465,8 @@ class SlackSearchConfig {
                     getConfigSearchTtl()::get,
                     arguments,
                     context,
-                    "searchTtl",
-                    "slack_searchttl",
+                    SlackSearch.SEARCH_TTL_ARG,
+                    SlackSearch.SEARCH_TTL_ARG,
                     DEFAULT_TTL).value();
 
             return Try.of(() -> stringValue)
@@ -475,8 +479,8 @@ class SlackSearchConfig {
                     getConfigApiDelay()::get,
                     arguments,
                     context,
-                    "apiDelay",
-                    "slack_api_delay",
+                    SlackSearch.API_DELAY_ARG,
+                    SlackSearch.API_DELAY_ARG,
                     DEFAULT_API_DELAY + "").value();
 
             return Try.of(() -> stringValue)
@@ -489,8 +493,8 @@ class SlackSearchConfig {
                     getConfigIgnoreChannels()::get,
                     arguments,
                     context,
-                    "ignoreChannels",
-                    "slack_ignorechannels",
+                    SlackSearch.SLACK_IGNORE_CHANNELS_ARG,
+                    SlackSearch.SLACK_IGNORE_CHANNELS_ARG,
                     "").value();
 
             return Arrays.stream(stringValue.split(","))
@@ -506,7 +510,7 @@ class SlackSearchConfig {
                     arguments,
                     context,
                     SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
-                    "slack_keyword_window",
+                    SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -528,7 +532,7 @@ class SlackSearchConfig {
                             arguments,
                             context,
                             SlackSearch.SLACK_FILTER_QUESTION_ARG,
-                            "slack_rating_question",
+                            SlackSearch.SLACK_FILTER_QUESTION_ARG,
                             "")
                     .value();
         }
@@ -539,7 +543,7 @@ class SlackSearchConfig {
                     arguments,
                     context,
                     SlackSearch.SLACK_FILTER_MINIMUM_RATING_ARG,
-                    "slack_filter_minimum_rating",
+                    SlackSearch.SLACK_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);

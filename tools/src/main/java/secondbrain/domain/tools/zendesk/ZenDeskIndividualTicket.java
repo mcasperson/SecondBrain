@@ -54,6 +54,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_URL_ARG = "zendeskUrl";
     public static final String ZENDESK_EMAIL_ARG = "zendeskEmail";
     public static final String ZENDESK_TOKEN_ARG = "zendeskToken";
+    public static final String ZENDESK_HISTORY_TTL_ARG = "historyTtl";
 
     private static final String INSTRUCTIONS = "You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.";
 
@@ -555,8 +556,8 @@ class ZenDeskTicketConfig {
 
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
-            final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_access_token")))
-                    .recover(e -> context.get("zendesk_access_token"))
+            final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG)))
+                    .recover(e -> context.get(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG))
                     .mapTry(getValidateString()::throwIfEmpty)
                     .recoverWith(e -> Try.of(() -> argument));
 
@@ -612,8 +613,8 @@ class ZenDeskTicketConfig {
                     getConfigHistoryttl()::get,
                     arguments,
                     context,
-                    "historyTtl",
-                    "zen_historyttl",
+                    ZenDeskIndividualTicket.ZENDESK_HISTORY_TTL_ARG,
+                    ZenDeskIndividualTicket.ZENDESK_HISTORY_TTL_ARG,
                     DEFAULT_TTL_SECONDS);
 
             return Try.of(argument::value)

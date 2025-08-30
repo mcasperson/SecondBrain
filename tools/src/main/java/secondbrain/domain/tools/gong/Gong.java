@@ -444,7 +444,7 @@ class GongConfig {
                     arguments,
                     context,
                     Gong.COMPANY_ARG,
-                    "gong_company",
+                    Gong.COMPANY_ARG,
                     "").value();
         }
 
@@ -454,7 +454,7 @@ class GongConfig {
                     arguments,
                     context,
                     Gong.CALLID_ARG,
-                    "gong_call_id",
+                    Gong.CALLID_ARG,
                     "").value();
         }
 
@@ -464,7 +464,7 @@ class GongConfig {
                     arguments,
                     context,
                     Gong.DAYS_ARG,
-                    "gong_days",
+                    Gong.DAYS_ARG,
                     "0").value();
 
             return Try.of(() -> Integer.parseInt(stringValue))
@@ -503,7 +503,7 @@ class GongConfig {
                             arguments,
                             context,
                             Gong.GONG_KEYWORD_ARG,
-                            "gong_keywords",
+                            Gong.GONG_KEYWORD_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -516,7 +516,7 @@ class GongConfig {
                     arguments,
                     context,
                     Gong.GONG_KEYWORD_WINDOW_ARG,
-                    "gong_keyword_window",
+                    Gong.GONG_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -538,7 +538,7 @@ class GongConfig {
                     arguments,
                     context,
                     Gong.GONG_SUMMARIZE_TRANSCRIPT_ARG,
-                    "gong_summarizetranscript",
+                    Gong.GONG_SUMMARIZE_TRANSCRIPT_ARG,
                     "").value();
 
             return BooleanUtils.toBoolean(value);
@@ -551,7 +551,7 @@ class GongConfig {
                             arguments,
                             context,
                             Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
-                            "gong_transcript_summary_prompt",
+                            Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
                             "Summarise the Gong call transcript in three paragraphs")
                     .value();
         }
@@ -562,7 +562,7 @@ class GongConfig {
                             arguments,
                             context,
                             Gong.GONG_FILTER_QUESTION_ARG,
-                            "gong_rating_question",
+                            Gong.GONG_FILTER_QUESTION_ARG,
                             "")
                     .value();
         }
@@ -573,7 +573,7 @@ class GongConfig {
                     arguments,
                     context,
                     Gong.GONG_FILTER_MINIMUM_RATING_ARG,
-                    "gong_filter_minimum_rating",
+                    Gong.GONG_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
