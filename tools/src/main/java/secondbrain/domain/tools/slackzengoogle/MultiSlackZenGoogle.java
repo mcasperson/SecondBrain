@@ -122,6 +122,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_META_PROMPT_19_ARG = "contextMetaPrompt19";
     public static final String MULTI_SLACK_ZEN_META_FIELD_20_ARG = "contextMetaField20";
     public static final String MULTI_SLACK_ZEN_META_PROMPT_20_ARG = "contextMetaPrompt20";
+    public static final String MULTI_SLACK_ZEN_MIN_TIME_BASED_CONTENT_ARG = "minTimeBasedContent";
     private static final int BATCH_SIZE = 10;
     private static final String INSTRUCTIONS = """
             You are helpful agent.
@@ -540,7 +541,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Try
                 // Combine all the keywords we are going to search for
@@ -570,7 +571,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(Gong.GONG_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().salesforce(), List.<String>of())
                 .stream()
@@ -601,7 +602,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(PlanHat.PLANHAT_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().getPlanHat(), List.<String>of())
                 .stream()
@@ -632,7 +633,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         logger.log(Level.INFO, "Getting PlanHat usage for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
-                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().getPlanHat(), List.<String>of())
                 .stream()
@@ -655,7 +656,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().getGoogleDcos(), List.<String>of())
                 .stream()
@@ -684,7 +685,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().getSlack(), List.<String>of())
                 .stream()
@@ -715,7 +716,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName()+ "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().getZenDesk(), List.<String>of())
                 .stream()
@@ -1389,8 +1390,8 @@ class MultiSlackZenGoogleConfig {
                     getConfigSlackZenGoogleMinTimeBasedContext()::get,
                     arguments,
                     context,
-                    "multislackzengoogleMinTimeBasedContext",
-                    "multislackzengoogle_min_time_based_context",
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_MIN_TIME_BASED_CONTENT_ARG,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_MIN_TIME_BASED_CONTENT_ARG,
                     "1").value();
 
             return NumberUtils.toInt(stringValue, 1);
@@ -1724,7 +1725,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_11_ARG,
-                            "multislackzengoogle_meta_prompt_11",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_11_ARG,
                             "")
                     .value();
         }
@@ -1735,7 +1736,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_12_ARG,
-                            "multislackzengoogle_meta_field_12",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_12_ARG,
                             "")
                     .value();
         }
@@ -1746,7 +1747,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_12_ARG,
-                            "multislackzengoogle_meta_prompt_12",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_12_ARG,
                             "")
                     .value();
         }
@@ -1757,7 +1758,7 @@ class MultiSlackZenGoogleConfig {
                             arguments,
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_13_ARG,
-                            "multislackzengoogle_meta_field_13",
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_13_ARG,
                             "")
                     .value();
         }
