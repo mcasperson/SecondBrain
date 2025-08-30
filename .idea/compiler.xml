@@ -6,10 +6,6 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="secondbrain-cli" />
-        <module name="secondbrain-service" />
-        <module name="secondbrain-core" />
-        <module name="secondbrain-web" />
       </profile>
       <profile name="Annotation profile for parent-project" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -101,7 +97,6 @@
           <entry name="$MAVEN_REPOSITORY$/com/uber/nullaway/nullaway/0.11.3/nullaway-0.11.3.jar" />
           <entry name="$MAVEN_REPOSITORY$/org/checkerframework/dataflow-nullaway/3.43.0/dataflow-nullaway-3.43.0.jar" />
         </processorPath>
-        <module name="secondbrain-tools" />
       </profile>
     </annotationProcessing>
   </component>
