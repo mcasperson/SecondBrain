@@ -42,7 +42,7 @@ Write-Host "Working in $subDir"
 
 $toolModel = "llama3.1"
 
-$throttleLimit = 20
+$throttleLimit = 10
 
 #$model = "mistral-nemo:12b-instruct-2407-q8_0"
 #$model = "llama3.3"
