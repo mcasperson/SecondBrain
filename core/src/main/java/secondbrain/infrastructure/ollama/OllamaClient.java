@@ -47,7 +47,7 @@ public class OllamaClient implements LlmClient {
     private static final int MAX_RETIES = 3;
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(1);
     private static final Long RETRY_DELAY = 10000L; // 10 second delay for retries
-    private static final long API_CALL_TIMEOUT_SECONDS = 60 * 10; // 10 minutes
+    private static final long API_CALL_TIMEOUT_SECONDS = 60 * 20; // 20 minute timeout - this is long because Ollama only supports 1 request at a time and queues others
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS + " seconds";
 
     /**
