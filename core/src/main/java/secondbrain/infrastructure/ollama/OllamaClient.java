@@ -178,6 +178,7 @@ public class OllamaClient implements LlmClient {
                                 answerFormatterService.formatResponse(body.model(), ollamaResponse.response())))
                         .get())
                 .recover(ex -> {
+                    logger.warning("Ollama exception: " + ex.getMessage());
                     logger.warning("Retrying Ollama call, attempt " + (retryCount + 1));
                     Try.run(() -> Thread.sleep(retryCount * RETRY_DELAY));
                     return callOllama(client, body, retryCount + 1);
