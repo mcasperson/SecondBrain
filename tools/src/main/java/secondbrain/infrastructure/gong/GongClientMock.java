@@ -19,7 +19,7 @@ public class GongClientMock implements GongClient {
 
     @Override
     public List<GongCallDetails> getCallsExtensive(final String company, final String callId, final String username, final String password, final String fromDateTime, final String toDateTime) {
-        return List.of(new GongCallDetails("123456", "https://example.com/call/123456", List.of()));
+        return List.of(new GongCallDetails("123456", "https://example.com/call/123456", "unknown", List.of()));
     }
 
     @Override

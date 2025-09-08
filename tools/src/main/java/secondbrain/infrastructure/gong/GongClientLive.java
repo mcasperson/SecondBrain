@@ -111,7 +111,14 @@ public class GongClientLive implements GongClient {
                                                 // And one of the objects must be an account that matches the company id
                                                 c.objects().stream().anyMatch(o ->
                                                         company.equals(o.objectId()) && "Account".equals(o.objectType()))))
-                .map(gong -> new GongCallDetails(gong.metaData().id(), gong.metaData().url(), gong.parties()))
+                .map(gong -> new GongCallDetails(
+                        gong.metaData().id(),
+                        gong.metaData().url(),
+                        gong.getSystemContext("Salesforce")
+                                .flatMap(c -> c.getObject("Name"))
+                                .map(f -> f.value().toString())
+                                .orElse("Unknown"),
+                        gong.parties()))
                 .toList();
 
     }
