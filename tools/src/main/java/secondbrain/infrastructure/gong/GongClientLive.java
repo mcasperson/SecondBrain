@@ -89,7 +89,7 @@ public class GongClientLive implements GongClient {
          */
         final GongCallExtensive[] calls = localStorage.getOrPutObject(
                         GongClientLive.class.getSimpleName(),
-                        "GongAPICallsExtensive",
+                        "GongAPICallsExtensiveV2",
                         DigestUtils.sha256Hex(fromDateTimeFinal + toDateTimeFinal + callId),
                         TTL,
                         GongCallExtensive[].class,
