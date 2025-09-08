@@ -13,8 +13,8 @@ import java.util.stream.Collectors;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AzureRequestMaxCompletionTokens(
-        List<AzureRequestMessage> messages,
-        @JsonProperty("max_completion_tokens") Integer maxCompletionTokens,
+        List<AzureRequestMessage> input,
+        @JsonProperty("max_output_tokens") Integer maxOutputTokens,
         String model) implements PromptTextGenerator {
 
     public static final int DEFAULT_OUTPUT_TOKENS = 2048;
@@ -27,12 +27,12 @@ public record AzureRequestMaxCompletionTokens(
                 model);
     }
 
-    public List<AzureRequestMessage> getMessages() {
-        return Objects.requireNonNullElse(messages, List.of());
+    public List<AzureRequestMessage> getInput() {
+        return Objects.requireNonNullElse(input, List.of());
     }
 
     public String generatePromptText() {
-        return getMessages().stream()
+        return getInput().stream()
                 .map(AzureRequestMessage::content)
                 .map(String::trim)
                 .collect(Collectors.joining("\n\n"));
