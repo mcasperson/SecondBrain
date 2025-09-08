@@ -14,6 +14,7 @@ import java.util.List;
  * @param callIds        The call IDs to retrieve
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record GongCallExtensiveQueryFiler(String fromDateTime, String toDateTime, @Nullable List<String> primaryUserIds,
+public record GongCallExtensiveQueryFiler(@Nullable String fromDateTime, @Nullable String toDateTime,
+                                          @Nullable List<String> primaryUserIds,
                                           @Nullable List<String> callIds) {
 }
