@@ -26,10 +26,7 @@ import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.azure.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -283,9 +280,10 @@ public class AzureClient implements LlmClient {
                                 .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
                         response -> Try.of(() -> responseValidation.validate(response, url.get()))
                                 .map(r -> r.readEntity(AzureResponse.class))
-                                .map(r -> r.getChoices().stream()
-                                        .map(AzureResponseOutput::getMessage)
-                                        .map(AzureResponseOutputMessage::getContent)
+                                .map(r -> r.getOutput().stream()
+                                        .map(AzureResponseOutput::getContent)
+                                        .flatMap(Collection::stream)
+                                        .map(AzureResponseOutputContent::getText)
                                         .reduce("", String::concat))
                                 .map(r -> answerFormatterService.formatResponse(model.get(), r))
                                 .onFailure(e -> logger.severe(e.getMessage()))
