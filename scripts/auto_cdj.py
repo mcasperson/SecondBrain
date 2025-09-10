@@ -170,7 +170,7 @@ def main():
     parser.add_argument('--output_dir', required=True, help='Output directory where the markdown files will be saved')
 
     args = parser.parse_args()
-    
+
     user_ids = args.user_ids.split(',')
     destination = args.output_dir
 
@@ -215,7 +215,7 @@ def main():
                 '-Dsb.ollama.contextwindow=40000',
                 '-Dsb.exceptions.printstacktrace=false',
                 "-Dsb.cache.path=/home/matthew",
-                "-Dsb.ollama.model=qwen3:30b-a3b",
+                "-Dsb.ollama.model=hf.co/unsloth/Qwen3-30B-A3B-GGUF",
                 "-Dsb.tools.force=Gong",
                 f"-Dsb.gong.callId={call["id"]}",
                 '-jar',
