@@ -392,7 +392,7 @@ if ($GenerateExecutiveSummary)
 
         $arguments = Get-SplitTrimmedAndJoinedString(@"
         "-Dstdout.encoding=UTF-8"
-        "-Dsb.tools.force=PublicWeb"
+        "-Dsb.tools.force=PublicFile"
         "-Dsb.publicfile.disablelinks=true"
         "-Dsb.output.disableAnnotations=true"
         "-Dsb.output.disableLinks=true"
