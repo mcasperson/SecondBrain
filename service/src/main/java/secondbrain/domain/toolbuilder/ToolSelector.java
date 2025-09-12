@@ -81,7 +81,17 @@ public class ToolSelector {
 
         final String toolPrompt = getToolsPrompt(prompt);
         final ToolDefinition toolDefinition = selectOllamaTool(toolPrompt);
-        return getToolCallFromToolDefinition(toolDefinition);
+        final ToolCall toolCall = getToolCallFromToolDefinition(toolDefinition);
+
+        if (toolCall == null) {
+            if (StringUtils.isNotBlank(forcedTool)) {
+                logger.warning("There is no tool named '" + forcedTool + "' available to be forced.");
+            } else {
+                logger.info("The LLM was unable to select a tool.");
+            }
+        }
+
+        return toolCall;
     }
 
     /**
