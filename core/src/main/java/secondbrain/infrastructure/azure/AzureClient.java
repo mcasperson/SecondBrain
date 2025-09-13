@@ -228,7 +228,7 @@ public class AzureClient implements LlmClient {
             final String result = call(request);
             localStorage.putString(
                     tool,
-                    "AzureLLMV2",
+                    "AzureLLMV3",
                     promptHash,
                     ttl,
                     result);
