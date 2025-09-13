@@ -228,7 +228,7 @@ public class AzureClient implements LlmClient {
             final String result = call(request);
             localStorage.putString(
                     tool,
-                    "AzureLLM",
+                    "AzureLLMV2",
                     promptHash,
                     ttl,
                     result);
@@ -280,7 +280,7 @@ public class AzureClient implements LlmClient {
                                 .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
                         response -> Try.of(() -> responseValidation.validate(response, url.get()))
                                 .map(r -> r.readEntity(AzureResponse.class))
-                                .map(r -> r.getOutput().stream()
+                                .map(r -> r.getChoices().stream()
                                         .map(AzureResponseOutput::getContent)
                                         .flatMap(Collection::stream)
                                         .map(AzureResponseOutputContent::getText)

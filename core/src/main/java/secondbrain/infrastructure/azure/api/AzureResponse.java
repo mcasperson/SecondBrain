@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record AzureResponse(List<AzureResponseOutput> output, AzureResponseError error) {
-    public List<AzureResponseOutput> getOutput() {
-        return Objects.requireNonNullElse(output, List.of());
+public record AzureResponse(List<AzureResponseOutput> choices, AzureResponseError error) {
+    public List<AzureResponseOutput> getChoices() {
+        return Objects.requireNonNullElse(choices, List.of());
     }
 }
