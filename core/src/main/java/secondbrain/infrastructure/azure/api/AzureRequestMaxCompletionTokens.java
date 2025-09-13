@@ -33,12 +33,12 @@ public record AzureRequestMaxCompletionTokens(
                 model);
     }
 
-    public List<AzureRequestMessage> getInput() {
+    public List<AzureRequestMessage> getMessages() {
         return Objects.requireNonNullElse(messages, List.of());
     }
 
     public String generatePromptText() {
-        return getInput().stream()
+        return getMessages().stream()
                 .map(AzureRequestMessage::content)
                 .map(String::trim)
                 .collect(Collectors.joining("\n\n"));
