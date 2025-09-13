@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AzureRequestMaxCompletionTokens(
         List<AzureRequestMessage> input,
-        @JsonProperty("max_output_tokens") Integer maxOutputTokens,
+        @JsonProperty("max_completion_tokens") Integer maxOutputTokens,
         String model) implements PromptTextGenerator {
 
     public static final int DEFAULT_OUTPUT_TOKENS = 2048;
