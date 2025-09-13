@@ -14,7 +14,8 @@ import java.util.stream.Collectors;
  * <p>
  * The /response endpoint appears to adopt newer API versions faster. However, OpenAI models can also use the /completions endpoint.
  * <p>
- * This record then supports the chat completions endpoint. This appears to be the more common endpoint for all models.
+ * This record then supports the chat completions endpoint, specifically version 2024-05-01-preview.
+ * This appears to be the more common endpoint for all models.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AzureRequestMaxCompletionTokens(
