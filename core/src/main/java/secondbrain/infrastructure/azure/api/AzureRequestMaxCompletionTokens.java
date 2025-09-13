@@ -8,8 +8,13 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * Uses max_completion_tokens rather than max_tokens. This is required for newer OpenAI models.
- * See <a href="https://community.openai.com/t/why-was-max-tokens-changed-to-max-completion-tokens/938077">this discussion</a>.
+ * The challenge with this record is supporting the input used by multiple models. OpenAI models hosted by Azure AI Foundry
+ * are shown to use the /openai/responses?api-version=2025-04-01-preview endpoint. Other models, like Phi-4,
+ * use the completions endpoint /models/chat/completions?api-version=2024-05-01-preview.
+ * <p>
+ * The /response endpoint appears to adopt newer API versions faster. However, OpenAI models can also use the /completions endpoint.
+ * <p>
+ * This record then supports the chat completions endpoint. This appears to be the more common endpoint for all models.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AzureRequestMaxCompletionTokens(
