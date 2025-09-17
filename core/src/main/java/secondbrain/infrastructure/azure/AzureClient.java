@@ -21,7 +21,6 @@ import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.RateLimit;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
-import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.StringToList;
 import secondbrain.domain.persist.CacheResult;
@@ -138,9 +137,6 @@ public class AzureClient implements LlmClient {
 
     @Inject
     private ValidateString validateString;
-
-    @Inject
-    private JsonDeserializer jsonDeserializer;
 
     @Inject
     @Identifier("MessageTooLongResponseInspector")
