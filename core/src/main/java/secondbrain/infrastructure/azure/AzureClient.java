@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.azure;
 
 import com.google.common.util.concurrent.RateLimiter;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -24,12 +25,16 @@ import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.response.ResponseInspector;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.azure.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -131,6 +136,10 @@ public class AzureClient implements LlmClient {
 
     @Inject
     private JsonDeserializer jsonDeserializer;
+
+    @Inject
+    @Identifier("MessageTooLongResponseInspector")
+    private ResponseInspector messageTooLongResponseInspector;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -312,27 +321,12 @@ public class AzureClient implements LlmClient {
                     }
 
                     if (ex.getCode() == 400) {
-                        // check to see if the response body indicates the request is too long
-                        final boolean bodyTooLong = Try.of(() -> jsonDeserializer.deserialize(ex.getBody(), AzureResponse.class))
-                                .map(AzureResponse::error)
-                                .map(AzureResponseError::message)
-                                .map(message -> StringUtils.contains(message, "Please reduce the length of the messages"))
-                                .getOrElse(false);
-
-                        if (bodyTooLong) {
-                            // Find the current length of the messages
-                            final int currentLength = request.getMessages()
-                                    .stream()
-                                    .map(AzureRequestMessage::content)
-                                    .mapToInt(String::length)
-                                    .sum();
-
-                            // Retry with a reduced message set, trimming to 75% of the current length
+                        if (messageTooLongResponseInspector.isMatch(ex.getBody())) {
                             final AzureRequestMaxCompletionTokens trimmed = new AzureRequestMaxCompletionTokens(
-                                    listLimiter.limitListContent(
+                                    listLimiter.limitListContentByFraction(
                                             request.getMessages(),
                                             AzureRequestMessage::content,
-                                            (int)(currentLength * 0.6)),
+                                            0.6f),
                                     request.maxOutputTokens(),
                                     request.model());
 
