@@ -23,6 +23,7 @@ import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.limit.ListLimiter;
+import secondbrain.domain.list.StringToList;
 import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseInspector;
@@ -38,7 +39,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.*;
 
@@ -145,6 +145,9 @@ public class AzureClient implements LlmClient {
     @Inject
     @Identifier("MessageTooLongResponseInspector")
     private ResponseInspector messageTooLongResponseInspector;
+
+    @Inject
+    private StringToList stringToList;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -346,19 +349,11 @@ public class AzureClient implements LlmClient {
 
     private List<String> getDisableToolReadCache() {
         final String fixedString = disableToolReadCache.map(String::trim).orElse("");
-
-        return Stream.of(fixedString.split(","))
-                .map(String::trim)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.toList());
+        return stringToList.convert(fixedString);
     }
 
     private List<String> getDisableToolWriteCache() {
         final String fixedString = disableToolWriteCache.map(String::trim).orElse("");
-
-        return Stream.of(fixedString.split(","))
-                .map(String::trim)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.toList());
+        return stringToList.convert(fixedString);
     }
 }
