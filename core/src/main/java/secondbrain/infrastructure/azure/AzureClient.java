@@ -311,7 +311,7 @@ public class AzureClient implements LlmClient {
                         return call(request, retry + 1);
                     }
 
-                    if (ex.getCode() == 408) {
+                    if (ex.getCode() == 400) {
                         // check to see if the response body indicates the request is too long
                         final boolean bodyTooLong = Try.of(() -> jsonDeserializer.deserialize(ex.getBody(), AzureResponse.class))
                                 .map(AzureResponse::error)
