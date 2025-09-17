@@ -302,7 +302,7 @@ public class AzureClient implements LlmClient {
                         retryDelay,
                         retryCount))
                 .recover(InvalidResponse.class, ex -> {
-                    if (ex.getCode() == 429) {
+                    if (ex.getCode() == 429 || ex.getCode() >= 500) {
                         Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
                         return call(request, retry + 1);
                     }
