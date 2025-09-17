@@ -15,6 +15,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.answer.AnswerFormatterService;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.RateLimit;
 import secondbrain.domain.exceptions.Timeout;
@@ -23,6 +24,7 @@ import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.azure.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -123,6 +125,9 @@ public class AzureClient implements LlmClient {
     @Inject
     private LocalStorage localStorage;
 
+    @Inject
+    private ValidateString validateString;
+
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
         clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
@@ -217,6 +222,7 @@ public class AzureClient implements LlmClient {
 
     private CacheResult<String> handleCaching(final PromptTextGenerator request, final String tool, final String promptHash) {
         final int ttl = NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60;
+        final String cacheSource = "AzureLLMV3";
 
         // Bypass cache altogether if both read and write are disabled.
         if (getDisableToolReadCache().contains(tool) && getDisableToolWriteCache().contains(tool)) {
@@ -228,7 +234,7 @@ public class AzureClient implements LlmClient {
             final String result = call(request);
             localStorage.putString(
                     tool,
-                    "AzureLLMV3",
+                    cacheSource,
                     promptHash,
                     ttl,
                     result);
@@ -239,7 +245,7 @@ public class AzureClient implements LlmClient {
         if (getDisableToolWriteCache().contains(tool)) {
             return Try.of(() -> localStorage.getString(
                             tool,
-                            "AzureLLM",
+                            cacheSource,
                             promptHash))
                     .getOrElse(() -> new CacheResult<String>(call(request), false));
         }
@@ -247,7 +253,7 @@ public class AzureClient implements LlmClient {
         // Normal caching operation - get or put
         return localStorage.getOrPutString(
                 tool,
-                "AzureLLM",
+                cacheSource,
                 promptHash,
                 ttl,
                 () -> call(request));
@@ -285,6 +291,7 @@ public class AzureClient implements LlmClient {
                                         .map(AzureResponseOutputContent::getContent)
                                         .reduce("", String::concat))
                                 .map(r -> answerFormatterService.formatResponse(model.get(), r))
+                                .map(validateString::throwIfEmpty)
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
                         e -> new RuntimeException("Failed to call the Azure AI service", e),
@@ -301,6 +308,10 @@ public class AzureClient implements LlmClient {
                     }
 
                     throw ex;
+                })
+                .recover(EmptyString.class, ex -> {
+                    logger.warning("Received empty response from Azure LLM");
+                    return call(request, retry + 1);
                 })
                 .get();
     }
