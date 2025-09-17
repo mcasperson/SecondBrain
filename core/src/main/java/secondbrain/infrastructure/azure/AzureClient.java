@@ -52,6 +52,7 @@ public class AzureClient implements LlmClient {
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
     private static final long TIMEOUT_API_CALL_DELAY_SECONDS_DEFAULT = 30;
+    private static final float TIME_IF_TOO_LONG_FRACTION = 0.6f;
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final int TIMEOUT_API_RETRIES = 3;
     private static final int RATELIMIT_API_RETRIES = 3;
@@ -88,6 +89,10 @@ public class AzureClient implements LlmClient {
     @Inject
     @ConfigProperty(name = "sb.azurellm.timeOutSeconds", defaultValue = API_CALL_TIMEOUT_SECONDS_DEFAULT + "")
     private Long timeout;
+
+    @Inject
+    @ConfigProperty(name = "sb.azurellm.trimIfTooLongFraction", defaultValue = TIME_IF_TOO_LONG_FRACTION + "")
+    private Float trimIfTooLongFraction;
 
     @Inject
     @ConfigProperty(name = "sb.azurellm.retryCount", defaultValue = TIMEOUT_API_RETRIES + "")
@@ -320,18 +325,16 @@ public class AzureClient implements LlmClient {
                         return call(request, retry + 1);
                     }
 
-                    if (ex.getCode() == 400) {
-                        if (messageTooLongResponseInspector.isMatch(ex.getBody())) {
-                            final AzureRequestMaxCompletionTokens trimmed = new AzureRequestMaxCompletionTokens(
-                                    listLimiter.limitListContentByFraction(
-                                            request.getMessages(),
-                                            AzureRequestMessage::content,
-                                            0.6f),
-                                    request.maxOutputTokens(),
-                                    request.model());
+                    if (ex.getCode() == 400 && messageTooLongResponseInspector.isMatch(ex.getBody())) {
+                        final AzureRequestMaxCompletionTokens trimmed = new AzureRequestMaxCompletionTokens(
+                                listLimiter.limitListContentByFraction(
+                                        request.getMessages(),
+                                        AzureRequestMessage::content,
+                                        trimIfTooLongFraction),
+                                request.maxOutputTokens(),
+                                request.model());
 
-                            return call(trimmed, retry + 1);
-                        }
+                        return call(trimmed, retry + 1);
                     }
 
                     throw ex;
