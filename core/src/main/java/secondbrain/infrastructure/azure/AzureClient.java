@@ -20,6 +20,7 @@ import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.RateLimit;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
+import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
@@ -128,6 +129,9 @@ public class AzureClient implements LlmClient {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private JsonDeserializer jsonDeserializer;
+
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
         clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
@@ -148,7 +152,7 @@ public class AzureClient implements LlmClient {
         checkArgument(StringUtils.isNotBlank(prompt));
         checkArgument(StringUtils.isNotBlank(model));
 
-        final PromptTextGenerator request = new AzureRequestMaxCompletionTokens(
+        final AzureRequestMaxCompletionTokens request = new AzureRequestMaxCompletionTokens(
                 List.of(new AzureRequestMessage(
                         "user",
                         prompt
@@ -205,7 +209,7 @@ public class AzureClient implements LlmClient {
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
 
-        final PromptTextGenerator request = new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, modelName);
+        final AzureRequestMaxCompletionTokens request = new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, modelName);
 
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + url.orElse(""));
 
@@ -220,7 +224,7 @@ public class AzureClient implements LlmClient {
         return ragDocs.updateResponse(result.result());
     }
 
-    private CacheResult<String> handleCaching(final PromptTextGenerator request, final String tool, final String promptHash) {
+    private CacheResult<String> handleCaching(final AzureRequestMaxCompletionTokens request, final String tool, final String promptHash) {
         final int ttl = NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60;
         final String cacheSource = "AzureLLMV3";
 
@@ -259,7 +263,7 @@ public class AzureClient implements LlmClient {
                 () -> call(request));
     }
 
-    private String call(final PromptTextGenerator request) {
+    private String call(final AzureRequestMaxCompletionTokens request) {
         checkState(apiKey.isPresent());
         checkState(url.isPresent());
         checkState(model.isPresent());
@@ -271,7 +275,7 @@ public class AzureClient implements LlmClient {
         return result;
     }
 
-    private String call(final PromptTextGenerator request, int retry) {
+    private String call(final AzureRequestMaxCompletionTokens request, int retry) {
         if (retry > RATELIMIT_API_RETRIES) {
             throw new RateLimit("Exceeded max retries for rate limited Azure LLM calls");
         }
@@ -305,6 +309,35 @@ public class AzureClient implements LlmClient {
                     if (ex.getCode() == 429 || ex.getCode() >= 500) {
                         Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
                         return call(request, retry + 1);
+                    }
+
+                    if (ex.getCode() == 408) {
+                        // check to see if the response body indicates the request is too long
+                        final boolean bodyTooLong = Try.of(() -> jsonDeserializer.deserialize(ex.getBody(), AzureResponse.class))
+                                .map(AzureResponse::error)
+                                .map(AzureResponseError::message)
+                                .map(message -> StringUtils.contains(message, "Please reduce the length of the messages"))
+                                .getOrElse(false);
+
+                        if (bodyTooLong) {
+                            // Find the current length of the messages
+                            final int currentLength = request.getMessages()
+                                    .stream()
+                                    .map(AzureRequestMessage::content)
+                                    .mapToInt(String::length)
+                                    .sum();
+
+                            // Retry with a reduced message set, trimming to 75% of the current length
+                            final AzureRequestMaxCompletionTokens trimmed = new AzureRequestMaxCompletionTokens(
+                                    listLimiter.limitListContent(
+                                            request.getMessages(),
+                                            AzureRequestMessage::content,
+                                            (int)(currentLength * 0.75)), // Trim to 75% of current length)
+                                    request.maxOutputTokens(),
+                                    request.model());
+
+                            return call(trimmed, retry + 1);
+                        }
                     }
 
                     throw ex;
