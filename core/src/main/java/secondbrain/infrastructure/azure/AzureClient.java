@@ -332,7 +332,7 @@ public class AzureClient implements LlmClient {
                                     listLimiter.limitListContent(
                                             request.getMessages(),
                                             AzureRequestMessage::content,
-                                            (int)(currentLength * 0.75)), // Trim to 75% of current length)
+                                            (int)(currentLength * 0.6)),
                                     request.maxOutputTokens(),
                                     request.model());
 
