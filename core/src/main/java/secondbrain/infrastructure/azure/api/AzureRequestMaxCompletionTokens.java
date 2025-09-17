@@ -43,4 +43,8 @@ public record AzureRequestMaxCompletionTokens(
                 .map(String::trim)
                 .collect(Collectors.joining("\n\n"));
     }
+
+    public AzureRequestMaxCompletionTokens updateMessages(List<AzureRequestMessage> newMessages) {
+        return new AzureRequestMaxCompletionTokens(newMessages, this.maxOutputTokens, this.model);
+    }
 }

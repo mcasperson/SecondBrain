@@ -326,13 +326,11 @@ public class AzureClient implements LlmClient {
                     }
 
                     if (ex.getCode() == 400 && messageTooLongResponseInspector.isMatch(ex.getBody())) {
-                        final AzureRequestMaxCompletionTokens trimmed = new AzureRequestMaxCompletionTokens(
+                        final AzureRequestMaxCompletionTokens trimmed = request.updateMessages(
                                 listLimiter.limitListContentByFraction(
                                         request.getMessages(),
                                         AzureRequestMessage::content,
-                                        trimIfTooLongFraction),
-                                request.maxOutputTokens(),
-                                request.model());
+                                        trimIfTooLongFraction));
 
                         return call(trimmed, retry + 1);
                     }
