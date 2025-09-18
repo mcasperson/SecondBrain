@@ -25,7 +25,6 @@ import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.domain.tools.rating.RatingTool;
-import secondbrain.domain.tools.zendesk.ZenDeskIndividualTicket;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -45,6 +44,7 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String GONG_FILTER_RATING_META = "FilterRating";
     public static final String GONG_FILTER_QUESTION_ARG = "callRatingQuestion";
     public static final String GONG_FILTER_MINIMUM_RATING_ARG = "callFilterMinimumRating";
+    public static final String GONG_DEFAULT_RATING_ARG = "defaultRating";
     public static final String DAYS_ARG = "days";
     public static final String COMPANY_ARG = "company";
     public static final String CALLID_ARG = "callId";
@@ -584,8 +584,8 @@ class GongConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    Gong.GONG_DEFAULT_RATING_ARG,
+                    Gong.GONG_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
