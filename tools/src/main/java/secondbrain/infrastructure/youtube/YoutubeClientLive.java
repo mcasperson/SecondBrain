@@ -68,9 +68,9 @@ public class YoutubeClientLive implements YoutubeClient {
     @Override
     public String getTranscript(final String videoId, final String lang) {
         return Try.of(TranscriptApiFactory::createDefault)
-                .map(api -> api.listTranscripts(videoId))
-                .map(transcripts -> transcripts.findGeneratedTranscript(lang))
-                .map(Transcript::fetch)
+                .mapTry(api -> api.listTranscripts(videoId))
+                .mapTry(transcripts -> transcripts.findGeneratedTranscript(lang))
+                .mapTry(Transcript::fetch)
                 .map(transcript -> transcript.getContent()
                         .stream()
                         .map(TranscriptContent.Fragment::getText)
