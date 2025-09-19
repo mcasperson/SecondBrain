@@ -18,6 +18,7 @@ import secondbrain.domain.context.*;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.FailedOllama;
+import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
@@ -126,7 +127,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                 .onFailure(ex -> logger.severe("Failed to get Youtube videos: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
 
-        return calls.stream()
+        final List<RagDocumentContext<YoutubeVideo>> ragContext = calls.stream()
                 .map(pair -> getDocumentContext(pair.getLeft(), pair.getRight(), parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
                 // Get the metadata, which includes a rating against the filter question if present
@@ -142,6 +143,12 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                  */
                 .map(ragDoc -> parsedArgs.getSummarizeTranscript() ? getCallSummary(ragDoc, environmentSettings, parsedArgs) : ragDoc)
                 .toList();
+
+        if (ragContext.isEmpty()) {
+            throw new InsufficientContext("No matching youtube videos found.");
+        }
+
+        return ragContext;
     }
 
     private RagDocumentContext<YoutubeVideo> getDocumentContext(final YoutubeVideo video, final String transcript, final YoutubeConfig.LocalArguments parsedArgs) {
