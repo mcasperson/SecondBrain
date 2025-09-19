@@ -175,10 +175,20 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                         video,
                         "[Youtube " + video.title() + "](https://www.youtube.com/watch?v=" + video.id() + ")",
                         trimmedConversationResult.keywordMatches()))
-                // Capture the gong transcript or transcript summary as an intermediate result
+                .onFailure(throwable -> System.err.println("Failed to vectorize sentences for YoutubePlaylist: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                // We will proceed without any annotations if the vectorization fails
+                .recover(throwable -> new RagDocumentContext<>(
+                        getName(),
+                        getContextLabel() + " \"" + video.title() + "\" (ID: " + video.id() + ")",
+                        trimmedConversationResult.document(),
+                        List.of(),
+                        video.id(),
+                        video,
+                        "[Youtube " + video.title() + "](https://www.youtube.com/watch?v=" + video.id() + ")",
+                        trimmedConversationResult.keywordMatches()))
+                // Capture the yout transcript or transcript summary as an intermediate result
                 // This is useful for debugging and understanding the context of the call
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Youtube-" + ragDoc.id() + ".txt")))
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }
 
@@ -190,8 +200,8 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
         final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        if (parsedArgs.getPlaylistId().isEmpty()) {
-            throw new InternalFailure("You must provide a playlist ID to query");
+        if (parsedArgs.getPlaylistId().isEmpty() && StringUtils.isBlank(parsedArgs.getChannelId()) && StringUtils.isBlank(parsedArgs.getQuery())) {
+            throw new InternalFailure("No playlist ID, channel ID or query provided to YoutubePlaylist tool");
         }
 
         final Try<RagMultiDocumentContext<YoutubeVideo>> result = Try.of(() -> contextList)
