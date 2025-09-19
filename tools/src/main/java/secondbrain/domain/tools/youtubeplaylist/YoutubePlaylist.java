@@ -217,7 +217,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Youtube transcript activities is empty", throwable)),
                         API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call LLM", ex)))
+                        API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call LLM " + ExceptionUtils.getRootCauseMessage(ex), ex)))
                 .get();
     }
 

@@ -277,9 +277,9 @@ public class AzureClient implements LlmClient {
     }
 
     private String call(final AzureRequestMaxCompletionTokens request) {
-        checkState(apiKey.isPresent());
-        checkState(url.isPresent());
-        checkState(model.isPresent());
+        checkState(apiKey.isPresent(), "Azure LLM API Key is not configured. Please set sb.azurellm.apikey");
+        checkState(url.isPresent(), "Azure LLM URL is not configured. Please set sb.azurellm.url");
+        checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
         RATE_LIMITER.acquire();
 
