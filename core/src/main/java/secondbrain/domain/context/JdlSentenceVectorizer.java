@@ -52,8 +52,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
 
     @PreDestroy
     private void destroy() {
-        Try.run(() -> predictor.close())
-                .onFailure(ex -> logger.warning("Failed to close predictor: " + ExceptionUtils.getRootCause(ex)));
+        close();
     }
 
     public RagStringContext vectorize(final String text) {
@@ -112,7 +111,8 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
     }
 
     @Override
-    public void close() throws Exception {
-        predictor.close();
+    public void close() {
+        Try.run(() -> predictor.close())
+                .onFailure(ex -> logger.warning("Failed to close predictor: " + ExceptionUtils.getRootCause(ex)));
     }
 }
