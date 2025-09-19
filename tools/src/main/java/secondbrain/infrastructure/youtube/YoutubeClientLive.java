@@ -12,7 +12,6 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
-import secondbrain.domain.constants.Constants;
 import secondbrain.domain.httpclient.HttpClientCaller;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
@@ -27,7 +26,8 @@ import java.util.logging.Logger;
 
 @ApplicationScoped
 public class YoutubeClientLive implements YoutubeClient {
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
+    // Youtube rate limits heavily, so we limit to 1 request every 30 seconds
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(0.03);
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
@@ -67,6 +67,17 @@ public class YoutubeClientLive implements YoutubeClient {
 
     @Override
     public String getTranscript(final String videoId, final String lang) {
+        final String cacheKey = videoId + "-" + lang;
+        return localStorage.getOrPutObject(
+                        YoutubeClientLive.class.getSimpleName(),
+                        "YoutubeAPITranscript",
+                        cacheKey,
+                        String.class,
+                        () -> getTranscriptApi(videoId, lang))
+                .result();
+    }
+
+    private String getTranscriptApi(final String videoId, final String lang) {
         RATE_LIMITER.acquire();
 
         return Try.of(TranscriptApiFactory::createDefault)
