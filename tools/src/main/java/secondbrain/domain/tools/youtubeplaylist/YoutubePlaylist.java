@@ -292,15 +292,15 @@ class YoutubeConfig {
     private Optional<String> configKeywords;
 
     @Inject
-    @ConfigProperty(name = "sb.youtube.keywordwindow")
+    @ConfigProperty(name = "sb.youtube.keywordWindow")
     private Optional<String> configKeywordWindow;
 
     @Inject
-    @ConfigProperty(name = "sb.youtube.summarizetranscript")
+    @ConfigProperty(name = "sb.youtube.summarizeTranscript")
     private Optional<String> configSummarizeTranscript;
 
     @Inject
-    @ConfigProperty(name = "sb.youtube.summarizetranscriptprompt")
+    @ConfigProperty(name = "sb.youtube.summarizeTranscriptPrompt")
     private Optional<String> configSummarizeTranscriptPrompt;
 
     @Inject
