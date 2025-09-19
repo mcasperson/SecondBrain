@@ -25,10 +25,12 @@ import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
-import secondbrain.domain.tools.youtubeplaylist.model.YoutubeVideo;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.youtube.YoutubeClient;
+import secondbrain.infrastructure.youtube.api.YoutubePlaylistsItem;
+import secondbrain.infrastructure.youtube.api.YoutubeSearchItem;
+import secondbrain.infrastructure.youtube.model.YoutubeVideo;
 
 import java.util.*;
 import java.util.logging.Level;
@@ -41,6 +43,8 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     public static final String YOUTUBE_FILTER_RATING_META = "FilterRating";
     public static final String YOUTUBE_API_KEY = "apiKey";
     public static final String YOUTUBE_PLAYLIST_ID_ARG = "playlistId";
+    public static final String YOUTUBE_CHANNEL_ID_ARG = "channelId";
+    public static final String YOUTUBE_QUERY_ARG = "query";
     public static final String YOUTUBE_KEYWORD_ARG = "keywords";
     public static final String YOUTUBE_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String YOUTUBE_FILTER_MINIMUM_RATING_ARG = "filterMinimumRating";
@@ -106,21 +110,28 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     public List<RagDocumentContext<YoutubeVideo>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final String apiKey = parsedArgs.getApiKey();
-
-        if (parsedArgs.getPlaylistId().isEmpty() || StringUtils.isBlank(apiKey)) {
+        if (parsedArgs.getPlaylistId().isEmpty() && StringUtils.isBlank(parsedArgs.getChannelId()) && StringUtils.isBlank(parsedArgs.getQuery())) {
+            logger.warning("No playlist ID, channel ID or query provided to YoutubePlaylist tool");
             return List.of();
         }
 
-        final List<Pair<YoutubeVideo, String>> calls = Try.of(() -> parsedArgs.getPlaylistId()
+        final Try<List<YoutubeVideo>> videos = parsedArgs.getPlaylistId().isEmpty() ?
+                Try.of(() -> youtubeClient.searchVideos(parsedArgs.getQuery(), parsedArgs.getChannelId(), "", parsedArgs.getApiKey())
+                        .stream()
+                        .map(YoutubeSearchItem::toYoutubeVideo)
+                        .toList()) :
+                Try.of(() -> parsedArgs.getPlaylistId()
                         .stream()
                         .flatMap(playList -> youtubeClient.getPlaylistItems(playList, "", parsedArgs.getApiKey()).stream())
-                        .toList())
+                        .map(YoutubePlaylistsItem::toYoutubeVideo)
+                        .toList());
+
+        final List<Pair<YoutubeVideo, String>> calls = videos
                 .map(c -> c.stream()
                         .map(video -> Pair.of(
-                                new YoutubeVideo(video.snippet().resourceId().videoId(), video.snippet().title()),
+                                video,
                                 // Get the transcript for the video, or an empty string if it fails
-                                Try.of(() -> youtubeClient.getTranscript(video.snippet().resourceId().videoId(), "en"))
+                                Try.of(() -> youtubeClient.getTranscript(video.id(), "en"))
                                         .onFailure(ex -> logger.severe("Failed to get Youtube transcript: " + ExceptionUtils.getRootCauseMessage(ex)))
                                         .getOrElse("")))
                         .toList())
@@ -299,6 +310,14 @@ class YoutubeConfig {
     private Optional<String> playlistId;
 
     @Inject
+    @ConfigProperty(name = "sb.youtube.channelId")
+    private Optional<String> channelId;
+
+    @Inject
+    @ConfigProperty(name = "sb.youtube.query")
+    private Optional<String> query;
+
+    @Inject
     @ConfigProperty(name = "sb.youtube.keywords")
     private Optional<String> configKeywords;
 
@@ -372,6 +391,14 @@ class YoutubeConfig {
 
     public ValidateString getValidateString() {
         return validateString;
+    }
+
+    public Optional<String> getConfigChannelId() {
+        return channelId;
+    }
+
+    public Optional<String> getConfigQuery() {
+        return query;
     }
 
     public class LocalArguments {
@@ -494,6 +521,30 @@ class YoutubeConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public String getChannelId() {
+            return getArgsAccessor()
+                    .getArgument(
+                            getConfigChannelId()::get,
+                            arguments,
+                            context,
+                            YoutubePlaylist.YOUTUBE_CHANNEL_ID_ARG,
+                            YoutubePlaylist.YOUTUBE_CHANNEL_ID_ARG,
+                            "")
+                    .value();
+        }
+
+        public String getQuery() {
+            return getArgsAccessor()
+                    .getArgument(
+                            getConfigQuery()::get,
+                            arguments,
+                            context,
+                            YoutubePlaylist.YOUTUBE_QUERY_ARG,
+                            YoutubePlaylist.YOUTUBE_QUERY_ARG,
+                            "")
+                    .value();
         }
     }
 }

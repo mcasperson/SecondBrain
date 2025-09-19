@@ -17,6 +17,8 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.youtube.api.YoutubePlaylists;
 import secondbrain.infrastructure.youtube.api.YoutubePlaylistsItem;
+import secondbrain.infrastructure.youtube.api.YoutubeSearch;
+import secondbrain.infrastructure.youtube.api.YoutubeSearchItem;
 
 import java.util.Arrays;
 import java.util.List;
@@ -63,6 +65,52 @@ public class YoutubeClientLive implements YoutubeClient {
                 .result();
 
         return Arrays.asList(items);
+    }
+
+    @Override
+    public List<YoutubeSearchItem> searchVideos(final String query, final String channelId, final String pageToken, final String key) {
+        final YoutubeSearchItem[] items = localStorage.getOrPutObject(
+                        YoutubeClientLive.class.getSimpleName(),
+                        "YoutubeAPISearch",
+                        channelId + "-" + query,
+                        YoutubeSearchItem[].class,
+                        () -> searchVideosApi(query, channelId, pageToken, key))
+                .result();
+
+        return Arrays.asList(items);
+    }
+
+    private YoutubeSearchItem[] searchVideosApi(final String query, final String channelId, final String pageToken, final String key) {
+        logger.log(Level.INFO, "Getting Youtube API search " + query + ", channelId: " + channelId + ", pageToken: " + pageToken);
+
+        RATE_LIMITER.acquire();
+
+        final String target = "https://www.googleapis.com/youtube/v3/search?"
+                + "part=snippet"
+                + "&maxResults=50"
+                + "&channelId=" + channelId
+                + "&q=" + query
+                + "&type=video"
+                + "&key=" + key
+                + (StringUtils.isNotBlank(pageToken) ? "&pageToken=" + pageToken : "");
+
+        return httpClientCaller.call(
+                this::getClient,
+                client -> client.target(target)
+                        .request()
+                        .header("Accept", MediaType.APPLICATION_JSON)
+                        .get(),
+                response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(YoutubeSearch.class))
+                        // Recurse if there is a next page, and we have not gone too far
+                        .map(r -> ArrayUtils.addAll(
+                                r.getItemsArray(),
+                                StringUtils.isNotBlank(r.nextPageToken())
+                                        ? searchVideosApi(query, channelId, r.nextPageToken(), key)
+                                        : new YoutubeSearchItem[]{}))
+                        .get(),
+                cause -> new RuntimeException("Failed to get Youtube playlist", cause)
+        );
     }
 
     @Override

@@ -4,8 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import secondbrain.infrastructure.youtube.model.YoutubeVideo;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record YoutubePlaylistsItem(String id, YoutubePlaylistsItemSnippet snippet) {
+public record YoutubeSearchItem(YoutubeSearchItemId id, YoutubeSearchItemSnippet snippet) {
     public YoutubeVideo toYoutubeVideo() {
-        return new YoutubeVideo(snippet().resourceId().videoId(), snippet().title());
+        return new YoutubeVideo(id.videoId(), snippet().title());
     }
 }
