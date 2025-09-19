@@ -1,5 +1,6 @@
 package secondbrain.domain.tools.youtubeplaylist;
 
+import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -15,6 +16,8 @@ import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptions.EmptyString;
+import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
@@ -29,6 +32,8 @@ import secondbrain.infrastructure.youtube.YoutubeClient;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class YoutubePlaylist implements Tool<YoutubeVideo> {
@@ -97,7 +102,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     }
 
     @Override
-    public List<RagDocumentContext<YoutubeVideo>> getContext(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public List<RagDocumentContext<YoutubeVideo>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final String playlistId = parsedArgs.getPlaylistId();
@@ -111,8 +116,8 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                         youtubeClient.getPlaylistItems(parsedArgs.getPlaylistId(), "", parsedArgs.getApiKey()))
                 .map(c -> c.stream()
                         .map(video -> Pair.of(
-                                new YoutubeVideo(video.id()),
-                                youtubeClient.getTranscript(video.id(), "en")))
+                                new YoutubeVideo(video.snippet().resourceId().videoId()),
+                                youtubeClient.getTranscript(video.snippet().resourceId().videoId(), "en")))
                         .toList())
                 .onFailure(ex -> logger.severe("Failed to get Youtube videos: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
@@ -156,12 +161,32 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     }
 
     @Override
-    public RagMultiDocumentContext<YoutubeVideo> call(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<YoutubeVideo> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        logger.log(Level.INFO, "Calling " + getName());
+
         final List<RagDocumentContext<YoutubeVideo>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        // TODO: Summarize transcripts and filter by rating if needed
-        // For now, just wrap contextList
-        return new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, contextList);
+        final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        if (StringUtils.isBlank(parsedArgs.getPlaylistId())) {
+            throw new InternalFailure("You must provide a playlist ID to query");
+        }
+
+        final Try<RagMultiDocumentContext<YoutubeVideo>> result = Try.of(() -> contextList)
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> llmClient.callWithCache(
+                        ragDoc,
+                        environmentSettings,
+                        getName()));
+
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        return result.mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Youtube transcript activities is empty", throwable)),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
+                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call LLM", ex)))
+                .get();
     }
 
     @Override
@@ -326,6 +351,18 @@ class YoutubeConfig {
         return argsAccessor;
     }
 
+    public Encryptor getTextEncryptor() {
+        return textEncryptor;
+    }
+
+    public Optional<String> getConfigApiKey() {
+        return apiKey;
+    }
+
+    public ValidateString getValidateString() {
+        return validateString;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
         private final String prompt;
@@ -340,10 +377,10 @@ class YoutubeConfig {
         public String getApiKey() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
-            final Try<String> token = Try.of(() -> textEncryptor.decrypt(context.get(YoutubePlaylist.YOUTUBE_API_KEY)))
+            final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get(YoutubePlaylist.YOUTUBE_API_KEY)))
                     .recover(e -> context.get(YoutubePlaylist.YOUTUBE_API_KEY))
-                    .mapTry(validateString::throwIfEmpty)
-                    .recoverWith(e -> Try.of(() -> apiKey.get()));
+                    .mapTry(getValidateString()::throwIfEmpty)
+                    .recoverWith(e -> Try.of(() -> getConfigApiKey().get()));
 
             if (token.isFailure() || StringUtils.isBlank(token.get())) {
                 throw new InternalFailure("Failed to get Google access key");

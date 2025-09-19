@@ -67,6 +67,8 @@ public class YoutubeClientLive implements YoutubeClient {
 
     @Override
     public String getTranscript(final String videoId, final String lang) {
+        RATE_LIMITER.acquire();
+
         return Try.of(TranscriptApiFactory::createDefault)
                 .mapTry(api -> api.listTranscripts(videoId))
                 .mapTry(transcripts -> transcripts.findGeneratedTranscript(lang))
@@ -79,7 +81,7 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private YoutubePlaylistsItem[] getPlaylistItemsApi(final String playlistId, final String pageToken, final String key) {
-        logger.log(Level.INFO, "Getting Youtube API playlist " + playlistId);
+        logger.log(Level.INFO, "Getting Youtube API playlist " + playlistId + ", pageToken: " + pageToken);
 
         RATE_LIMITER.acquire();
 
