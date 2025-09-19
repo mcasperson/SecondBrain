@@ -78,7 +78,7 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private String getTranscriptApi(final String videoId, final String lang) {
-        logger.log(Level.INFO, "Getting Youtube transcript " + videoId + "lang: " + lang);
+        logger.log(Level.INFO, "Getting Youtube transcript " + videoId + " lang: " + lang);
 
         RATE_LIMITER.acquire();
 
