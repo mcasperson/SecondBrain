@@ -56,7 +56,7 @@ public class YoutubeClientLive implements YoutubeClient {
     public List<YoutubePlaylistsItem> getPlaylistItems(final String playlistId, final String pageToken, final String key) {
         final YoutubePlaylistsItem[] items = localStorage.getOrPutObject(
                         YoutubeClientLive.class.getSimpleName(),
-                        "YoutubeAPIPlaylists",
+                        "YoutubeAPIPlaylistsV2",
                         playlistId,
                         YoutubePlaylistsItem[].class,
                         () -> getPlaylistItemsApi(playlistId, pageToken, key))

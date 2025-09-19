@@ -117,7 +117,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                         .toList())
                 .map(c -> c.stream()
                         .map(video -> Pair.of(
-                                new YoutubeVideo(video.snippet().resourceId().videoId()),
+                                new YoutubeVideo(video.snippet().resourceId().videoId(), video.snippet().title()),
                                 // Get the transcript for the video, or an empty string if it fails
                                 Try.of(() -> youtubeClient.getTranscript(video.snippet().resourceId().videoId(), "en"))
                                         .onFailure(ex -> logger.severe("Failed to get Youtube transcript: " + ExceptionUtils.getRootCauseMessage(ex)))
@@ -155,7 +155,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                         sentenceVectorizer.vectorize(sentences),
                         video.id(),
                         video,
-                        "[Youtube " + video.id() + "](https://www.youtube.com/watch?v=" + video.id() + ")",
+                        "[Youtube " + video.title() + "](https://www.youtube.com/watch?v=" + video.id() + ")",
                         trimmedConversationResult.keywordMatches()))
                 // Capture the gong transcript or transcript summary as an intermediate result
                 // This is useful for debugging and understanding the context of the call
@@ -252,7 +252,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
         return new MetaObjectResults(
                 metadata,
-                "Gong-" + gongCall.id() + ".json",
+                "Youtube-" + gongCall.id() + ".json",
                 gongCall.id());
     }
 
