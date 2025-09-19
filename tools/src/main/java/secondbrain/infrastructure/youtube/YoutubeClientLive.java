@@ -90,7 +90,7 @@ public class YoutubeClientLive implements YoutubeClient {
                 .map(transcript -> transcript.getContent()
                         .stream()
                         .map(TranscriptContent.Fragment::getText)
-                        .reduce("", (a, b) -> a + "\n" + b))
+                        .reduce("", (a, b) -> a + " " + b))
                 .get();
     }
 
