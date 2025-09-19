@@ -150,7 +150,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<YoutubeVideo>(
                         getName(),
-                        getContextLabel(),
+                        getContextLabel() + " \"" + video.title() + "\" (ID: " + video.id() + ")",
                         trimmedConversationResult.document(),
                         sentenceVectorizer.vectorize(sentences),
                         video.id(),
@@ -195,7 +195,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
     @Override
     public String getContextLabel() {
-        return "Youtube Playlist Video";
+        return "Youtube ";
     }
 
     /**
