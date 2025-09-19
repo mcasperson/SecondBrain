@@ -84,6 +84,7 @@ public class YoutubeClientLive implements YoutubeClient {
                 .mapTry(api -> api.listTranscripts(videoId))
                 .mapTry(transcripts -> transcripts.findGeneratedTranscript(lang))
                 .mapTry(Transcript::fetch)
+                .onFailure(ex -> logger.log(Level.WARNING, "Failed to get transcript for video " + videoId + " in lang " + lang + ": " + ex.getMessage()))
                 .map(transcript -> transcript.getContent()
                         .stream()
                         .map(TranscriptContent.Fragment::getText)
