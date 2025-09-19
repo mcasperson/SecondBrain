@@ -202,7 +202,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
     @Override
     public String getContextLabel() {
-        return "Youtube ";
+        return "Youtube video transcript";
     }
 
     /**
