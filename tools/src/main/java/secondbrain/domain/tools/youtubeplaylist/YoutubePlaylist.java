@@ -117,7 +117,10 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                 .map(c -> c.stream()
                         .map(video -> Pair.of(
                                 new YoutubeVideo(video.snippet().resourceId().videoId()),
-                                youtubeClient.getTranscript(video.snippet().resourceId().videoId(), "en")))
+                                // Get the transcript for the video, or an empty string if it fails
+                                Try.of(() -> youtubeClient.getTranscript(video.snippet().resourceId().videoId(), "en"))
+                                        .onFailure(ex -> logger.severe("Failed to get Youtube transcript: " + ExceptionUtils.getRootCauseMessage(ex)))
+                                        .getOrElse("")))
                         .toList())
                 .onFailure(ex -> logger.severe("Failed to get Youtube videos: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
