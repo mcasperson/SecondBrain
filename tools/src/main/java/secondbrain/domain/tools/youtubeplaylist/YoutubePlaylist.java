@@ -105,15 +105,16 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     public List<RagDocumentContext<YoutubeVideo>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final String playlistId = parsedArgs.getPlaylistId();
         final String apiKey = parsedArgs.getApiKey();
 
-        if (StringUtils.isBlank(playlistId) || StringUtils.isBlank(apiKey)) {
+        if (parsedArgs.getPlaylistId().isEmpty() || StringUtils.isBlank(apiKey)) {
             return List.of();
         }
 
-        final List<Pair<YoutubeVideo, String>> calls = Try.of(() ->
-                        youtubeClient.getPlaylistItems(parsedArgs.getPlaylistId(), "", parsedArgs.getApiKey()))
+        final List<Pair<YoutubeVideo, String>> calls = Try.of(() -> parsedArgs.getPlaylistId()
+                        .stream()
+                        .flatMap(playList -> youtubeClient.getPlaylistItems(playList, "", parsedArgs.getApiKey()).stream())
+                        .toList())
                 .map(c -> c.stream()
                         .map(video -> Pair.of(
                                 new YoutubeVideo(video.snippet().resourceId().videoId()),
@@ -171,7 +172,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
         final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        if (StringUtils.isBlank(parsedArgs.getPlaylistId())) {
+        if (parsedArgs.getPlaylistId().isEmpty()) {
             throw new InternalFailure("You must provide a playlist ID to query");
         }
 
@@ -392,14 +393,16 @@ class YoutubeConfig {
             return token.get();
         }
 
-        public String getPlaylistId() {
-            return getArgsAccessor().getArgument(
-                    getConfigPlaylistId()::get,
-                    arguments,
-                    context,
-                    YoutubePlaylist.YOUTUBE_PLAYLIST_ID_ARG,
-                    YoutubePlaylist.YOUTUBE_PLAYLIST_ID_ARG,
-                    "").value();
+        public List<String> getPlaylistId() {
+            return getArgsAccessor().getArgumentList(
+                            getConfigPlaylistId()::get,
+                            arguments,
+                            context,
+                            YoutubePlaylist.YOUTUBE_PLAYLIST_ID_ARG,
+                            YoutubePlaylist.YOUTUBE_PLAYLIST_ID_ARG,
+                            "").stream()
+                    .map(Argument::value)
+                    .toList();
         }
 
         public List<String> getKeywords() {
