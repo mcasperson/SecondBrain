@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.RateLimiter;
 import io.github.thoroldvix.api.Transcript;
 import io.github.thoroldvix.api.TranscriptApiFactory;
 import io.github.thoroldvix.api.TranscriptContent;
+import io.github.thoroldvix.api.TranscriptList;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -130,15 +131,23 @@ public class YoutubeClientLive implements YoutubeClient {
 
         RATE_LIMITER.acquire();
 
-        return Try.of(TranscriptApiFactory::createDefault)
-                .mapTry(api -> api.listTranscripts(videoId))
-                .mapTry(transcripts -> transcripts.findGeneratedTranscript(lang))
+        final TranscriptList transcriptList = getTranscriptList(videoId);
+
+        // Start with a manual transcript, then fall back to generated if not available
+        return Try.of(() -> transcriptList.findManualTranscript(lang))
+                .recoverWith(ex -> Try.of(() -> transcriptList.findGeneratedTranscript(lang)))
                 .mapTry(Transcript::fetch)
                 .onFailure(ex -> logger.log(Level.WARNING, "Failed to get transcript for video " + videoId + " in lang " + lang + ": " + ex.getMessage()))
                 .map(transcript -> transcript.getContent()
                         .stream()
                         .map(TranscriptContent.Fragment::getText)
                         .reduce("", (a, b) -> a + " " + b))
+                .get();
+    }
+
+    private TranscriptList getTranscriptList(final String videoId) {
+        return Try.of(TranscriptApiFactory::createDefault)
+                .mapTry(api -> api.listTranscripts(videoId))
                 .get();
     }
 
