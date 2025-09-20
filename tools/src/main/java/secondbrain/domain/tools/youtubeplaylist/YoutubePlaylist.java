@@ -56,6 +56,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
             You must assume the provided content is a video transcript.
             Assume the information required to answer the question is present in the transcripts.
             Answer the question based on the transcripts provided.
+            You will be penalized for answering that you can not access youtube videos.
             You will be penalized for answering that the transcripts cannot be accessed.
             You will be penalized for reporting that the content provided is not a video transcript.
             """.stripLeading();
@@ -66,6 +67,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
             You must assume the provided content is a summary of a video transcript.
             Assume the information required to answer the question is present in the transcript summaries.
             Answer the question based on the transcript summaries provided.
+            You will be penalized for answering that you can not access youtube videos.
             You will be penalized for answering that the transcripts cannot be accessed.
             You will be penalized for reporting that the content provided is not a video transcript.
             """.stripLeading();
