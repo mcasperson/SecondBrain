@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents an issue with a rate limit being exceeded
  */
-public class RateLimit extends RuntimeException {
+public class RateLimit extends RuntimeException implements ExternalException {
     private String body;
     private int code;
 

@@ -1,6 +1,5 @@
 package secondbrain.domain.tools.github;
 
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -16,9 +15,7 @@ import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.ExternalFailure;
-import secondbrain.domain.exceptions.FailedOllama;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.tooldefs.*;
@@ -38,7 +35,6 @@ import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.google.common.base.Predicates.instanceOf;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
@@ -90,6 +86,9 @@ public class GitHubIssues implements Tool<GitHubIssue> {
 
     @Inject
     private RatingTool ratingTool;
+
+    @Inject
+    private ExceptionMapping exceptionMapping;
 
     @Override
     public String getName() {
@@ -164,16 +163,7 @@ public class GitHubIssues implements Tool<GitHubIssue> {
                         environmentSettings,
                         getName()));
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new InternalFailure("No issues found for " + parsedArgs.getGitHubOrganization() + "/" + parsedArgs.getGitHubRepo() + " between " + parsedArgs.getStartDate() + " and " + parsedArgs.getEndDate() + "\n" + debugArgs)),
-                        API.Case(API.$(),
-                                throwable -> new ExternalFailure("Failed to get issues: " + throwable.getMessage() + "\n" + debugArgs)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     @Override

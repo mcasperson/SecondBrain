@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents an error returned from an HTTP request
  */
-public class InvalidResponse extends RuntimeException {
+public class InvalidResponse extends RuntimeException implements ExternalException {
     private String body;
     private int code;
 

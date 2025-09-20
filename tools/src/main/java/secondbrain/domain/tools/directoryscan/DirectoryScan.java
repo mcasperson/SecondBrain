@@ -1,6 +1,5 @@
 package secondbrain.domain.tools.directoryscan;
 
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -18,9 +17,7 @@ import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.converter.FileToText;
 import secondbrain.domain.debug.DebugToolArgs;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.ExternalFailure;
-import secondbrain.domain.exceptions.FailedOllama;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.files.PathSpec;
 import secondbrain.domain.injection.Preferred;
@@ -43,8 +40,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-
-import static com.google.common.base.Predicates.instanceOf;
 
 /**
  * Scans the files in a directory and answers questions about them. This is useful when you have a bunch of reports
@@ -122,6 +117,9 @@ public class DirectoryScan implements Tool<Void> {
     @Inject
     private PathSpec pathSpec;
 
+    @Inject
+    private ExceptionMapping exceptionMapping;
+
     @Override
     public String getName() {
         return DirectoryScan.class.getSimpleName();
@@ -187,16 +185,7 @@ public class DirectoryScan implements Tool<Void> {
                         environmentSettings,
                         getName()));
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new InternalFailure("No files found for " + parsedArgs.getDirectory() + debugArgs)),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(),
-                                throwable -> new ExternalFailure("Failed to get file contents: " + throwable.getMessage() + "\n" + debugArgs)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     private List<String> getFiles(final DirectoryScanConfig.LocalArguments parsedArgs) {
