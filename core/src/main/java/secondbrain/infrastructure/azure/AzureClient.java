@@ -16,7 +16,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.answer.AnswerFormatterService;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.exceptions.EmptyString;
+import secondbrain.domain.exceptions.FailedAzure;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.RateLimit;
 import secondbrain.domain.exceptions.Timeout;
@@ -311,7 +311,7 @@ public class AzureClient implements LlmClient {
                                 .map(validateString::throwIfEmpty)
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
-                        e -> new RuntimeException("Failed to call the Azure AI service", e),
+                        e -> new FailedAzure("Failed to call the Azure AI service", e),
                         () -> {
                             throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                         },
@@ -336,7 +336,7 @@ public class AzureClient implements LlmClient {
 
                     throw ex;
                 })
-                .recover(EmptyString.class, ex -> {
+                .recover(FailedAzure.class, ex -> {
                     logger.warning("Received empty response from Azure LLM");
                     return call(request, retry + 1);
                 })
