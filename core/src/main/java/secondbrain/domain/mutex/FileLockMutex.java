@@ -2,14 +2,19 @@ package secondbrain.domain.mutex;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import secondbrain.domain.exceptions.LockFail;
 
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class FileLockMutex implements Mutex {
     private static final long SLEEP = 1000;
+
+    @Inject
+    private Logger log;
 
     @Override
     public <T> T acquire(final long timeout, final String lockFile, final MutexCallback<T> callback) {
@@ -20,6 +25,7 @@ public class FileLockMutex implements Mutex {
                             if (timeout <= 0) {
                                 throw new LockFail("Failed to obtain file lock within the specified timeout");
                             }
+                            log.info("Lock file is already locked, waiting...");
                             Try.run(() -> Thread.sleep(Math.min(SLEEP, timeout)));
                             return acquire(Math.max(timeout - SLEEP, 0), lockFile, callback);
                         })
