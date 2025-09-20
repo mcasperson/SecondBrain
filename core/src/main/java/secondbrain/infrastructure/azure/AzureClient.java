@@ -335,7 +335,6 @@ public class AzureClient implements LlmClient {
                     }
 
                     if (ex.getCause() instanceof EmptyString) {
-                        Try.run(() -> Thread.sleep(retryDelay * 1000));
                         return call(request, retry + 1);
                     }
 
