@@ -13,7 +13,9 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.httpclient.HttpClientCaller;
+import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.youtube.api.YoutubePlaylists;
@@ -34,6 +36,11 @@ public class YoutubeClientLive implements YoutubeClient {
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
+    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+    @Inject
+    @ConfigProperty(name = "sb.youtube.lock", defaultValue = "sb_youtube.lock")
+    private String lockFile;
 
     @Inject
     private ResponseValidation responseValidation;
@@ -46,6 +53,9 @@ public class YoutubeClientLive implements YoutubeClient {
 
     @Inject
     private HttpClientCaller httpClientCaller;
+
+    @Inject
+    private Mutex mutex;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -82,6 +92,10 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private YoutubeSearchItem[] searchVideosApi(final String query, final String channelId, final String pageToken, final String key) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> searchVideosApiLocked(query, channelId, pageToken, key));
+    }
+
+    private YoutubeSearchItem[] searchVideosApiLocked(final String query, final String channelId, final String pageToken, final String key) {
         logger.log(Level.INFO, "Getting Youtube API search " + query + ", channelId: " + channelId + ", pageToken: " + pageToken);
 
         RATE_LIMITER.acquire();
