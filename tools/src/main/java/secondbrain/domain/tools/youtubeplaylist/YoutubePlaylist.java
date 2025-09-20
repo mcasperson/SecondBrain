@@ -163,8 +163,16 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                     This was necessary because the private LLMs didn't do a very good job of summarizing
                     raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
                     call transcripts.
+
+                    Note that we accept failure here and ignore any transcripts that fail to summarize.
                  */
-                .map(ragDoc -> parsedArgs.getSummarizeTranscript() ? getCallSummary(ragDoc, environmentSettings, parsedArgs) : ragDoc)
+                .map(ragDoc -> parsedArgs.getSummarizeTranscript() ?
+                        Try.of(() -> getCallSummary(ragDoc, environmentSettings, parsedArgs))
+                                .onFailure(ex -> logger.warning("Failed to summarize Youtube video transcript for video ID " + ragDoc.id() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                                .getOrNull() :
+                        ragDoc)
+                // A failure results in a null value, which is filtered out
+                .filter(Objects::nonNull)
                 .toList();
 
         if (ragContext.isEmpty()) {
