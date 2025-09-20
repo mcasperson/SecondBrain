@@ -11,7 +11,7 @@ import java.util.logging.Logger;
 
 @ApplicationScoped
 public class FileLockMutex implements Mutex {
-    private static final long SLEEP = 1000;
+    private static final long SLEEP = 10000;
 
     @Inject
     private Logger log;
