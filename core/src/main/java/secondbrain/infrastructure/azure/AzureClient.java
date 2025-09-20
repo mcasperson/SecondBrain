@@ -16,10 +16,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.answer.AnswerFormatterService;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.exceptions.FailedAzure;
-import secondbrain.domain.exceptions.InvalidResponse;
-import secondbrain.domain.exceptions.RateLimit;
-import secondbrain.domain.exceptions.Timeout;
+import secondbrain.domain.exceptions.*;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.StringToList;
@@ -318,27 +315,31 @@ public class AzureClient implements LlmClient {
                         API_CALL_TIMEOUT_SECONDS_DEFAULT,
                         retryDelay,
                         retryCount))
-                .recover(InvalidResponse.class, ex -> {
-                    if (ex.getCode() == 429 || ex.getCode() >= 500) {
-                        Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
+                .recover(FailedAzure.class, ex -> {
+
+                    if (ex.getCause() instanceof InvalidResponse invalidResponse) {
+                        if (invalidResponse.getCode() == 429 || invalidResponse.getCode() >= 500) {
+                            Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
+                            return call(request, retry + 1);
+                        }
+
+                        if (invalidResponse.getCode() == 400 && messageTooLongResponseInspector.isMatch(invalidResponse.getBody())) {
+                            final AzureRequestMaxCompletionTokens trimmed = request.updateMessages(
+                                    listLimiter.limitListContentByFraction(
+                                            request.getMessages(),
+                                            AzureRequestMessage::content,
+                                            trimIfTooLongFraction));
+
+                            return call(trimmed, retry + 1);
+                        }
+                    }
+
+                    if (ex.getCause() instanceof EmptyString) {
+                        Try.run(() -> Thread.sleep(retryDelay * 1000));
                         return call(request, retry + 1);
                     }
 
-                    if (ex.getCode() == 400 && messageTooLongResponseInspector.isMatch(ex.getBody())) {
-                        final AzureRequestMaxCompletionTokens trimmed = request.updateMessages(
-                                listLimiter.limitListContentByFraction(
-                                        request.getMessages(),
-                                        AzureRequestMessage::content,
-                                        trimIfTooLongFraction));
-
-                        return call(trimmed, retry + 1);
-                    }
-
                     throw ex;
-                })
-                .recover(FailedAzure.class, ex -> {
-                    logger.warning("Received empty response from Azure LLM");
-                    return call(request, retry + 1);
                 })
                 .get();
     }
