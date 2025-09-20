@@ -166,7 +166,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<YoutubeVideo>(
                         getName(),
-                        getContextLabel() + " \"" + video.title() + "\" (ID: " + video.id() + ")",
+                        getContextLabel() + " for video titled \"" + video.title() + "\" (Video ID: " + video.id() + ")",
                         trimmedConversationResult.document(),
                         sentenceVectorizer.vectorize(sentences),
                         video.id(),
@@ -177,7 +177,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                 // We will proceed without any annotations if the vectorization fails
                 .recover(throwable -> new RagDocumentContext<>(
                         getName(),
-                        getContextLabel() + " \"" + video.title() + "\" (ID: " + video.id() + ")",
+                        getContextLabel() + " for video titled \"" + video.title() + "\" (Video ID: " + video.id() + ")",
                         trimmedConversationResult.document(),
                         List.of(),
                         video.id(),
