@@ -52,10 +52,22 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
-            You are given a list of video transcripts from a YouTube playlist.
+            You are given a list of Youtube video transcripts.
+            You must assume the provided content is a video transcript.
             Assume the information required to answer the question is present in the transcripts.
             Answer the question based on the transcripts provided.
-            Do not answer that the transcripts cannot be accessed.
+            You will be penalized for answering that the transcripts cannot be accessed.
+            You will be penalized for reporting that the content provided is not a video transcript.
+            """.stripLeading();
+
+    private static final String SUMMARY_INSTRUCTIONS = """
+            You are a helpful assistant.
+            You are given the summary of list of Youtube video transcripts.
+            You must assume the provided content is a summary of a video transcript.
+            Assume the information required to answer the question is present in the transcript summaries.
+            Answer the question based on the transcript summaries provided.
+            You will be penalized for answering that the transcripts cannot be accessed.
+            You will be penalized for reporting that the content provided is not a video transcript.
             """.stripLeading();
 
     @Inject
@@ -202,8 +214,10 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
             throw new InternalFailure("No playlist ID, channel ID or query provided to YoutubePlaylist tool");
         }
 
+        final String instructions = parsedArgs.getSummarizeTranscript() ? SUMMARY_INSTRUCTIONS : INSTRUCTIONS;
+
         final Try<RagMultiDocumentContext<YoutubeVideo>> result = Try.of(() -> contextList)
-                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, instructions, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
@@ -223,9 +237,12 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     private RagDocumentContext<YoutubeVideo> getCallSummary(final RagDocumentContext<YoutubeVideo> ragDoc, final Map<String, String> environmentSettings, final YoutubeConfig.LocalArguments parsedArgs) {
         logger.log(Level.INFO, "Summarising Youtube video transcript");
 
+        final String title = ragDoc.source() == null ? "Unknown title" : ragDoc.source().title();
+        final String videoId = ragDoc.source() == null ? "Unknown ID" : ragDoc.source().id();
+
         final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),
-                getContextLabel(),
+                getContextLabel() + " for video titled \"" + title + "\" (Video ID: " + videoId + ")",
                 ragDoc.document(),
                 List.of()
         );
