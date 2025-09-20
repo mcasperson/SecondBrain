@@ -167,7 +167,7 @@ public class RatingTool implements Tool<Void> {
                         getFirstDigits.sanitize(
                                 findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim())));
 
-        return exceptionMapping.map(result).get();
+        return exceptionMapping.map(result);
     }
 
     @Override
