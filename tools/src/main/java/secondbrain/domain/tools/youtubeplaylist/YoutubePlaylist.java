@@ -132,7 +132,6 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                                 video,
                                 // Get the transcript for the video, or an empty string if it fails
                                 Try.of(() -> youtubeClient.getTranscript(video.id(), "en"))
-                                        .onFailure(ex -> logger.severe("Failed to get Youtube transcript: " + ExceptionUtils.getRootCauseMessage(ex)))
                                         .getOrElse("")))
                         .toList())
                 .onFailure(ex -> logger.severe("Failed to get Youtube videos: " + ExceptionUtils.getRootCauseMessage(ex)))
