@@ -244,7 +244,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
         final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),
-                getContextLabel() + " for video titled \"" + title + "\" (Video ID: " + videoId + ")",
+                getContextLabel() + " summary for video titled \"" + title + "\" (Video ID: " + videoId + ")",
                 ragDoc.document(),
                 List.of()
         );
