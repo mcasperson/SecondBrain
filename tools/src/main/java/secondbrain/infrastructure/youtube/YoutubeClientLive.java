@@ -137,14 +137,14 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private String getTranscriptApi(final String videoId, final String lang) {
+        RATE_LIMITER.acquire();
+
         return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getTranscriptApiLocked(videoId, lang));
     }
 
     private String getTranscriptApiLocked(final String videoId, final String lang) {
         logger.log(Level.INFO, "Getting Youtube transcript " + videoId + " lang: " + lang);
-
-        RATE_LIMITER.acquire();
-
+        
         final TranscriptList transcriptList = getTranscriptList(videoId);
 
         // Start with a manual transcript, then fall back to generated if not available
