@@ -21,7 +21,7 @@ public class FileLockMutex implements Mutex {
         return Try.withResources(() -> new RandomAccessFile(lockFile, "rw").getChannel())
                 .of(channel -> Try.withResources(() -> channel.tryLock(0, Long.MAX_VALUE, false))
                         .of(lock -> callIfNotNull(lock, callback))
-                        .recover(LockFail.class, ex -> {
+                        .recover(Throwable.class, ex -> {
                             if (timeout <= 0) {
                                 throw new LockFail("Failed to obtain file lock within the specified timeout");
                             }
