@@ -18,6 +18,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.*;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
+import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.StringToList;
 import secondbrain.domain.persist.CacheResult;
@@ -143,6 +144,9 @@ public class AzureClient implements LlmClient {
 
     @Inject
     private StringToList stringToList;
+
+    @Inject
+    private JsonDeserializerJackson jsonDeserializerJackson;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -302,6 +306,7 @@ public class AzureClient implements LlmClient {
                                 .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
                         response -> Try.of(() -> responseValidation.validate(response, url.get()))
                                 .map(r -> r.readEntity(AzureResponse.class))
+                                .peek(r -> logger.fine(jsonDeserializerJackson.serialize(r)))
                                 .map(AzureResponse::getResponseText)
                                 .map(validateString::throwIfEmpty)
                                 .map(r -> answerFormatterService.formatResponse(model.get(), r))
