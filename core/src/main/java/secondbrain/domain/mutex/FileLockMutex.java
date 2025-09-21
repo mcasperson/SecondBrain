@@ -17,9 +17,9 @@ public class FileLockMutex implements Mutex {
     private Logger log;
 
     @Override
-    public <T> T acquire(final long timeout, final String lockFile, final MutexCallback<T> callback) {
-        return Try.withResources(() -> new RandomAccessFile(lockFile, "rw").getChannel())
-                .of(channel -> Try.withResources(() -> channel.tryLock(0, Long.MAX_VALUE, false))
+    public <T> T acquire(final long timeout, final String lockName, final MutexCallback<T> callback) {
+        return Try.withResources(() -> new RandomAccessFile(lockName, "rw").getChannel())
+                .of(channel -> Try.withResources(() -> channel.tryLock(0, 0, false))
                         .of(lock -> callIfNotNull(lock, callback))
                         .recover(Throwable.class, ex -> {
                             if (timeout <= 0) {
@@ -27,7 +27,7 @@ public class FileLockMutex implements Mutex {
                             }
                             log.info("Lock file is already locked, waiting...");
                             Try.run(() -> Thread.sleep(Math.min(SLEEP, timeout)));
-                            return acquire(Math.max(timeout - SLEEP, 0), lockFile, callback);
+                            return acquire(Math.max(timeout - SLEEP, 0), lockName, callback);
                         })
                         .get())
                 .get();
