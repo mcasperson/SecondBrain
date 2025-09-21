@@ -253,7 +253,7 @@ public class DirectoryScan implements Tool<Void> {
 
         return new RagDocumentContext<>(
                 getName(),
-                getContextLabel(),
+                getContextLabel() + " " + Paths.get(file).getFileName(),
                 trimResult.document(),
                 sentenceVectorizer.vectorize(sentenceSplitter.splitDocument(trimResult.document(), 10), parsedArgs.getEntity()),
                 file,
@@ -292,7 +292,7 @@ public class DirectoryScan implements Tool<Void> {
 
         return new RagDocumentContext<>(
                 getName(),
-                getContextLabel(),
+                getContextLabel() + " " + Paths.get(file).getFileName(),
                 summary,
                 sentenceSplitter.splitDocument(summary, 10)
                         .stream()
