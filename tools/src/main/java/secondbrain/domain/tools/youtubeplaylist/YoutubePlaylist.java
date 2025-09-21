@@ -252,7 +252,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
         final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),
-                getContextLabel() + " summary for video titled \"" + title + "\" (Video ID: " + videoId + ")",
+                ragDoc.contextLabel(),
                 ragDoc.document(),
                 List.of()
         );
@@ -266,11 +266,13 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                 getName()
         ).getResponse();
 
-        return ragDoc.updateDocument(response)
+        return ragDoc
+                .updateDocument(response)
                 .addIntermediateResult(new IntermediateResult(
                         "Prompt: " + parsedArgs.getTranscriptSummaryPrompt() + "\n\n" + response,
                         "Youtube-" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTranscriptSummaryPrompt()) + ".txt"
-                ));
+                ))
+                .updateContextLabel(getContextLabel() + " summary for video titled \"" + title + "\" (Video ID: " + videoId + ")");
     }
 
     private MetaObjectResults getMetadata(
