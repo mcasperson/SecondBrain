@@ -92,10 +92,6 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private YoutubeSearchItem[] searchVideosApi(final String query, final String channelId, final String pageToken, final String key) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> searchVideosApiLocked(query, channelId, pageToken, key));
-    }
-
-    private YoutubeSearchItem[] searchVideosApiLocked(final String query, final String channelId, final String pageToken, final String key) {
         logger.log(Level.INFO, "Getting Youtube API search " + query + ", channelId: " + channelId + ", pageToken: " + pageToken);
 
         RATE_LIMITER.acquire();
