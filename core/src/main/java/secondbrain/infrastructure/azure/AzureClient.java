@@ -25,7 +25,9 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseInspector;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.azure.api.*;
+import secondbrain.infrastructure.azure.api.AzureRequestMaxCompletionTokens;
+import secondbrain.infrastructure.azure.api.AzureRequestMessage;
+import secondbrain.infrastructure.azure.api.AzureResponse;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.ArrayList;
@@ -300,12 +302,9 @@ public class AzureClient implements LlmClient {
                                 .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
                         response -> Try.of(() -> responseValidation.validate(response, url.get()))
                                 .map(r -> r.readEntity(AzureResponse.class))
-                                .map(r -> r.getChoices().stream()
-                                        .map(AzureResponseChoice::getMessage)
-                                        .map(AzureResponseOutputContent::getContent)
-                                        .reduce("", String::concat))
-                                .map(r -> answerFormatterService.formatResponse(model.get(), r))
+                                .map(AzureResponse::getResponseText)
                                 .map(validateString::throwIfEmpty)
+                                .map(r -> answerFormatterService.formatResponse(model.get(), r))
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
                         e -> new FailedAzure("Failed to call the Azure AI service", e),

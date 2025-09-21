@@ -10,4 +10,11 @@ public record AzureResponse(List<AzureResponseChoice> choices, AzureResponseErro
     public List<AzureResponseChoice> getChoices() {
         return Objects.requireNonNullElse(choices, List.of());
     }
+
+    public String getResponseText() {
+        return getChoices().stream()
+                .map(AzureResponseChoice::getMessage)
+                .map(AzureResponseOutputContent::getContent)
+                .reduce("", String::concat);
+    }
 }
