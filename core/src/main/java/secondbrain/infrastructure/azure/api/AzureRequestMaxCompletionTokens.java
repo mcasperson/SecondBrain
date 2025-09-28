@@ -24,10 +24,6 @@ public record AzureRequestMaxCompletionTokens(
         @Nullable @JsonProperty("max_completion_tokens") Integer maxOutputTokens,
         String model) implements PromptTextGenerator {
 
-    public static final int DEFAULT_OUTPUT_TOKENS = 2048;
-    public static final int DEFAULT_INPUT_TOKENS = 16384 - DEFAULT_OUTPUT_TOKENS;
-    public static final float DEFAULT_CHARS_PER_INPUT_TOKENS = 3.5f;
-
     public AzureRequestMaxCompletionTokens(final List<AzureRequestMessage> messages, final String model) {
         this(messages,
                 null,

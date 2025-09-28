@@ -46,6 +46,9 @@ import static com.google.common.base.Preconditions.*;
  */
 @ApplicationScoped
 public class AzureClient implements LlmClient {
+    private static final int DEFAULT_OUTPUT_TOKENS = 2048;
+    private static final int DEFAULT_INPUT_TOKENS = 16384 - DEFAULT_OUTPUT_TOKENS;
+    private static final float DEFAULT_CHARS_PER_INPUT_TOKENS = 3.5f;
     private static final String DEFAULT_MODEL = "Phi-4";
     private static final int DEFAULT_CACHE_TTL_DAYS = 90;
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
@@ -74,11 +77,11 @@ public class AzureClient implements LlmClient {
     private Optional<String> model;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.maxOutputTokens", defaultValue = AzureRequestMaxCompletionTokens.DEFAULT_OUTPUT_TOKENS + "")
+    @ConfigProperty(name = "sb.azurellm.maxOutputTokens", defaultValue = DEFAULT_OUTPUT_TOKENS + "")
     private Optional<String> outputTokens;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.maxInputTokens", defaultValue = AzureRequestMaxCompletionTokens.DEFAULT_INPUT_TOKENS + "")
+    @ConfigProperty(name = "sb.azurellm.maxInputTokens", defaultValue = DEFAULT_INPUT_TOKENS + "")
     private Optional<String> inputTokens;
 
     @Inject
@@ -191,17 +194,17 @@ public class AzureClient implements LlmClient {
 
         final int maxOutputTokens = outputTokens
                 .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
-                .orElse(AzureRequestMaxCompletionTokens.DEFAULT_OUTPUT_TOKENS);
+                .orElse(DEFAULT_OUTPUT_TOKENS);
 
         final int maxInputTokens = inputTokens
                 .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
-                .orElse(AzureRequestMaxCompletionTokens.DEFAULT_INPUT_TOKENS);
+                .orElse(DEFAULT_INPUT_TOKENS);
 
         final String modelName = environmentSettings.getOrDefault(MODEL_OVERRIDE_ENV, this.model.orElse(DEFAULT_MODEL));
         final Integer modelContextWindow = Try.of(() -> Integer.parseInt(environmentSettings.getOrDefault(CONTEXT_WINDOW_OVERRIDE_ENV, maxInputTokens + "")))
                 .getOrElse(maxInputTokens);
 
-        final int maxChars = (int) (modelContextWindow * AzureRequestMaxCompletionTokens.DEFAULT_CHARS_PER_INPUT_TOKENS);
+        final int maxChars = (int) (modelContextWindow * DEFAULT_CHARS_PER_INPUT_TOKENS);
 
         final List<AzureRequestMessage> messages = new ArrayList<>();
         messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
