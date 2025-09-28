@@ -113,20 +113,9 @@ public class RatingTool implements Tool<Void> {
                 Pair.of(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow())
         )
                 .filter(pair -> pair == null || !StringUtils.isBlank(pair.getLeft()))
-                .map(pair -> {
-                    final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
-                    if (pair == null) {
-                        return newEnvironmentSettings;
-                    }
-                    newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, pair.getLeft());
-                    newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, pair.getRight());
-                    return newEnvironmentSettings;
-                })
+                .map(pair -> getEnvironmentOverrides(pair, environmentSettings))
                 .map(config -> callLLM(config, prompt, arguments, parsedArgs))
-                .map(rating -> rating
-                        .map(doc -> Integer.parseInt(doc.getResponse()))
-                        .recover(ex -> -1)
-                        .get())
+                .map(this::resultToInt)
                 .toList();
 
         if (!parsedArgs.ignoreInvalidResponses()) {
@@ -156,6 +145,22 @@ public class RatingTool implements Tool<Void> {
                 INSTRUCTIONS,
                 List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of())))
                 .updateResponse(average + "");
+    }
+
+    private Map<String, String> getEnvironmentOverrides(final Pair<String, String> pair, final Map<String, String> environmentSettings) {
+        final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
+        if (pair == null) {
+            return newEnvironmentSettings;
+        }
+        newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, pair.getLeft());
+        newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, pair.getRight());
+        return newEnvironmentSettings;
+    }
+
+    private int resultToInt(final Try<RagMultiDocumentContext<Void>> result) {
+        return result.map(doc -> Integer.parseInt(doc.getResponse()))
+                .recover(ex -> -1)
+                .get();
     }
 
     private Try<RagMultiDocumentContext<Void>> callLLM(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {
