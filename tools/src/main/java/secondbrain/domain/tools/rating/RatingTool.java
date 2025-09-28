@@ -5,7 +5,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.BooleanUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
@@ -28,6 +27,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+
+/**
+ * The type of LLM server definition.
+ */
+enum LLMServerType {
+    FROM_ENVIRONMENT,
+    CUSTOM,
+    UNDEFINED
+}
 
 /**
  * RatingTool rates a document or context against the supplied question or criteria and returns a score
@@ -108,12 +116,12 @@ public class RatingTool implements Tool<Void> {
         // If we have a additional models and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
         final List<Integer> results = Stream.of(
-                        null,
-                Pair.of(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow()),
-                Pair.of(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow())
-        )
-                .filter(pair -> pair == null || !StringUtils.isBlank(pair.getLeft()))
-                .map(pair -> getEnvironmentOverrides(pair, environmentSettings))
+                        LLMServerDetails.fromEnvironment(),
+                        LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow()),
+                        LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow())
+                )
+                .filter(server -> server.type() != LLMServerType.UNDEFINED)
+                .map(server -> getEnvironmentOverrides(server, environmentSettings))
                 .map(config -> callLLM(config, prompt, arguments, parsedArgs))
                 .map(this::resultToInt)
                 .toList();
@@ -147,13 +155,13 @@ public class RatingTool implements Tool<Void> {
                 .updateResponse(average + "");
     }
 
-    private Map<String, String> getEnvironmentOverrides(final Pair<String, String> pair, final Map<String, String> environmentSettings) {
+    private Map<String, String> getEnvironmentOverrides(final LLMServerDetails server, final Map<String, String> environmentSettings) {
         final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
-        if (pair == null) {
+        if (server.type() != LLMServerType.CUSTOM) {
             return newEnvironmentSettings;
         }
-        newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, pair.getLeft());
-        newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, pair.getRight());
+        newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, server.model());
+        newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, server.contextWindow());
         return newEnvironmentSettings;
     }
 
@@ -320,5 +328,30 @@ class RatingConfig {
 
             return BooleanUtils.toBoolean(value);
         }
+    }
+}
+
+/**
+ * Represents a definition of a LLM server to use for a call.
+ *
+ * @param model         The model to use
+ * @param contextWindow The model's context window
+ * @param type          The type of the server definition
+ */
+record LLMServerDetails(String model, String contextWindow, LLMServerType type) {
+    public static LLMServerDetails undefined() {
+        return new LLMServerDetails("", "", LLMServerType.UNDEFINED);
+    }
+
+    public static LLMServerDetails fromEnvironment() {
+        return new LLMServerDetails("", "", LLMServerType.FROM_ENVIRONMENT);
+    }
+
+    public static LLMServerDetails custom(String model, String contextWindow) {
+        if (StringUtils.isBlank(model)) {
+            return undefined();
+        }
+
+        return new LLMServerDetails(model, contextWindow, LLMServerType.CUSTOM);
     }
 }
