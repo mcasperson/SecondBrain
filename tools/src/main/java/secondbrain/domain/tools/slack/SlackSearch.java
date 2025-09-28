@@ -27,6 +27,7 @@ import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.domain.tools.youtubeplaylist.YoutubePlaylist;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
@@ -54,6 +55,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     public static final String API_DELAY_ARG = "apiDelay";
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String SLACK_GENERATE_KEYWORDS_ARG = "generateKeywords";
+    public static final String SLACK_DEFAULT_RATING_ARG = "defaultRating";
 
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
@@ -252,7 +254,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
         }
 
         return Objects.requireNonNullElse(message.metadata(), new MetaObjectResults())
-                .getIntValueByName(SLACK_FILTER_RATING_META, 10)
+                .getIntValueByName(SLACK_FILTER_RATING_META, parsedArgs.getDefaultRating())
                 >= parsedArgs.getContextFilterMinimumRating();
     }
 }
@@ -266,6 +268,7 @@ class SlackSearchConfig {
      */
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24 * 6) + "";
     private static final int DEFAULT_API_DELAY = (1000 * 120);
+    private static final int DEFAULT_RATING = 10;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -319,6 +322,10 @@ class SlackSearchConfig {
     @Inject
     @ConfigProperty(name = "sb.slack.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.contextFilterDefaultRating")
+    private Optional<String> configContextFilterDefaultRating;
 
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
@@ -374,6 +381,10 @@ class SlackSearchConfig {
 
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
+    }
+
+    public Optional<String> getConfigContextFilterDefaultRating() {
+        return configContextFilterDefaultRating;
     }
 
     public class LocalArguments {
@@ -547,6 +558,18 @@ class SlackSearchConfig {
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+        }
+
+        public int getDefaultRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterDefaultRating()::get,
+                    arguments,
+                    context,
+                    SlackSearch.SLACK_DEFAULT_RATING_ARG,
+                    SlackSearch.SLACK_DEFAULT_RATING_ARG,
+                    DEFAULT_RATING + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
     }
 }

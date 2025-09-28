@@ -49,7 +49,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     public static final String YOUTUBE_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String YOUTUBE_FILTER_MINIMUM_RATING_ARG = "filterMinimumRating";
     public static final String YOUTUBE_FILTER_QUESTION_ARG = "filterQuestion";
-    public static final String ZENDESK_DEFAULT_RATING_ARG = "defaultRating";
+    public static final String YOUTUBE_DEFAULT_RATING_ARG = "defaultRating";
     public static final String YOUTUBE_RATING_META = "Rating";
     public static final String YOUTUBE_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
     public static final String YOUTUBE_SUMMARIZE_TRANSCRIPT_PROMPT_ARG = "summarizeTranscriptPrompt";
@@ -526,8 +526,8 @@ class YoutubeConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    YoutubePlaylist.ZENDESK_DEFAULT_RATING_ARG,
-                    YoutubePlaylist.ZENDESK_DEFAULT_RATING_ARG,
+                    YoutubePlaylist.YOUTUBE_DEFAULT_RATING_ARG,
+                    YoutubePlaylist.YOUTUBE_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
