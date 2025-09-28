@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents a prompt response that we can prove was invalid
  */
-public class InvalidAnswer extends RuntimeException {
+public class InvalidAnswer extends RuntimeException implements InternalException {
     public InvalidAnswer() {
         super();
     }

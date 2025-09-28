@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents an error due to insufficient content for a prompt
  */
-public class InsufficientContext extends RuntimeException {
+public class InsufficientContext extends RuntimeException implements InternalException {
     public InsufficientContext() {
         super();
     }

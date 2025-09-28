@@ -1,7 +1,6 @@
 package secondbrain.domain.tools.githubslackpublicfile;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -13,7 +12,10 @@ import secondbrain.domain.args.Argument;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
-import secondbrain.domain.exceptions.*;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
+import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.InsufficientContext;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
@@ -31,7 +33,6 @@ import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.google.common.base.Predicates.instanceOf;
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 
 @ApplicationScoped
@@ -81,6 +82,9 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     @Inject
     @Preferred
     private LlmClient llmClient;
+
+    @Inject
+    private ExceptionMapping exceptionMapping;
 
     @Override
     public String getName() {
@@ -133,16 +137,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                 .map(ragContext -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragContext))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(MissingResponse.class)), throwable -> new InternalFailure(throwable)),
-                        API.Case(API.$(instanceOf(InvalidResponse.class)), throwable -> new ExternalFailure(throwable)),
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("Some content was empty (this is probably a bug...)")),
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     @Override

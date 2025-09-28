@@ -1,7 +1,6 @@
 package secondbrain.domain.tools.zendesk;
 
 import io.smallrye.common.annotation.Identifier;
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -17,9 +16,7 @@ import secondbrain.domain.args.Argument;
 import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.ExternalFailure;
-import secondbrain.domain.exceptions.FailedOllama;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.sanitize.SanitizeDocument;
@@ -38,7 +35,6 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Predicates.instanceOf;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 @ApplicationScoped
@@ -91,6 +87,9 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     @Inject
     private Logger logger;
 
+    @Inject
+    private ExceptionMapping exceptionMapping;
+
     @Override
     public String getName() {
         return ZenDeskIndividualTicket.class.getSimpleName();
@@ -128,15 +127,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         new IntermediateResult(ticket.document(), ticketToFileName(ticket))))
                 .map(List::of);
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(IllegalArgumentException.class)), throwable -> new InternalFailure("A required property was not defined", throwable)),
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The ZenDesk ticket is empty", throwable)),
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call ZenDesk API", ex)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     private MetaObjectResults getMetadata(
@@ -191,12 +182,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                 // Clean up the response
                 .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())));
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("No matching tickets were found", throwable)),
-                        API.Case(API.$(), throwable -> new ExternalFailure("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     /**

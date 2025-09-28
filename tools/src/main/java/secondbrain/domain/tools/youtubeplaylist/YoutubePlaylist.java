@@ -1,6 +1,5 @@
 package secondbrain.domain.tools.youtubeplaylist;
 
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -16,8 +15,7 @@ import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.encryption.Encryptor;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.FailedOllama;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
@@ -35,8 +33,6 @@ import secondbrain.infrastructure.youtube.model.YoutubeVideo;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class YoutubePlaylist implements Tool<YoutubeVideo> {
@@ -56,10 +52,24 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
-            You are given a list of video transcripts from a YouTube playlist.
+            You are given a list of Youtube video transcripts.
+            You must assume the provided content is a video transcript.
             Assume the information required to answer the question is present in the transcripts.
             Answer the question based on the transcripts provided.
-            Do not answer that the transcripts cannot be accessed.
+            You will be penalized for answering that you can not access youtube videos.
+            You will be penalized for answering that the transcripts cannot be accessed.
+            You will be penalized for reporting that the content provided is not a video transcript.
+            """.stripLeading();
+
+    private static final String SUMMARY_INSTRUCTIONS = """
+            You are a helpful assistant.
+            You are given the summary of list of Youtube video transcripts.
+            You must assume the provided content is a summary of a video transcript.
+            Assume the information required to answer the question is present in the transcript summaries.
+            Answer the question based on the transcript summaries provided.
+            You will be penalized for answering that you can not access youtube videos.
+            You will be penalized for answering that the transcripts cannot be accessed.
+            You will be penalized for reporting that the content provided is not a video transcript.
             """.stripLeading();
 
     @Inject
@@ -89,6 +99,9 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
     @Inject
     private RatingTool ratingTool;
+
+    @Inject
+    private ExceptionMapping exceptionMapping;
 
     @Override
     public String getName() {
@@ -132,7 +145,6 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                                 video,
                                 // Get the transcript for the video, or an empty string if it fails
                                 Try.of(() -> youtubeClient.getTranscript(video.id(), "en"))
-                                        .onFailure(ex -> logger.severe("Failed to get Youtube transcript: " + ExceptionUtils.getRootCauseMessage(ex)))
                                         .getOrElse("")))
                         .toList())
                 .onFailure(ex -> logger.severe("Failed to get Youtube videos: " + ExceptionUtils.getRootCauseMessage(ex)))
@@ -151,8 +163,16 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                     This was necessary because the private LLMs didn't do a very good job of summarizing
                     raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
                     call transcripts.
+
+                    Note that we accept failure here and ignore any transcripts that fail to summarize.
                  */
-                .map(ragDoc -> parsedArgs.getSummarizeTranscript() ? getCallSummary(ragDoc, environmentSettings, parsedArgs) : ragDoc)
+                .map(ragDoc -> parsedArgs.getSummarizeTranscript() ?
+                        Try.of(() -> getCallSummary(ragDoc, environmentSettings, parsedArgs))
+                                .onFailure(ex -> logger.warning("Failed to summarize Youtube video transcript for video ID " + ragDoc.id() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                                .getOrNull() :
+                        ragDoc)
+                // A failure results in a null value, which is filtered out
+                .filter(Objects::nonNull)
                 .toList();
 
         if (ragContext.isEmpty()) {
@@ -168,7 +188,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<YoutubeVideo>(
                         getName(),
-                        getContextLabel() + " \"" + video.title() + "\" (ID: " + video.id() + ")",
+                        getContextLabel() + " for video titled \"" + video.title() + "\" (Video ID: " + video.id() + ")",
                         trimmedConversationResult.document(),
                         sentenceVectorizer.vectorize(sentences),
                         video.id(),
@@ -179,7 +199,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                 // We will proceed without any annotations if the vectorization fails
                 .recover(throwable -> new RagDocumentContext<>(
                         getName(),
-                        getContextLabel() + " \"" + video.title() + "\" (ID: " + video.id() + ")",
+                        getContextLabel() + " for video titled \"" + video.title() + "\" (Video ID: " + video.id() + ")",
                         trimmedConversationResult.document(),
                         List.of(),
                         video.id(),
@@ -204,21 +224,16 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
             throw new InternalFailure("No playlist ID, channel ID or query provided to YoutubePlaylist tool");
         }
 
+        final String instructions = parsedArgs.getSummarizeTranscript() ? SUMMARY_INSTRUCTIONS : INSTRUCTIONS;
+
         final Try<RagMultiDocumentContext<YoutubeVideo>> result = Try.of(() -> contextList)
-                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, instructions, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Youtube transcript activities is empty", throwable)),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call LLM " + ExceptionUtils.getRootCauseMessage(ex), ex)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     @Override
@@ -232,9 +247,12 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     private RagDocumentContext<YoutubeVideo> getCallSummary(final RagDocumentContext<YoutubeVideo> ragDoc, final Map<String, String> environmentSettings, final YoutubeConfig.LocalArguments parsedArgs) {
         logger.log(Level.INFO, "Summarising Youtube video transcript");
 
+        final String title = ragDoc.source() == null ? "Unknown title" : ragDoc.source().title();
+        final String videoId = ragDoc.source() == null ? "Unknown ID" : ragDoc.source().id();
+
         final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),
-                getContextLabel(),
+                ragDoc.contextLabel(),
                 ragDoc.document(),
                 List.of()
         );
@@ -248,11 +266,13 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                 getName()
         ).getResponse();
 
-        return ragDoc.updateDocument(response)
+        return ragDoc
+                .updateDocument(response)
                 .addIntermediateResult(new IntermediateResult(
                         "Prompt: " + parsedArgs.getTranscriptSummaryPrompt() + "\n\n" + response,
                         "Youtube-" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTranscriptSummaryPrompt()) + ".txt"
-                ));
+                ))
+                .updateContextLabel(getContextLabel() + " summary for video titled \"" + title + "\" (Video ID: " + videoId + ")");
     }
 
     private MetaObjectResults getMetadata(

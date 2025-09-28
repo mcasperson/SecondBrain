@@ -184,7 +184,7 @@ public record RagMultiDocumentContext<T>(String prompt,
                                                 sentenceVectorizer.vectorize(sentence).vector(),
                                                 similarityCalculator,
                                                 minSimilarity))
-                                        .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                                        .onFailure(throwable -> System.err.println("Failed to vectorize output sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                                         .getOrNull()
                         )
                         .filter(Objects::nonNull)

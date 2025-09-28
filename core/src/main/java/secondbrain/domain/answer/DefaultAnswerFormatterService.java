@@ -17,7 +17,7 @@ public class DefaultAnswerFormatterService implements AnswerFormatterService {
     private Logger logger;
 
     @Override
-    public String formatResponse(String model, String response) {
+    public String formatResponse(final String model, final String response) {
         return answerFormatters.stream()
                 // Regexes might be invalid, just treat them as a false match
                 .filter(b -> Try.of(() -> Pattern.compile(b.modelRegex()).matcher(model).matches())

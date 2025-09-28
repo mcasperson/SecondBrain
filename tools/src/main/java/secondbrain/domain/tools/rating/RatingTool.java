@@ -1,7 +1,6 @@
 package secondbrain.domain.tools.rating;
 
 import io.smallrye.common.annotation.Identifier;
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -12,7 +11,8 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.context.HashMapEnvironmentSettings;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.exceptions.*;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
+import secondbrain.domain.exceptions.InvalidAnswer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
@@ -27,8 +27,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
-
-import static com.google.common.base.Predicates.instanceOf;
 
 /**
  * RatingTool rates a document or context against the supplied question or criteria and returns a score
@@ -69,6 +67,9 @@ public class RatingTool implements Tool<Void> {
     @Inject
     @Identifier("getFirstDigits")
     private SanitizeDocument getFirstDigits;
+
+    @Inject
+    private ExceptionMapping exceptionMapping;
 
     @Override
     public String getName() {
@@ -166,11 +167,7 @@ public class RatingTool implements Tool<Void> {
                         getFirstDigits.sanitize(
                                 findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim())));
 
-        return result.mapFailure(
-                API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The document was empty")),
-                API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)));
+        return exceptionMapping.map(result);
     }
 
     @Override

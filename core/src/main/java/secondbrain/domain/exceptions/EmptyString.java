@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents a validation error for an empty string
  */
-public class EmptyString extends RuntimeException {
+public class EmptyString extends RuntimeException implements InternalException {
     public EmptyString() {
         super();
     }

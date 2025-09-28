@@ -4,7 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.ExternalException;
 
 @ApplicationScoped
 public class LoggingExceptionHandler implements ExceptionHandler {
@@ -19,7 +19,7 @@ public class LoggingExceptionHandler implements ExceptionHandler {
             return "Unknown error";
         }
 
-        if (Boolean.parseBoolean(printStackTrace) || e instanceof ExternalFailure) {
+        if (Boolean.parseBoolean(printStackTrace) || e instanceof ExternalException) {
             return ExceptionUtils.getStackTrace(e);
         }
 

@@ -1,6 +1,5 @@
 package secondbrain.domain.tools.github;
 
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -15,9 +14,7 @@ import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.ExternalFailure;
-import secondbrain.domain.exceptions.FailedOllama;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.list.ListUtilsEx;
@@ -37,8 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
-
-import static com.google.common.base.Predicates.instanceOf;
 
 /**
  * The GitHubDiffs tool provides a list of Git diffs and answers questions about them. It works by first summarizing
@@ -93,6 +88,9 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private ExceptionMapping exceptionMapping;
 
     @Override
     public String getName() {
@@ -186,16 +184,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 .map(ragDocs -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDocs, debugArgs))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(instanceOf(EmptyString.class)),
-                                throwable -> new InternalFailure("No diffs found for " + parsedArgs.getOwner() + "/" + parsedArgs.getRepo() + " between " + parsedArgs.getStartDate() + " and " + parsedArgs.getEndDate() + "\n" + debugArgs)),
-                        API.Case(API.$(),
-                                throwable -> new ExternalFailure("Failed to get diffs: " + throwable.getMessage() + "\n" + debugArgs)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     private List<RagDocumentContext<GitHubCommitAndDiff>> convertCommitsToDiffSummaries(

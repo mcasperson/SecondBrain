@@ -1,7 +1,6 @@
 package secondbrain.domain.tools.zendesk;
 
 import io.smallrye.common.annotation.Identifier;
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -20,9 +19,8 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.ExternalFailure;
-import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
@@ -46,7 +44,6 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Predicates.instanceOf;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
@@ -127,6 +124,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private ExceptionMapping exceptionMapping;
 
     @Override
     public String getName() {
@@ -213,14 +213,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         String.join(" ", query)).stream())
                 .toList());
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The ZenDesk ticket is empty", throwable)),
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call ZenDesk API", ex)))
-                .get();
+        return exceptionMapping.map(result).get();
 
     }
 
@@ -301,12 +294,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         null,
                         null));
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(),
-                                throwable -> new ExternalFailure("Failed to get tickets or context: " + throwable.toString() + " " + throwable.getMessage() + debugArgs)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     private List<ZenDeskTicket> filterResponse(

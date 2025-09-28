@@ -19,9 +19,9 @@ import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.encryption.Encryptor;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
-import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
@@ -100,6 +100,9 @@ public class SlackChannel implements Tool<Void> {
 
     @Inject
     private RatingTool ratingTool;
+
+    @Inject
+    private ExceptionMapping exceptionMapping;
 
     @Override
     public String getName() {
@@ -215,14 +218,7 @@ public class SlackChannel implements Tool<Void> {
                         environmentSettings,
                         getName()));
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("No slack messages found")),
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(), ex -> new ExternalFailure("Unexpected error", ex)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final SlackChannelResource channelDetails, final Map<String, String> environmentSettings, final SlackChannelConfig.LocalArguments parsedArgs) {

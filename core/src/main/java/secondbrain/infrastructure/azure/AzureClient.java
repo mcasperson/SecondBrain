@@ -16,11 +16,9 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.answer.AnswerFormatterService;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.InvalidResponse;
-import secondbrain.domain.exceptions.RateLimit;
-import secondbrain.domain.exceptions.Timeout;
+import secondbrain.domain.exceptions.*;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
+import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.StringToList;
 import secondbrain.domain.persist.CacheResult;
@@ -28,7 +26,9 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseInspector;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.azure.api.*;
+import secondbrain.infrastructure.azure.api.AzureRequestMaxCompletionTokens;
+import secondbrain.infrastructure.azure.api.AzureRequestMessage;
+import secondbrain.infrastructure.azure.api.AzureResponse;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.ArrayList;
@@ -144,6 +144,9 @@ public class AzureClient implements LlmClient {
 
     @Inject
     private StringToList stringToList;
+
+    @Inject
+    private JsonDeserializerJackson jsonDeserializerJackson;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -303,42 +306,43 @@ public class AzureClient implements LlmClient {
                                 .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
                         response -> Try.of(() -> responseValidation.validate(response, url.get()))
                                 .map(r -> r.readEntity(AzureResponse.class))
-                                .map(r -> r.getChoices().stream()
-                                        .map(AzureResponseChoice::getMessage)
-                                        .map(AzureResponseOutputContent::getContent)
-                                        .reduce("", String::concat))
-                                .map(r -> answerFormatterService.formatResponse(model.get(), r))
+                                .peek(r -> logger.fine(jsonDeserializerJackson.serialize(r)))
+                                .map(AzureResponse::getResponseText)
                                 .map(validateString::throwIfEmpty)
+                                .map(r -> answerFormatterService.formatResponse(model.get(), r))
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
-                        e -> new RuntimeException("Failed to call the Azure AI service", e),
+                        e -> new FailedAzure("Failed to call the Azure AI service", e),
                         () -> {
                             throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                         },
                         API_CALL_TIMEOUT_SECONDS_DEFAULT,
                         retryDelay,
                         retryCount))
-                .recover(InvalidResponse.class, ex -> {
-                    if (ex.getCode() == 429 || ex.getCode() >= 500) {
-                        Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
+                .recover(FailedAzure.class, ex -> {
+
+                    if (ex.getCause() instanceof InvalidResponse invalidResponse) {
+                        if (invalidResponse.getCode() == 429 || invalidResponse.getCode() >= 500) {
+                            Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
+                            return call(request, retry + 1);
+                        }
+
+                        if (invalidResponse.getCode() == 400 && messageTooLongResponseInspector.isMatch(invalidResponse.getBody())) {
+                            final AzureRequestMaxCompletionTokens trimmed = request.updateMessages(
+                                    listLimiter.limitListContentByFraction(
+                                            request.getMessages(),
+                                            AzureRequestMessage::content,
+                                            trimIfTooLongFraction));
+
+                            return call(trimmed, retry + 1);
+                        }
+                    }
+
+                    if (ex.getCause() instanceof EmptyString) {
                         return call(request, retry + 1);
                     }
 
-                    if (ex.getCode() == 400 && messageTooLongResponseInspector.isMatch(ex.getBody())) {
-                        final AzureRequestMaxCompletionTokens trimmed = request.updateMessages(
-                                listLimiter.limitListContentByFraction(
-                                        request.getMessages(),
-                                        AzureRequestMessage::content,
-                                        trimIfTooLongFraction));
-
-                        return call(trimmed, retry + 1);
-                    }
-
                     throw ex;
-                })
-                .recover(EmptyString.class, ex -> {
-                    logger.warning("Received empty response from Azure LLM");
-                    return call(request, retry + 1);
                 })
                 .get();
     }

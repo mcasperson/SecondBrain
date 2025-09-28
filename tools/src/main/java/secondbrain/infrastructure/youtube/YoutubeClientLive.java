@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.RateLimiter;
 import io.github.thoroldvix.api.Transcript;
 import io.github.thoroldvix.api.TranscriptApiFactory;
 import io.github.thoroldvix.api.TranscriptContent;
+import io.github.thoroldvix.api.TranscriptList;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -12,7 +13,9 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.httpclient.HttpClientCaller;
+import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.youtube.api.YoutubePlaylists;
@@ -33,6 +36,11 @@ public class YoutubeClientLive implements YoutubeClient {
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
+    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+    @Inject
+    @ConfigProperty(name = "sb.youtube.lock", defaultValue = "sb_youtube.lock")
+    private String lockFile;
 
     @Inject
     private ResponseValidation responseValidation;
@@ -45,6 +53,9 @@ public class YoutubeClientLive implements YoutubeClient {
 
     @Inject
     private HttpClientCaller httpClientCaller;
+
+    @Inject
+    private Mutex mutex;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -126,19 +137,31 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private String getTranscriptApi(final String videoId, final String lang) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getTranscriptApiLocked(videoId, lang));
+    }
+
+    private String getTranscriptApiLocked(final String videoId, final String lang) {
         logger.log(Level.INFO, "Getting Youtube transcript " + videoId + " lang: " + lang);
 
         RATE_LIMITER.acquire();
 
-        return Try.of(TranscriptApiFactory::createDefault)
-                .mapTry(api -> api.listTranscripts(videoId))
-                .mapTry(transcripts -> transcripts.findGeneratedTranscript(lang))
+        final TranscriptList transcriptList = getTranscriptList(videoId);
+
+        // Start with a manual transcript, then fall back to generated if not available
+        return Try.of(() -> transcriptList.findManualTranscript(lang))
+                .recoverWith(ex -> Try.of(() -> transcriptList.findGeneratedTranscript(lang)))
                 .mapTry(Transcript::fetch)
                 .onFailure(ex -> logger.log(Level.WARNING, "Failed to get transcript for video " + videoId + " in lang " + lang + ": " + ex.getMessage()))
                 .map(transcript -> transcript.getContent()
                         .stream()
                         .map(TranscriptContent.Fragment::getText)
                         .reduce("", (a, b) -> a + " " + b))
+                .get();
+    }
+
+    private TranscriptList getTranscriptList(final String videoId) {
+        return Try.of(TranscriptApiFactory::createDefault)
+                .mapTry(api -> api.listTranscripts(videoId))
                 .get();
     }
 

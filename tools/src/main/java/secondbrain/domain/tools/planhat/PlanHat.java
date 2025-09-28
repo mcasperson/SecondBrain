@@ -1,7 +1,6 @@
 package secondbrain.domain.tools.planhat;
 
 import com.google.common.collect.ImmutableList;
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -20,8 +19,7 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.converter.HtmlToText;
 import secondbrain.domain.date.DateParser;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.FailedOllama;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
@@ -40,8 +38,6 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
-
-import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class PlanHat implements Tool<Conversation> {
@@ -105,6 +101,9 @@ public class PlanHat implements Tool<Conversation> {
 
     @Inject
     private RatingTool ratingTool;
+
+    @Inject
+    private ExceptionMapping exceptionMapping;
 
     @Override
     public String getName() {
@@ -201,14 +200,7 @@ public class PlanHat implements Tool<Conversation> {
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The PlanHat activities is empty", throwable)),
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call Ollama", ex)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     private Pair<Conversation, List<String>> trimConversation(final Conversation conversation, final PlanHatConfig.LocalArguments parsedArgs) {
