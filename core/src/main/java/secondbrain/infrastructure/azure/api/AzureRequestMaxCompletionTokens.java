@@ -2,6 +2,7 @@ package secondbrain.infrastructure.azure.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
@@ -20,7 +21,7 @@ import java.util.stream.Collectors;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AzureRequestMaxCompletionTokens(
         List<AzureRequestMessage> messages,
-        @JsonProperty("max_completion_tokens") Integer maxOutputTokens,
+        @Nullable @JsonProperty("max_completion_tokens") Integer maxOutputTokens,
         String model) implements PromptTextGenerator {
 
     public static final int DEFAULT_OUTPUT_TOKENS = 2048;
