@@ -101,16 +101,6 @@ public class RatingTool implements Tool<Void> {
         final HashMapEnvironmentSettings myEnvironmentSettings = new HashMapEnvironmentSettings(environmentSettings);
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<RagMultiDocumentContext<Void>> result = callLLM(environmentSettings, prompt, arguments, parsedArgs);
-
-        if (StringUtils.isBlank(parsedArgs.getSecondModel())) {
-            final int resultInt = Integer.parseInt(result.get().getResponse());
-            if (resultInt < 0 || resultInt > 10) {
-                throw new InvalidAnswer("The rating response was invalid: " + resultInt);
-            }
-            return result.get().updateResponse(resultInt + "");
-        }
-
         // We use multiple models to catch cases where a single model returns inaccurate responses.
         // For example, I have seen chatgpt-5-mini return a rating of 10 for content that is clearly not a 10.
         // We also need to account for the case where other models return invalid responses, such as a text
@@ -118,18 +108,22 @@ public class RatingTool implements Tool<Void> {
         // If we have a additional models and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
         final List<Integer> results = Stream.of(
+                        null,
                 Pair.of(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow()),
                 Pair.of(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow())
         )
-                .filter(pair -> !StringUtils.isBlank(pair.getLeft()))
+                .filter(pair -> pair == null || !StringUtils.isBlank(pair.getLeft()))
                 .map(pair -> {
                     final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
+                    if (pair == null) {
+                        return newEnvironmentSettings;
+                    }
                     newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, pair.getLeft());
                     newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, pair.getRight());
                     return newEnvironmentSettings;
                 })
                 .map(config -> callLLM(config, prompt, arguments, parsedArgs))
-                .map(rating -> result
+                .map(rating -> rating
                         .map(doc -> Integer.parseInt(doc.getResponse()))
                         .recover(ex -> -1)
                         .get())
@@ -147,7 +141,7 @@ public class RatingTool implements Tool<Void> {
                 .toList();
 
         if (filteredResults.isEmpty()) {
-            throw new InvalidAnswer("Both models returned invalid responses. " + myEnvironmentSettings.getToolCall());
+            throw new InvalidAnswer("All models returned invalid responses. " + myEnvironmentSettings.getToolCall());
         }
 
         final int average = (int) filteredResults.stream()
@@ -157,7 +151,11 @@ public class RatingTool implements Tool<Void> {
 
         logger.info("RatingTool: Values = " + String.join(",", results.stream().map(Object::toString).toList()) + ", Average = " + average + ". " + myEnvironmentSettings.getToolCall());
 
-        return result.get().updateResponse(average + "");
+        return new RagMultiDocumentContext<Void>(
+                prompt,
+                INSTRUCTIONS,
+                List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of())))
+                .updateResponse(average + "");
     }
 
     private Try<RagMultiDocumentContext<Void>> callLLM(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {
