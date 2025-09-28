@@ -5,6 +5,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
@@ -37,6 +38,8 @@ public class RatingTool implements Tool<Void> {
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "rating_document";
     public static final String RATING_SECOND_MODEL_ARG = "secondModel";
     public static final String RATING_SECOND_CONTEXT_WINDOW_ARG = "secondContextWindow";
+    public static final String RATING_THIRD_MODEL_ARG = "thirdModel";
+    public static final String RATING_THIRD_CONTEXT_WINDOW_ARG = "thirdContextWindow";
     public static final String IGNORE_INVALID_RESPONSES_ARG = "ignoreinvalidResponses";
 
     private static final String INSTRUCTIONS = """
@@ -108,25 +111,28 @@ public class RatingTool implements Tool<Void> {
             return result.get().updateResponse(resultInt + "");
         }
 
-        final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
-        newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, parsedArgs.getSecondModel());
-        newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, parsedArgs.getSecondContextWindow());
-        final Try<RagMultiDocumentContext<Void>> secondResult = callLLM(newEnvironmentSettings, prompt, arguments, parsedArgs);
-
         // We use multiple models to catch cases where a single model returns inaccurate responses.
         // For example, I have seen chatgpt-5-mini return a rating of 10 for content that is clearly not a 10.
         // We also need to account for the case where other models return invalid responses, such as a text
         // description rather than a number. I have seen this a lot with Phi-4.
-        // If we have a secondary model and we are ignoring invalid responses, then we simply filter out
+        // If we have a additional models and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
         final List<Integer> results = Stream.of(
-                        Try.of(() -> Integer.parseInt(result.get().getResponse()))
-                                .recover(ex -> -1)
-                                .get(),
-                        Try.of(() -> Integer.parseInt(secondResult.get().getResponse()))
-                                .recover(ex -> -1)
-                                .get()
-                )
+                Pair.of(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow()),
+                Pair.of(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow())
+        )
+                .filter(pair -> !StringUtils.isBlank(pair.getLeft()))
+                .map(pair -> {
+                    final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
+                    newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, pair.getLeft());
+                    newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, pair.getRight());
+                    return newEnvironmentSettings;
+                })
+                .map(config -> callLLM(config, prompt, arguments, parsedArgs))
+                .map(rating -> result
+                        .map(doc -> Integer.parseInt(doc.getResponse()))
+                        .recover(ex -> -1)
+                        .get())
                 .toList();
 
         if (!parsedArgs.ignoreInvalidResponses()) {
@@ -189,6 +195,14 @@ class RatingConfig {
     @ConfigProperty(name = "sb.rating.secondContextWindow", defaultValue = "")
     private Optional<String> configSecondContextWindow;
 
+    @Inject
+    @ConfigProperty(name = "sb.rating.thirdModel", defaultValue = "")
+    private Optional<String> configThirdModel;
+
+    @Inject
+    @ConfigProperty(name = "sb.rating.thirdContextWindow", defaultValue = "")
+    private Optional<String> configThirdContextWindow;
+
     /**
      * Set to true to ignore invalid responses from either the primary or secondary model.
      * If both models return invalid responses, an exception will be thrown.
@@ -212,6 +226,17 @@ class RatingConfig {
 
     public Optional<String> getConfigSecondContextWindow() {
         return configSecondContextWindow;
+    }
+
+    /**
+     * You can optionally have a third model to do a rating, with the result being the average of the two.
+     */
+    public Optional<String> getConfigThirdModel() {
+        return configThirdModel;
+    }
+
+    public Optional<String> getConfigThirdContextWindow() {
+        return configThirdContextWindow;
     }
 
     public Optional<String> getConfigIgnoreInvalidResponses() {
@@ -258,6 +283,26 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.RATING_SECOND_CONTEXT_WINDOW_ARG,
                     RatingTool.RATING_SECOND_CONTEXT_WINDOW_ARG,
+                    "").value();
+        }
+
+        public String getThirdModel() {
+            return getArgsAccessor().getArgument(
+                    getConfigThirdModel()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_THIRD_MODEL_ARG,
+                    RatingTool.RATING_THIRD_MODEL_ARG,
+                    "").value();
+        }
+
+        public String getThirdContextWindow() {
+            return getArgsAccessor().getArgument(
+                    getConfigThirdContextWindow()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_THIRD_CONTEXT_WINDOW_ARG,
+                    RatingTool.RATING_THIRD_CONTEXT_WINDOW_ARG,
                     "").value();
         }
 
