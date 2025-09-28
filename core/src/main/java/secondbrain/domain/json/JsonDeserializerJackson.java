@@ -46,7 +46,9 @@ public class JsonDeserializerJackson implements JsonDeserializer {
 
     private ObjectMapper createObjectMapper() {
         final ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModules(modules);
+        if (modules != null) {
+            objectMapper.registerModules(modules);
+        }
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
         return objectMapper;
     }
