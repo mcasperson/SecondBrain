@@ -29,7 +29,7 @@ public record AzureRequestMaxCompletionTokens(
 
     public AzureRequestMaxCompletionTokens(final List<AzureRequestMessage> messages, final String model) {
         this(messages,
-                DEFAULT_OUTPUT_TOKENS,
+                null,
                 model);
     }
 
