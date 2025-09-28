@@ -21,6 +21,7 @@ import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.StringToList;
+import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseInspector;
@@ -74,6 +75,7 @@ public class AzureClient implements LlmClient {
     private static final int RATELIMIT_API_RETRIES = 3;
     private static final long RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT = 90;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
+    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
     // Default rate is around 250 requests per minute. 2 requests per second keeps us well under that.
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(2);
@@ -133,6 +135,13 @@ public class AzureClient implements LlmClient {
     @Inject
     @ConfigProperty(name = "sb.azurellm.disableToolWriteCache", defaultValue = "")
     private Optional<String> disableToolWriteCache;
+
+    @Inject
+    @ConfigProperty(name = "sb.azurellm.lock", defaultValue = "sb_azure.lock")
+    private String lockFile;
+
+    @Inject
+    private Mutex mutex;
 
     @Inject
     private TimeoutHttpClientCaller httpClientCaller;
@@ -303,9 +312,7 @@ public class AzureClient implements LlmClient {
 
         RATE_LIMITER.acquire();
 
-        final String result = call(request, 0);
-
-        return result;
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> call(request, 0));
     }
 
     private String call(final AzureRequestMaxCompletionTokens request, int retry) {
