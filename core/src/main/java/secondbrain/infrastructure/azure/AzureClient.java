@@ -206,11 +206,11 @@ public class AzureClient implements LlmClient {
         checkNotNull(environmentSettings);
         checkArgument(StringUtils.isNotBlank(tool));
 
-        final int maxOutputTokens = outputTokens
+        final Integer maxOutputTokens = outputTokens
                 .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
-                .orElse(DEFAULT_OUTPUT_TOKENS);
+                .orElse(null);
 
-        final int maxInputTokens = inputTokens
+        final Integer maxInputTokens = inputTokens
                 .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
                 .orElse(DEFAULT_INPUT_TOKENS);
 
