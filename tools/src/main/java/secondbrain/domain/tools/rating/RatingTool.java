@@ -347,7 +347,7 @@ record LLMServerDetails(String model, String contextWindow, LLMServerType type) 
         return new LLMServerDetails("", "", LLMServerType.FROM_ENVIRONMENT);
     }
 
-    public static LLMServerDetails custom(String model, String contextWindow) {
+    public static LLMServerDetails custom(final String model, final String contextWindow) {
         if (StringUtils.isBlank(model)) {
             return undefined();
         }
