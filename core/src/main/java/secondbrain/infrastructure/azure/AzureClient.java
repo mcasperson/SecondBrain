@@ -46,9 +46,23 @@ import static com.google.common.base.Preconditions.*;
  */
 @ApplicationScoped
 public class AzureClient implements LlmClient {
+    /**
+     * We need to trim the input to ensure the LLM can handle it.
+     * This value is an assumption about the size of the generated output.
+     */
     private static final int DEFAULT_OUTPUT_TOKENS = 2048;
+    /**
+     * This value is an assumption on the size of the input, which is the maximum context window minus the output tokens.
+     * This is based on a model with a 16k context window, which is common for models like Phi-4.
+     */
     private static final int DEFAULT_INPUT_TOKENS = 16384 - DEFAULT_OUTPUT_TOKENS;
+    /**
+     * This is an assumption about the number of characters per input token.
+     */
     private static final float DEFAULT_CHARS_PER_INPUT_TOKENS = 3.5f;
+    /**
+     * This is the default model.
+     */
     private static final String DEFAULT_MODEL = "Phi-4";
     private static final int DEFAULT_CACHE_TTL_DAYS = 90;
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
