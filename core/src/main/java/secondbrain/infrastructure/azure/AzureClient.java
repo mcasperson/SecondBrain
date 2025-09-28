@@ -91,7 +91,7 @@ public class AzureClient implements LlmClient {
     private Optional<String> model;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.maxOutputTokens", defaultValue = DEFAULT_OUTPUT_TOKENS + "")
+    @ConfigProperty(name = "sb.azurellm.maxOutputTokens", defaultValue = "")
     private Optional<String> outputTokens;
 
     @Inject
