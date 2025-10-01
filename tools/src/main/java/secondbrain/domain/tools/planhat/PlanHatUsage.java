@@ -33,6 +33,9 @@ public class PlanHatUsage implements Tool<Company> {
     public static final String COMPANY_ID_ARGS = "companyId";
     public static final String PLANHAT_CUSTOM_1_ARG = "custom1";
     public static final String PLANHAT_CUSTOM_2_ARG = "custom2";
+    public static final String PLANHAT_CUSTOM_3_ARG = "custom3";
+    public static final String PLANHAT_CUSTOM_4_ARG = "custom4";
+    public static final String PLANHAT_CUSTOM_5_ARG = "custom5";
     public static final String PLANHAT_USAGE_ID_1_ARG = "usageId1";
     public static final String PLANHAT_USAGE_ID_2_ARG = "usageId2";
     public static final String PLANHAT_USAGE_ID_3_ARG = "usageId3";
@@ -148,7 +151,10 @@ public class PlanHatUsage implements Tool<Company> {
 
         final List<RagDocumentContext<Company>> customContext = Stream.of(
                         parsedArgs.getCustom1(),
-                        parsedArgs.getCustom2()
+                        parsedArgs.getCustom2(),
+                        parsedArgs.getCustom3(),
+                        parsedArgs.getCustom4(),
+                        parsedArgs.getCustom5()
                 )
                 .filter(StringUtils::isNotBlank)
                 .map(custom -> new RagDocumentContext<>(
@@ -223,6 +229,18 @@ class PlanHatUsageConfig {
     @Inject
     @ConfigProperty(name = "sb.planhat.custom2")
     private Optional<String> configCustom2;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.custom3")
+    private Optional<String> configCustom3;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.custom4")
+    private Optional<String> configCustom4;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.custom5")
+    private Optional<String> configCustom5;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.usageid1")
@@ -342,6 +360,18 @@ class PlanHatUsageConfig {
         return configCustom2;
     }
 
+    public Optional<String> getConfigCustom3() {
+        return configCustom3;
+    }
+
+    public Optional<String> getConfigCustom4() {
+        return configCustom4;
+    }
+
+    public Optional<String> getConfigCustom5() {
+        return configCustom5;
+    }
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -440,6 +470,36 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_CUSTOM_2_ARG,
                     PlanHatUsage.PLANHAT_CUSTOM_2_ARG,
+                    "").value();
+        }
+
+        public String getCustom3() {
+            return getArgsAccessor().getArgument(
+                    getConfigCustom3()::get,
+                    arguments,
+                    context,
+                    PlanHatUsage.PLANHAT_CUSTOM_3_ARG,
+                    PlanHatUsage.PLANHAT_CUSTOM_3_ARG,
+                    "").value();
+        }
+
+        public String getCustom4() {
+            return getArgsAccessor().getArgument(
+                    getConfigCustom4()::get,
+                    arguments,
+                    context,
+                    PlanHatUsage.PLANHAT_CUSTOM_4_ARG,
+                    PlanHatUsage.PLANHAT_CUSTOM_4_ARG,
+                    "").value();
+        }
+
+        public String getCustom5() {
+            return getArgsAccessor().getArgument(
+                    getConfigCustom5()::get,
+                    arguments,
+                    context,
+                    PlanHatUsage.PLANHAT_CUSTOM_5_ARG,
+                    PlanHatUsage.PLANHAT_CUSTOM_5_ARG,
                     "").value();
         }
 
