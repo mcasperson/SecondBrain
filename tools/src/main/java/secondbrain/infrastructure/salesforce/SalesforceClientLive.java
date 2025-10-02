@@ -135,7 +135,7 @@ public class SalesforceClientLive implements SalesforceClient {
 
         final String url = getUrl() + "/services/data/" + version + "/query";
 
-        final String soql = "SELECT Id,Description,Subject,Type FROM Task WHERE AccountId='" + accountId + "' AND Type='" + type + "' ORDER BY ActivityDate DESC Limit 100";
+        final String soql = "SELECT Id,Description,Subject,Type,CreatedDate FROM Task WHERE AccountId='" + accountId + "' AND Type='" + type + "' ORDER BY ActivityDate DESC Limit 100";
 
         return Try.of(() -> httpClientCaller.call(
                         this::getClient,
