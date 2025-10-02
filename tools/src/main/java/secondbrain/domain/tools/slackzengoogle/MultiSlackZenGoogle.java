@@ -35,6 +35,7 @@ import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.planhat.PlanHatUsage;
 import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.domain.tools.salesforce.Salesforce;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
@@ -151,6 +152,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private Gong gong;
+
+    @Inject
+    private Salesforce salesforce;
 
     @Inject
     private RatingTool ratingTool;
@@ -301,6 +305,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 + getAdditionalPlanHatInstructions(multiRagDoc.individualContexts())
                 + getAdditionalGoogleDocsInstructions(multiRagDoc.individualContexts())
                 + getAdditionalGongInstructions(multiRagDoc.individualContexts())
+                + getAdditionalSalesforceInstructions(multiRagDoc.individualContexts())
                 + getAdditionalZenDeskInstructions(multiRagDoc.individualContexts());
     }
 
@@ -309,6 +314,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 + zenDeskContextCount(ragContext)
                 + planhatContextCount(ragContext)
                 + gongContextCount(ragContext)
+                + salesforceContextCount(ragContext)
                 < parsedArgs.getMinTimeBasedContext()) {
             return List.of();
         }
@@ -373,11 +379,22 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     /**
-     * If there are no gong calls to include in the prompt, make a note in the system prompt to ignore any reference to planhat activities.
+     * If there are no gong calls to include in the prompt, make a note in the system prompt to ignore any reference to gong calls.
      */
     private String getAdditionalGongInstructions(final List<RagDocumentContext<Void>> ragContext) {
         if (gongContextCount(ragContext) == 0) {
             return "No " + gong.getContextLabel() + " are available. You will be penalized for referencing any " + gong.getContextLabel() + " in the response.";
+        }
+
+        return "";
+    }
+
+    /**
+     * If there are no salesforce emails to include in the prompt, make a note in the system prompt to ignore any reference to salesforce activities.
+     */
+    private String getAdditionalSalesforceInstructions(final List<RagDocumentContext<Void>> ragContext) {
+        if (salesforceContextCount(ragContext) == 0) {
+            return "No " + salesforce.getContextLabel() + " are available. You will be penalized for referencing any " + salesforce.getContextLabel() + " in the response.";
         }
 
         return "";
@@ -389,6 +406,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     private long gongContextCount(final List<RagDocumentContext<Void>> ragContext) {
         return ragContext.stream().filter(ragDoc -> ragDoc.contextLabel().contains(gong.getContextLabel())).count();
+    }
+
+    private long salesforceContextCount(final List<RagDocumentContext<Void>> ragContext) {
+        return ragContext.stream().filter(ragDoc -> ragDoc.contextLabel().contains(salesforce.getContextLabel())).count();
     }
 
     @Override
@@ -418,6 +439,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final List<RagDocumentContext<Void>> slackContext = getSlackContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> googleContext = getGoogleContext(positionalEntity, parsedArgs, prompt, context);
         final List<RagDocumentContext<Void>> planHatContext = getPlanhatContext(positionalEntity, parsedArgs, prompt, context);
+        final List<RagDocumentContext<Void>> salesforceContext = getSalesforceContext(positionalEntity, parsedArgs, prompt, context);
 
         // Slack searches use AND logic. This means we need to search each of the IDs (i.e. salesforce and planhat) separately.
         final List<RagDocumentContext<Void>> slackKeywordSearch = CollectionUtils.collate(positionalEntity.entity().getSalesforce(), positionalEntity.entity().getPlanHat())
@@ -438,6 +460,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         retValue.addAll(googleContext);
         retValue.addAll(planHatContext);
         retValue.addAll(gongContext);
+        retValue.addAll(salesforceContext);
 
         return validateSufficientContext(retValue, parsedArgs);
     }
@@ -584,6 +607,38 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
+                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .toList();
+    }
+
+    private List<RagDocumentContext<Void>> getSalesforceContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
+        logger.log(Level.INFO, "Getting Salesforce emails for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+
+        // build the environment settings
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
+                .add(Salesforce.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
+
+        return Objects.requireNonNullElse(positionalEntity.entity().salesforce(), List.<String>of())
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(
+                        new ToolArgs(Salesforce.FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(Salesforce.FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(Salesforce.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(Salesforce.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
+//                        new ToolArgs(Salesforce.KEYWORD_ARG, parsedArgs.getKeywords(), true),
+//                        new ToolArgs(Salesforce.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(Salesforce.ACCOUNT_ID, id, true),
+                        new ToolArgs(Salesforce.DAYS_ARG, parsedArgs.getDays() + "", true)))
+                .flatMap(args -> Try.of(() -> gong.getContext(envSettings, prompt, args))
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(ExternalFailure.class, ex -> logger.warning("Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name

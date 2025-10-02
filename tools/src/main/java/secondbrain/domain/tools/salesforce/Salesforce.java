@@ -38,6 +38,7 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 @ApplicationScoped
 public class Salesforce implements Tool<SalesforceTaskRecord> {
     public static final String FILTER_RATING_META = "FilterRating";
+    public static final String ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String DEFAULT_RATING_ARG = "ticketDefaultRating";
@@ -170,7 +171,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                         getName(),
                         getContextLabel(),
                         task.getEmailText(),
-                        sentenceVectorizer.vectorize(sentences),
+                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
                         task.id(),
                         task,
                         "[Salesforce Task " + task.id() + "](https://" + domain.orElse("fixme") + ".my.salesforce.com)"))
@@ -570,6 +571,16 @@ class SalesforceConfig {
                             Salesforce.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
                     .value();
+        }
+
+        public String getEntity() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    context,
+                    null,
+                    Salesforce.ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
         }
     }
 }
