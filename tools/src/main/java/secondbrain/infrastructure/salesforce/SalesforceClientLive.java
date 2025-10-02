@@ -100,8 +100,7 @@ public class SalesforceClientLive implements SalesforceClient {
         return Try.of(() -> httpClientCaller.call(
                         this::getClient,
                         client -> client.target(url)
-                                .request(MediaType.APPLICATION_FORM_URLENCODED_TYPE)
-                                .accept(MediaType.APPLICATION_JSON_TYPE)
+                                .request(MediaType.APPLICATION_JSON_TYPE)
                                 .post(Entity.entity(body, MediaType.APPLICATION_FORM_URLENCODED)),
                         response -> Try.of(() -> responseValidation.validate(response, url))
                                 .map(r -> r.readEntity(SalesforceOauthTokenResponse.class))
@@ -123,8 +122,8 @@ public class SalesforceClientLive implements SalesforceClient {
 
         return localStorage.getOrPutObject(
                         PlanHatClientLive.class.getSimpleName(),
-                        "SalesforceAPIToken",
-                        DigestUtils.sha256Hex(domain.get()),
+                        "SalesforceAPITasks",
+                        DigestUtils.sha256Hex(domain.get() + accountId + type),
                         DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
                         SalesforceTaskRecord[].class,
                         () -> getTasksApi(token, accountId, type, 0))
