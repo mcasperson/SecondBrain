@@ -572,7 +572,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(envSettings, prompt, args))
                 // We continue on even if one tool fails, so log and swallow the exception
-                .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(InternalFailure.class, ex -> logger.severe("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                 .onFailure(ExternalFailure.class, ex -> logger.warning("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                 // If anything fails, get an empty list
                 .getOrElse(List::of)
@@ -605,7 +605,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(Gong.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> gong.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.severe("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
@@ -637,7 +637,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(Salesforce.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> salesforce.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.severe("Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
@@ -669,7 +669,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(PlanHat.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> planHat.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
-                        .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .onFailure(InternalFailure.class, ex -> logger.severe("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
