@@ -6,5 +6,5 @@ import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 public interface SalesforceClient {
     SalesforceOauthTokenResponse getToken(String clientId, String clientSecret);
 
-    SalesforceTaskRecord[] getTasks(String accountId, String type);
+    SalesforceTaskRecord[] getTasks(String token, String accountId, String type);
 }

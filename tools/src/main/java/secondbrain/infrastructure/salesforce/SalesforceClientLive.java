@@ -86,7 +86,9 @@ public class SalesforceClientLive implements SalesforceClient {
                 .result();
     }
 
-    public SalesforceOauthTokenResponse getTokenApi(final String clientId, final String clientSecret, final int retryCount) {
+    public SalesforceOauthTokenResponse getTokenApi(final String token, final String clientId, final String clientSecret, final int retryCount) {
+        RATE_LIMITER.acquire();
+
         final String url = getUrl() + "/services/oauth2/token";
 
         final SalesforceOauthToken tokenRequest = new SalesforceOauthToken(clientId, clientSecret, "client_credentials");
@@ -96,6 +98,7 @@ public class SalesforceClientLive implements SalesforceClient {
                         client -> client.target(url)
                                 .request(MediaType.APPLICATION_FORM_URLENCODED_TYPE)
                                 .accept(MediaType.APPLICATION_JSON_TYPE)
+                                .header("Authorization", "Bearer " + token)
                                 .post(Entity.entity(tokenRequest, MediaType.APPLICATION_FORM_URLENCODED)),
                         response -> Try.of(() -> responseValidation.validate(response, url))
                                 .map(r -> r.readEntity(SalesforceOauthTokenResponse.class))
@@ -126,9 +129,11 @@ public class SalesforceClientLive implements SalesforceClient {
     }
 
     private SalesforceTaskRecord[] getTasksApi(final String accountId, final String type, final int retryCount) {
+        RATE_LIMITER.acquire();
+
         final String url = getUrl() + "/services/data/" + version + "/query";
 
-        final String soql = "SELECT Id,Description,Subject,Type FROM Task WHERE AccountId='" + accountId + "' AND Type = '" + type + "' ORDER BY ActivityDate DESC Limit 100";
+        final String soql = "SELECT Id,Description,Subject,Type FROM Task WHERE AccountId='" + accountId + "' AND Type='" + type + "' ORDER BY ActivityDate DESC Limit 100";
 
         return Try.of(() -> httpClientCaller.call(
                         this::getClient,
