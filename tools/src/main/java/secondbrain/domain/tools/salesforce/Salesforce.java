@@ -4,21 +4,19 @@ import com.google.common.collect.ImmutableList;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.context.RagDocumentContext;
-import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
+import secondbrain.domain.context.*;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.salesforce.SalesforceClient;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
@@ -27,10 +25,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -42,6 +37,12 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
  */
 @ApplicationScoped
 public class Salesforce implements Tool<SalesforceTaskRecord> {
+    public static final String FILTER_RATING_META = "FilterRating";
+    public static final String FILTER_QUESTION_ARG = "contentRatingQuestion";
+    public static final String FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String DEFAULT_RATING_ARG = "ticketDefaultRating";
+    public static final String SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
+    public static final String SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
     public static final String ACCOUNT_ID = "accountId";
     public static final String CLIENT_SECRET = "clientSecret";
     public static final String CLIENT_ID = "clientId";
@@ -82,6 +83,9 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
+    private RatingTool ratingTool;
+
+    @Inject
     @Preferred
     private LlmClient llmClient;
 
@@ -117,7 +121,17 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
         final Try<List<RagDocumentContext<SalesforceTaskRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getClientSecret()))
                 .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", parsedArgs.getStartDate(), parsedArgs.getEndDate()))
-                .map(emails -> Stream.of(emails).map(email -> getDocumentContext(email, parsedArgs)).toList());
+                .map(emails -> Stream.of(emails)
+                        .map(email -> getDocumentContext(email, parsedArgs))
+                        // Get the metadata, which includes a rating against the filter question if present
+                        .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
+                        // Filter out any documents that don't meet the rating criteria
+                        .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
+                        .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Salesforce" + ragDoc.id() + ".txt")))
+                        .map(doc -> parsedArgs.getSummarizeDocument()
+                                ? getDocumentSummary(doc, environmentSettings, parsedArgs)
+                                : doc)
+                        .toList());
 
         return exceptionMapping.map(context).get();
     }
@@ -163,6 +177,74 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }
+
+    private MetaObjectResults getMetadata(
+            final Map<String, String> environmentSettings,
+            final RagDocumentContext<SalesforceTaskRecord> activity,
+            final SalesforceConfig.LocalArguments parsedArgs) {
+
+        final List<MetaObjectResult> metadata = new ArrayList<>();
+
+        // build the environment settings
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
+                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, activity.document())
+                .addToolCall(getName() + "[" + activity.id() + "]");
+
+        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
+            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
+                    .map(rating -> Integer.parseInt(rating.trim()))
+                    .onFailure(e -> logger.warning("Failed to get Planhat activity rating for ticket " + activity.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
+                    // Ratings are provided on a best effort basis, so we ignore any failures
+                    .recover(ex -> parsedArgs.getDefaultRating())
+                    .get();
+
+            metadata.add(new MetaObjectResult(FILTER_RATING_META, filterRating));
+        }
+
+        return new MetaObjectResults(
+                metadata,
+                "Gong-" + activity.id() + ".json",
+                activity.id());
+    }
+
+    private boolean contextMeetsRating(
+            final RagDocumentContext<SalesforceTaskRecord> call,
+            final SalesforceConfig.LocalArguments parsedArgs) {
+        // If there was no filter question, then return the whole list
+        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
+            return true;
+        }
+
+        return Objects.requireNonNullElse(call.metadata(), new MetaObjectResults())
+                .getIntValueByName(FILTER_RATING_META, parsedArgs.getDefaultRating())
+                >= parsedArgs.getContextFilterMinimumRating();
+    }
+
+    private RagDocumentContext<SalesforceTaskRecord> getDocumentSummary(
+            final RagDocumentContext<SalesforceTaskRecord> ragDoc,
+            final Map<String, String> environmentSettings,
+            final SalesforceConfig.LocalArguments parsedArgs) {
+        final RagDocumentContext<String> context = new RagDocumentContext<>(
+                getName(),
+                getContextLabel(),
+                ragDoc.document(),
+                List.of()
+        );
+
+        final String response = llmClient.callWithCache(
+                new RagMultiDocumentContext<>(
+                        parsedArgs.getDocumentSummaryPrompt(),
+                        "You are a helpful agent",
+                        List.of(context)),
+                environmentSettings,
+                getName()
+        ).getResponse();
+
+        return ragDoc.updateDocument(response)
+                .addIntermediateResult(new IntermediateResult(
+                        "Prompt: " + parsedArgs.getDocumentSummaryPrompt() + "\n\n" + response,
+                        "Salesforce" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getDocumentSummaryPrompt()) + ".txt"));
+    }
 }
 
 @ApplicationScoped
@@ -198,6 +280,26 @@ class SalesforceConfig {
     @ConfigProperty(name = "sb.salesforce.endperiod")
     private Optional<String> configSalesforceEndPeriod;
 
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.contextFilterMinimumRating")
+    private Optional<String> configContextFilterMinimumRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.contextFilterDefaultRating")
+    private Optional<String> configContextFilterDefaultRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.summarizedocument", defaultValue = "false")
+    private Optional<String> configSummarizeDocument;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.summarizedocumentprompt")
+    private Optional<String> configSummarizeDocumentPrompt;
+
 
     public Optional<String> getConfigClientId() {
         return configClientId;
@@ -231,7 +333,29 @@ class SalesforceConfig {
         return configSalesforceEndPeriod;
     }
 
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
+    }
+
+    public Optional<String> getConfigContextFilterMinimumRating() {
+        return configContextFilterMinimumRating;
+    }
+
+    public Optional<String> getConfigContextFilterDefaultRating() {
+        return configContextFilterDefaultRating;
+    }
+
+    public Optional<String> getConfigSummarizeDocument() {
+        return configSummarizeDocument;
+    }
+
+    public Optional<String> getConfigSummarizeDocumentPrompt() {
+        return configSummarizeDocumentPrompt;
+    }
+
     public class LocalArguments {
+        private static final int DEFAULT_RATING = 10;
+
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -387,6 +511,65 @@ class SalesforceConfig {
 
             // If both the first and second keywords were mentioned, we just have to trust the LLM
             return a;
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            Salesforce.FILTER_QUESTION_ARG,
+                            Salesforce.FILTER_QUESTION_ARG,
+                            "")
+                    .value();
+        }
+
+        public Integer getContextFilterMinimumRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterMinimumRating()::get,
+                    arguments,
+                    context,
+                    Salesforce.FILTER_MINIMUM_RATING_ARG,
+                    Salesforce.FILTER_MINIMUM_RATING_ARG,
+                    "0");
+
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+        }
+
+        public int getDefaultRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterDefaultRating()::get,
+                    arguments,
+                    context,
+                    Salesforce.DEFAULT_RATING_ARG,
+                    Salesforce.DEFAULT_RATING_ARG,
+                    DEFAULT_RATING + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public boolean getSummarizeDocument() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigSummarizeDocument()::get,
+                    arguments,
+                    context,
+                    Salesforce.SUMMARIZE_DOCUMENT_ARG,
+                    Salesforce.SUMMARIZE_DOCUMENT_ARG,
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
+        }
+
+        public String getDocumentSummaryPrompt() {
+            return getArgsAccessor()
+                    .getArgument(
+                            getConfigSummarizeDocumentPrompt()::get,
+                            arguments,
+                            context,
+                            Salesforce.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            Salesforce.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            "Summarise the document in three paragraphs")
+                    .value();
         }
     }
 }

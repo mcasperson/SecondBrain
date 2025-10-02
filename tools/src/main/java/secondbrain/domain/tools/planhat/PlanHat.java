@@ -26,7 +26,6 @@ import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
-import secondbrain.domain.tools.zendesk.ZenDeskIndividualTicket;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
@@ -44,6 +43,7 @@ public class PlanHat implements Tool<Conversation> {
     public static final String PLANHAT_FILTER_RATING_META = "FilterRating";
     public static final String PLANHAT_FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String PLANHAT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String PLANHAT_DEFAULT_RATING_ARG = "ticketDefaultRating";
     public static final String DAYS_ARG = "days";
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String COMPANY_ID_ARGS = "companyId";
@@ -166,7 +166,7 @@ public class PlanHat implements Tool<Conversation> {
                 .filter(conversation -> parsedArgs.getCompany().equals(conversation.companyId()))
                 .filter(conversation -> parsedArgs.getDays() == 0
                         || dateParser.parseDate(conversation.date()).isAfter(ZonedDateTime.now(ZoneOffset.UTC).minusDays(parsedArgs.getDays())))
-                .filter(conversation -> !"ticket".equals(conversation.type()))
+                .filter(conversation -> !"ticket" .equals(conversation.type()))
                 .map(conversation -> conversation.updateDescriptionAndSnippet(
                         htmlToText.getText(conversation.description()),
                         htmlToText.getText(conversation.snippet()))
@@ -605,8 +605,8 @@ class PlanHatConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    PlanHat.PLANHAT_DEFAULT_RATING_ARG,
+                    PlanHat.PLANHAT_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
