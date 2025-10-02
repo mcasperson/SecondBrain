@@ -635,7 +635,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 //                        new ToolArgs(Salesforce.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Salesforce.ACCOUNT_ID, id, true),
                         new ToolArgs(Salesforce.DAYS_ARG, parsedArgs.getDays() + "", true)))
-                .flatMap(args -> Try.of(() -> gong.getContext(envSettings, prompt, args))
+                .flatMap(args -> Try.of(() -> salesforce.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.log(Level.INFO, "Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
