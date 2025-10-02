@@ -26,6 +26,7 @@ import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -132,6 +133,8 @@ public class SalesforceClientLive implements SalesforceClient {
     }
 
     private SalesforceTaskRecord[] getTasksApi(final String token, final String accountId, final String type, final String startDate, final String endDate, final int retryCount) {
+        logger.log(Level.INFO, "Getting Salesforce tasks for account " + accountId + " from " + startDate + " to " + endDate);
+
         RATE_LIMITER.acquire();
 
         final String url = getUrl() + "/services/data/" + version + "/query";
