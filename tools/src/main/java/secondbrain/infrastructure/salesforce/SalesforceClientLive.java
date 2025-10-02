@@ -8,16 +8,17 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.MultivaluedMap;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.exceptions.FailedAzure;
+import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.planhat.PlanHatClientLive;
-import secondbrain.infrastructure.salesforce.api.SalesforceOauthToken;
 import secondbrain.infrastructure.salesforce.api.SalesforceOauthTokenResponse;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
@@ -86,36 +87,38 @@ public class SalesforceClientLive implements SalesforceClient {
                 .result();
     }
 
-    public SalesforceOauthTokenResponse getTokenApi(final String token, final String clientId, final String clientSecret, final int retryCount) {
+    public SalesforceOauthTokenResponse getTokenApi(final String clientId, final String clientSecret, final int retryCount) {
         RATE_LIMITER.acquire();
 
         final String url = getUrl() + "/services/oauth2/token";
 
-        final SalesforceOauthToken tokenRequest = new SalesforceOauthToken(clientId, clientSecret, "client_credentials");
+        final MultivaluedMap<String, String> body = new MultivaluedHashMap<>();
+        body.add("client_id", clientId);
+        body.add("client_secret", clientSecret);
+        body.add("grant_type", "client_credentials");
 
         return Try.of(() -> httpClientCaller.call(
                         this::getClient,
                         client -> client.target(url)
                                 .request(MediaType.APPLICATION_FORM_URLENCODED_TYPE)
                                 .accept(MediaType.APPLICATION_JSON_TYPE)
-                                .header("Authorization", "Bearer " + token)
-                                .post(Entity.entity(tokenRequest, MediaType.APPLICATION_FORM_URLENCODED)),
+                                .post(Entity.entity(body, MediaType.APPLICATION_FORM_URLENCODED)),
                         response -> Try.of(() -> responseValidation.validate(response, url))
                                 .map(r -> r.readEntity(SalesforceOauthTokenResponse.class))
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
-                        e -> new FailedAzure("Failed to call the Azure AI service", e),
+                        e -> new ExternalFailure("Failed to call the Salesforce API", e),
                         () -> {
                             throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                         },
                         API_CALL_TIMEOUT_SECONDS_DEFAULT,
                         API_CALL_DELAY_SECONDS_DEFAULT,
-                        retryCount))
+                        API_RETRIES))
                 .get();
     }
 
     @Override
-    public SalesforceTaskRecord[] getTasks(final String accountId, final String type) {
+    public SalesforceTaskRecord[] getTasks(final String token, final String accountId, final String type) {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
 
         return localStorage.getOrPutObject(
@@ -124,11 +127,11 @@ public class SalesforceClientLive implements SalesforceClient {
                         DigestUtils.sha256Hex(domain.get()),
                         DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
                         SalesforceTaskRecord[].class,
-                        () -> getTasksApi(accountId, type, 0))
+                        () -> getTasksApi(token, accountId, type, 0))
                 .result();
     }
 
-    private SalesforceTaskRecord[] getTasksApi(final String accountId, final String type, final int retryCount) {
+    private SalesforceTaskRecord[] getTasksApi(final String token, final String accountId, final String type, final int retryCount) {
         RATE_LIMITER.acquire();
 
         final String url = getUrl() + "/services/data/" + version + "/query";
@@ -140,6 +143,7 @@ public class SalesforceClientLive implements SalesforceClient {
                         client -> client.target(url)
                                 .queryParam("q", soql)
                                 .request()
+                                .header("Authorization", "Bearer " + token)
                                 .accept(MediaType.APPLICATION_JSON_TYPE)
                                 .get(),
                         response -> Try.of(() -> responseValidation.validate(response, url))
@@ -147,7 +151,7 @@ public class SalesforceClientLive implements SalesforceClient {
                                 .map(SalesforceTaskQuery::records)
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
-                        e -> new FailedAzure("Failed to call the Azure AI service", e),
+                        e -> new ExternalFailure("Failed to call the Salesforce API", e),
                         () -> {
                             throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                         },

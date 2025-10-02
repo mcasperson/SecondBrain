@@ -45,6 +45,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
             When the user asks a question indicating that they want to know about emails, you must generate the answer based on the emails.
             You will be penalized for answering that the emails can not be accessed.
             """.stripLeading();
+
     @Inject
     @ConfigProperty(name = "sb.salesforce.domain")
     private Optional<String> domain;
