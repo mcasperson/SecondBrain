@@ -11,6 +11,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.exceptions.ExternalFailure;
@@ -117,25 +118,39 @@ public class SalesforceClientLive implements SalesforceClient {
     }
 
     @Override
-    public SalesforceTaskRecord[] getTasks(final String token, final String accountId, final String type) {
+    public SalesforceTaskRecord[] getTasks(final String token, final String accountId, final String type, final String startDate, final String endDate) {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
 
         return localStorage.getOrPutObject(
                         PlanHatClientLive.class.getSimpleName(),
                         "SalesforceAPITasks",
-                        DigestUtils.sha256Hex(domain.get() + accountId + type),
+                        DigestUtils.sha256Hex(domain.get() + accountId + type + startDate + endDate),
                         DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
                         SalesforceTaskRecord[].class,
-                        () -> getTasksApi(token, accountId, type, 0))
+                        () -> getTasksApi(token, accountId, type, startDate, endDate, 0))
                 .result();
     }
 
-    private SalesforceTaskRecord[] getTasksApi(final String token, final String accountId, final String type, final int retryCount) {
+    private SalesforceTaskRecord[] getTasksApi(final String token, final String accountId, final String type, final String startDate, final String endDate, final int retryCount) {
         RATE_LIMITER.acquire();
 
         final String url = getUrl() + "/services/data/" + version + "/query";
 
-        final String soql = "SELECT Id,Description,Subject,Type,CreatedDate FROM Task WHERE AccountId='" + accountId + "' AND Type='" + type + "' ORDER BY ActivityDate DESC Limit 100";
+        final StringBuffer soql = new StringBuffer();
+        soql.append("SELECT Id,Description,Subject,Type,CreatedDate FROM Task WHERE AccountId='")
+                .append(accountId)
+                .append("' AND Type='")
+                .append(type)
+                .append("'");
+        if (StringUtils.isNotBlank(startDate)) {
+            soql.append(" AND ActivityDate>=")
+                    .append(startDate);
+        }
+        if (StringUtils.isNotBlank(endDate)) {
+            soql.append(" AND ActivityDate<=")
+                    .append(endDate);
+        }
+        soql.append(" ORDER BY ActivityDate DESC Limit 100");
 
         return Try.of(() -> httpClientCaller.call(
                         this::getClient,

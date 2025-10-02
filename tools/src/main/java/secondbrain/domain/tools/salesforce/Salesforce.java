@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
@@ -22,12 +23,19 @@ import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.salesforce.SalesforceClient;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 
 /**
  * A tool that answers a query based on the emails associated with a Salesforce account.
@@ -37,6 +45,11 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     public static final String ACCOUNT_ID = "accountId";
     public static final String CLIENT_SECRET = "clientSecret";
     public static final String CLIENT_ID = "clientId";
+    public static final String DAYS_ARG = "days";
+    public static final String HOURS_ARG = "hours";
+    public static final String START_PERIOD_ARG = "start";
+    public static final String END_PERIOD_ARG = "end";
+
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of emails sent to people associated with a Salesforce account.
@@ -99,8 +112,11 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        final String startDate = StringUtils.isNotBlank(parsedArgs.getStartPeriod()) ? parsedArgs.getStartPeriod() : parsedArgs.getStartDate();
+        final String endDate = StringUtils.isNotBlank(parsedArgs.getEndPeriod()) ? parsedArgs.getEndPeriod() : parsedArgs.getEndDate();
+
         final Try<List<RagDocumentContext<SalesforceTaskRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getClientSecret()))
-                .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email"))
+                .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", parsedArgs.getStartDate(), parsedArgs.getEndDate()))
                 .map(emails -> Stream.of(emails).map(email -> getDocumentContext(email, parsedArgs)).toList());
 
         return exceptionMapping.map(context).get();
@@ -166,6 +182,23 @@ class SalesforceConfig {
     @ConfigProperty(name = "sb.salesforce.accountid")
     private Optional<String> configAccountId;
 
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.days")
+    private Optional<String> configSalesforceDays;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.hours")
+    private Optional<String> configSalesforceHours;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.startperiod")
+    private Optional<String> configSalesforceStartPeriod;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.endperiod")
+    private Optional<String> configSalesforceEndPeriod;
+
+
     public Optional<String> getConfigClientId() {
         return configClientId;
     }
@@ -180,6 +213,22 @@ class SalesforceConfig {
 
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
+    }
+
+    public Optional<String> getConfigSalesforceDays() {
+        return configSalesforceDays;
+    }
+
+    public Optional<String> getConfigSalesforceHours() {
+        return configSalesforceHours;
+    }
+
+    public Optional<String> getConfigSalesforceStartPeriod() {
+        return configSalesforceStartPeriod;
+    }
+
+    public Optional<String> getConfigSalesforceEndPeriod() {
+        return configSalesforceEndPeriod;
     }
 
     public class LocalArguments {
@@ -223,6 +272,121 @@ class SalesforceConfig {
                     Salesforce.CLIENT_SECRET,
                     Salesforce.CLIENT_SECRET,
                     "").value();
+        }
+
+        private Argument getHoursArgument() {
+            return getArgsAccessor().getArgument(
+                    getConfigSalesforceHours()::get,
+                    arguments,
+                    context,
+                    Salesforce.HOURS_ARG,
+                    Salesforce.HOURS_ARG,
+                    "0");
+        }
+
+        private Argument getDaysArgument() {
+            return getArgsAccessor().getArgument(
+                    getConfigSalesforceDays()::get,
+                    arguments,
+                    context,
+                    Salesforce.DAYS_ARG,
+                    Salesforce.DAYS_ARG,
+                    "0");
+        }
+
+        public int getRawHours() {
+            final String stringValue = getHoursArgument().value();
+
+            return Try.of(() -> Integer.parseInt(stringValue))
+                    .recover(throwable -> 0)
+                    .map(i -> Math.max(0, i))
+                    .get();
+        }
+
+        public int getRawDays() {
+            final String stringValue = getDaysArgument().value();
+
+            return Try.of(() -> Integer.parseInt(stringValue))
+                    .recover(throwable -> 0)
+                    .map(i -> Math.max(0, i))
+                    .get();
+        }
+
+        public int getHours() {
+            if (getHoursArgument().trusted() && getDaysArgument().trusted()) {
+                return getRawHours();
+            }
+
+            return switchArguments(prompt, getRawHours(), getRawDays(), "hour", "day");
+        }
+
+        public int getDays() {
+            if (getHoursArgument().trusted() && getDaysArgument().trusted()) {
+                return getRawDays();
+            }
+
+            return switchArguments(prompt, getRawDays(), getRawHours(), "day", "hour");
+        }
+
+        public String getStartPeriod() {
+            return getArgsAccessor().getArgument(
+                            getConfigSalesforceStartPeriod()::get,
+                            arguments,
+                            context,
+                            Salesforce.START_PERIOD_ARG,
+                            Salesforce.START_PERIOD_ARG,
+                            "")
+                    .value();
+        }
+
+        public String getEndPeriod() {
+            return getArgsAccessor().getArgument(
+                            getConfigSalesforceEndPeriod()::get,
+                            arguments,
+                            context,
+                            Salesforce.END_PERIOD_ARG,
+                            Salesforce.END_PERIOD_ARG,
+                            "")
+                    .value();
+        }
+
+        public String getStartDate() {
+            // Truncating to hours or days means the cache has a higher chance of being hit.
+            final TemporalUnit truncatedTo = getHours() == 0
+                    ? ChronoUnit.DAYS
+                    : ChronoUnit.HOURS;
+
+            return OffsetDateTime.now(ZoneId.of("UTC"))
+                    .truncatedTo(truncatedTo)
+                    // Assume one day if nothing was specified
+                    .minusDays(getDays() + getHours() == 0 ? 1 : getDays())
+                    .minusHours(getHours())
+                    .format(ISO_LOCAL_DATE);
+        }
+
+        public String getEndDate() {
+            return OffsetDateTime.now(ZoneId.of("UTC"))
+                    .truncatedTo(ChronoUnit.DAYS)
+                    .plusDays(1)
+                    .format(ISO_LOCAL_DATE);
+        }
+
+        private int switchArguments(final String prompt, final int a, final int b, final String aPromptKeyword, final String bPromptKeyword) {
+            final Locale locale = Locale.getDefault();
+
+            // If the prompt did not mention the keyword for the first argument, assume that it was never mentioned, and return 0
+            if (!prompt.toLowerCase(locale).contains(aPromptKeyword.toLowerCase(locale))) {
+                return 0;
+            }
+
+            // If the prompt did mention the first argument, but did not mention the keyword for the second argument,
+            // and the first argument is 0, assume the LLM switched things up, and return the second argument
+            if (!prompt.toLowerCase(locale).contains(bPromptKeyword.toLowerCase(locale)) && a == 0) {
+                return b;
+            }
+
+            // If both the first and second keywords were mentioned, we just have to trust the LLM
+            return a;
         }
     }
 }
