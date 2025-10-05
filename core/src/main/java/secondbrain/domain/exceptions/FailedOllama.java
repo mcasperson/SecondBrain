@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents a failed call to Ollama
  */
-public class FailedOllama extends RuntimeException {
+public class FailedOllama extends RuntimeException implements ExternalException {
     public FailedOllama() {
         super();
     }

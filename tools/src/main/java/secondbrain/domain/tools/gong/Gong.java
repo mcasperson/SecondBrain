@@ -1,6 +1,5 @@
 package secondbrain.domain.tools.gong;
 
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -16,8 +15,7 @@ import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.encryption.Encryptor;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.FailedOllama;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
@@ -25,7 +23,6 @@ import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.domain.tools.rating.RatingTool;
-import secondbrain.domain.tools.zendesk.ZenDeskIndividualTicket;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -37,7 +34,6 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static com.google.common.base.Predicates.instanceOf;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
@@ -45,6 +41,7 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String GONG_FILTER_RATING_META = "FilterRating";
     public static final String GONG_FILTER_QUESTION_ARG = "callRatingQuestion";
     public static final String GONG_FILTER_MINIMUM_RATING_ARG = "callFilterMinimumRating";
+    public static final String GONG_DEFAULT_RATING_ARG = "defaultRating";
     public static final String DAYS_ARG = "days";
     public static final String COMPANY_ARG = "company";
     public static final String CALLID_ARG = "callId";
@@ -91,6 +88,9 @@ public class Gong implements Tool<GongCallDetails> {
 
     @Inject
     private RatingTool ratingTool;
+
+    @Inject
+    private ExceptionMapping exceptionMapping;
 
     @Override
     public String getName() {
@@ -154,7 +154,7 @@ public class Gong implements Tool<GongCallDetails> {
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<GongCallDetails>(
                         getName(),
-                        getContextLabel(),
+                        getContextLabel() + " with " + call.company(),
                         trimmedConversationResult.document(),
                         sentenceVectorizer.vectorize(sentences),
                         call.id(),
@@ -187,14 +187,7 @@ public class Gong implements Tool<GongCallDetails> {
                         environmentSettings,
                         getName()));
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Gong transcript activities is empty", throwable)),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call Ollama", ex)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     @Override
@@ -584,8 +577,8 @@ class GongConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    Gong.GONG_DEFAULT_RATING_ARG,
+                    Gong.GONG_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));

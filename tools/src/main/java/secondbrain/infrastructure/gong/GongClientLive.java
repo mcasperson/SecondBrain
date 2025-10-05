@@ -19,6 +19,9 @@ import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.infrastructure.gong.api.*;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -27,15 +30,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+
 @ApplicationScoped
 public class GongClientLive implements GongClient {
     private static final int TTL = 60 * 60 * 24 * 90;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
-    private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
-    private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
 
     @Inject
     private ResponseValidation responseValidation;
@@ -70,14 +73,24 @@ public class GongClientLive implements GongClient {
             final String fromDateTime,
             final String toDateTime) {
 
+        // Build a "to" date for the cache key
+        final String toDateTimeFinal = StringUtils.isBlank(toDateTime)
+                ? OffsetDateTime.now(ZoneId.systemDefault()).truncatedTo(ChronoUnit.DAYS).format(ISO_OFFSET_DATE_TIME)
+                : toDateTime;
+
+        // Build a "from" date for the cache key
+        final String fromDateTimeFinal = StringUtils.isBlank(fromDateTime)
+                ? "0000-00-00T00:00:00-00:00"
+                : fromDateTime;
+
         /*
          There is no way to filter by salesforce ID. So we instead get all the calls during the period,
          cache the result, and then filter the calls by the company ID.
          */
         final GongCallExtensive[] calls = localStorage.getOrPutObject(
                         GongClientLive.class.getSimpleName(),
-                        "GongAPICallsExtensive",
-                        DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
+                        "GongAPICallsExtensiveV2",
+                        DigestUtils.sha256Hex(fromDateTimeFinal + toDateTimeFinal + callId),
                         TTL,
                         GongCallExtensive[].class,
                         () -> getCallsExtensiveApi(fromDateTime, toDateTime, callId, username, password, ""))
@@ -98,7 +111,14 @@ public class GongClientLive implements GongClient {
                                                 // And one of the objects must be an account that matches the company id
                                                 c.objects().stream().anyMatch(o ->
                                                         company.equals(o.objectId()) && "Account".equals(o.objectType()))))
-                .map(gong -> new GongCallDetails(gong.metaData().id(), gong.metaData().url(), gong.parties()))
+                .map(gong -> new GongCallDetails(
+                        gong.metaData().id(),
+                        gong.metaData().url(),
+                        gong.getSystemContext("Salesforce")
+                                .flatMap(c -> c.getObject("Name"))
+                                .map(f -> f.value().toString())
+                                .orElse("Unknown"),
+                        gong.parties()))
                 .toList();
 
     }
@@ -129,16 +149,18 @@ public class GongClientLive implements GongClient {
             final String username,
             final String password,
             final String cursor) {
-        logger.log(Level.INFO, "Getting Gong calls extensive from " + fromDateTime + " to " + toDateTime + " with cursor " + cursor);
+        logger.log(Level.INFO, "Getting Gong calls extensive with IDs " + callId + " from " + fromDateTime + " to " + toDateTime + " with cursor " + cursor);
 
         RATE_LIMITER.acquire();
 
         final String target = url + "/v2/calls/extensive";
 
-        final List<String> callIds = StringUtils.isBlank(callId) ? null : List.of(callId);
+        final List<String> callIds = StringUtils.isBlank(callId) ? null : Arrays.stream(callId.split(",")).toList();
+        final String nullableFromDateTime = StringUtils.isBlank(fromDateTime) ? null : fromDateTime;
+        final String nullableToDateTime = StringUtils.isBlank(toDateTime) ? null : toDateTime;
 
         final GongCallExtensiveQuery body = new GongCallExtensiveQuery(
-                new GongCallExtensiveQueryFiler(fromDateTime, toDateTime, null, callIds),
+                new GongCallExtensiveQueryFiler(nullableFromDateTime, nullableToDateTime, null, callIds),
                 new GongCallExtensiveQueryContentSelector(
                         "Extended",
                         List.of("Now", "TimeOfCall"),

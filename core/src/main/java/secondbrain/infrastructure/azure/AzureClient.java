@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.azure;
 
 import com.google.common.util.concurrent.RateLimiter;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -15,15 +16,20 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.answer.AnswerFormatterService;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.exceptions.InvalidResponse;
-import secondbrain.domain.exceptions.RateLimit;
-import secondbrain.domain.exceptions.Timeout;
+import secondbrain.domain.exceptions.*;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
+import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.ListLimiter;
+import secondbrain.domain.list.StringToList;
+import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.response.ResponseInspector;
 import secondbrain.domain.response.ResponseValidation;
-import secondbrain.infrastructure.azure.api.*;
+import secondbrain.domain.validate.ValidateString;
+import secondbrain.infrastructure.azure.api.AzureRequestMaxCompletionTokens;
+import secondbrain.infrastructure.azure.api.AzureRequestMessage;
+import secondbrain.infrastructure.azure.api.AzureResponse;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.ArrayList;
@@ -33,7 +39,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.*;
 
@@ -42,16 +47,35 @@ import static com.google.common.base.Preconditions.*;
  */
 @ApplicationScoped
 public class AzureClient implements LlmClient {
+    /**
+     * We need to trim the input to ensure the LLM can handle it.
+     * This value is an assumption about the size of the generated output.
+     */
+    private static final int DEFAULT_OUTPUT_TOKENS = 2048;
+    /**
+     * This value is an assumption on the size of the input, which is the maximum context window minus the output tokens.
+     * This is based on a model with a 16k context window, which is common for models like Phi-4.
+     */
+    private static final int DEFAULT_INPUT_TOKENS = 16384 - DEFAULT_OUTPUT_TOKENS;
+    /**
+     * This is an assumption about the number of characters per input token.
+     */
+    private static final float DEFAULT_CHARS_PER_INPUT_TOKENS = 3.5f;
+    /**
+     * This is the default model.
+     */
     private static final String DEFAULT_MODEL = "Phi-4";
     private static final int DEFAULT_CACHE_TTL_DAYS = 90;
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
     private static final long TIMEOUT_API_CALL_DELAY_SECONDS_DEFAULT = 30;
+    private static final float TIME_IF_TOO_LONG_FRACTION = 0.6f;
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final int TIMEOUT_API_RETRIES = 3;
     private static final int RATELIMIT_API_RETRIES = 3;
-    private static final long RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT = 60;
+    private static final long RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT = 90;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
+    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
     // Default rate is around 250 requests per minute. 2 requests per second keeps us well under that.
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(2);
@@ -69,11 +93,11 @@ public class AzureClient implements LlmClient {
     private Optional<String> model;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.maxOutputTokens", defaultValue = AzureRequestMaxCompletionTokens.DEFAULT_OUTPUT_TOKENS + "")
+    @ConfigProperty(name = "sb.azurellm.maxOutputTokens", defaultValue = "")
     private Optional<String> outputTokens;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.maxInputTokens", defaultValue = AzureRequestMaxCompletionTokens.DEFAULT_INPUT_TOKENS + "")
+    @ConfigProperty(name = "sb.azurellm.maxInputTokens", defaultValue = DEFAULT_INPUT_TOKENS + "")
     private Optional<String> inputTokens;
 
     @Inject
@@ -83,6 +107,10 @@ public class AzureClient implements LlmClient {
     @Inject
     @ConfigProperty(name = "sb.azurellm.timeOutSeconds", defaultValue = API_CALL_TIMEOUT_SECONDS_DEFAULT + "")
     private Long timeout;
+
+    @Inject
+    @ConfigProperty(name = "sb.azurellm.trimIfTooLongFraction", defaultValue = TIME_IF_TOO_LONG_FRACTION + "")
+    private Float trimIfTooLongFraction;
 
     @Inject
     @ConfigProperty(name = "sb.azurellm.retryCount", defaultValue = TIMEOUT_API_RETRIES + "")
@@ -109,6 +137,13 @@ public class AzureClient implements LlmClient {
     private Optional<String> disableToolWriteCache;
 
     @Inject
+    @ConfigProperty(name = "sb.azurellm.lock", defaultValue = "sb_azure.lock")
+    private String lockFile;
+
+    @Inject
+    private Mutex mutex;
+
+    @Inject
     private TimeoutHttpClientCaller httpClientCaller;
 
     @Inject
@@ -125,6 +160,19 @@ public class AzureClient implements LlmClient {
 
     @Inject
     private LocalStorage localStorage;
+
+    @Inject
+    private ValidateString validateString;
+
+    @Inject
+    @Identifier("MessageTooLongResponseInspector")
+    private ResponseInspector messageTooLongResponseInspector;
+
+    @Inject
+    private StringToList stringToList;
+
+    @Inject
+    private JsonDeserializerJackson jsonDeserializerJackson;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -146,7 +194,7 @@ public class AzureClient implements LlmClient {
         checkArgument(StringUtils.isNotBlank(prompt));
         checkArgument(StringUtils.isNotBlank(model));
 
-        final PromptTextGenerator request = new AzureRequestMaxCompletionTokens(
+        final AzureRequestMaxCompletionTokens request = new AzureRequestMaxCompletionTokens(
                 List.of(new AzureRequestMessage(
                         "user",
                         prompt
@@ -167,19 +215,19 @@ public class AzureClient implements LlmClient {
         checkNotNull(environmentSettings);
         checkArgument(StringUtils.isNotBlank(tool));
 
-        final int maxOutputTokens = outputTokens
+        final Integer maxOutputTokens = outputTokens
                 .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
-                .orElse(AzureRequestMaxCompletionTokens.DEFAULT_OUTPUT_TOKENS);
+                .orElse(null);
 
-        final int maxInputTokens = inputTokens
+        final Integer maxInputTokens = inputTokens
                 .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
-                .orElse(AzureRequestMaxCompletionTokens.DEFAULT_INPUT_TOKENS);
+                .orElse(DEFAULT_INPUT_TOKENS);
 
         final String modelName = environmentSettings.getOrDefault(MODEL_OVERRIDE_ENV, this.model.orElse(DEFAULT_MODEL));
         final Integer modelContextWindow = Try.of(() -> Integer.parseInt(environmentSettings.getOrDefault(CONTEXT_WINDOW_OVERRIDE_ENV, maxInputTokens + "")))
                 .getOrElse(maxInputTokens);
 
-        final int maxChars = (int) (modelContextWindow * AzureRequestMaxCompletionTokens.DEFAULT_CHARS_PER_INPUT_TOKENS);
+        final int maxChars = (int) (modelContextWindow * DEFAULT_CHARS_PER_INPUT_TOKENS);
 
         final List<AzureRequestMessage> messages = new ArrayList<>();
         messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
@@ -203,9 +251,9 @@ public class AzureClient implements LlmClient {
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
 
-        final PromptTextGenerator request = new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, modelName);
+        final AzureRequestMaxCompletionTokens request = new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, modelName);
 
-        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens + outputTokens);
+        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + url.orElse(""));
 
         logger.info("Calling Azure LLM");
         logger.info(request.generatePromptText());
@@ -218,8 +266,9 @@ public class AzureClient implements LlmClient {
         return ragDocs.updateResponse(result.result());
     }
 
-    private CacheResult<String> handleCaching(final PromptTextGenerator request, final String tool, final String promptHash) {
+    private CacheResult<String> handleCaching(final AzureRequestMaxCompletionTokens request, final String tool, final String promptHash) {
         final int ttl = NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60;
+        final String cacheSource = "AzureLLMV3";
 
         // Bypass cache altogether if both read and write are disabled.
         if (getDisableToolReadCache().contains(tool) && getDisableToolWriteCache().contains(tool)) {
@@ -231,7 +280,7 @@ public class AzureClient implements LlmClient {
             final String result = call(request);
             localStorage.putString(
                     tool,
-                    "AzureLLM",
+                    cacheSource,
                     promptHash,
                     ttl,
                     result);
@@ -242,7 +291,7 @@ public class AzureClient implements LlmClient {
         if (getDisableToolWriteCache().contains(tool)) {
             return Try.of(() -> localStorage.getString(
                             tool,
-                            "AzureLLM",
+                            cacheSource,
                             promptHash))
                     .getOrElse(() -> new CacheResult<String>(call(request), false));
         }
@@ -250,25 +299,23 @@ public class AzureClient implements LlmClient {
         // Normal caching operation - get or put
         return localStorage.getOrPutString(
                 tool,
-                "AzureLLM",
+                cacheSource,
                 promptHash,
                 ttl,
                 () -> call(request));
     }
 
-    private String call(final PromptTextGenerator request) {
-        checkState(apiKey.isPresent());
-        checkState(url.isPresent());
-        checkState(model.isPresent());
+    private String call(final AzureRequestMaxCompletionTokens request) {
+        checkState(apiKey.isPresent(), "Azure LLM API Key is not configured. Please set sb.azurellm.apikey");
+        checkState(url.isPresent(), "Azure LLM URL is not configured. Please set sb.azurellm.url");
+        checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
         RATE_LIMITER.acquire();
 
-        final String result = call(request, 0);
-
-        return result;
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> call(request, 0));
     }
 
-    private String call(final PromptTextGenerator request, int retry) {
+    private String call(final AzureRequestMaxCompletionTokens request, int retry) {
         if (retry > RATELIMIT_API_RETRIES) {
             throw new RateLimit("Exceeded max retries for rate limited Azure LLM calls");
         }
@@ -283,23 +330,39 @@ public class AzureClient implements LlmClient {
                                 .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
                         response -> Try.of(() -> responseValidation.validate(response, url.get()))
                                 .map(r -> r.readEntity(AzureResponse.class))
-                                .map(r -> r.getChoices().stream()
-                                        .map(AzureResponseChoices::getMessage)
-                                        .map(AzureResponseChoicesMessage::getContent)
-                                        .reduce("", String::concat))
+                                .peek(r -> logger.fine(jsonDeserializerJackson.serialize(r)))
+                                .map(AzureResponse::getResponseText)
+                                .map(validateString::throwIfEmpty)
                                 .map(r -> answerFormatterService.formatResponse(model.get(), r))
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
-                        e -> new RuntimeException("Failed to call the Azure AI service", e),
+                        e -> new FailedAzure("Failed to call the Azure AI service", e),
                         () -> {
                             throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                         },
                         API_CALL_TIMEOUT_SECONDS_DEFAULT,
                         retryDelay,
                         retryCount))
-                .recover(InvalidResponse.class, ex -> {
-                    if (ex.getCode() == 429) {
-                        Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
+                .recover(FailedAzure.class, ex -> {
+
+                    if (ex.getCause() instanceof InvalidResponse invalidResponse) {
+                        if (invalidResponse.getCode() == 429 || invalidResponse.getCode() >= 500) {
+                            Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
+                            return call(request, retry + 1);
+                        }
+
+                        if (invalidResponse.getCode() == 400 && messageTooLongResponseInspector.isMatch(invalidResponse.getBody())) {
+                            final AzureRequestMaxCompletionTokens trimmed = request.updateMessages(
+                                    listLimiter.limitListContentByFraction(
+                                            request.getMessages(),
+                                            AzureRequestMessage::content,
+                                            trimIfTooLongFraction));
+
+                            return call(trimmed, retry + 1);
+                        }
+                    }
+
+                    if (ex.getCause() instanceof EmptyString) {
                         return call(request, retry + 1);
                     }
 
@@ -310,19 +373,11 @@ public class AzureClient implements LlmClient {
 
     private List<String> getDisableToolReadCache() {
         final String fixedString = disableToolReadCache.map(String::trim).orElse("");
-
-        return Stream.of(fixedString.split(","))
-                .map(String::trim)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.toList());
+        return stringToList.convert(fixedString);
     }
 
     private List<String> getDisableToolWriteCache() {
         final String fixedString = disableToolWriteCache.map(String::trim).orElse("");
-
-        return Stream.of(fixedString.split(","))
-                .map(String::trim)
-                .filter(StringUtils::isNotBlank)
-                .collect(Collectors.toList());
+        return stringToList.convert(fixedString);
     }
 }

@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents a timeout
  */
-public class Timeout extends RuntimeException {
+public class Timeout extends RuntimeException implements ExternalException {
     public Timeout() {
         super();
     }

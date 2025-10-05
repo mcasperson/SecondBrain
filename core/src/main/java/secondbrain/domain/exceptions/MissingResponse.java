@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents a HTTP 404 response
  */
-public class MissingResponse extends RuntimeException {
+public class MissingResponse extends RuntimeException implements InternalException {
     public MissingResponse() {
         super();
     }

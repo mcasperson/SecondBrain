@@ -41,4 +41,44 @@ public class ListLimiterImplTest {
 
         assertEquals(inputList, result, "The list should remain unchanged when exactly at the limit");
     }
+
+    @Test
+    public void testLimitListContentByFraction() {
+        ListLimiter listLimiter = new ListLimiterAtomicCutOff();
+        List<String> inputList = List.of("one", "two", "three");
+
+        List<String> result = listLimiter.limitListContentByFraction(inputList, x -> x, 0.5f);
+
+        assertEquals(1, result.size(), "The list should have 1 item when limited by 50%");
+    }
+
+    @Test
+    public void testLimitListContentByFractionTwo() {
+        ListLimiter listLimiter = new ListLimiterAtomicCutOff();
+        List<String> inputList = List.of("one", "two", "three");
+
+        List<String> result = listLimiter.limitListContentByFraction(inputList, x -> x, 0.75f);
+
+        assertEquals(2, result.size(), "The list should have 2 items when limited by 75%");
+    }
+
+    @Test
+    public void testLimitListContentByFractionThree() {
+        ListLimiter listLimiter = new ListLimiterAtomicCutOff();
+        List<String> inputList = List.of("1", "2", "3", "4");
+
+        List<String> result = listLimiter.limitListContentByFraction(inputList, x -> x, 0.5f);
+
+        assertEquals(2, result.size(), "The list should have 2 items when limited by 50%");
+    }
+
+    @Test
+    public void testLimitListContentByFractionFour() {
+        ListLimiter listLimiter = new ListLimiterAtomicCutOff();
+        List<String> inputList = List.of("one", "two", "3", "4");
+
+        List<String> result = listLimiter.limitListContentByFraction(inputList, x -> x, 0.5f);
+
+        assertEquals(1, result.size(), "The list should have 1 items when limited by 50%");
+    }
 }

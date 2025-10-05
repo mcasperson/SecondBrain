@@ -13,7 +13,7 @@ import java.util.Objects;
  * @param url     The call URL
  * @param parties The list of parties involved in the call
  */
-public record GongCallDetails(String id, String url, List<GongCallExtensiveParty> parties) {
+public record GongCallDetails(String id, String url, String company, List<GongCallExtensiveParty> parties) {
     @Nullable
     public GongCallExtensiveParty getPartyFromId(final String speakerId) {
         if (parties == null || parties.isEmpty() || speakerId == null || speakerId.isBlank()) {

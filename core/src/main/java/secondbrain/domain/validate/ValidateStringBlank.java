@@ -13,7 +13,7 @@ public class ValidateStringBlank implements ValidateString {
     @Override
     public String throwIfEmpty(@Nullable final String value) {
         if (StringUtils.isBlank(value)) {
-            throw new EmptyString("String is empty");
+            throw new EmptyString("String validation failed - string is empty");
         }
         return value;
     }
@@ -21,7 +21,7 @@ public class ValidateStringBlank implements ValidateString {
     @Override
     public <T> T throwIfEmpty(final T source, final Function<T, String> getContext) {
         if (StringUtils.isBlank(getContext.apply(source))) {
-            throw new EmptyString("String is empty");
+            throw new EmptyString("String validation failed - string is empty");
         }
         return source;
     }

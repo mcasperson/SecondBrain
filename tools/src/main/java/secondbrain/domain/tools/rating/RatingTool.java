@@ -1,7 +1,6 @@
 package secondbrain.domain.tools.rating;
 
 import io.smallrye.common.annotation.Identifier;
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -12,7 +11,8 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.context.HashMapEnvironmentSettings;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.exceptions.*;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
+import secondbrain.domain.exceptions.InvalidAnswer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
@@ -28,7 +28,14 @@ import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Predicates.instanceOf;
+/**
+ * The type of LLM server definition.
+ */
+enum LLMServerType {
+    FROM_ENVIRONMENT,
+    CUSTOM,
+    UNDEFINED
+}
 
 /**
  * RatingTool rates a document or context against the supplied question or criteria and returns a score
@@ -39,6 +46,8 @@ public class RatingTool implements Tool<Void> {
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "rating_document";
     public static final String RATING_SECOND_MODEL_ARG = "secondModel";
     public static final String RATING_SECOND_CONTEXT_WINDOW_ARG = "secondContextWindow";
+    public static final String RATING_THIRD_MODEL_ARG = "thirdModel";
+    public static final String RATING_THIRD_CONTEXT_WINDOW_ARG = "thirdContextWindow";
     public static final String IGNORE_INVALID_RESPONSES_ARG = "ignoreinvalidResponses";
 
     private static final String INSTRUCTIONS = """
@@ -70,6 +79,9 @@ public class RatingTool implements Tool<Void> {
     @Identifier("getFirstDigits")
     private SanitizeDocument getFirstDigits;
 
+    @Inject
+    private ExceptionMapping exceptionMapping;
+
     @Override
     public String getName() {
         return RatingTool.class.getSimpleName();
@@ -97,35 +109,21 @@ public class RatingTool implements Tool<Void> {
         final HashMapEnvironmentSettings myEnvironmentSettings = new HashMapEnvironmentSettings(environmentSettings);
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<RagMultiDocumentContext<Void>> result = callLLM(environmentSettings, prompt, arguments, parsedArgs);
-
-        if (StringUtils.isBlank(parsedArgs.getSecondModel())) {
-            final int resultInt = Integer.parseInt(result.get().getResponse());
-            if (resultInt < 0 || resultInt > 10) {
-                throw new InvalidAnswer("The rating response was invalid: " + resultInt);
-            }
-            return result.get().updateResponse(resultInt + "");
-        }
-
-        final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
-        newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, parsedArgs.getSecondModel());
-        newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, parsedArgs.getSecondContextWindow());
-        final Try<RagMultiDocumentContext<Void>> secondResult = callLLM(newEnvironmentSettings, prompt, arguments, parsedArgs);
-
         // We use multiple models to catch cases where a single model returns inaccurate responses.
         // For example, I have seen chatgpt-5-mini return a rating of 10 for content that is clearly not a 10.
         // We also need to account for the case where other models return invalid responses, such as a text
         // description rather than a number. I have seen this a lot with Phi-4.
-        // If we have a secondary model and we are ignoring invalid responses, then we simply filter out
+        // If we have a additional models and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
         final List<Integer> results = Stream.of(
-                        Try.of(() -> Integer.parseInt(result.get().getResponse()))
-                                .recover(ex -> -1)
-                                .get(),
-                        Try.of(() -> Integer.parseInt(secondResult.get().getResponse()))
-                                .recover(ex -> -1)
-                                .get()
+                        LLMServerDetails.fromEnvironment(),
+                        LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow()),
+                        LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow())
                 )
+                .filter(server -> server.type() != LLMServerType.UNDEFINED)
+                .map(server -> getEnvironmentOverrides(server, environmentSettings))
+                .map(config -> callLLM(config, prompt, arguments, parsedArgs))
+                .map(this::resultToInt)
                 .toList();
 
         if (!parsedArgs.ignoreInvalidResponses()) {
@@ -140,7 +138,7 @@ public class RatingTool implements Tool<Void> {
                 .toList();
 
         if (filteredResults.isEmpty()) {
-            throw new InvalidAnswer("Both models returned invalid responses. " + myEnvironmentSettings.getToolCall());
+            throw new InvalidAnswer("All models returned invalid responses. " + myEnvironmentSettings.getToolCall());
         }
 
         final int average = (int) filteredResults.stream()
@@ -150,7 +148,27 @@ public class RatingTool implements Tool<Void> {
 
         logger.info("RatingTool: Values = " + String.join(",", results.stream().map(Object::toString).toList()) + ", Average = " + average + ". " + myEnvironmentSettings.getToolCall());
 
-        return result.get().updateResponse(average + "");
+        return new RagMultiDocumentContext<Void>(
+                prompt,
+                INSTRUCTIONS,
+                List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of())))
+                .updateResponse(average + "");
+    }
+
+    private Map<String, String> getEnvironmentOverrides(final LLMServerDetails server, final Map<String, String> environmentSettings) {
+        final Map<String, String> newEnvironmentSettings = new HashMap<>(environmentSettings);
+        if (server.type() != LLMServerType.CUSTOM) {
+            return newEnvironmentSettings;
+        }
+        newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, server.model());
+        newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, server.contextWindow());
+        return newEnvironmentSettings;
+    }
+
+    private int resultToInt(final Try<RagMultiDocumentContext<Void>> result) {
+        return result.map(doc -> Integer.parseInt(doc.getResponse()))
+                .recover(ex -> -1)
+                .get();
     }
 
     private Try<RagMultiDocumentContext<Void>> callLLM(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {
@@ -166,11 +184,7 @@ public class RatingTool implements Tool<Void> {
                         getFirstDigits.sanitize(
                                 findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim())));
 
-        return result.mapFailure(
-                API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The document was empty")),
-                API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)));
+        return exceptionMapping.map(result);
     }
 
     @Override
@@ -191,6 +205,14 @@ class RatingConfig {
     @Inject
     @ConfigProperty(name = "sb.rating.secondContextWindow", defaultValue = "")
     private Optional<String> configSecondContextWindow;
+
+    @Inject
+    @ConfigProperty(name = "sb.rating.thirdModel", defaultValue = "")
+    private Optional<String> configThirdModel;
+
+    @Inject
+    @ConfigProperty(name = "sb.rating.thirdContextWindow", defaultValue = "")
+    private Optional<String> configThirdContextWindow;
 
     /**
      * Set to true to ignore invalid responses from either the primary or secondary model.
@@ -215,6 +237,17 @@ class RatingConfig {
 
     public Optional<String> getConfigSecondContextWindow() {
         return configSecondContextWindow;
+    }
+
+    /**
+     * You can optionally have a third model to do a rating, with the result being the average of the two.
+     */
+    public Optional<String> getConfigThirdModel() {
+        return configThirdModel;
+    }
+
+    public Optional<String> getConfigThirdContextWindow() {
+        return configThirdContextWindow;
     }
 
     public Optional<String> getConfigIgnoreInvalidResponses() {
@@ -264,6 +297,26 @@ class RatingConfig {
                     "").value();
         }
 
+        public String getThirdModel() {
+            return getArgsAccessor().getArgument(
+                    getConfigThirdModel()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_THIRD_MODEL_ARG,
+                    RatingTool.RATING_THIRD_MODEL_ARG,
+                    "").value();
+        }
+
+        public String getThirdContextWindow() {
+            return getArgsAccessor().getArgument(
+                    getConfigThirdContextWindow()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_THIRD_CONTEXT_WINDOW_ARG,
+                    RatingTool.RATING_THIRD_CONTEXT_WINDOW_ARG,
+                    "").value();
+        }
+
         public boolean ignoreInvalidResponses() {
             final String value = getArgsAccessor().getArgument(
                     getConfigIgnoreInvalidResponses()::get,
@@ -275,5 +328,30 @@ class RatingConfig {
 
             return BooleanUtils.toBoolean(value);
         }
+    }
+}
+
+/**
+ * Represents a definition of a LLM server to use for a call.
+ *
+ * @param model         The model to use
+ * @param contextWindow The model's context window
+ * @param type          The type of the server definition
+ */
+record LLMServerDetails(String model, String contextWindow, LLMServerType type) {
+    public static LLMServerDetails undefined() {
+        return new LLMServerDetails("", "", LLMServerType.UNDEFINED);
+    }
+
+    public static LLMServerDetails fromEnvironment() {
+        return new LLMServerDetails("", "", LLMServerType.FROM_ENVIRONMENT);
+    }
+
+    public static LLMServerDetails custom(final String model, final String contextWindow) {
+        if (StringUtils.isBlank(model)) {
+            return undefined();
+        }
+
+        return new LLMServerDetails(model, contextWindow, LLMServerType.CUSTOM);
     }
 }

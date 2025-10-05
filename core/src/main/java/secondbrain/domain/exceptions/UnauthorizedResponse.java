@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents a HTTP 401 response
  */
-public class UnauthorizedResponse extends RuntimeException {
+public class UnauthorizedResponse extends RuntimeException implements InternalException {
     public UnauthorizedResponse() {
         super();
     }

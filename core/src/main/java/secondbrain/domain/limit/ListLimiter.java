@@ -32,6 +32,17 @@ public interface ListLimiter {
     <T> List<T> limitListContent(List<T> list, Function<T, String> getContext, int limit);
 
     /**
+     * Limits the content of a list with complex objects to a specified fraction of the original length.
+     *
+     * @param list       The list to limit
+     * @param getContext A callback to get the string value of the items in the list
+     * @param limit      The relative size of the new list
+     * @param <T>        The type of the items in the list
+     * @return The list with content limited to the specified length
+     */
+    <T> List<T> limitListContentByFraction(List<T> list, Function<T, String> getContext, float limit);
+
+    /**
      * Limits the content of a list of IndividualContext items to a specified length.
      *
      * @param list  The list to limit

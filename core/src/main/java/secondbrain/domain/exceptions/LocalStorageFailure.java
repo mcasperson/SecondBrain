@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents a failure that occurred with the local storage system.
  */
-public class LocalStorageFailure extends RuntimeException {
+public class LocalStorageFailure extends RuntimeException implements InternalException {
     public LocalStorageFailure() {
         super();
     }

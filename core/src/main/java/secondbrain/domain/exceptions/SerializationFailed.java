@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents an error during object serialization
  */
-public class SerializationFailed extends RuntimeException {
+public class SerializationFailed extends RuntimeException implements InternalException {
     public SerializationFailed() {
         super();
     }

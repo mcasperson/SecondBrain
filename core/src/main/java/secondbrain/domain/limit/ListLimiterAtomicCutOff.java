@@ -48,6 +48,20 @@ public class ListLimiterAtomicCutOff implements ListLimiter {
     }
 
     @Override
+    public <T> List<T> limitListContentByFraction(List<T> list, Function<T, String> getContext, float limit) {
+        final int currentLength = list
+                .stream()
+                .map(getContext)
+                .mapToInt(String::length)
+                .sum();
+
+        return limitListContent(
+                list,
+                getContext,
+                (int) (currentLength * limit));
+    }
+
+    @Override
     public <U> List<IndividualContext<String, U>> limitIndividualContextListContent(
             final List<IndividualContext<String, U>> list,
             final int limit) {

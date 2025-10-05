@@ -2,28 +2,31 @@ package secondbrain.infrastructure.azure.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * Uses max_completion_tokens rather than max_tokens. This is required for newer OpenAI models.
- * See <a href="https://community.openai.com/t/why-was-max-tokens-changed-to-max-completion-tokens/938077">this discussion</a>.
+ * The challenge with this record is supporting the input used by multiple models. OpenAI models hosted by Azure AI Foundry
+ * are shown to use the /openai/responses?api-version=2025-04-01-preview endpoint. Other models, like Phi-4,
+ * use the completions endpoint /models/chat/completions?api-version=2024-05-01-preview.
+ * <p>
+ * The /response endpoint appears to adopt newer API versions faster. However, OpenAI models can also use the /completions endpoint.
+ * <p>
+ * This record then supports the chat completions endpoint, specifically version 2024-05-01-preview.
+ * This appears to be the more common endpoint for all models.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AzureRequestMaxCompletionTokens(
         List<AzureRequestMessage> messages,
-        @JsonProperty("max_completion_tokens") Integer maxCompletionTokens,
+        @Nullable @JsonProperty("max_completion_tokens") Integer maxOutputTokens,
         String model) implements PromptTextGenerator {
-
-    public static final int DEFAULT_OUTPUT_TOKENS = 2048;
-    public static final int DEFAULT_INPUT_TOKENS = 16384 - DEFAULT_OUTPUT_TOKENS;
-    public static final float DEFAULT_CHARS_PER_INPUT_TOKENS = 3.5f;
 
     public AzureRequestMaxCompletionTokens(final List<AzureRequestMessage> messages, final String model) {
         this(messages,
-                DEFAULT_OUTPUT_TOKENS,
+                null,
                 model);
     }
 
@@ -36,5 +39,9 @@ public record AzureRequestMaxCompletionTokens(
                 .map(AzureRequestMessage::content)
                 .map(String::trim)
                 .collect(Collectors.joining("\n\n"));
+    }
+
+    public AzureRequestMaxCompletionTokens updateMessages(List<AzureRequestMessage> newMessages) {
+        return new AzureRequestMaxCompletionTokens(newMessages, this.maxOutputTokens, this.model);
     }
 }

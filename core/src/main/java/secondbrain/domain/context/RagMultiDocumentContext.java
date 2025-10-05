@@ -1,6 +1,8 @@
 package secondbrain.domain.context;
 
+import io.vavr.control.Try;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.MetaObjectResults;
@@ -175,11 +177,16 @@ public record RagMultiDocumentContext<T>(String prompt,
                 .filter(sentence -> !StringUtils.isBlank(sentence))
                 // find the best match in each context, or no match at all
                 .flatMap(sentence -> individualContexts.stream()
-                        .map(rag -> rag.getClosestSentence(
-                                sentence,
-                                sentenceVectorizer.vectorize(sentence).vector(),
-                                similarityCalculator,
-                                minSimilarity))
+                        .map(rag ->
+                                // Ignore any failures to vectorize the sentence
+                                Try.of(() -> rag.getClosestSentence(
+                                                sentence,
+                                                sentenceVectorizer.vectorize(sentence).vector(),
+                                                similarityCalculator,
+                                                minSimilarity))
+                                        .onFailure(throwable -> System.err.println("Failed to vectorize output sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                                        .getOrNull()
+                        )
                         .filter(Objects::nonNull)
                         .sorted(Comparator.comparingDouble(RagMatchedStringContext::match).reversed())
                         .limit(1))

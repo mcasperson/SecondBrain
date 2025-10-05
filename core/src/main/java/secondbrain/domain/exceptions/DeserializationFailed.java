@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents an exception thrown during deserialization
  */
-public class DeserializationFailed extends RuntimeException {
+public class DeserializationFailed extends RuntimeException implements InternalException {
     public DeserializationFailed() {
         super();
     }

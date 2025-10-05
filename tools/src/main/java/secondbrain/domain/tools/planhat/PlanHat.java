@@ -1,7 +1,6 @@
 package secondbrain.domain.tools.planhat;
 
 import com.google.common.collect.ImmutableList;
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -20,15 +19,13 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.converter.HtmlToText;
 import secondbrain.domain.date.DateParser;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.FailedOllama;
+import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
-import secondbrain.domain.tools.zendesk.ZenDeskIndividualTicket;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
@@ -41,13 +38,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Predicates.instanceOf;
-
 @ApplicationScoped
 public class PlanHat implements Tool<Conversation> {
     public static final String PLANHAT_FILTER_RATING_META = "FilterRating";
     public static final String PLANHAT_FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String PLANHAT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String PLANHAT_DEFAULT_RATING_ARG = "ticketDefaultRating";
     public static final String DAYS_ARG = "days";
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String COMPANY_ID_ARGS = "companyId";
@@ -105,6 +101,9 @@ public class PlanHat implements Tool<Conversation> {
 
     @Inject
     private RatingTool ratingTool;
+
+    @Inject
+    private ExceptionMapping exceptionMapping;
 
     @Override
     public String getName() {
@@ -167,7 +166,7 @@ public class PlanHat implements Tool<Conversation> {
                 .filter(conversation -> parsedArgs.getCompany().equals(conversation.companyId()))
                 .filter(conversation -> parsedArgs.getDays() == 0
                         || dateParser.parseDate(conversation.date()).isAfter(ZonedDateTime.now(ZoneOffset.UTC).minusDays(parsedArgs.getDays())))
-                .filter(conversation -> !"ticket".equals(conversation.type()))
+                .filter(conversation -> !"ticket" .equals(conversation.type()))
                 .map(conversation -> conversation.updateDescriptionAndSnippet(
                         htmlToText.getText(conversation.description()),
                         htmlToText.getText(conversation.snippet()))
@@ -201,14 +200,7 @@ public class PlanHat implements Tool<Conversation> {
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-        // https://github.com/vavr-io/vavr/issues/2411
-        return result.mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The PlanHat activities is empty", throwable)),
-                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                        API.Case(API.$(), ex -> new InternalFailure(getName() + " failed to call Ollama", ex)))
-                .get();
+        return exceptionMapping.map(result).get();
     }
 
     private Pair<Conversation, List<String>> trimConversation(final Conversation conversation, final PlanHatConfig.LocalArguments parsedArgs) {
@@ -613,8 +605,8 @@ class PlanHatConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    PlanHat.PLANHAT_DEFAULT_RATING_ARG,
+                    PlanHat.PLANHAT_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
