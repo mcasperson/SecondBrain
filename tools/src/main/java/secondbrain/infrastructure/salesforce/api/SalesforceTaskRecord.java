@@ -51,6 +51,6 @@ public record SalesforceTaskRecord(@JsonProperty("Id") String id,
 
     @Override
     public String getUrl() {
-        return "https://" + (domain == null ? "fixme" : domain) + ".my.salesforce.com/" + getId();
+        return "https://" + (domain == null ? "fixme" : domain) + ".lightning.force.com/lightning/r/Task/" + getId() + "/view";
     }
 }
