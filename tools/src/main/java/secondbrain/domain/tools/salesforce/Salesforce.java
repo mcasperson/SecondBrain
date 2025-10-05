@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -12,12 +11,14 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigEntity;
 import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.processing.DataToRagDoc;
+import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
@@ -76,6 +77,9 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     private DataToRagDoc dataToRagDoc;
 
     @Inject
+    private RagDocSummarizer ragDocSummarizer;
+
+    @Inject
     private ExceptionMapping exceptionMapping;
 
     @Inject
@@ -131,7 +135,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                         .filter(ragDoc -> ratingMetadata.contextMeetsRating(ragDoc, parsedArgs))
                         .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Salesforce" + ragDoc.id() + ".txt")))
                         .map(doc -> parsedArgs.getSummarizeDocument()
-                                ? getDocumentSummary(doc, environmentSettings, parsedArgs)
+                                ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "SalesforceEmail", doc, environmentSettings, parsedArgs)
                                 : doc)
                         .toList());
 
@@ -164,32 +168,6 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     @Override
     public String getContextLabel() {
         return "Email";
-    }
-
-    private RagDocumentContext<SalesforceTaskRecord> getDocumentSummary(
-            final RagDocumentContext<SalesforceTaskRecord> ragDoc,
-            final Map<String, String> environmentSettings,
-            final SalesforceConfig.LocalArguments parsedArgs) {
-        final RagDocumentContext<String> context = new RagDocumentContext<>(
-                getName(),
-                getContextLabel(),
-                ragDoc.document(),
-                List.of()
-        );
-
-        final String response = llmClient.callWithCache(
-                new RagMultiDocumentContext<>(
-                        parsedArgs.getDocumentSummaryPrompt(),
-                        "You are a helpful agent",
-                        List.of(context)),
-                environmentSettings,
-                getName()
-        ).getResponse();
-
-        return ragDoc.updateDocument(response)
-                .addIntermediateResult(new IntermediateResult(
-                        "Prompt: " + parsedArgs.getDocumentSummaryPrompt() + "\n\n" + response,
-                        "Salesforce" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getDocumentSummaryPrompt()) + ".txt"));
     }
 }
 
@@ -299,7 +277,7 @@ class SalesforceConfig {
         return configSummarizeDocumentPrompt;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigEntity {
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigEntity, LocalConfigSummarizer {
         private static final int DEFAULT_RATING = 10;
 
         private final List<ToolArgs> arguments;
