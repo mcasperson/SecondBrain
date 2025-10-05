@@ -169,7 +169,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                         .map(r -> ArrayUtils.addAll(
                                 r.getResultsArray(),
                                 r.next_page() != null && page < maxPage
-                                        ? getTicketsApi(authorization, url, query, page + 1, maxPage)
+                                        ? getTicketsApiLocked(authorization, url, query, page + 1, maxPage)
                                         : new ZenDeskTicket[]{}))
                         .get(),
                 e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
