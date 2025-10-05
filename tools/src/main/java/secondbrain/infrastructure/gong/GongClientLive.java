@@ -193,7 +193,7 @@ public class GongClientLive implements GongClient {
                         .map(r -> ArrayUtils.addAll(
                                 r.calls(),
                                 StringUtils.isNotBlank(r.records().cursor())
-                                        ? getCallsExtensiveApi(fromDateTime, toDateTime, callId, username, password, r.records().cursor())
+                                        ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, r.records().cursor())
                                         : new GongCallExtensive[]{}))
                         .get(),
                 e -> new RuntimeException("Failed to get calls from Gong API", e));
