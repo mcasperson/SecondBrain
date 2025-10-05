@@ -14,6 +14,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
+/**
+ * A Mutex implementation that uses file locks to ensure mutual exclusion across different JVMs.
+ * This implementation is not reentrant. If you try to acquire the same lock in sequence,
+ * it will result in a OverlappingFileLockException.
+ */
 @ApplicationScoped
 public class FileLockMutex implements Mutex {
     private static final long SLEEP = 10000;
