@@ -41,7 +41,26 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
                         sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
                         task.getId(),
                         task,
-                        "[" + task.getLinkText() + "](" + task.getUrl() + ")"))
+                        "[" + task.getLinkText() + "](" + task.getUrl() + ")",
+                        trimmedConversationResult.keywordMatches()))
+                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                .get();
+    }
+
+    @Override
+    public <T extends TextData> RagDocumentContext<T> getUnlinkedDocumentContext(final T task, final String toolName, final String contextLabel, final LocalConfigKeywordsEntity parsedArgs) {
+        final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(task.getText(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
+
+        return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
+                .map(sentences -> new RagDocumentContext<T>(
+                        toolName,
+                        contextLabel,
+                        task.getText(),
+                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
+                        null,
+                        null,
+                        null,
+                        trimmedConversationResult.keywordMatches()))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
     }

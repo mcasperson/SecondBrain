@@ -6,26 +6,23 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.converter.FileToText;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.limit.DocumentTrimmer;
-import secondbrain.domain.limit.TrimResult;
+import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.validate.ValidateString;
+import secondbrain.domain.tools.publicfile.model.FileContents;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.nio.file.Files;
@@ -39,7 +36,7 @@ import java.util.Optional;
  * and uses it as the context for a query.
  */
 @ApplicationScoped
-public class PublicFile implements Tool<Void> {
+public class PublicFile implements Tool<FileContents> {
 
     public static final String PUBLICWEB_URL_ARG = "url";
     public static final String PUBLICWEB_KEYWORD_ARG = "keywords";
@@ -57,23 +54,14 @@ public class PublicFile implements Tool<Void> {
             """.stripLeading();
 
     @Inject
+    private DataToRagDoc dataToRagDoc;
+
+    @Inject
     private FileReader fileReader;
-
-    @Inject
-    private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SentenceVectorizer sentenceVectorizer;
 
     @Inject
     @Preferred
     private LlmClient llmClient;
-
-    @Inject
-    private ValidateString validateString;
-
-    @Inject
-    private DocumentTrimmer documentTrimmer;
 
     @Inject
     private PublicWebConfig config;
@@ -113,7 +101,7 @@ public class PublicFile implements Tool<Void> {
     }
 
     @Override
-    public List<RagDocumentContext<Void>> getContext(
+    public List<RagDocumentContext<FileContents>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -128,24 +116,20 @@ public class PublicFile implements Tool<Void> {
                 : Try.of(() -> fileReader.read(parsedArgs.getUrl()));
 
         return contents
-                .map(content -> documentTrimmer.trimDocumentToKeywords(
-                        content,
-                        parsedArgs.getKeywords(),
-                        parsedArgs.getKeywordWindow()))
-                .map(trimResult -> validateString.throwIfEmpty(trimResult, TrimResult::document))
-                .map(document -> getDocumentContext(document, parsedArgs))
+                .map(content -> new FileContents(parsedArgs.getUrl(), parsedArgs.getUrl(), content))
+                .map(document -> dataToRagDoc.getDocumentContext(document, getName(), getContextLabel(), parsedArgs))
                 .map(List::of)
                 .recover(ex -> List.of())
                 .get();
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(
+    public RagMultiDocumentContext<FileContents> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<FileContents>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final PublicWebConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -153,29 +137,14 @@ public class PublicFile implements Tool<Void> {
             throw new InternalFailure("You must provide a URL to download");
         }
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
+        final Try<RagMultiDocumentContext<FileContents>> result = Try.of(() -> contextList)
+                .map(ragDoc -> new RagMultiDocumentContext<FileContents>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
 
         return exceptionMapping.map(result).get();
-    }
-
-    private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final PublicWebConfig.LocalArguments parsedArgs) {
-        return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
-                .map(sentences -> new RagDocumentContext<Void>(
-                        getName(),
-                        getContextLabel(),
-                        trimResult.document(),
-                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
-                        null,
-                        null,
-                        null,
-                        trimResult.keywordMatches()))
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                .get();
     }
 }
 
@@ -213,7 +182,7 @@ class PublicWebConfig {
         return argsAccessor;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
         private final String prompt;

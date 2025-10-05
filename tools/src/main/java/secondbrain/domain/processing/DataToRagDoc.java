@@ -16,4 +16,10 @@ public interface DataToRagDoc {
             final String toolName,
             final String contextLabel,
             final LocalConfigKeywordsEntity parsedArgs);
+
+    <T extends TextData> RagDocumentContext<T> getUnlinkedDocumentContext(
+            final T task,
+            final String toolName,
+            final String contextLabel,
+            final LocalConfigKeywordsEntity parsedArgs);
 }
