@@ -9,18 +9,22 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jsoup.internal.StringUtil;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.config.LocalConfigFilteredItem;
 import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tooldefs.IntermediateResult;
+import secondbrain.domain.tooldefs.Tool;
+import secondbrain.domain.tooldefs.ToolArgs;
+import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
@@ -31,7 +35,10 @@ import secondbrain.infrastructure.zendesk.api.ZenDeskOrganizationItemResponse;
 import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -53,6 +60,9 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_HISTORY_TTL_ARG = "historyTtl";
 
     private static final String INSTRUCTIONS = "You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.";
+
+    @Inject
+    private RatingMetadata ratingMetadata;
 
     @Inject
     private RatingTool ratingTool;
@@ -122,40 +132,12 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
                         parsedArgs))
-                .map(ticket -> ticket.updateMetadata(getMetadata(environmentSettings, ticket, parsedArgs)))
+                .map(ticket -> ticket.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ticket, parsedArgs)))
                 .map(ticket -> ticket.addIntermediateResult(
                         new IntermediateResult(ticket.document(), ticketToFileName(ticket))))
                 .map(List::of);
 
         return exceptionMapping.map(result).get();
-    }
-
-    private MetaObjectResults getMetadata(
-            final Map<String, String> environmentSettings,
-            final RagDocumentContext<ZenDeskTicket> ticket,
-            final ZenDeskTicketConfig.LocalArguments parsedArgs) {
-
-        final List<MetaObjectResult> metadata = ticket.source() != null
-                ? new ArrayList<>(ticket.source().toMetaObjectResult())
-                : new ArrayList<>();
-
-        // build the environment settings
-        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
-                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, ticket.document())
-                .addToolCall(getName() + "[" + ticket.id() + "]");
-
-        if (!StringUtil.isBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
-                    .map(rating -> Integer.parseInt(rating.trim()))
-                    .onFailure(e -> logger.warning("Failed to get ZenDesk ticket rating for ticket " + ticket.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
-                    // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(ex -> parsedArgs.getDefaultRating())
-                    .get();
-
-            metadata.add(new MetaObjectResult(ZENDESK_FILTER_RATING_META, filterRating));
-        }
-
-        return new MetaObjectResults(metadata, ticketToMetaFileName(ticket), ticket.id());
     }
 
     private String ticketToMetaFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
@@ -452,7 +434,7 @@ class ZenDeskTicketConfig {
         return configContextFilterDefaultRating;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalConfigFilteredItem {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -635,7 +617,7 @@ class ZenDeskTicketConfig {
                     .value();
         }
 
-        public int getDefaultRating() {
+        public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterDefaultRating()::get,
                     arguments,

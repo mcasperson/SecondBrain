@@ -15,8 +15,4 @@ public interface RatingMetadata {
             final Map<String, String> environmentSettings,
             final RagDocumentContext<?> activity,
             final LocalConfigFilteredItem parsedArgs);
-
-    boolean contextMeetsRating(
-            final RagDocumentContext<?> activity,
-            final LocalConfigFilteredItem parsedArgs);
 }

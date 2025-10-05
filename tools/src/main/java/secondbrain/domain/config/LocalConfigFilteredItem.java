@@ -8,6 +8,4 @@ public interface LocalConfigFilteredItem {
     String getContextFilterQuestion();
 
     Integer getDefaultRating();
-
-    Integer getContextFilterMinimumRating();
 }

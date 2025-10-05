@@ -16,7 +16,6 @@ import secondbrain.domain.tools.rating.RatingTool;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.logging.Logger;
 
 @ApplicationScoped
@@ -57,17 +56,5 @@ public class RatingToolRatingMetadata implements RatingMetadata {
                 metadata,
                 toolName + "-" + activity.id() + ".json",
                 activity.id());
-    }
-
-    @Override
-    public boolean contextMeetsRating(RagDocumentContext<?> activity, LocalConfigFilteredItem parsedArgs) {
-        // If there was no filter question, then return the whole list
-        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return true;
-        }
-
-        return Objects.requireNonNullElse(activity.metadata(), new MetaObjectResults())
-                .getIntValueByName(FILTER_RATING_META, parsedArgs.getDefaultRating())
-                >= parsedArgs.getContextFilterMinimumRating();
     }
 }

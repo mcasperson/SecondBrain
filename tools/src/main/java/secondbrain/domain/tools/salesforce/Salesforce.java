@@ -11,6 +11,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.config.LocalConfigFilteredParent;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.constants.Constants;
@@ -21,6 +22,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
+import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
@@ -77,6 +79,9 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
     @Inject
     private RatingMetadata ratingMetadata;
+
+    @Inject
+    private RatingFilter ratingFilter;
 
     @Inject
     private DataToRagDoc dataToRagDoc;
@@ -137,7 +142,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                         // Get the metadata, which includes a rating against the filter question if present
                         .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                         // Filter out any documents that don't meet the rating criteria
-                        .filter(ragDoc -> ratingMetadata.contextMeetsRating(ragDoc, parsedArgs))
+                        .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                         .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Salesforce" + ragDoc.id() + ".txt")))
                         .map(doc -> parsedArgs.getSummarizeDocument()
                                 ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "SalesforceEmail", doc, environmentSettings, parsedArgs)
@@ -305,7 +310,7 @@ class SalesforceConfig {
         return configKeywordWindow;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigKeywordsEntity, LocalConfigSummarizer {
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private static final int DEFAULT_RATING = 10;
 
         private final List<ToolArgs> arguments;

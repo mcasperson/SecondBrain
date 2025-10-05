@@ -36,6 +36,15 @@ public class MetaObjectResults extends ArrayList<MetaObjectResult> {
         }
     }
 
+    public boolean hasName(final String name) {
+        if (StringUtils.isBlank(name)) {
+            return false;
+        }
+
+        return stream()
+                .anyMatch(result -> Objects.equals(result.name(), name));
+    }
+
     public Optional<MetaObjectResult> getByName(final String name) {
         if (StringUtils.isBlank(name)) {
             return Optional.empty();

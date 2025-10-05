@@ -11,6 +11,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.config.LocalConfigFilteredParent;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.constants.Constants;
@@ -22,6 +23,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
+import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -67,6 +69,9 @@ public class Gong implements Tool<GongCallDetails> {
 
     @Inject
     private RatingMetadata ratingMetadata;
+
+    @Inject
+    private RatingFilter ratingFilter;
 
     @Inject
     private DataToRagDoc dataToRagDoc;
@@ -144,7 +149,7 @@ public class Gong implements Tool<GongCallDetails> {
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
-                .filter(ragDoc -> ratingMetadata.contextMeetsRating(ragDoc, parsedArgs))
+                .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 /*
                     Take the raw transcript and summarize them with individual calls to the LLM.
                     The transcripts are then combined into a single context.
@@ -307,7 +312,7 @@ class GongConfig {
         return configContextFilterDefaultRating;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigKeywordsEntity, LocalConfigSummarizer {
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
 
         private final String prompt;

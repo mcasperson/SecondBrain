@@ -14,6 +14,7 @@ import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.config.LocalConfigFilteredParent;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -24,9 +25,13 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tooldefs.IntermediateResult;
+import secondbrain.domain.tooldefs.Tool;
+import secondbrain.domain.tooldefs.ToolArgs;
+import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
@@ -91,6 +96,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             You will be penalized for using terms like flooded, wave, or inundated.
             If there are no ZenDesk Tickets, you must indicate that in the answer.
             """.stripLeading();
+
+    @Inject
+    private RatingFilter ratingFilter;
 
     @Inject
     private ZenDeskIndividualTicket ticketTool;
@@ -251,7 +259,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                     If there is a filter question (usually a question to remove spam or irrelevant tickets),
                     then we filter the tickets based on the rating of the context.
                  */
-                .map(tickets -> contextMeetsRating(tickets, parsedArgs))
+                .map(tickets -> ratingFilter.contextMeetsRating(tickets, parsedArgs))
                 .map(tickets -> trimTickets(tickets, parsedArgs))
                 /*
                     Take the raw ticket comments and summarize them with individual calls to the LLM.
@@ -399,24 +407,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 ).stream())
                 // Get a list of context strings
                 .collect(Collectors.toList());
-    }
-
-    private List<RagDocumentContext<ZenDeskTicket>> contextMeetsRating(
-            final List<RagDocumentContext<ZenDeskTicket>> tickets,
-            final ZenDeskConfig.LocalArguments parsedArgs) {
-        // If there was no filter question, then return the whole list
-        if (StringUtils.isBlank(parsedArgs.getTicketFilterQuestion())) {
-            return tickets;
-        }
-
-        return tickets
-                .stream()
-                .filter(ticket ->
-                        Objects.requireNonNullElse(ticket.metadata(), new MetaObjectResults())
-                                .getIntValueByName(ZenDeskIndividualTicket.ZENDESK_FILTER_RATING_META, parsedArgs.getDefaultRating())
-                                >= parsedArgs.getContextFilterMinimumRating()
-                )
-                .toList();
     }
 }
 
@@ -695,7 +685,7 @@ class ZenDeskConfig {
         return configTicketFilterMinimumRating;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalConfigFilteredParent {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -1129,7 +1119,7 @@ class ZenDeskConfig {
             return NumberUtils.min(NumberUtils.toInt(value, MAX_TICKETS), MAX_TICKETS);
         }
 
-        public int getDefaultRating() {
+        public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigTicketFilterDefaultRating()::get,
                     arguments,
