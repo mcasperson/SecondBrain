@@ -1,11 +1,11 @@
 package secondbrain.infrastructure.gong;
 
-import secondbrain.domain.tools.gong.model.GongCallDetails;
+import secondbrain.infrastructure.gong.api.GongCallExtensive;
 
 import java.util.List;
 
 public interface GongClient {
-    List<GongCallDetails> getCallsExtensive(
+    List<GongCallExtensive> getCallsExtensive(
             String company,
             String callId,
             String username,
@@ -16,5 +16,5 @@ public interface GongClient {
     String getCallTranscript(
             String username,
             String password,
-            GongCallDetails call);
+            GongCallExtensive call);
 }

@@ -631,8 +631,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(Salesforce.FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(Salesforce.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(Salesforce.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
-//                        new ToolArgs(Salesforce.KEYWORD_ARG, parsedArgs.getKeywords(), true),
-//                        new ToolArgs(Salesforce.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(Salesforce.KEYWORD_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(Salesforce.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Salesforce.ACCOUNT_ID, id, true),
                         new ToolArgs(Salesforce.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> salesforce.getContext(envSettings, prompt, args))

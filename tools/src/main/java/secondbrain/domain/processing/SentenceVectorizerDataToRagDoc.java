@@ -4,13 +4,15 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import secondbrain.domain.config.LocalConfigEntity;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
+import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.limit.TrimResult;
 
 @ApplicationScoped
 public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
@@ -20,13 +22,18 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
     @Inject
     private SentenceVectorizer sentenceVectorizer;
 
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
     @Override
     public <T extends TextData & IdData & UrlData> RagDocumentContext<T> getDocumentContext(
             final T task,
             final String toolName,
             final String contextLabel,
-            final LocalConfigEntity parsedArgs) {
-        return Try.of(() -> sentenceSplitter.splitDocument(task.getText(), 10))
+            final LocalConfigKeywordsEntity parsedArgs) {
+        final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(task.getText(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
+
+        return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<T>(
                         toolName,
                         contextLabel,

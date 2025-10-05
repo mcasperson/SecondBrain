@@ -3,26 +3,30 @@ package secondbrain.domain.tools.gong;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
+import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.*;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.limit.DocumentTrimmer;
-import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.processing.DataToRagDoc;
+import secondbrain.domain.processing.RagDocSummarizer;
+import secondbrain.domain.processing.RatingMetadata;
+import secondbrain.domain.tooldefs.Tool;
+import secondbrain.domain.tooldefs.ToolArgs;
+import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
-import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -30,7 +34,9 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -38,7 +44,6 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class Gong implements Tool<GongCallDetails> {
-    public static final String GONG_FILTER_RATING_META = "FilterRating";
     public static final String GONG_FILTER_QUESTION_ARG = "callRatingQuestion";
     public static final String GONG_FILTER_MINIMUM_RATING_ARG = "callFilterMinimumRating";
     public static final String GONG_DEFAULT_RATING_ARG = "defaultRating";
@@ -61,20 +66,20 @@ public class Gong implements Tool<GongCallDetails> {
             """.stripLeading();
 
     @Inject
+    private RatingMetadata ratingMetadata;
+
+    @Inject
+    private DataToRagDoc dataToRagDoc;
+
+    @Inject
+    private RagDocSummarizer ragDocSummarizer;
+
+    @Inject
     private GongConfig config;
 
     @Inject
     @Preferred
     private GongClient gongClient;
-
-    @Inject
-    private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SentenceVectorizer sentenceVectorizer;
-
-    @Inject
-    private DocumentTrimmer documentTrimmer;
 
     @Inject
     @Preferred
@@ -85,9 +90,6 @@ public class Gong implements Tool<GongCallDetails> {
 
     @Inject
     private Logger logger;
-
-    @Inject
-    private RatingTool ratingTool;
 
     @Inject
     private ExceptionMapping exceptionMapping;
@@ -114,7 +116,7 @@ public class Gong implements Tool<GongCallDetails> {
 
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final List<Pair<GongCallDetails, String>> calls = Try.of(() ->
+        final List<GongCallDetails> calls = Try.of(() ->
                         gongClient.getCallsExtensive(
                                 parsedArgs.getCompany(),
                                 parsedArgs.getCallId(),
@@ -122,21 +124,27 @@ public class Gong implements Tool<GongCallDetails> {
                                 parsedArgs.getAccessSecretKey(),
                                 parsedArgs.getStartDate(),
                                 parsedArgs.getEndDate()))
-                .map(c -> c.stream()
-                        .map(call -> Pair.of(
-                                call,
-                                gongClient.getCallTranscript(parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), call)))
+                .map(e -> e.stream()
+                        .map(gong -> new GongCallDetails(
+                                gong.metaData().id(),
+                                gong.metaData().url(),
+                                gong.getSystemContext("Salesforce")
+                                        .flatMap(c -> c.getObject("Name"))
+                                        .map(f -> f.value().toString())
+                                        .orElse("Unknown"),
+                                gong.parties(),
+                                gongClient.getCallTranscript(parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), gong)))
                         .toList())
                 .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
 
         return calls.stream()
-                .map(pair -> getDocumentContext(pair.getLeft(), pair.getRight(), parsedArgs))
+                .map(call -> dataToRagDoc.getDocumentContext(call, getName(), getContextLabel(), parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
                 // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
+                .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
-                .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
+                .filter(ragDoc -> ratingMetadata.contextMeetsRating(ragDoc, parsedArgs))
                 /*
                     Take the raw transcript and summarize them with individual calls to the LLM.
                     The transcripts are then combined into a single context.
@@ -144,28 +152,10 @@ public class Gong implements Tool<GongCallDetails> {
                     raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
                     call transcripts.
                  */
-                .map(ragDoc -> parsedArgs.getSummarizeTranscript() ? getCallSummary(ragDoc, environmentSettings, parsedArgs) : ragDoc)
+                .map(ragDoc -> parsedArgs.getSummarizeTranscript()
+                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "Gong", ragDoc, environmentSettings, parsedArgs)
+                        : ragDoc)
                 .toList();
-    }
-
-    private RagDocumentContext<GongCallDetails> getDocumentContext(final GongCallDetails call, final String transcript, final GongConfig.LocalArguments parsedArgs) {
-        final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(transcript, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
-
-        return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
-                .map(sentences -> new RagDocumentContext<GongCallDetails>(
-                        getName(),
-                        getContextLabel() + " with " + call.company(),
-                        trimmedConversationResult.document(),
-                        sentenceVectorizer.vectorize(sentences),
-                        call.id(),
-                        call,
-                        "[Gong " + call.id() + "](" + call.url() + ")",
-                        trimmedConversationResult.keywordMatches()))
-                // Capture the gong transcript or transcript summary as an intermediate result
-                // This is useful for debugging and understanding the context of the call
-                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Gong-" + ragDoc.id() + ".txt")))
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                .get();
     }
 
     @Override
@@ -193,77 +183,6 @@ public class Gong implements Tool<GongCallDetails> {
     @Override
     public String getContextLabel() {
         return "Gong Call";
-    }
-
-    private MetaObjectResults getMetadata(
-            final Map<String, String> environmentSettings,
-            final RagDocumentContext<GongCallDetails> gongCall,
-            final GongConfig.LocalArguments parsedArgs) {
-
-        final List<MetaObjectResult> metadata = new ArrayList<>();
-
-        // build the environment settings
-        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
-                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, gongCall.document())
-                .addToolCall(getName() + "[" + gongCall.id() + "]");
-
-        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
-                    .map(rating -> Integer.parseInt(rating.trim()))
-                    .onFailure(e -> logger.warning("Failed to get Gong call rating for ticket " + gongCall.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
-                    // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(ex -> parsedArgs.getDefaultRating())
-                    .get();
-
-            metadata.add(new MetaObjectResult(GONG_FILTER_RATING_META, filterRating));
-        }
-
-        return new MetaObjectResults(
-                metadata,
-                "Gong-" + gongCall.id() + ".json",
-                gongCall.id());
-    }
-
-    private boolean contextMeetsRating(
-            final RagDocumentContext<GongCallDetails> call,
-            final GongConfig.LocalArguments parsedArgs) {
-        // If there was no filter question, then return the whole list
-        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return true;
-        }
-
-        return Objects.requireNonNullElse(call.metadata(), new MetaObjectResults())
-                .getIntValueByName(Gong.GONG_FILTER_RATING_META, parsedArgs.getDefaultRating())
-                >= parsedArgs.getContextFilterMinimumRating();
-    }
-
-    /**
-     * Summarise an individual call transcript
-     */
-    private RagDocumentContext<GongCallDetails> getCallSummary(final RagDocumentContext<GongCallDetails> ragDoc, final Map<String, String> environmentSettings, final GongConfig.LocalArguments parsedArgs) {
-        logger.log(Level.INFO, "Summarising Gong call transcript");
-
-        final RagDocumentContext<String> context = new RagDocumentContext<>(
-                getName(),
-                getContextLabel(),
-                ragDoc.document(),
-                List.of()
-        );
-
-        final String response = llmClient.callWithCache(
-                new RagMultiDocumentContext<>(
-                        parsedArgs.getTranscriptSummaryPrompt(),
-                        "You are a helpful agent",
-                        List.of(context)),
-                environmentSettings,
-                getName()
-        ).getResponse();
-
-        return ragDoc.updateDocument(response)
-                .addIntermediateResult(new IntermediateResult(
-                        "Prompt: " + parsedArgs.getTranscriptSummaryPrompt() + "\n\n" + response,
-                        "Gong-" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTranscriptSummaryPrompt()) + ".txt"
-                ));
     }
 }
 
@@ -388,7 +307,7 @@ class GongConfig {
         return configContextFilterDefaultRating;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -537,7 +456,7 @@ class GongConfig {
             return BooleanUtils.toBoolean(value);
         }
 
-        public String getTranscriptSummaryPrompt() {
+        public String getDocumentSummaryPrompt() {
             return getArgsAccessor()
                     .getArgument(
                             getConfigSummarizeTranscriptPrompt()::get,
@@ -572,7 +491,7 @@ class GongConfig {
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
 
-        public int getDefaultRating() {
+        public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterDefaultRating()::get,
                     arguments,

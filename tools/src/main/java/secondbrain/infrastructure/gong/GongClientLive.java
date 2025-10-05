@@ -16,7 +16,6 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.httpclient.HttpClientCaller;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
-import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.infrastructure.gong.api.*;
 
 import java.time.OffsetDateTime;
@@ -65,7 +64,7 @@ public class GongClientLive implements GongClient {
     }
 
     @Override
-    public List<GongCallDetails> getCallsExtensive(
+    public List<GongCallExtensive> getCallsExtensive(
             final String company,
             final String callId,
             final String username,
@@ -111,14 +110,6 @@ public class GongClientLive implements GongClient {
                                                 // And one of the objects must be an account that matches the company id
                                                 c.objects().stream().anyMatch(o ->
                                                         company.equals(o.objectId()) && "Account".equals(o.objectType()))))
-                .map(gong -> new GongCallDetails(
-                        gong.metaData().id(),
-                        gong.metaData().url(),
-                        gong.getSystemContext("Salesforce")
-                                .flatMap(c -> c.getObject("Name"))
-                                .map(f -> f.value().toString())
-                                .orElse("Unknown"),
-                        gong.parties()))
                 .toList();
 
     }
@@ -127,14 +118,14 @@ public class GongClientLive implements GongClient {
     public String getCallTranscript(
             final String username,
             final String password,
-            final GongCallDetails call) {
+            final GongCallExtensive call) {
 
         return localStorage.getOrPutObject(
                         GongClientLive.class.getSimpleName(),
                         "GongAPICallTranscript",
-                        call.id(),
+                        call.metaData().id(),
                         GongCallTranscript.class,
-                        () -> getCallTranscriptApi(call.id(), username, password))
+                        () -> getCallTranscriptApi(call.metaData().id(), username, password))
                 .result()
                 .getTranscript(call);
     }

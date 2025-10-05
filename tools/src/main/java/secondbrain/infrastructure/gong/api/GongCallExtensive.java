@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.gong.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
@@ -16,5 +17,23 @@ public record GongCallExtensive(GongCallExtensiveMetadata metaData,
                 .stream()
                 .filter(c -> system.equals(c.system()))
                 .findFirst();
+    }
+
+    @Nullable
+    public GongCallExtensiveParty getPartyFromId(final String speakerId) {
+        if (parties == null || parties.isEmpty() || speakerId == null || speakerId.isBlank()) {
+            return null;
+        }
+
+        return parties.stream()
+                .filter(Objects::nonNull)
+                .filter(party -> speakerId.equals(party.speakerId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public String getPartyNameFromId(final String partyId) {
+        final GongCallExtensiveParty party = getPartyFromId(partyId);
+        return party != null ? party.name() : "Unknown Speaker";
     }
 }

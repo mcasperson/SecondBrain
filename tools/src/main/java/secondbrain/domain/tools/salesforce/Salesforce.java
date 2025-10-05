@@ -6,12 +6,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.LocalConfigEntity;
 import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.config.LocalConfigSummarizer;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
@@ -54,6 +56,8 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     public static final String SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
     public static final String SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
     public static final String DOMAIN = "domain";
+    public static final String KEYWORD_ARG = "keywords";
+    public static final String KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String ACCOUNT_ID = "accountId";
     public static final String CLIENT_SECRET = "clientSecret";
     public static final String CLIENT_ID = "clientId";
@@ -229,6 +233,13 @@ class SalesforceConfig {
     @ConfigProperty(name = "sb.salesforce.summarizedocumentprompt")
     private Optional<String> configSummarizeDocumentPrompt;
 
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.keywords")
+    private Optional<String> configKeywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.keywordwindow")
+    private Optional<String> configKeywordWindow;
 
     public Optional<String> getConfigClientId() {
         return configClientId;
@@ -286,7 +297,15 @@ class SalesforceConfig {
         return configDomain;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigEntity, LocalConfigSummarizer {
+    public Optional<String> getConfigKeywords() {
+        return configKeywords;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
+    }
+
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private static final int DEFAULT_RATING = 10;
 
         private final List<ToolArgs> arguments;
@@ -525,6 +544,31 @@ class SalesforceConfig {
                             Salesforce.DOMAIN,
                             "")
                     .value();
+        }
+
+        public List<String> getKeywords() {
+            return getArgsAccessor().getArgumentList(
+                            getConfigKeywords()::get,
+                            arguments,
+                            context,
+                            Salesforce.KEYWORD_ARG,
+                            Salesforce.KEYWORD_ARG,
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
+
+        public int getKeywordWindow() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
+                    arguments,
+                    context,
+                    Salesforce.KEYWORD_WINDOW_ARG,
+                    Salesforce.KEYWORD_WINDOW_ARG,
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
     }
 }

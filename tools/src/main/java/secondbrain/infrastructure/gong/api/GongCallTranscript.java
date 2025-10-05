@@ -1,13 +1,12 @@
 package secondbrain.infrastructure.gong.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import secondbrain.domain.tools.gong.model.GongCallDetails;
 
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GongCallTranscript(List<GongCallTranscriptCollection> callTranscripts) {
-    public String getTranscript(final GongCallDetails call) {
+    public String getTranscript(final GongCallExtensive call) {
         if (callTranscripts == null) {
             return "";
         }

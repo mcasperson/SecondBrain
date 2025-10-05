@@ -1,6 +1,6 @@
 package secondbrain.domain.processing;
 
-import secondbrain.domain.config.LocalConfigEntity;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
@@ -11,5 +11,5 @@ public interface DataToRagDoc {
             final T task,
             final String toolName,
             final String contextLabel,
-            final LocalConfigEntity parsedArgs);
+            final LocalConfigKeywordsEntity parsedArgs);
 }

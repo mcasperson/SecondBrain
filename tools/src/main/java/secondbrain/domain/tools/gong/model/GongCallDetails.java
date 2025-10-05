@@ -1,10 +1,11 @@
 package secondbrain.domain.tools.gong.model;
 
-import org.jspecify.annotations.Nullable;
+import secondbrain.domain.data.IdData;
+import secondbrain.domain.data.TextData;
+import secondbrain.domain.data.UrlData;
 import secondbrain.infrastructure.gong.api.GongCallExtensiveParty;
 
 import java.util.List;
-import java.util.Objects;
 
 /**
  * This class represents the contract between a tool and the Gong API.
@@ -13,22 +14,27 @@ import java.util.Objects;
  * @param url     The call URL
  * @param parties The list of parties involved in the call
  */
-public record GongCallDetails(String id, String url, String company, List<GongCallExtensiveParty> parties) {
-    @Nullable
-    public GongCallExtensiveParty getPartyFromId(final String speakerId) {
-        if (parties == null || parties.isEmpty() || speakerId == null || speakerId.isBlank()) {
-            return null;
-        }
+public record GongCallDetails(String id, String url, String company, List<GongCallExtensiveParty> parties,
+                              String transcript) implements IdData, TextData, UrlData {
 
-        return parties.stream()
-                .filter(Objects::nonNull)
-                .filter(party -> speakerId.equals(party.speakerId()))
-                .findFirst()
-                .orElse(null);
+
+    @Override
+    public String getId() {
+        return id;
     }
 
-    public String getPartyNameFromId(final String partyId) {
-        final GongCallExtensiveParty party = getPartyFromId(partyId);
-        return party != null ? party.name() : "Unknown Speaker";
+    @Override
+    public String getText() {
+        return transcript;
+    }
+
+    @Override
+    public String getLinkText() {
+        return "Gong Call " + getId();
+    }
+
+    @Override
+    public String getUrl() {
+        return url;
     }
 }
