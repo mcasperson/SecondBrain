@@ -14,8 +14,13 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.config.LocalConfigFilteredParent;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.*;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.context.SentenceSplitter;
+import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
@@ -25,9 +30,11 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.limit.DocumentTrimmer;
-import secondbrain.domain.tooldefs.*;
-import secondbrain.domain.tools.rating.RatingTool;
-import secondbrain.domain.tools.youtubeplaylist.YoutubePlaylist;
+import secondbrain.domain.processing.RatingFilter;
+import secondbrain.domain.processing.RatingMetadata;
+import secondbrain.domain.tooldefs.Tool;
+import secondbrain.domain.tooldefs.ToolArgs;
+import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
@@ -43,8 +50,6 @@ import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class SlackSearch implements Tool<SlackSearchResultResource> {
-
-    public static final String SLACK_FILTER_RATING_META = "FilterRating";
     public static final String SLACK_FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String SLACK_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String SLACK_SEARCH_DAYS_ARG = "days";
@@ -61,6 +66,12 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
             You are professional agent that understands Slack conversations.
             You are given Slack search results and asked to answer questions based on the messages provided.
             """;
+
+    @Inject
+    private RatingMetadata ratingMetadata;
+
+    @Inject
+    private RatingFilter ratingFilter;
 
     @Inject
     private SlackSearchConfig config;
@@ -91,9 +102,6 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
     @Inject
     private Logger logger;
-
-    @Inject
-    private RatingTool ratingTool;
 
     @Override
     public String getName() {
@@ -159,9 +167,9 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                                 parsedArgs.getKeywordWindow())))
                 .filter(ragDoc -> validateString.isNotEmpty(ragDoc.document()))
                 // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
+                .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
-                .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
+                .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .toList();
 
     }
@@ -214,48 +222,6 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                         .replaceAll("[^A-Za-z0-9-._ ]", " ")
                         .trim(),
                 0, 75) + "](" + matchedItem.permalink() + ")";
-    }
-
-    private MetaObjectResults getMetadata(
-            final Map<String, String> environmentSettings,
-            final RagDocumentContext<SlackSearchResultResource> message,
-            final SlackSearchConfig.LocalArguments parsedArgs) {
-
-        final List<MetaObjectResult> metadata = new ArrayList<>();
-
-        // build the environment settings
-        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
-                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, message.document())
-                .addToolCall(getName() + "[" + message.id() + "]");
-
-        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of())
-                            .getResponse())
-                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
-                    // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(ex -> 10)
-                    .get();
-
-            metadata.add(new MetaObjectResult(SLACK_FILTER_RATING_META, filterRating));
-        }
-
-        return new MetaObjectResults(
-                metadata,
-                "SlackSearch-" + message.id() + ".json",
-                message.id());
-    }
-
-    private boolean contextMeetsRating(
-            final RagDocumentContext<SlackSearchResultResource> message,
-            final SlackSearchConfig.LocalArguments parsedArgs) {
-        // If there was no filter question, then return the whole list
-        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return true;
-        }
-
-        return Objects.requireNonNullElse(message.metadata(), new MetaObjectResults())
-                .getIntValueByName(SLACK_FILTER_RATING_META, parsedArgs.getDefaultRating())
-                >= parsedArgs.getContextFilterMinimumRating();
     }
 }
 
@@ -387,7 +353,7 @@ class SlackSearchConfig {
         return configContextFilterDefaultRating;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -560,7 +526,7 @@ class SlackSearchConfig {
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
 
-        public int getDefaultRating() {
+        public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterDefaultRating()::get,
                     arguments,

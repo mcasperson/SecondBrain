@@ -16,8 +16,13 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.config.LocalConfigFilteredParent;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.*;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.context.SentenceSplitter;
+import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.EmptyString;
@@ -26,9 +31,13 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
+import secondbrain.domain.processing.RatingFilter;
+import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tooldefs.*;
-import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.domain.tooldefs.IntermediateResult;
+import secondbrain.domain.tooldefs.Tool;
+import secondbrain.domain.tooldefs.ToolArgs;
+import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
@@ -36,7 +45,10 @@ import secondbrain.infrastructure.slack.api.SlackChannelResource;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -69,6 +81,12 @@ public class SlackChannel implements Tool<Void> {
             """;
 
     @Inject
+    private RatingMetadata ratingMetadata;
+
+    @Inject
+    private RatingFilter ratingFilter;
+
+    @Inject
     private SlackChannelConfig config;
 
     @Inject
@@ -97,9 +115,6 @@ public class SlackChannel implements Tool<Void> {
 
     @Inject
     private Logger logger;
-
-    @Inject
-    private RatingTool ratingTool;
 
     @Inject
     private ExceptionMapping exceptionMapping;
@@ -196,9 +211,9 @@ public class SlackChannel implements Tool<Void> {
 
         return Stream.of(getDocumentContext(messagesWithUsersReplaced, channel, environmentSettings, parsedArgs))
                 // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
+                .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
-                .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
+                .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .toList();
     }
 
@@ -322,48 +337,6 @@ public class SlackChannel implements Tool<Void> {
     private String matchToUrl(final SlackChannelResource channel) {
         return "[Slack " + channel.channelName() + "](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")";
     }
-
-    private MetaObjectResults getMetadata(
-            final Map<String, String> environmentSettings,
-            final RagDocumentContext<Void> message,
-            final SlackChannelConfig.LocalArguments parsedArgs) {
-
-        final List<MetaObjectResult> metadata = new ArrayList<>();
-
-        // build the environment settings
-        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
-                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, message.document())
-                .addToolCall(getName() + "[" + message.id() + "]");
-
-        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
-                    .map(rating -> Integer.parseInt(rating.trim()))
-                    .onFailure(e -> logger.warning("Failed to get Slack message rating for ticket " + message.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
-                    // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(ex -> parsedArgs.getDefaultRating())
-                    .get();
-
-            metadata.add(new MetaObjectResult(SLACK_CHANNEL_FILTER_RATING_META, filterRating));
-        }
-
-        return new MetaObjectResults(
-                metadata,
-                "SlackChannel-" + message.id() + ".json",
-                message.id());
-    }
-
-    private boolean contextMeetsRating(
-            final RagDocumentContext<Void> message,
-            final SlackChannelConfig.LocalArguments parsedArgs) {
-        // If there was no filter question, then return the whole list
-        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return true;
-        }
-
-        return Objects.requireNonNullElse(message.metadata(), new MetaObjectResults())
-                .getIntValueByName(SLACK_CHANNEL_FILTER_RATING_META, 10)
-                >= parsedArgs.getContextFilterMinimumRating();
-    }
 }
 
 @ApplicationScoped
@@ -482,7 +455,7 @@ class SlackChannelConfig {
         return configContextFilterDefaultRating;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -639,7 +612,7 @@ class SlackChannelConfig {
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
 
-        public int getDefaultRating() {
+        public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
