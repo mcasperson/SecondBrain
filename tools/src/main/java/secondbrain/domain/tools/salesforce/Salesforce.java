@@ -7,16 +7,22 @@ import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.context.*;
+import secondbrain.domain.config.LocalConfigEntity;
+import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.tooldefs.*;
-import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.domain.processing.DataToRagDoc;
+import secondbrain.domain.processing.RatingMetadata;
+import secondbrain.domain.tooldefs.IntermediateResult;
+import secondbrain.domain.tooldefs.Tool;
+import secondbrain.domain.tooldefs.ToolArgs;
+import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.salesforce.SalesforceClient;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
@@ -25,7 +31,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
-import java.util.*;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -37,7 +46,6 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
  */
 @ApplicationScoped
 public class Salesforce implements Tool<SalesforceTaskRecord> {
-    public static final String FILTER_RATING_META = "FilterRating";
     public static final String ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
@@ -62,8 +70,10 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
             """.stripLeading();
 
     @Inject
-    @ConfigProperty(name = "sb.salesforce.domain")
-    private Optional<String> domain;
+    private RatingMetadata ratingMetadata;
+
+    @Inject
+    private DataToRagDoc dataToRagDoc;
 
     @Inject
     private ExceptionMapping exceptionMapping;
@@ -76,15 +86,6 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
     @Inject
     private Logger logger;
-
-    @Inject
-    private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SentenceVectorizer sentenceVectorizer;
-
-    @Inject
-    private RatingTool ratingTool;
 
     @Inject
     @Preferred
@@ -121,13 +122,13 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         final String endDate = StringUtils.isNotBlank(parsedArgs.getEndPeriod()) ? parsedArgs.getEndPeriod() : parsedArgs.getEndDate();
 
         final Try<List<RagDocumentContext<SalesforceTaskRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getClientSecret()))
-                .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", parsedArgs.getStartDate(), parsedArgs.getEndDate()))
+                .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
                 .map(emails -> Stream.of(emails)
-                        .map(email -> getDocumentContext(email, parsedArgs))
+                        .map(email -> dataToRagDoc.getDocumentContext(email, getName(), getContextLabel(), parsedArgs))
                         // Get the metadata, which includes a rating against the filter question if present
-                        .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
+                        .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                         // Filter out any documents that don't meet the rating criteria
-                        .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
+                        .filter(ragDoc -> ratingMetadata.contextMeetsRating(ragDoc, parsedArgs))
                         .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Salesforce" + ragDoc.id() + ".txt")))
                         .map(doc -> parsedArgs.getSummarizeDocument()
                                 ? getDocumentSummary(doc, environmentSettings, parsedArgs)
@@ -163,62 +164,6 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     @Override
     public String getContextLabel() {
         return "Email";
-    }
-
-    private RagDocumentContext<SalesforceTaskRecord> getDocumentContext(final SalesforceTaskRecord task, final SalesforceConfig.LocalArguments parsedArgs) {
-        return Try.of(() -> sentenceSplitter.splitDocument(task.getEmailText(), 10))
-                .map(sentences -> new RagDocumentContext<SalesforceTaskRecord>(
-                        getName(),
-                        getContextLabel(),
-                        task.getEmailText(),
-                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
-                        task.id(),
-                        task,
-                        "[Salesforce Task " + task.id() + "](https://" + domain.orElse("fixme") + ".my.salesforce.com)"))
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                .get();
-    }
-
-    private MetaObjectResults getMetadata(
-            final Map<String, String> environmentSettings,
-            final RagDocumentContext<SalesforceTaskRecord> activity,
-            final SalesforceConfig.LocalArguments parsedArgs) {
-
-        final List<MetaObjectResult> metadata = new ArrayList<>();
-
-        // build the environment settings
-        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
-                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, activity.document())
-                .addToolCall(getName() + "[" + activity.id() + "]");
-
-        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
-                    .map(rating -> Integer.parseInt(rating.trim()))
-                    .onFailure(e -> logger.warning("Failed to get Salesforce rating for email " + activity.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
-                    // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(ex -> parsedArgs.getDefaultRating())
-                    .get();
-
-            metadata.add(new MetaObjectResult(FILTER_RATING_META, filterRating));
-        }
-
-        return new MetaObjectResults(
-                metadata,
-                "Gong-" + activity.id() + ".json",
-                activity.id());
-    }
-
-    private boolean contextMeetsRating(
-            final RagDocumentContext<SalesforceTaskRecord> call,
-            final SalesforceConfig.LocalArguments parsedArgs) {
-        // If there was no filter question, then return the whole list
-        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return true;
-        }
-
-        return Objects.requireNonNullElse(call.metadata(), new MetaObjectResults())
-                .getIntValueByName(FILTER_RATING_META, parsedArgs.getDefaultRating())
-                >= parsedArgs.getContextFilterMinimumRating();
     }
 
     private RagDocumentContext<SalesforceTaskRecord> getDocumentSummary(
@@ -354,7 +299,7 @@ class SalesforceConfig {
         return configSummarizeDocumentPrompt;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigEntity {
         private static final int DEFAULT_RATING = 10;
 
         private final List<ToolArgs> arguments;
@@ -537,7 +482,7 @@ class SalesforceConfig {
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
 
-        public int getDefaultRating() {
+        public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
