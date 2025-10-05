@@ -47,15 +47,15 @@ public class FileLockMutex implements Mutex {
         return Try.withResources(() -> new RandomAccessFile(lockName, "rw").getChannel())
                 .of(channel -> Try.withResources(() -> channel.tryLock(0, 0, false))
                         .of(lock -> callIfNotNull(lock, callback))
-                        .recover(LockFail.class, ex -> {
-                            if (timeout <= 0) {
-                                throw new LockFail("Failed to obtain file lock within the specified timeout");
-                            }
-                            log.info("Lock file is already locked, waiting...");
-                            Try.run(() -> Thread.sleep(Math.min(SLEEP, timeout)));
-                            return establishFileLock(Math.max(timeout - SLEEP, 0), lockName, callback);
-                        })
                         .get())
+                .recover(LockFail.class, ex -> {
+                    if (timeout <= 0) {
+                        throw new LockFail("Failed to obtain file lock within the specified timeout");
+                    }
+                    log.info("Lock file is already locked, waiting...");
+                    Try.run(() -> Thread.sleep(Math.min(SLEEP, timeout)));
+                    return establishFileLock(Math.max(timeout - SLEEP, 0), lockName, callback);
+                })
                 .get();
     }
 
