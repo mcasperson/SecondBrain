@@ -9,9 +9,10 @@ import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import secondbrain.domain.constants.Constants;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
+import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.zendesk.api.*;
@@ -23,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 @ApplicationScoped
 public class ZenDeskClientLive implements ZenDeskClient {
 
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
@@ -41,6 +42,11 @@ public class ZenDeskClientLive implements ZenDeskClient {
         }
      */
     private static final int MAX_PAGES = 10;
+    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.lock", defaultValue = "sb_zendesk.lock")
+    private String lockFile;
 
     @Inject
     private ResponseValidation responseValidation;
@@ -50,6 +56,9 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
     @Inject
     private TimeoutHttpClientCaller httpClientCaller;
+
+    @Inject
+    private Mutex mutex;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -112,11 +121,20 @@ public class ZenDeskClientLive implements ZenDeskClient {
         return Arrays.asList(value);
     }
 
+    private ZenDeskTicket[] getTicketsApi(
+            final String authorization,
+            final String url,
+            final String query,
+            final int page,
+            final int maxPage) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getTicketsApiLocked(authorization, url, query, page, maxPage));
+    }
+
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    private ZenDeskTicket[] getTicketsApi(
+    private ZenDeskTicket[] getTicketsApiLocked(
             final String authorization,
             final String url,
             final String query,
@@ -160,11 +178,18 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 API_RETRIES);
     }
 
+    private ZenDeskTicketResponse getTicketApi(
+            final String authorization,
+            final String url,
+            final String id) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getTicketApiLocked(authorization, url, id));
+    }
+
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    private ZenDeskTicketResponse getTicketApi(
+    private ZenDeskTicketResponse getTicketApiLocked(
             final String authorization,
             final String url,
             final String id) {
@@ -224,6 +249,13 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String authorization,
             final String url,
             final String ticketId) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getCommentsFromApiLocked(authorization, url, ticketId));
+    }
+
+    private ZenDeskCommentsResponse getCommentsFromApiLocked(
+            final String authorization,
+            final String url,
+            final String ticketId) {
 
         if (StringUtils.isBlank(ticketId)) {
             throw new IllegalArgumentException("Ticket ID is required");
@@ -253,11 +285,18 @@ public class ZenDeskClientLive implements ZenDeskClient {
         );
     }
 
+    private ZenDeskOrganizationResponse getOrganizationFromApi(
+            final String authorization,
+            final String url,
+            final String orgId) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getOrganizationFromApiLocked(authorization, url, orgId));
+    }
+
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    private ZenDeskOrganizationResponse getOrganizationFromApi(
+    private ZenDeskOrganizationResponse getOrganizationFromApiLocked(
             final String authorization,
             final String url,
             final String orgId) {
@@ -307,11 +346,18 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 () -> getOrganizationFromApi(authorization, url, orgId)).result().organization();
     }
 
+    private ZenDeskUserResponse getUserFromApi(
+            final String authorization,
+            final String url,
+            final String userId) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getUserFromApiLocked(authorization, url, userId));
+    }
+
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
-    private ZenDeskUserResponse getUserFromApi(
+    private ZenDeskUserResponse getUserFromApiLocked(
             final String authorization,
             final String url,
             final String userId) {

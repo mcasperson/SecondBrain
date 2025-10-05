@@ -14,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.httpclient.HttpClientCaller;
+import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.gong.api.*;
@@ -38,6 +39,11 @@ public class GongClientLive implements GongClient {
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
+    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.lock", defaultValue = "sb_gong.lock")
+    private String lockFile;
 
     @Inject
     private ResponseValidation responseValidation;
@@ -54,6 +60,9 @@ public class GongClientLive implements GongClient {
 
     @Inject
     private HttpClientCaller httpClientCaller;
+
+    @Inject
+    private Mutex mutex;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -130,10 +139,20 @@ public class GongClientLive implements GongClient {
                 .getTranscript(call);
     }
 
+    private GongCallExtensive[] getCallsExtensiveApi(
+            final String fromDateTime,
+            final String toDateTime,
+            final String callId,
+            final String username,
+            final String password,
+            final String cursor) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, cursor));
+    }
+
     /**
      * https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/extensive
      */
-    private GongCallExtensive[] getCallsExtensiveApi(
+    private GongCallExtensive[] getCallsExtensiveApiLocked(
             final String fromDateTime,
             final String toDateTime,
             final String callId,
@@ -177,10 +196,17 @@ public class GongClientLive implements GongClient {
                 e -> new RuntimeException("Failed to get calls from Gong API", e));
     }
 
+    private GongCallTranscript getCallTranscriptApi(
+            final String id,
+            final String username,
+            final String password) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getCallTranscriptApiLocked(id, username, password));
+    }
+
     /**
      * https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/transcript
      */
-    private GongCallTranscript getCallTranscriptApi(
+    private GongCallTranscript getCallTranscriptApiLocked(
             final String id,
             final String username,
             final String password) {

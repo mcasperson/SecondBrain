@@ -17,11 +17,11 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
-import secondbrain.domain.concurrency.SemaphoreLender;
-import secondbrain.domain.constants.Constants;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tools.slack.ChannelDetails;
 import secondbrain.domain.validate.ValidateString;
@@ -42,8 +42,12 @@ public class SlackClientLive implements SlackClient {
 
     private static final int RETRIES = 10;
     private static final int RETRY_JITTER = 10000;
-    private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
+    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.lock", defaultValue = "sb_slack.lock")
+    private String lockFile;
 
     @Inject
     private ValidateString validateString;
@@ -53,6 +57,9 @@ public class SlackClientLive implements SlackClient {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private Mutex mutex;
 
     @Override
     public String conversationHistory(
@@ -159,6 +166,15 @@ public class SlackClientLive implements SlackClient {
             final String userId,
             final int retryCount,
             final int apiDelay) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> userFromApiLocked(client, accessToken, userId, retryCount, apiDelay));
+    }
+
+    private UsersInfoResponse userFromApiLocked(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String userId,
+            final int retryCount,
+            final int apiDelay) {
         if (retryCount > RETRIES) {
             throw new InternalFailure("Could not call usersInfo after " + RETRIES + " retries");
         }
@@ -219,6 +235,15 @@ public class SlackClientLive implements SlackClient {
     }
 
     private ConversationsInfoResponse channelFromApi(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channelId,
+            final int retryCount,
+            final int apiDelay) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> channelFromApiLocked(client, accessToken, channelId, retryCount, apiDelay));
+    }
+
+    private ConversationsInfoResponse channelFromApiLocked(
             final AsyncMethodsClient client,
             final String accessToken,
             final String channelId,
@@ -300,10 +325,10 @@ public class SlackClientLive implements SlackClient {
             final String accessToken,
             final Set<String> keywords,
             final int apiDelay) {
-        return searchFromApi(client, accessToken, keywords, 0, apiDelay);
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> searchFromApiLocked(client, accessToken, keywords, 0, apiDelay));
     }
 
-    private SearchAllResponse searchFromApi(
+    private SearchAllResponse searchFromApiLocked(
             final AsyncMethodsClient client,
             final String accessToken,
             final Set<String> keywords,
@@ -330,7 +355,7 @@ public class SlackClientLive implements SlackClient {
                             }
                         })
                         .get())
-                .recover(ex -> searchFromApi(client, accessToken, keywords, retryCount + 1, apiDelay));
+                .recover(ex -> searchFromApiLocked(client, accessToken, keywords, retryCount + 1, apiDelay));
 
         return result
                 .mapFailure(API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex))
@@ -369,6 +394,15 @@ public class SlackClientLive implements SlackClient {
             final String channel,
             final String cursor,
             final int apiDelay) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> findChannelIdFromApiLocked(client, accessToken, channel, cursor, apiDelay));
+    }
+
+    private ChannelDetails findChannelIdFromApiLocked(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channel,
+            final String cursor,
+            final int apiDelay) {
 
         final ConversationsListResponse response = findConversationListFromApi(client, accessToken, cursor, 0, apiDelay);
 
@@ -395,6 +429,15 @@ public class SlackClientLive implements SlackClient {
     }
 
     private ConversationsListResponse findConversationListFromApi(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String cursor,
+            final int retryCount,
+            final int apiDelay) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> findConversationListFromApiLocked(client, accessToken, cursor, retryCount, apiDelay));
+    }
+
+    private ConversationsListResponse findConversationListFromApiLocked(
             final AsyncMethodsClient client,
             final String accessToken,
             final String cursor,

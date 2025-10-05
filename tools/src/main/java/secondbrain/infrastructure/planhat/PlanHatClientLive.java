@@ -9,8 +9,9 @@ import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
-import secondbrain.domain.constants.Constants;
+import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.planhat.api.Company;
@@ -22,13 +23,21 @@ import java.util.List;
 
 @ApplicationScoped
 public class PlanHatClientLive implements PlanHatClient {
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
+    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.lock", defaultValue = "sb_planhat.lock")
+    private String lockFile;
 
     @Inject
     private ResponseValidation responseValidation;
 
     @Inject
     private LocalStorage localStorage;
+
+    @Inject
+    private Mutex mutex;
 
     @Override
     public List<Conversation> getConversations(
@@ -68,8 +77,16 @@ public class PlanHatClientLive implements PlanHatClient {
                 .result();
     }
 
+    private Conversation[] getConversationsApi(
+            final Client client,
+            final String company,
+            final String url,
+            final String token) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getConversationsApiLocked(client, company, url, token));
+    }
+
     @Retry
-    private Conversation[] getConversationsApi(final Client client, final String company, final String url, final String token) {
+    private Conversation[] getConversationsApiLocked(final Client client, final String company, final String url, final String token) {
         RATE_LIMITER.acquire();
 
         final String target = url + "/conversations";
@@ -90,8 +107,20 @@ public class PlanHatClientLive implements PlanHatClient {
                 .get();
     }
 
+    private Company getCompanyApi(
+            final Client client,
+            final String company,
+            final String url,
+            final String token) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getCompanyApiLocked(client, company, url, token));
+    }
+
     @Retry
-    private Company getCompanyApi(final Client client, final String company, final String url, final String token) {
+    private Company getCompanyApiLocked(
+            final Client client,
+            final String company,
+            final String url,
+            final String token) {
         RATE_LIMITER.acquire();
 
         final String target = url + "/companies/" + URLEncoder.encode(company, Charset.defaultCharset());
