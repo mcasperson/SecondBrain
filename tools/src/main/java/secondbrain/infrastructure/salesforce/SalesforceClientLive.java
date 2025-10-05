@@ -34,7 +34,7 @@ import static com.google.common.base.Preconditions.checkState;
 
 @ApplicationScoped
 public class SalesforceClientLive implements SalesforceClient {
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(4);
     private static final int DEFAULT_CACHE_TTL_DAYS = 3;
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
