@@ -5,7 +5,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -15,6 +14,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredParent;
+import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -25,10 +25,10 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -72,7 +72,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_SUMMARIZE_TICKET_ARG = "summarizeTicket";
     public static final String ZENDESK_MAX_TICKETS_ARG = "maxTickets";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
-    public static final String ZENDESK_TICKET_DEFAULT_RATING_ARG = "ticketDefaultRating";
     public static final String ZENDESK_HISTORY_TTL_ARG = "historyTtl";
     public static final String ZENDESK_URL2_ARG = "url2";
     public static final String ZENDESK_USER2_ARG = "user2";
@@ -99,6 +98,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
     @Inject
     private RatingFilter ratingFilter;
+
+    @Inject
+    private RagDocSummarizer ragDocSummarizer;
 
     @Inject
     private ZenDeskIndividualTicket ticketTool;
@@ -268,7 +270,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                     raw tickets. The reality is that even LLMs with a context length of 128k tokens mostly fixated
                     one a small number of tickets.
                  */
-                .map(tickets -> parsedArgs.getSummarizeTicket() ? summariseTickets(tickets, environmentSettings, parsedArgs) : tickets)
+                .map(tickets -> parsedArgs.getSummarizeTicket()
+                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "ZenDesk", tickets, environmentSettings, parsedArgs)
+                        : tickets)
                 // Don't let one failed instance block the others
                 .onFailure(throwable -> logger.warning("Failed to get tickets: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .recover(throwable -> List.of())
@@ -325,22 +329,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Summarize the tickets by passing them through the LLM
-     */
-    private List<RagDocumentContext<ZenDeskTicket>> summariseTickets(
-            final List<RagDocumentContext<ZenDeskTicket>> tickets,
-            final Map<String, String> context,
-            final ZenDeskConfig.LocalArguments parsedArgs) {
-        return tickets.stream()
-                // Replace the raw ticket text with the summarized ticket
-                .map(ticket -> ticket.updateDocument(getTicketSummary(ticket.document(), context, parsedArgs)))
-                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(
-                        "Prompt: " + parsedArgs.getTicketSummaryPrompt() + "\n\n" + ragDoc.document(),
-                        "ZenDesk-" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getTicketSummaryPrompt()) + ".txt")))
-                .collect(Collectors.toList());
-    }
-
     private List<RagDocumentContext<ZenDeskTicket>> trimTickets(final List<RagDocumentContext<ZenDeskTicket>> tickets, final ZenDeskConfig.LocalArguments parsedArgs) {
         return tickets.stream()
                 .map(ticket -> ticket.updateDocument(
@@ -350,29 +338,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                 parsedArgs.getKeywordWindow())))
                 .filter(ticket -> validateString.isNotEmpty(ticket.document()))
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * Summarize an individual ticket
-     */
-    private String getTicketSummary(final String ticketContents,
-                                    final Map<String, String> environmentSettings,
-                                    final ZenDeskConfig.LocalArguments parsedArgs) {
-        final RagDocumentContext<String> context = new RagDocumentContext<>(
-                getName(),
-                getContextLabel(),
-                ticketContents,
-                List.of()
-        );
-
-        return llmClient.callWithCache(
-                new RagMultiDocumentContext<>(
-                        parsedArgs.getTicketSummaryPrompt(),
-                        "You are a helpful agent",
-                        List.of(context)),
-                environmentSettings,
-                getName()
-        ).getResponse();
     }
 
     private List<RagDocumentContext<ZenDeskTicket>> ticketToComments(final List<ZenDeskTicket> tickets,
@@ -385,7 +350,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 // Get the context associated with the ticket
                 .flatMap(ticket -> ticketTool.getContext(
                         environmentSettings,
-                        parsedArgs.getTicketSummaryPrompt(),
+                        parsedArgs.getDocumentSummaryPrompt(),
                         /*
                             We end up passing all the ticket details as arguments to the tool. This is due to the fact
                             that we can only pass strings between tools.
@@ -685,7 +650,7 @@ class ZenDeskConfig {
         return configTicketFilterMinimumRating;
     }
 
-    public class LocalArguments implements LocalConfigFilteredParent {
+    public class LocalArguments implements LocalConfigFilteredParent, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -1081,7 +1046,7 @@ class ZenDeskConfig {
                     .get();
         }
 
-        public String getTicketSummaryPrompt() {
+        public String getDocumentSummaryPrompt() {
             return getArgsAccessor()
                     .getArgument(
                             getConfigTicketSummaryPrompt()::get,

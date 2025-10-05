@@ -48,4 +48,18 @@ public class LLMRagDocSummarizer implements RagDocSummarizer {
                         "Prompt: " + parsedArgs.getDocumentSummaryPrompt() + "\n\n" + response,
                         datasource + " " + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getDocumentSummaryPrompt()) + ".txt"));
     }
+
+    @Override
+    public <T> List<RagDocumentContext<T>> getDocumentSummary(
+            final String toolName,
+            final String contextLabel,
+            final String datasource,
+            final List<RagDocumentContext<T>> ragDoc,
+            final Map<String, String> environmentSettings,
+            final LocalConfigSummarizer parsedArgs) {
+        return ragDoc
+                .stream()
+                .map(doc -> getDocumentSummary(toolName, contextLabel, datasource, doc, environmentSettings, parsedArgs))
+                .toList();
+    }
 }
