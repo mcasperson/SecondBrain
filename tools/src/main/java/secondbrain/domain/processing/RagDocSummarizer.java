@@ -6,6 +6,9 @@ import secondbrain.domain.context.RagDocumentContext;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Defines a service used to summarize document contexts.
+ */
 public interface RagDocSummarizer {
     <T> RagDocumentContext<T> getDocumentSummary(
             final String toolName,

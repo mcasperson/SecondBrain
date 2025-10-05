@@ -6,6 +6,10 @@ import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
 
+/**
+ * Represents a service that will convert a raw data object, usually sourced from an external API,
+ * into a RagDocumentContext object that can be used for retrieval-augmented generation (RAG) tasks.
+ */
 public interface DataToRagDoc {
     <T extends TextData & IdData & UrlData> RagDocumentContext<T> getDocumentContext(
             final T task,
