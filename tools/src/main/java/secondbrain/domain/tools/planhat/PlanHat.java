@@ -5,8 +5,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -15,17 +13,26 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.config.LocalConfigFilteredParent;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
+import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.*;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.converter.HtmlToText;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.limit.DocumentTrimmer;
-import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.tooldefs.*;
-import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.domain.processing.DataToRagDoc;
+import secondbrain.domain.processing.RagDocSummarizer;
+import secondbrain.domain.processing.RatingFilter;
+import secondbrain.domain.processing.RatingMetadata;
+import secondbrain.domain.tooldefs.IntermediateResult;
+import secondbrain.domain.tooldefs.Tool;
+import secondbrain.domain.tooldefs.ToolArgs;
+import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
@@ -33,14 +40,15 @@ import secondbrain.infrastructure.planhat.api.Conversation;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 @ApplicationScoped
 public class PlanHat implements Tool<Conversation> {
-    public static final String PLANHAT_FILTER_RATING_META = "FilterRating";
     public static final String PLANHAT_FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String PLANHAT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String PLANHAT_DEFAULT_RATING_ARG = "ticketDefaultRating";
@@ -68,17 +76,23 @@ public class PlanHat implements Tool<Conversation> {
     private String url;
 
     @Inject
+    private RatingMetadata ratingMetadata;
+
+    @Inject
+    private RatingFilter ratingFilter;
+
+    @Inject
+    private DataToRagDoc dataToRagDoc;
+
+    @Inject
+    private RagDocSummarizer ragDocSummarizer;
+
+    @Inject
     private PlanHatConfig config;
 
     @Inject
     @Preferred
     private PlanHatClient planHatClient;
-
-    @Inject
-    private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SentenceVectorizer sentenceVectorizer;
 
     @Inject
     @Preferred
@@ -91,16 +105,10 @@ public class PlanHat implements Tool<Conversation> {
     private DateParser dateParser;
 
     @Inject
-    private DocumentTrimmer documentTrimmer;
-
-    @Inject
     private ValidateString validateString;
 
     @Inject
     private Logger logger;
-
-    @Inject
-    private RatingTool ratingTool;
 
     @Inject
     private ExceptionMapping exceptionMapping;
@@ -166,20 +174,20 @@ public class PlanHat implements Tool<Conversation> {
                 .filter(conversation -> parsedArgs.getCompany().equals(conversation.companyId()))
                 .filter(conversation -> parsedArgs.getDays() == 0
                         || dateParser.parseDate(conversation.date()).isAfter(ZonedDateTime.now(ZoneOffset.UTC).minusDays(parsedArgs.getDays())))
-                .filter(conversation -> !"ticket" .equals(conversation.type()))
+                .filter(conversation -> !"ticket".equals(conversation.type()))
                 .map(conversation -> conversation.updateDescriptionAndSnippet(
                         htmlToText.getText(conversation.description()),
                         htmlToText.getText(conversation.snippet()))
                 )
-                .map(conversation -> getDocumentContext(conversation, parsedArgs))
+                .map(conversation -> dataToRagDoc.getDocumentContext(conversation.updateUrl(url), getName(), getContextLabel(), parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
                 // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
+                .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
-                .filter(ragDoc -> contextMeetsRating(ragDoc, parsedArgs))
+                .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "PlanHat" + ragDoc.id() + ".txt")))
                 .map(doc -> parsedArgs.getSummarizeDocument()
-                        ? getDocumentSummary(doc, environmentSettings, parsedArgs)
+                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "PlanHat", doc, environmentSettings, parsedArgs)
                         : doc)
                 .toList();
     }
@@ -201,102 +209,6 @@ public class PlanHat implements Tool<Conversation> {
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
         return exceptionMapping.map(result).get();
-    }
-
-    private Pair<Conversation, List<String>> trimConversation(final Conversation conversation, final PlanHatConfig.LocalArguments parsedArgs) {
-        final TrimResult description = documentTrimmer.trimDocumentToKeywords(conversation.description(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
-        final TrimResult snippet = documentTrimmer.trimDocumentToKeywords(conversation.snippet(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
-        final Conversation trimmedConversation = conversation.updateDescriptionAndSnippet(description.document(), snippet.document());
-        final List<String> keywords = CollectionUtils.union(description.keywordMatches(), snippet.keywordMatches())
-                .stream()
-                .distinct()
-                .toList();
-
-        return Pair.of(trimmedConversation, keywords);
-    }
-
-    private RagDocumentContext<Conversation> getDocumentContext(final Conversation conversation, final PlanHatConfig.LocalArguments parsedArgs) {
-        final Pair<Conversation, List<String>> trimmedConversationResult = trimConversation(conversation, parsedArgs);
-
-        final String contextLabel = getContextLabel() + " " + trimmedConversationResult.getLeft().companyName() + " " + trimmedConversationResult.getLeft().date();
-
-        return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.getLeft().getContent(), 10))
-                .map(sentences -> new RagDocumentContext<Conversation>(
-                        getName(),
-                        contextLabel,
-                        trimmedConversationResult.getLeft().getContent(),
-                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
-                        trimmedConversationResult.getLeft().id(),
-                        trimmedConversationResult.getLeft(),
-                        "[PlanHat " + trimmedConversationResult.getLeft().id() + "](" + trimmedConversationResult.getLeft().getPublicUrl(url) + ")",
-                        trimmedConversationResult.getRight()))
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                .get();
-    }
-
-    private RagDocumentContext<Conversation> getDocumentSummary(final RagDocumentContext<Conversation> ragDoc, final Map<String, String> environmentSettings, final PlanHatConfig.LocalArguments parsedArgs) {
-        final RagDocumentContext<String> context = new RagDocumentContext<>(
-                getName(),
-                getContextLabel(),
-                ragDoc.document(),
-                List.of()
-        );
-
-        final String response = llmClient.callWithCache(
-                new RagMultiDocumentContext<>(
-                        parsedArgs.getDocumentSummaryPrompt(),
-                        "You are a helpful agent",
-                        List.of(context)),
-                environmentSettings,
-                getName()
-        ).getResponse();
-
-        return ragDoc.updateDocument(response)
-                .addIntermediateResult(new IntermediateResult(
-                        "Prompt: " + parsedArgs.getDocumentSummaryPrompt() + "\n\n" + response,
-                        "PlanHat" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getDocumentSummaryPrompt()) + ".txt"));
-    }
-
-    private MetaObjectResults getMetadata(
-            final Map<String, String> environmentSettings,
-            final RagDocumentContext<Conversation> activity,
-            final PlanHatConfig.LocalArguments parsedArgs) {
-
-        final List<MetaObjectResult> metadata = new ArrayList<>();
-
-        // build the environment settings
-        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
-                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, activity.document())
-                .addToolCall(getName() + "[" + activity.id() + "]");
-
-        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
-                    .map(rating -> Integer.parseInt(rating.trim()))
-                    .onFailure(e -> logger.warning("Failed to get Planhat activity rating for ticket " + activity.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
-                    // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(ex -> parsedArgs.getDefaultRating())
-                    .get();
-
-            metadata.add(new MetaObjectResult(PLANHAT_FILTER_RATING_META, filterRating));
-        }
-
-        return new MetaObjectResults(
-                metadata,
-                "Gong-" + activity.id() + ".json",
-                activity.id());
-    }
-
-    private boolean contextMeetsRating(
-            final RagDocumentContext<Conversation> call,
-            final PlanHatConfig.LocalArguments parsedArgs) {
-        // If there was no filter question, then return the whole list
-        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return true;
-        }
-
-        return Objects.requireNonNullElse(call.metadata(), new MetaObjectResults())
-                .getIntValueByName(PlanHat.PLANHAT_FILTER_RATING_META, parsedArgs.getDefaultRating())
-                >= parsedArgs.getContextFilterMinimumRating();
     }
 }
 
@@ -432,7 +344,7 @@ class PlanHatConfig {
         return configContextFilterDefaultRating;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigSummarizer, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -600,7 +512,7 @@ class PlanHatConfig {
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
 
-        public int getDefaultRating() {
+        public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterDefaultRating()::get,
                     arguments,

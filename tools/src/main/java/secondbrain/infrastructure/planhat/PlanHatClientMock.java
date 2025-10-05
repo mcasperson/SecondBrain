@@ -62,6 +62,6 @@ public class PlanHatClientMock implements PlanHatClient {
         String subject = llmClient.call("Generate a subject line for a customer conversation email. Keep it brief.");
         String type = List.of("email", "call", "meeting", "chat").get((int) (Math.random() * 4));
 
-        return new Conversation(id, description, snippet, date, companyId, companyName, subject, type);
+        return new Conversation(id, description, snippet, date, companyId, companyName, subject, type, "");
     }
 }
