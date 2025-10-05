@@ -20,7 +20,6 @@ import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
-import secondbrain.infrastructure.planhat.PlanHatClientLive;
 import secondbrain.infrastructure.salesforce.api.SalesforceOauthTokenResponse;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
@@ -89,7 +88,7 @@ public class SalesforceClientLive implements SalesforceClient {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
 
         return localStorage.getOrPutObject(
-                        PlanHatClientLive.class.getSimpleName(),
+                        SalesforceClientLive.class.getSimpleName(),
                         "SalesforceAPIToken",
                         DigestUtils.sha256Hex(domain.get()),
                         60, // There is little harm in getting new tokens, but we'll cache for 1 minute to avoid spamming the API
@@ -132,7 +131,7 @@ public class SalesforceClientLive implements SalesforceClient {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
 
         return localStorage.getOrPutObject(
-                        PlanHatClientLive.class.getSimpleName(),
+                        SalesforceClientLive.class.getSimpleName(),
                         "SalesforceAPITasks",
                         DigestUtils.sha256Hex(domain.get() + accountId + type + startDate + endDate),
                         DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
@@ -200,6 +199,8 @@ public class SalesforceClientLive implements SalesforceClient {
 
                     throw new ExternalFailure("Could not call salesforce query", ex);
                 })
+                .onFailure(e -> logger.severe("Failed to get tasks for salesforce account " + accountId + "\n" + e.getMessage()))
+                .onSuccess(records -> logger.log(Level.INFO, "Retrieved " + (records != null ? records.length : 0) + " tasks from Salesforce for account " + accountId))
                 .get();
     }
 }

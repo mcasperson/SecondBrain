@@ -455,7 +455,12 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
                 // We batch here to interleave API requests to the various external data sources
-                .collect(parallelToStream(call -> Try.of(call::call).map(List::stream).get(), executor, BATCH_SIZE))
+                .collect(parallelToStream(call -> Try.of(call::call)
+                                .map(List::stream)
+                                .onFailure(ex -> logger.warning("Failed to get context for " + positionalEntity.entity().name() + ": " + exceptionHandler.getExceptionMessage(ex)))
+                                .get(),
+                        executor,
+                        BATCH_SIZE))
                 .flatMap(stream -> stream)
                 .toList();
 
