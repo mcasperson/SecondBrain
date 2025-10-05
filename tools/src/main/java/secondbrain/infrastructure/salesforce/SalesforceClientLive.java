@@ -13,10 +13,11 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import secondbrain.domain.constants.Constants;
 import secondbrain.domain.exceptions.ExternalFailure;
+import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
+import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.planhat.PlanHatClientLive;
@@ -33,14 +34,19 @@ import static com.google.common.base.Preconditions.checkState;
 
 @ApplicationScoped
 public class SalesforceClientLive implements SalesforceClient {
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
     private static final int DEFAULT_CACHE_TTL_DAYS = 3;
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final int API_RETRIES = 3;
+    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.lock", defaultValue = "sb_salesforce.lock")
+    private String lockFile;
 
     @Inject
     @ConfigProperty(name = "sb.salesforce.domain")
@@ -61,6 +67,9 @@ public class SalesforceClientLive implements SalesforceClient {
 
     @Inject
     private TimeoutHttpClientCaller httpClientCaller;
+
+    @Inject
+    private Mutex mutex;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -128,12 +137,20 @@ public class SalesforceClientLive implements SalesforceClient {
                         DigestUtils.sha256Hex(domain.get() + accountId + type + startDate + endDate),
                         DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
                         SalesforceTaskRecord[].class,
-                        () -> getTasksApi(token, accountId, type, startDate, endDate, 0))
+                        () -> getTasksApi(token, accountId, type, startDate, endDate))
                 .result();
     }
 
-    private SalesforceTaskRecord[] getTasksApi(final String token, final String accountId, final String type, final String startDate, final String endDate, final int retryCount) {
+    private SalesforceTaskRecord[] getTasksApi(final String token, final String accountId, final String type, final String startDate, final String endDate) {
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getTasksApiLocked(token, accountId, type, startDate, endDate, 0));
+    }
+
+    private SalesforceTaskRecord[] getTasksApiLocked(final String token, final String accountId, final String type, final String startDate, final String endDate, final int retryCount) {
         logger.log(Level.INFO, "Getting Salesforce tasks for account " + accountId + " from " + startDate + " to " + endDate);
+
+        if (retryCount > API_RETRIES) {
+            throw new ExternalFailure("Exceeded maximum retries calling Salesforce API");
+        }
 
         RATE_LIMITER.acquire();
 
@@ -175,6 +192,14 @@ public class SalesforceClientLive implements SalesforceClient {
                         API_CALL_TIMEOUT_SECONDS_DEFAULT,
                         API_CALL_DELAY_SECONDS_DEFAULT,
                         API_RETRIES))
+                .recover(InvalidResponse.class, ex -> {
+                    if (ex.getCode() == 429) {
+                        Try.run(() -> Thread.sleep(API_CALL_DELAY_SECONDS_DEFAULT * 1000));
+                        return getTasksApiLocked(token, accountId, type, startDate, endDate, retryCount + 1);
+                    }
+
+                    throw new ExternalFailure("Could not call salesforce query", ex);
+                })
                 .get();
     }
 }
