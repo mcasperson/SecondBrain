@@ -43,6 +43,7 @@ import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -434,33 +435,29 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             return List.of();
         }
 
-        final List<RagDocumentContext<Void>> gongContext = getGongContext(positionalEntity, parsedArgs, prompt, context);
-        final List<RagDocumentContext<Void>> zenContext = getZenContext(positionalEntity, parsedArgs, prompt, context);
-        final List<RagDocumentContext<Void>> slackContext = getSlackContext(positionalEntity, parsedArgs, prompt, context);
-        final List<RagDocumentContext<Void>> googleContext = getGoogleContext(positionalEntity, parsedArgs, prompt, context);
-        final List<RagDocumentContext<Void>> planHatContext = getPlanhatContext(positionalEntity, parsedArgs, prompt, context);
-        final List<RagDocumentContext<Void>> salesforceContext = getSalesforceContext(positionalEntity, parsedArgs, prompt, context);
+        final List<Callable<List<RagDocumentContext<Void>>>> contextCalls = List.of(
+                () -> getGongContext(positionalEntity, parsedArgs, prompt, context),
+                () -> getZenContext(positionalEntity, parsedArgs, prompt, context),
+                () -> getSlackContext(positionalEntity, parsedArgs, prompt, context),
+                () -> getGoogleContext(positionalEntity, parsedArgs, prompt, context),
+                () -> getPlanhatContext(positionalEntity, parsedArgs, prompt, context),
+                () -> getSalesforceContext(positionalEntity, parsedArgs, prompt, context),
+                () -> getPlanhatUsageContext(positionalEntity, parsedArgs, prompt, context),
+                // Slack searches use AND logic. This means we need to search each of the IDs (i.e. salesforce and planhat) separately.
+                () -> CollectionUtils.collate(positionalEntity.entity().getSalesforce(), positionalEntity.entity().getPlanHat())
+                        .stream()
+                        .flatMap(id -> getSlackKeywordContext(positionalEntity, parsedArgs, prompt, context, id).stream())
+                        .toList()
+        );
 
-        // Slack searches use AND logic. This means we need to search each of the IDs (i.e. salesforce and planhat) separately.
-        final List<RagDocumentContext<Void>> slackKeywordSearch = CollectionUtils.collate(positionalEntity.entity().getSalesforce(), positionalEntity.entity().getPlanHat())
+        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
+        final List<RagDocumentContext<Void>> retValue = contextCalls
                 .stream()
-                .flatMap(id -> getSlackKeywordContext(positionalEntity, parsedArgs, prompt, context, id).stream())
-                // Remove duplicates
-                .filter(keywordRagDoc -> slackContext.stream().noneMatch(ragDoc -> ragDoc.getLink().equals(keywordRagDoc.getLink())))
+                // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
+                // We batch here to interleave API requests to the various external data sources
+                .collect(parallelToStream(call -> Try.of(call::call).map(List::stream).get(), executor, BATCH_SIZE))
+                .flatMap(stream -> stream)
                 .toList();
-
-        final List<RagDocumentContext<Void>> planHatUsageContext = getPlanhatUsageContext(positionalEntity, parsedArgs, prompt, context);
-
-        final List<RagDocumentContext<Void>> retValue = new ArrayList<>();
-
-        retValue.addAll(zenContext);
-        retValue.addAll(planHatUsageContext);
-        retValue.addAll(slackKeywordSearch);
-        retValue.addAll(slackContext);
-        retValue.addAll(googleContext);
-        retValue.addAll(planHatContext);
-        retValue.addAll(gongContext);
-        retValue.addAll(salesforceContext);
 
         return validateSufficientContext(retValue, parsedArgs);
     }
