@@ -53,6 +53,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     public static final String DEFAULT_RATING_ARG = "ticketDefaultRating";
     public static final String SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
     public static final String SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
+    public static final String DOMAIN = "domain";
     public static final String ACCOUNT_ID = "accountId";
     public static final String CLIENT_SECRET = "clientSecret";
     public static final String CLIENT_ID = "clientId";
@@ -128,7 +129,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         final Try<List<RagDocumentContext<SalesforceTaskRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getClientSecret()))
                 .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
                 .map(emails -> Stream.of(emails)
-                        .map(email -> dataToRagDoc.getDocumentContext(email, getName(), getContextLabel(), parsedArgs))
+                        .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabel(), parsedArgs))
                         // Get the metadata, which includes a rating against the filter question if present
                         .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                         // Filter out any documents that don't meet the rating criteria
@@ -175,6 +176,10 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 class SalesforceConfig {
     @Inject
     private ArgsAccessor argsAccessor;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.domain")
+    private Optional<String> configDomain;
 
     @Inject
     @ConfigProperty(name = "sb.salesforce.clientid")
@@ -275,6 +280,10 @@ class SalesforceConfig {
 
     public Optional<String> getConfigSummarizeDocumentPrompt() {
         return configSummarizeDocumentPrompt;
+    }
+
+    public Optional<String> getConfigDomain() {
+        return configDomain;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigEntity, LocalConfigSummarizer {
@@ -504,6 +513,18 @@ class SalesforceConfig {
                     null,
                     Salesforce.ENTITY_NAME_CONTEXT_ARG,
                     "").value();
+        }
+
+        public String getDomain() {
+            return getArgsAccessor()
+                    .getArgument(
+                            getConfigDomain()::get,
+                            arguments,
+                            context,
+                            Salesforce.DOMAIN,
+                            Salesforce.DOMAIN,
+                            "")
+                    .value();
         }
     }
 }

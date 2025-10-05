@@ -7,9 +7,12 @@ import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record SalesforceTaskRecord(@JsonProperty("Id") String id, @JsonProperty("Description") String description,
-                                   @JsonProperty("Type") String type, @JsonProperty("Subject") String subject,
-                                   @JsonProperty("CreatedDate") String createdDate) implements IdData, TextData, UrlData {
+public record SalesforceTaskRecord(@JsonProperty("Id") String id,
+                                   @JsonProperty("Description") String description,
+                                   @JsonProperty("Type") String type,
+                                   @JsonProperty("Subject") String subject,
+                                   @JsonProperty("CreatedDate") String createdDate,
+                                   String domain) implements IdData, TextData, UrlData {
 
     public String getDescription() {
         return description == null ? "" : description;
@@ -25,6 +28,10 @@ public record SalesforceTaskRecord(@JsonProperty("Id") String id, @JsonProperty(
 
     public String getCreatedDate() {
         return createdDate == null ? "" : createdDate;
+    }
+
+    public SalesforceTaskRecord updateDomain(final String domain) {
+        return new SalesforceTaskRecord(id, description, type, subject, createdDate, domain);
     }
 
     @Override
@@ -44,6 +51,6 @@ public record SalesforceTaskRecord(@JsonProperty("Id") String id, @JsonProperty(
 
     @Override
     public String getUrl() {
-        return "";
+        return "https://" + (domain == null ? "fixme" : domain) + ".my.salesforce.com/" + getId();
     }
 }
