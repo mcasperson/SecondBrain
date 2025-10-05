@@ -166,7 +166,10 @@ public class SlackClientLive implements SlackClient {
             final String userId,
             final int retryCount,
             final int apiDelay) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> userFromApiLocked(client, accessToken, userId, retryCount, apiDelay));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".users",
+                () -> userFromApiLocked(client, accessToken, userId, retryCount, apiDelay));
     }
 
     private UsersInfoResponse userFromApiLocked(
@@ -240,7 +243,10 @@ public class SlackClientLive implements SlackClient {
             final String channelId,
             final int retryCount,
             final int apiDelay) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> channelFromApiLocked(client, accessToken, channelId, retryCount, apiDelay));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".channel",
+                () -> channelFromApiLocked(client, accessToken, channelId, retryCount, apiDelay));
     }
 
     private ConversationsInfoResponse channelFromApiLocked(
@@ -325,7 +331,10 @@ public class SlackClientLive implements SlackClient {
             final String accessToken,
             final Set<String> keywords,
             final int apiDelay) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> searchFromApiLocked(client, accessToken, keywords, 0, apiDelay));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + " .search",
+                () -> searchFromApiLocked(client, accessToken, keywords, 0, apiDelay));
     }
 
     private SearchAllResponse searchFromApiLocked(
@@ -394,7 +403,10 @@ public class SlackClientLive implements SlackClient {
             final String channel,
             final String cursor,
             final int apiDelay) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> findChannelIdFromApiLocked(client, accessToken, channel, cursor, apiDelay));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".channelid",
+                () -> findChannelIdFromApiLocked(client, accessToken, channel, cursor, apiDelay));
     }
 
     private ChannelDetails findChannelIdFromApiLocked(
@@ -434,7 +446,10 @@ public class SlackClientLive implements SlackClient {
             final String cursor,
             final int retryCount,
             final int apiDelay) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> findConversationListFromApiLocked(client, accessToken, cursor, retryCount, apiDelay));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".conversationlist",
+                () -> findConversationListFromApiLocked(client, accessToken, cursor, retryCount, apiDelay));
     }
 
     private ConversationsListResponse findConversationListFromApiLocked(

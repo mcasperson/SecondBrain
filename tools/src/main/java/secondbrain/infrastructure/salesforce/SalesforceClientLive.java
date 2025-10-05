@@ -141,7 +141,10 @@ public class SalesforceClientLive implements SalesforceClient {
     }
 
     private SalesforceTaskRecord[] getTasksApi(final String token, final String accountId, final String type, final String startDate, final String endDate) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getTasksApiLocked(token, accountId, type, startDate, endDate, 0));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".tasks",
+                () -> getTasksApiLocked(token, accountId, type, startDate, endDate, 0));
     }
 
     private SalesforceTaskRecord[] getTasksApiLocked(final String token, final String accountId, final String type, final String startDate, final String endDate, final int retryCount) {

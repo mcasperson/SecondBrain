@@ -146,7 +146,10 @@ public class GongClientLive implements GongClient {
             final String username,
             final String password,
             final String cursor) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, cursor));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".extensive",
+                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, cursor));
     }
 
     /**
@@ -200,7 +203,10 @@ public class GongClientLive implements GongClient {
             final String id,
             final String username,
             final String password) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getCallTranscriptApiLocked(id, username, password));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".transcripts",
+                () -> getCallTranscriptApiLocked(id, username, password));
     }
 
     /**

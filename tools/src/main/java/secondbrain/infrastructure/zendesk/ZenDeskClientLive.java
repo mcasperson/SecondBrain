@@ -127,7 +127,10 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String query,
             final int page,
             final int maxPage) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getTicketsApiLocked(authorization, url, query, page, maxPage));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".tickets",
+                () -> getTicketsApiLocked(authorization, url, query, page, maxPage));
     }
 
     /**
@@ -182,7 +185,10 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String authorization,
             final String url,
             final String id) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getTicketApiLocked(authorization, url, id));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".ticket",
+                () -> getTicketApiLocked(authorization, url, id));
     }
 
     /**
@@ -289,7 +295,10 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String authorization,
             final String url,
             final String orgId) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getOrganizationFromApiLocked(authorization, url, orgId));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".organization",
+                () -> getOrganizationFromApiLocked(authorization, url, orgId));
     }
 
     /**
@@ -350,7 +359,10 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String authorization,
             final String url,
             final String userId) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getUserFromApiLocked(authorization, url, userId));
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".user",
+                () -> getUserFromApiLocked(authorization, url, userId));
     }
 
     /**
