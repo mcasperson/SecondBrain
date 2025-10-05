@@ -178,6 +178,9 @@ if ($GenerateCompanyReports)
             "-Dsb.multislackzengoogle.metaField14=ArgoCD"
             "-Dsb.multislackzengoogle.metaPrompt15=Do the messages mention the use of artificial intelligence (AI)? You must only report on specific mentions of AI, such as 'AI', 'artificial intelligence', LLM, or 'machine learning'."
             "-Dsb.multislackzengoogle.metaField15=AI"
+            "-Dsb.salesforce.contextFilterQuestion=Is the email a response from the customer? You will be penalized for including emails that are marketing material from Octopus or emails from Outreach."
+            "-Dsb.salesforce.contextFilterMinimumRating=7"
+            "-Dsb.salesforce.contextFilterDefaultRating=0"
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
             -jar $using:jarFile
