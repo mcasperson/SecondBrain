@@ -482,7 +482,7 @@ public class SlackClientLive implements SlackClient {
                             }
                         })
                         .get())
-                .recover(ex -> findConversationListFromApi(client, accessToken, cursor, retryCount + 1, apiDelay))
+                .recover(ex -> findConversationListFromApiLocked(client, accessToken, cursor, retryCount + 1, apiDelay))
                 .get();
     }
 
