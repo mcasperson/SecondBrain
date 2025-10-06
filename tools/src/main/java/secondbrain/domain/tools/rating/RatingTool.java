@@ -7,12 +7,14 @@ import jakarta.inject.Inject;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.context.HashMapEnvironmentSettings;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InvalidAnswer;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
@@ -43,7 +45,8 @@ enum LLMServerType {
  */
 @ApplicationScoped
 public class RatingTool implements Tool<Void> {
-    public static final String RATING_DOCUMENT_CONTEXT_ARG = "rating_document";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preprocessorHooks";
+    public static final String RATING_DOCUMENT_CONTEXT_ARG = "ratingDocument";
     public static final String RATING_SECOND_MODEL_ARG = "secondModel";
     public static final String RATING_SECOND_CONTEXT_WINDOW_ARG = "secondContextWindow";
     public static final String RATING_THIRD_MODEL_ARG = "thirdModel";
@@ -57,6 +60,9 @@ public class RatingTool implements Tool<Void> {
             The response must be a single number between 0 and 10.
             You will be penalized for returning any additional text or markup in the response.
             """.stripLeading();
+
+    @Inject
+    private HooksContainer hooksContainer;
 
     @Inject
     private RatingConfig config;
@@ -101,7 +107,11 @@ public class RatingTool implements Tool<Void> {
     public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        return List.of(new RagDocumentContext<>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of()));
+        final List<RagDocumentContext<Void>> ragDocs = List.of(new RagDocumentContext<>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of()));
+
+        // Order is important, and the function is non-associative, so we use foldLeft.
+        return Seq.seq(hooksContainer.getMatchingHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(ragDocs, (docs, hook) -> hook.process(docs));
     }
 
     @Override
@@ -214,6 +224,10 @@ class RatingConfig {
     @ConfigProperty(name = "sb.rating.thirdContextWindow", defaultValue = "")
     private Optional<String> configThirdContextWindow;
 
+    @Inject
+    @ConfigProperty(name = "sb.rating.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
     /**
      * Set to true to ignore invalid responses from either the primary or secondary model.
      * If both models return invalid responses, an exception will be thrown.
@@ -252,6 +266,10 @@ class RatingConfig {
 
     public Optional<String> getConfigIgnoreInvalidResponses() {
         return configIgnoreInvalidResponses;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
     }
 
     public class LocalArguments {
@@ -327,6 +345,16 @@ class RatingConfig {
                     "").value();
 
             return BooleanUtils.toBoolean(value);
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    RatingTool.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
         }
     }
 }
