@@ -9,6 +9,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
@@ -20,6 +21,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
@@ -70,6 +72,9 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     public static final String HOURS_ARG = "hours";
     public static final String START_PERIOD_ARG = "start";
     public static final String END_PERIOD_ARG = "end";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -94,6 +99,9 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
     @Inject
     private ExceptionMapping exceptionMapping;
+
+    @Inject
+    private HooksContainer hooksContainer;
 
     @Inject
     private SalesforceClient salesforceClient;
@@ -142,6 +150,10 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<SalesforceTaskRecord>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
+
         final String startDate = StringUtils.isNotBlank(parsedArgs.getStartPeriod()) ? parsedArgs.getStartPeriod() : parsedArgs.getStartDate();
         final String endDate = StringUtils.isNotBlank(parsedArgs.getEndPeriod()) ? parsedArgs.getEndPeriod() : parsedArgs.getEndDate();
 
@@ -160,7 +172,15 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                                 : doc)
                         .toList());
 
-        return exceptionMapping.map(context).get();
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<SalesforceTaskRecord>> combinedDocs = Stream.concat(
+                preinitHooks.stream(),
+                exceptionMapping.map(context).get().stream()
+        ).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override
@@ -183,7 +203,11 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        return exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<SalesforceTaskRecord> mappedResult = exceptionMapping.map(result).get();
+
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override
@@ -257,6 +281,18 @@ class SalesforceConfig {
     @ConfigProperty(name = "sb.salesforce.keywordwindow")
     private Optional<String> configKeywordWindow;
 
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
     public Optional<String> getConfigClientId() {
         return configClientId;
     }
@@ -319,6 +355,18 @@ class SalesforceConfig {
 
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
@@ -585,6 +633,36 @@ class SalesforceConfig {
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    Salesforce.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    Salesforce.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    Salesforce.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    Salesforce.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    Salesforce.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    Salesforce.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

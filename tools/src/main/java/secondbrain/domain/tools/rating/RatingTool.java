@@ -115,7 +115,7 @@ public class RatingTool implements Tool<Void> {
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<Void>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
-                .foldLeft(List.of(), (docs, hook) -> hook.process(docs));
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         final List<RagDocumentContext<Void>> ragDocs = List.of(new RagDocumentContext<>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of()));
 
@@ -124,7 +124,7 @@ public class RatingTool implements Tool<Void> {
 
         // Order is important, and the function is non-associative, so we use foldLeft.
         return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
-                .foldLeft(combinedDocs, (docs, hook) -> hook.process(docs));
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override
@@ -179,7 +179,7 @@ public class RatingTool implements Tool<Void> {
                 .updateResponse(average + "");
 
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
-                .foldLeft(retvalue, (docs, hook) -> hook.process(docs));
+                .foldLeft(retvalue, (docs, hook) -> hook.process(getName(), docs));
     }
 
     private int getRating(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {

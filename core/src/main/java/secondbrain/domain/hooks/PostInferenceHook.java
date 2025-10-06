@@ -7,5 +7,5 @@ import secondbrain.domain.context.RagMultiDocumentContext;
  * It can be used to modify the RagMultiDocumentContext before it is returned to the caller.
  */
 public interface PostInferenceHook extends Hook {
-    <T> RagMultiDocumentContext<T> process(RagMultiDocumentContext<T> ragMultiDocumentContext);
+    <T> RagMultiDocumentContext<T> process(String toolName, RagMultiDocumentContext<T> ragMultiDocumentContext);
 }

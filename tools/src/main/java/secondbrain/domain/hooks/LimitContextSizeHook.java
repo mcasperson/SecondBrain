@@ -27,7 +27,7 @@ public class LimitContextSizeHook implements PreProcessingHook {
     }
 
     @Override
-    public <T> List<RagDocumentContext<T>> process(final List<RagDocumentContext<T>> ragDocumentContexts) {
+    public <T> List<RagDocumentContext<T>> process(final String toolName, final List<RagDocumentContext<T>> ragDocumentContexts) {
         if (ragDocumentContexts == null) {
             return List.of();
         }
