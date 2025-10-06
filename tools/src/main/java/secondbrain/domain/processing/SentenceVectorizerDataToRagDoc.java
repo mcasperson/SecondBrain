@@ -50,7 +50,7 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
                 .recover(InternalFailure.class, e -> new RagDocumentContext<>(
                         toolName,
                         contextLabel,
-                        task.getText(),
+                        trimmedConversationResult.document(),
                         null,
                         task.getId(),
                         task,
