@@ -424,7 +424,7 @@ public class SlackClientLive implements SlackClient {
                 // this fails if nothing was returned
                 .map(Optional::get)
                 // if we fail, we try to get the next page
-                .recover(NoSuchElementException.class, ex -> findChannelIdFromApi(
+                .recover(NoSuchElementException.class, ex -> findChannelIdFromApiLocked(
                         client,
                         accessToken,
                         channel,
