@@ -49,7 +49,9 @@ enum LLMServerType {
  */
 @ApplicationScoped
 public class RatingTool implements Tool<Void> {
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preprocessorHooks";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "ratingDocument";
     public static final String RATING_SECOND_MODEL_ARG = "secondModel";
     public static final String RATING_SECOND_CONTEXT_WINDOW_ARG = "secondContextWindow";
@@ -111,11 +113,18 @@ public class RatingTool implements Tool<Void> {
     public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<Void>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(docs));
+
         final List<RagDocumentContext<Void>> ragDocs = List.of(new RagDocumentContext<>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of()));
 
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<Void>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
         // Order is important, and the function is non-associative, so we use foldLeft.
-        return Seq.seq(hooksContainer.getMatchingHooks(parsedArgs.getPreprocessingHooks()))
-                .foldLeft(ragDocs, (docs, hook) -> hook.process(docs));
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(docs));
     }
 
     @Override
@@ -163,11 +172,14 @@ public class RatingTool implements Tool<Void> {
 
         logger.info("RatingTool: Values = " + String.join(",", results.stream().map(Object::toString).toList()) + ", Average = " + average + ". " + myEnvironmentSettings.getToolCall());
 
-        return new RagMultiDocumentContext<Void>(
+        final RagMultiDocumentContext<Void> retvalue = new RagMultiDocumentContext<Void>(
                 prompt,
                 INSTRUCTIONS,
                 List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of())))
                 .updateResponse(average + "");
+
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(retvalue, (docs, hook) -> hook.process(docs));
     }
 
     private int getRating(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {
@@ -237,6 +249,14 @@ class RatingConfig {
     @ConfigProperty(name = "sb.rating.preprocessorHooks", defaultValue = "")
     private Optional<String> configPreprocessorHooks;
 
+    @Inject
+    @ConfigProperty(name = "sb.rating.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.rating.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
     /**
      * Set to true to ignore invalid responses from either the primary or secondary model.
      * If both models return invalid responses, an exception will be thrown.
@@ -279,6 +299,14 @@ class RatingConfig {
 
     public Optional<String> getConfigPreprocessorHooks() {
         return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public class LocalArguments {
@@ -363,6 +391,26 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     RatingTool.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    RatingTool.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    RatingTool.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     "").value();
         }
     }

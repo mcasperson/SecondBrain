@@ -7,8 +7,6 @@ import java.util.List;
 /**
  * A hook is used to modify the context at various stages of processing before being sent to the LLM.
  */
-public interface PreprocessingHook {
-    String getName();
-
+public interface PreProcessingHook extends Hook {
     <T> List<RagDocumentContext<T>> process(List<RagDocumentContext<T>> contexts);
 }

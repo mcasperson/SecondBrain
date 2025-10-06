@@ -13,7 +13,7 @@ import java.util.List;
  * limiting the context size used for categorization for faster filtering.
  */
 @ApplicationScoped
-public class LimitContextSizeHook implements PreprocessingHook {
+public class LimitContextSizeHook implements PreProcessingHook {
     @Inject
     @ConfigProperty(name = "sb.limitcontextsize.chars", defaultValue = "-1")
     private Integer maxSize;
