@@ -11,6 +11,7 @@ import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
+import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 
@@ -44,6 +45,17 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
                         "[" + task.getLinkText() + "](" + task.getUrl() + ")",
                         trimmedConversationResult.keywordMatches()))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                // Proceed without vectors if vectorization fails
+                // This will always happen on older macs as they are no loner supported
+                .recover(InternalFailure.class, e -> new RagDocumentContext<>(
+                        toolName,
+                        contextLabel,
+                        task.getText(),
+                        null,
+                        task.getId(),
+                        task,
+                        "[" + task.getLinkText() + "](" + task.getUrl() + ")",
+                        trimmedConversationResult.keywordMatches()))
                 .get();
     }
 

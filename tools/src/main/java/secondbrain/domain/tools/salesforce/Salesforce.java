@@ -148,8 +148,6 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         final Try<List<RagDocumentContext<SalesforceTaskRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getClientSecret()))
                 .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
                 .map(emails -> Stream.of(emails)
-                        // Remove all the quoted email prefixes
-                        .map(email -> email.updateDescription(removeEmailQuotes.sanitize(email.description())))
                         .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabel(), parsedArgs))
                         .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
                         // Get the metadata, which includes a rating against the filter question if present
@@ -190,7 +188,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
     @Override
     public String getContextLabel() {
-        return "Email";
+        return "Salesforce Email";
     }
 }
 

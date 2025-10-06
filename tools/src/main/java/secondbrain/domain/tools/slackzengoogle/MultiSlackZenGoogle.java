@@ -129,7 +129,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private static final int BATCH_SIZE = 10;
     private static final String INSTRUCTIONS = """
             You are helpful agent.
-            You are given the contents of a multiple Slack channels, Google Documents, PlanHat activities, Gong calls, and the help desk tickets from ZenDesk.
+            You are given the contents of a multiple Slack channels, Google Documents, PlanHat activities, Gong calls, Salesforce emails, and the help desk tickets from ZenDesk.
             You must answer the prompt based on the information provided.
             """;
 
@@ -255,7 +255,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .toList();
 
         if (ragContext.isEmpty()) {
-            throw new InsufficientContext("No ZenDesk tickets, Slack messages, or PlanHat activities found.");
+            throw new InsufficientContext("No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found.");
         }
 
         return ragContext;
@@ -293,7 +293,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .filter(regDoc -> resultMatchesRating(regDoc.getResponse(), parsedArgs))
 
                 .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<Void>(prompt)
-                        .updateResponse(e.getClass().getSimpleName() + ": No ZenDesk tickets, Slack messages, or PlanHat activities found."))
+                        .updateResponse(e.getClass().getSimpleName() + ": No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found."))
                 .recover(NoSuchElementException.class, e -> new RagMultiDocumentContext<Void>(prompt)
                         .updateResponse(e.getClass().getSimpleName() + ": Resulting content does meet minimum context rating."));
 
