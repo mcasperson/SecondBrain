@@ -1,6 +1,7 @@
 package secondbrain.domain.tools.salesforce;
 
 import com.google.common.collect.ImmutableList;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -24,6 +25,7 @@ import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
+import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -109,6 +111,10 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    @Identifier("removeEmailQuotes")
+    private SanitizeDocument removeEmailQuotes;
+
     @Override
     public String getName() {
         return Salesforce.class.getSimpleName();
@@ -144,6 +150,8 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                 .map(emails -> Stream.of(emails)
                         .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabel(), parsedArgs))
                         .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                        // Remove all the quoted email prefixes
+                        .map(ragDoc -> ragDoc.updateDocument(removeEmailQuotes.sanitize(ragDoc.document())))
                         // Get the metadata, which includes a rating against the filter question if present
                         .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                         // Filter out any documents that don't meet the rating criteria
