@@ -28,6 +28,7 @@ import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.salesforce.SalesforceClient;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
@@ -105,6 +106,9 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     @Preferred
     private LlmClient llmClient;
 
+    @Inject
+    private ValidateString validateString;
+
     @Override
     public String getName() {
         return Salesforce.class.getSimpleName();
@@ -139,6 +143,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                 .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
                 .map(emails -> Stream.of(emails)
                         .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabel(), parsedArgs))
+                        .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
                         // Get the metadata, which includes a rating against the filter question if present
                         .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                         // Filter out any documents that don't meet the rating criteria
