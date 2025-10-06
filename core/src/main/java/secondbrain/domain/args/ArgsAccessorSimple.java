@@ -4,6 +4,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.validate.ValidateString;
@@ -71,10 +72,10 @@ public class ArgsAccessorSimple implements ArgsAccessor {
     }
 
     @Override
-    public Argument getArgument(List<ToolArgs> arguments, List<SanitizeArgument> sanitizers, String prompt, String argName, String defaultValue) {
+    public Argument getArgument(final List<ToolArgs> arguments, final List<SanitizeArgument> sanitizers, final String prompt, final String argName, final String defaultValue) {
         final Argument arg = getArgument(arguments, argName, defaultValue);
-        final Argument sanitized = sanitizers.stream()
-                .reduce(arg, (s, sanitizer) -> s.replaceValue(sanitizer.sanitize(s.value(), prompt)), (s1, s2) -> s2);
+        final Argument sanitized = Seq.seq(sanitizers.stream())
+                .foldLeft(arg, (s, sanitizer) -> s.replaceValue(sanitizer.sanitize(s.value(), prompt)));
 
         if (StringUtils.isBlank(sanitized.value())) {
             return new Argument(defaultValue, true);
