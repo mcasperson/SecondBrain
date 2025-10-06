@@ -27,8 +27,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 
 /**
  * The type of LLM server definition.
@@ -125,6 +129,7 @@ public class RatingTool implements Tool<Void> {
         // description rather than a number. I have seen this a lot with Phi-4.
         // If we have a additional models and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
+        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
         final List<Integer> results = Stream.of(
                         LLMServerDetails.fromEnvironment(),
                         LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow()),
@@ -132,9 +137,9 @@ public class RatingTool implements Tool<Void> {
                 )
                 .filter(server -> server.type() != LLMServerType.UNDEFINED)
                 .map(server -> getEnvironmentOverrides(server, environmentSettings))
-                .map(config -> callLLM(config, prompt, arguments, parsedArgs))
-                .map(this::resultToInt)
+                .collect(parallelToStream(config -> getRating(config, prompt, arguments, parsedArgs), executor, 3))
                 .toList();
+
 
         if (!parsedArgs.ignoreInvalidResponses()) {
             final List<String> invalidResponses = results.stream().filter(i -> i < 0 || i > 10).map(Object::toString).toList();
@@ -163,6 +168,10 @@ public class RatingTool implements Tool<Void> {
                 INSTRUCTIONS,
                 List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of())))
                 .updateResponse(average + "");
+    }
+
+    private int getRating(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {
+        return resultToInt(callLLM(environmentSettings, prompt, arguments, parsedArgs));
     }
 
     private Map<String, String> getEnvironmentOverrides(final LLMServerDetails server, final Map<String, String> environmentSettings) {
