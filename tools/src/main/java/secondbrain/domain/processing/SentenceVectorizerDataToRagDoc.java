@@ -38,7 +38,7 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
                 .map(sentences -> new RagDocumentContext<T>(
                         toolName,
                         contextLabel,
-                        task.getText(),
+                        trimmedConversationResult.document(),
                         sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
                         task.getId(),
                         task,
