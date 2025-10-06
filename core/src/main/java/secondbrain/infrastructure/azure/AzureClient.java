@@ -312,10 +312,10 @@ public class AzureClient implements LlmClient {
 
         RATE_LIMITER.acquire();
 
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> call(request, 0));
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> callLocked(request, 0));
     }
 
-    private String call(final AzureRequestMaxCompletionTokens request, int retry) {
+    private String callLocked(final AzureRequestMaxCompletionTokens request, int retry) {
         if (retry > RATELIMIT_API_RETRIES) {
             throw new RateLimit("Exceeded max retries for rate limited Azure LLM calls");
         }
@@ -348,7 +348,7 @@ public class AzureClient implements LlmClient {
                     if (ex.getCause() instanceof InvalidResponse invalidResponse) {
                         if (invalidResponse.getCode() == 429 || invalidResponse.getCode() >= 500) {
                             Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
-                            return call(request, retry + 1);
+                            return callLocked(request, retry + 1);
                         }
 
                         if (invalidResponse.getCode() == 400 && messageTooLongResponseInspector.isMatch(invalidResponse.getBody())) {
@@ -358,12 +358,12 @@ public class AzureClient implements LlmClient {
                                             AzureRequestMessage::content,
                                             trimIfTooLongFraction));
 
-                            return call(trimmed, retry + 1);
+                            return callLocked(trimmed, retry + 1);
                         }
                     }
 
                     if (ex.getCause() instanceof EmptyString) {
-                        return call(request, retry + 1);
+                        return callLocked(request, retry + 1);
                     }
 
                     throw ex;
