@@ -148,10 +148,10 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         final Try<List<RagDocumentContext<SalesforceTaskRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getClientSecret()))
                 .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
                 .map(emails -> Stream.of(emails)
+                        // Remove all the quoted email prefixes
+                        .map(email -> email.updateDescription(removeEmailQuotes.sanitize(email.description())))
                         .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabel(), parsedArgs))
                         .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
-                        // Remove all the quoted email prefixes
-                        .map(ragDoc -> ragDoc.updateDocument(removeEmailQuotes.sanitize(ragDoc.document())))
                         // Get the metadata, which includes a rating against the filter question if present
                         .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                         // Filter out any documents that don't meet the rating criteria

@@ -53,4 +53,8 @@ public record SalesforceTaskRecord(@JsonProperty("Id") String id,
     public String getUrl() {
         return "https://" + (domain == null ? "fixme" : domain) + ".lightning.force.com/lightning/r/Task/" + getId() + "/view";
     }
+
+    public SalesforceTaskRecord updateDescription(final String newDescription) {
+        return new SalesforceTaskRecord(id, newDescription, type, subject, createdDate, domain);
+    }
 }
