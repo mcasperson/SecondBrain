@@ -19,6 +19,7 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
+import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
@@ -173,8 +174,14 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         ).toList();
 
         // Apply preprocessing hooks
-        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+        final List<RagDocumentContext<SalesforceTaskRecord>> filteredDocs = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
+
+        if (filteredDocs.isEmpty()) {
+            throw new InsufficientContext("No Salesforce emails found.");
+        }
+
+        return filteredDocs;
     }
 
     @Override
