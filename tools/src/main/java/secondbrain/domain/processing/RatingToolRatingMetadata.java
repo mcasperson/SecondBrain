@@ -44,7 +44,7 @@ public class RatingToolRatingMetadata implements RatingMetadata {
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
                     .map(rating -> Integer.parseInt(rating.trim()))
-                    .onFailure(e -> logger.warning("Failed to get Salesforce rating for email " + activity.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
+                    .onFailure(e -> logger.warning("Failed to get rating for document " + activity.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(ex -> parsedArgs.getDefaultRating())
                     .get();
