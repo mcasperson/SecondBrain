@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
@@ -20,6 +21,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
@@ -41,6 +43,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
@@ -57,6 +60,9 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String GONG_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String GONG_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
     public static final String GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG = "summarizeTranscriptPrompt";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of call transcripts from Gong.
@@ -99,6 +105,9 @@ public class Gong implements Tool<GongCallDetails> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private HooksContainer hooksContainer;
+
     @Override
     public String getName() {
         return Gong.class.getSimpleName();
@@ -120,6 +129,10 @@ public class Gong implements Tool<GongCallDetails> {
         logger.log(Level.INFO, "Getting context for " + getName());
 
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<GongCallDetails>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         final List<GongCallDetails> calls = Try.of(() ->
                         gongClient.getCallsExtensive(
@@ -143,9 +156,18 @@ public class Gong implements Tool<GongCallDetails> {
                 .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
 
-        return calls.stream()
+        final List<RagDocumentContext<GongCallDetails>> ragDocs = calls.stream()
                 .map(call -> dataToRagDoc.getDocumentContext(call, getName(), getContextLabel(), parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                .toList();
+
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<GongCallDetails>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks, and then rating metadata and filtering
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
+                .stream()
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
@@ -182,7 +204,11 @@ public class Gong implements Tool<GongCallDetails> {
                         environmentSettings,
                         getName()));
 
-        return exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<GongCallDetails> mappedResult = exceptionMapping.map(result).get();
+
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override
@@ -242,6 +268,18 @@ class GongConfig {
     @Inject
     @ConfigProperty(name = "sb.gong.contextFilterDefaultRating")
     private Optional<String> configContextFilterDefaultRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -310,6 +348,18 @@ class GongConfig {
 
     public Optional<String> getConfigContextFilterDefaultRating() {
         return configContextFilterDefaultRating;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
@@ -506,6 +556,36 @@ class GongConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    Gong.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    Gong.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    Gong.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    Gong.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    Gong.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    Gong.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

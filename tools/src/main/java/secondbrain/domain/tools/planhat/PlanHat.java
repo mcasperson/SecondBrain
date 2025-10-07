@@ -11,6 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
@@ -24,6 +25,7 @@ import secondbrain.domain.converter.HtmlToText;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
@@ -60,6 +62,9 @@ public class PlanHat implements Tool<Conversation> {
     public static final String PLANHAT_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String PLANHAT_SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
     public static final String PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -113,6 +118,9 @@ public class PlanHat implements Tool<Conversation> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private HooksContainer hooksContainer;
+
     @Override
     public String getName() {
         return PlanHat.class.getSimpleName();
@@ -147,6 +155,10 @@ public class PlanHat implements Tool<Conversation> {
             throw new InternalFailure("You must provide a company ID to query");
         }
 
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<Conversation>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
+
         // We can process multiple planhat instances
         final List<Pair<String, String>> tokens = Stream.of(
                         Pair.of(parsedArgs.getUrl(), parsedArgs.getToken()),
@@ -170,7 +182,7 @@ public class PlanHat implements Tool<Conversation> {
                         .stream())
                 .toList();
 
-        return conversations.stream()
+        final List<RagDocumentContext<Conversation>> ragDocs = conversations.stream()
                 .filter(conversation -> parsedArgs.getCompany().equals(conversation.companyId()))
                 .filter(conversation -> parsedArgs.getDays() == 0
                         || dateParser.parseDate(conversation.date()).isAfter(ZonedDateTime.now(ZoneOffset.UTC).minusDays(parsedArgs.getDays())))
@@ -181,6 +193,15 @@ public class PlanHat implements Tool<Conversation> {
                 )
                 .map(conversation -> dataToRagDoc.getDocumentContext(conversation.updateUrl(url), getName(), getContextLabel(), parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                .toList();
+
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<Conversation>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
+                .stream()
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
@@ -208,7 +229,11 @@ public class PlanHat implements Tool<Conversation> {
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        return exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Conversation> mappedResult = exceptionMapping.map(result).get();
+
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 }
 
@@ -280,6 +305,18 @@ class PlanHatConfig {
     @ConfigProperty(name = "sb.planhat.contextFilterDefaultRating")
     private Optional<String> configContextFilterDefaultRating;
 
+    @Inject
+    @ConfigProperty(name = "sb.planhat.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
     public Optional<String> getConfigCompany() {
         return configCompany;
     }
@@ -342,6 +379,18 @@ class PlanHatConfig {
 
     public Optional<String> getConfigContextFilterDefaultRating() {
         return configContextFilterDefaultRating;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigSummarizer, LocalConfigKeywordsEntity {
@@ -522,6 +571,36 @@ class PlanHatConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    "").value();
         }
     }
 }
