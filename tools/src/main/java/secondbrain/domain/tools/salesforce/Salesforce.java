@@ -1,7 +1,6 @@
 package secondbrain.domain.tools.salesforce;
 
 import com.google.common.collect.ImmutableList;
-import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -27,7 +26,6 @@ import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
-import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -118,10 +116,6 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
     @Inject
     private ValidateString validateString;
-
-    @Inject
-    @Identifier("removeEmailQuotes")
-    private SanitizeDocument removeEmailQuotes;
 
     @Override
     public String getName() {
