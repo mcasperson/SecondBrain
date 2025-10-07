@@ -10,6 +10,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
@@ -18,6 +19,7 @@ import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
@@ -33,6 +35,7 @@ import secondbrain.infrastructure.youtube.model.YoutubeVideo;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 @ApplicationScoped
 public class YoutubePlaylist implements Tool<YoutubeVideo> {
@@ -49,6 +52,9 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     public static final String YOUTUBE_RATING_META = "Rating";
     public static final String YOUTUBE_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
     public static final String YOUTUBE_SUMMARIZE_TRANSCRIPT_PROMPT_ARG = "summarizeTranscriptPrompt";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -103,6 +109,9 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private HooksContainer hooksContainer;
+
     @Override
     public String getName() {
         return YoutubePlaylist.class.getSimpleName();
@@ -128,6 +137,10 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
             return List.of();
         }
 
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<YoutubeVideo>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
+
         final Try<List<YoutubeVideo>> videos = parsedArgs.getPlaylistId().isEmpty() ?
                 Try.of(() -> youtubeClient.searchVideos(parsedArgs.getQuery(), parsedArgs.getChannelId(), "", parsedArgs.getApiKey())
                         .stream()
@@ -150,9 +163,22 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                 .onFailure(ex -> logger.severe("Failed to get Youtube videos: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
 
-        final List<RagDocumentContext<YoutubeVideo>> ragContext = calls.stream()
+        final List<RagDocumentContext<YoutubeVideo>> ragDocs = calls.stream()
                 .map(pair -> getDocumentContext(pair.getLeft(), pair.getRight(), parsedArgs))
                 .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                .toList();
+
+        if (ragDocs.isEmpty()) {
+            throw new InsufficientContext("No matching youtube videos found.");
+        }
+
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<YoutubeVideo>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
+                .stream()
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
@@ -174,12 +200,6 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                 // A failure results in a null value, which is filtered out
                 .filter(Objects::nonNull)
                 .toList();
-
-        if (ragContext.isEmpty()) {
-            throw new InsufficientContext("No matching youtube videos found.");
-        }
-
-        return ragContext;
     }
 
     private RagDocumentContext<YoutubeVideo> getDocumentContext(final YoutubeVideo video, final String transcript, final YoutubeConfig.LocalArguments parsedArgs) {
@@ -233,7 +253,11 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                         environmentSettings,
                         getName()));
 
-        return exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<YoutubeVideo> mappedResult = exceptionMapping.map(result).get();
+
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override
@@ -375,6 +399,18 @@ class YoutubeConfig {
     @ConfigProperty(name = "sb.youtube.contextFilterDefaultRating")
     private Optional<String> configContextFilterDefaultRating;
 
+    @Inject
+    @ConfigProperty(name = "sb.youtube.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.youtube.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.youtube.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
     public Optional<String> getConfigPlaylistId() {
         return playlistId;
     }
@@ -405,6 +441,18 @@ class YoutubeConfig {
 
     public Optional<String> getConfigContextFilterDefaultRating() {
         return configContextFilterDefaultRating;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -575,6 +623,36 @@ class YoutubeConfig {
                             YoutubePlaylist.YOUTUBE_QUERY_ARG,
                             "")
                     .value();
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    YoutubePlaylist.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    YoutubePlaylist.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    YoutubePlaylist.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    YoutubePlaylist.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    YoutubePlaylist.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    YoutubePlaylist.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

@@ -11,6 +11,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredParent;
@@ -23,6 +24,7 @@ import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.processing.RagDocSummarizer;
@@ -32,6 +34,7 @@ import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
@@ -75,6 +78,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_HISTORY_TTL_ARG = "historyTtl";
     public static final String ZENDESK_URL2_ARG = "url2";
     public static final String ZENDESK_USER2_ARG = "user2";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
 
     private static final String INSTRUCTIONS = """
@@ -138,6 +144,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private HooksContainer hooksContainer;
+
     @Override
     public String getName() {
         return ZenDeskOrganization.class.getSimpleName();
@@ -173,6 +182,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             final List<ToolArgs> arguments) {
         logger.log(Level.INFO, "Getting context for " + getName());
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<ZenDeskTicket>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         final List<String> query = new ArrayList<>();
         query.add("type:ticket");
@@ -223,8 +236,14 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         String.join(" ", query)).stream())
                 .toList());
 
-        return exceptionMapping.map(result).get();
+        final List<RagDocumentContext<ZenDeskTicket>> ragDocs = exceptionMapping.map(result).get();
 
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<ZenDeskTicket>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
     }
 
     private List<RagDocumentContext<ZenDeskTicket>> getContext(
@@ -306,7 +325,11 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         null,
                         null));
 
-        return exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<ZenDeskTicket> mappedResult = exceptionMapping.map(result).get();
+
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     private List<ZenDeskTicket> filterResponse(
@@ -515,6 +538,18 @@ class ZenDeskConfig {
     @Identifier("sanitizeOrganization")
     private SanitizeArgument sanitizeOrganization;
 
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
     }
@@ -648,6 +683,18 @@ class ZenDeskConfig {
 
     public Optional<String> getConfigTicketFilterMinimumRating() {
         return configTicketFilterMinimumRating;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public class LocalArguments implements LocalConfigFilteredParent, LocalConfigSummarizer {
@@ -1094,6 +1141,36 @@ class ZenDeskConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    "").value();
         }
     }
 }
