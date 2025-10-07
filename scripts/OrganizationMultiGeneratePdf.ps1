@@ -181,6 +181,8 @@ if ($GenerateCompanyReports)
             "-Dsb.salesforce.contextFilterQuestion=Is the email a response from the customer? You will be penalized for including emails that are marketing material from Octopus or emails from Outreach."
             "-Dsb.salesforce.contextFilterMinimumRating=7"
             "-Dsb.salesforce.contextFilterDefaultRating=0"
+            "-Dsb.salesforce.preprocessorHooks=RegexFilterHook"
+            "-Dsb.regexfilterhook.regex=\[Outreach\] \[Email\] \[.*?\]"
             "-Dsb.ollama.toolmodel=$using:toolModel"
             "-Dsb.ollama.model=$using:model"
             -jar $using:jarFile
