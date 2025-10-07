@@ -178,7 +178,7 @@ public class RatingTool implements Tool<Void> {
                 List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of())))
                 .updateResponse(average + "");
 
-        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))pdf.s1
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
                 .foldLeft(retvalue, (docs, hook) -> hook.process(getName(), docs));
     }
 
