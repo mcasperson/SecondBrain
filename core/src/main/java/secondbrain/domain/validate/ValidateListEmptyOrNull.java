@@ -21,7 +21,11 @@ public class ValidateListEmptyOrNull implements ValidateList {
     }
 
     @Override
-    public <T> List<T> throwIfEmpty(List<T> value, Function<T, String> getContext) {
+    public <T> List<T> throwIfEmpty(@Nullable final List<T> value, final Function<T, String> getContext) {
+        if (value == null || value.isEmpty()) {
+            throw new EmptyList("List is empty");
+        }
+
         if (value.stream().noneMatch(item -> StringUtils.isNotBlank(getContext.apply(item)))) {
             throw new EmptyList("List has empty or blank items");
         }
