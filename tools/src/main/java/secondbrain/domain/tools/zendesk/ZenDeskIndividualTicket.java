@@ -6,26 +6,27 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
+import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -46,9 +47,11 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 @ApplicationScoped
 public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
-    public static final String ZENDESK_FILTER_RATING_META = "FilterRating";
     public static final String ZENDESK_RATING_QUESTION_ARG = "ticketRatingQuestion";
     public static final String ZENDESK_DEFAULT_RATING_ARG = "ticketDefaultRating";
+    public static final String ZENDESK_KEYWORD_ARG = "keywords";
+    public static final String ZENDESK_KEYWORD_WINDOW_ARG = "keywordWindow";
+    public static final String ZENDESK_ENTITY_NAME_CONTEXT_ARG = "entity";
     public static final String ZENDESK_TICKET_ID_ARG = "ticketId";
     public static final String ZENDESK_TICKET_SUBJECT_ARG = "ticketSubject";
     public static final String ZENDESK_TICKET_SUBMITTER_ARG = "ticketSubmitter";
@@ -62,10 +65,10 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     private static final String INSTRUCTIONS = "You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.";
 
     @Inject
-    private RatingMetadata ratingMetadata;
+    private DataToRagDoc dataToRagDoc;
 
     @Inject
-    private RatingTool ratingTool;
+    private RatingMetadata ratingMetadata;
 
     @Inject
     private ZenDeskTicketConfig config;
@@ -272,7 +275,9 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                 parsedArgs.getTicketAssignee(),
                                 parsedArgs.getTicketSubject(),
                                 parsedArgs.getTicketOrganization(),
-                                "")))
+                                "",
+                                null,
+                                null)))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
                 .map(comments -> getDocumentContext(
                         ticketToText(comments),
@@ -295,17 +300,12 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         .filter(StringUtils::isNotBlank)
                         .toList());
 
-        return Try.of(() -> sentenceSplitter.splitDocument(document, 10))
-                .map(sentences -> new RagDocumentContext<>(
-                        getName(),
-                        contextLabel,
-                        document,
-                        sentenceVectorizer.vectorize(sentences),
-                        id,
-                        meta,
-                        ticketToLink(parsedArgs.getUrl(), meta, authHeader)))
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                .get();
+        return dataToRagDoc.getDocumentContext(meta
+                        .updateComments(document)
+                        .updateUrl(ticketToLink(parsedArgs.getUrl(), meta, authHeader)),
+                getName(),
+                contextLabel,
+                parsedArgs);
     }
 
 
@@ -364,6 +364,14 @@ class ZenDeskTicketConfig {
     @Inject
     @ConfigProperty(name = "sb.zendesk.contextFilterDefaultRating")
     private Optional<String> configContextFilterDefaultRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.keywords")
+    private Optional<String> configKeywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.keywordwindow")
+    private Optional<String> configKeywordWindow;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -434,7 +442,15 @@ class ZenDeskTicketConfig {
         return configContextFilterDefaultRating;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem {
+    public Optional<String> getConfigKeywords() {
+        return configKeywords;
+    }
+
+    public Optional<String> getConfigKeywordWindow() {
+        return configKeywordWindow;
+    }
+
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -627,6 +643,41 @@ class ZenDeskTicketConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public List<String> getKeywords() {
+            return getArgsAccessor().getArgumentList(
+                            getConfigKeywords()::get,
+                            arguments,
+                            context,
+                            ZenDeskIndividualTicket.ZENDESK_KEYWORD_ARG,
+                            ZenDeskIndividualTicket.ZENDESK_KEYWORD_ARG,
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+        }
+
+        public int getKeywordWindow() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigKeywordWindow()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_KEYWORD_WINDOW_ARG,
+                    ZenDeskIndividualTicket.ZENDESK_KEYWORD_WINDOW_ARG,
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
+
+            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+        }
+
+        public String getEntity() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    context,
+                    null,
+                    ZenDeskIndividualTicket.ZENDESK_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

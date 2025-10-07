@@ -390,7 +390,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_EMAIL_ARG, email, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG, token, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_RATING_QUESTION_ARG, parsedArgs.getTicketFilterQuestion(), true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true)
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_ENTITY_NAME_CONTEXT_ARG, parsedArgs.getEntity(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_KEYWORD_ARG, String.join(",", parsedArgs.getKeywords()), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow() + "", true)
                         )
                 ).stream())
                 // Get a list of context strings
