@@ -146,7 +146,7 @@ public class RatingTool implements Tool<Void> {
                 )
                 .filter(server -> server.type() != LLMServerType.UNDEFINED)
                 .map(server -> getEnvironmentOverrides(server, environmentSettings))
-                .collect(parallelToStream(config -> getRating(config, prompt, arguments, parsedArgs), executor, 3))
+                .collect(parallelToStream(config -> getRating(config, prompt, arguments), executor, 3))
                 .toList();
 
 
@@ -182,8 +182,8 @@ public class RatingTool implements Tool<Void> {
                 .foldLeft(retvalue, (docs, hook) -> hook.process(getName(), docs));
     }
 
-    private int getRating(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {
-        return resultToInt(callLLM(environmentSettings, prompt, arguments, parsedArgs));
+    private int getRating(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        return resultToInt(callLLM(environmentSettings, prompt, arguments));
     }
 
     private Map<String, String> getEnvironmentOverrides(final LLMServerDetails server, final Map<String, String> environmentSettings) {
@@ -202,17 +202,9 @@ public class RatingTool implements Tool<Void> {
                 .get();
     }
 
-    private Try<RagMultiDocumentContext<Void>> callLLM(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {
-        final Try<List<RagDocumentContext<Void>>> context = Try.of(() -> getContext(environmentSettings, prompt, arguments));
-
-        // Empty documents get a result of 0
-        if (StringUtils.isBlank(prompt)) {
-            return context.map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc)
-                    .updateResponse("0"));
-        }
-
-        final Try<RagMultiDocumentContext<Void>> result = context
-                .map(validateList::throwIfEmpty)
+    private Try<RagMultiDocumentContext<Void>> callLLM(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+                .map(list -> validateList.throwIfEmpty(list, RagDocumentContext::document))
                 .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
                 /*
