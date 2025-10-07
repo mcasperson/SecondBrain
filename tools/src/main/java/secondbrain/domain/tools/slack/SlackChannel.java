@@ -198,7 +198,7 @@ public class SlackChannel implements Tool<Void> {
                         document,
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))
-                .map(trimResult -> validateString.throwIfEmpty(trimResult, TrimResult::document));
+                .map(trimResult -> validateString.throwIfBlank(trimResult, TrimResult::document));
 
         final TrimResult messages = messagesTry
                 .mapFailure(

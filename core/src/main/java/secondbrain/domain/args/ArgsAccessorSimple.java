@@ -43,13 +43,13 @@ public class ArgsAccessorSimple implements ArgsAccessor {
                                 final String defaultValue) {
         // start with system properties
         return Try.of(() -> new Argument(systemProperty.getValue(), true))
-                .mapTry(v -> validateString.throwIfEmpty(v, Argument::value))
+                .mapTry(v -> validateString.throwIfBlank(v, Argument::value))
                 // then try the context
-                .recover(e -> validateString.isNotEmpty(contextName) ? new Argument(context.get(contextName), true) : null)
-                .mapTry(v -> validateString.throwIfEmpty(v, Argument::value))
+                .recover(e -> validateString.isNotBlank(contextName) ? new Argument(context.get(contextName), true) : null)
+                .mapTry(v -> validateString.throwIfBlank(v, Argument::value))
                 // then get the user supplied argument
                 .recover(e -> getArgument(arguments, argName, defaultValue))
-                .mapTry(v -> validateString.throwIfEmpty(v, Argument::value))
+                .mapTry(v -> validateString.throwIfBlank(v, Argument::value))
                 // fallback to the default
                 .recover(e -> new Argument(defaultValue, true))
                 .get();

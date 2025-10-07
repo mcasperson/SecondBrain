@@ -405,36 +405,36 @@ class PlanHatUsageConfig {
 
         public String getUrl() {
             return Try.of(getConfigUrl()::get)
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> context.get("planhat_url"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> "")
                     .get();
         }
 
         public String getToken() {
             return Try.of(getConfigToken()::get)
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> context.get("planhat_usage_token"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> "")
                     .get();
         }
 
         public String getToken2() {
             return Try.of(getConfigToken2()::get)
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> context.get("planhat_token2"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> "")
                     .get();
         }
 
         public String getUrl2() {
             return Try.of(getConfigUrl2()::get)
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> context.get("planhat_url2"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> "")
                     .get();
         }

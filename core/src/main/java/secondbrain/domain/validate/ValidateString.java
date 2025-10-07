@@ -5,15 +5,15 @@ import java.util.function.Function;
 
 public interface ValidateString {
 
-    String throwIfEmpty(String value);
+    String throwIfBlank(String value);
 
-    <T> T throwIfEmpty(T source, Function<T, String> getContext);
+    <T> T throwIfBlank(T source, Function<T, String> getContext);
 
-    boolean isEmpty(String value);
+    boolean isBlank(String value);
 
-    boolean isNotEmpty(String value);
+    boolean isNotBlank(String value);
 
-    <T> boolean isEmpty(T source, Function<T, String> getContext);
+    <T> boolean isBlank(T source, Function<T, String> getContext);
 
-    <T> boolean isNotEmpty(T source, Function<T, String> getContext);
+    <T> boolean isNotBlank(T source, Function<T, String> getContext);
 }

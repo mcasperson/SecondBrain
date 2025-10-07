@@ -165,7 +165,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
         final List<RagDocumentContext<YoutubeVideo>> ragDocs = calls.stream()
                 .map(pair -> getDocumentContext(pair.getLeft(), pair.getRight(), parsedArgs))
-                .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                 .toList();
 
         if (ragDocs.isEmpty()) {
@@ -495,7 +495,7 @@ class YoutubeConfig {
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get(YoutubePlaylist.YOUTUBE_API_KEY)))
                     .recover(e -> context.get(YoutubePlaylist.YOUTUBE_API_KEY))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recoverWith(e -> Try.of(() -> getConfigApiKey().get()));
 
             if (token.isFailure() || StringUtils.isBlank(token.get())) {

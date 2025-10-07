@@ -332,7 +332,7 @@ public class AzureClient implements LlmClient {
                                 .map(r -> r.readEntity(AzureResponse.class))
                                 .peek(r -> logger.fine(jsonDeserializerJackson.serialize(r)))
                                 .map(AzureResponse::getResponseText)
-                                .map(validateString::throwIfEmpty)
+                                .map(validateString::throwIfBlank)
                                 .map(r -> answerFormatterService.formatResponse(model.get(), r))
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),

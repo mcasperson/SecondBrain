@@ -429,7 +429,7 @@ public class SlackClientLive implements SlackClient {
                         accessToken,
                         channel,
                         // the cursor must be a non-empty string to do a recursive call
-                        validateString.throwIfEmpty(response.getResponseMetadata().getNextCursor()),
+                        validateString.throwIfBlank(response.getResponseMetadata().getNextCursor()),
                         apiDelay));
 
         return results

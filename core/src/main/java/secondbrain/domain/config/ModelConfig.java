@@ -32,7 +32,7 @@ public class ModelConfig {
 
     public String getCalculatedModel(final Map<String, String> context) {
         return Try.of(() -> context.get("custom_model"))
-                .mapTry(validateString::throwIfEmpty)
+                .mapTry(validateString::throwIfBlank)
                 .recover(e -> model)
                 .get();
     }
@@ -43,9 +43,9 @@ public class ModelConfig {
 
     public Integer getCalculatedContextWindow(final Map<String, String> context) {
         return Try.of(contextWindow::get)
-                .mapTry(validateString::throwIfEmpty)
+                .mapTry(validateString::throwIfBlank)
                 .recover(ex -> context.get("context_window"))
-                .mapTry(validateString::throwIfEmpty)
+                .mapTry(validateString::throwIfBlank)
                 .map(Integer::parseInt)
                 .recover(e -> Constants.DEFAULT_CONTENT_WINDOW)
                 .get();

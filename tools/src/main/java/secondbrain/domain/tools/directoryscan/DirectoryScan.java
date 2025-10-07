@@ -269,7 +269,7 @@ public class DirectoryScan implements Tool<Void> {
                 parsedArgs.getKeywords(),
                 parsedArgs.getKeywordWindow());
 
-        if (validateString.isEmpty(trimResult.document())) {
+        if (validateString.isBlank(trimResult.document())) {
             return null;
         }
 
@@ -301,7 +301,7 @@ public class DirectoryScan implements Tool<Void> {
                 parsedArgs.getKeywords(),
                 parsedArgs.getKeywordWindow());
 
-        if (validateString.isEmpty(trimResult.document())) {
+        if (validateString.isBlank(trimResult.document())) {
             return null;
         }
 

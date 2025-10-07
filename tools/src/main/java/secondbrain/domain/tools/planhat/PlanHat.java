@@ -192,7 +192,7 @@ public class PlanHat implements Tool<Conversation> {
                         htmlToText.getText(conversation.snippet()))
                 )
                 .map(conversation -> dataToRagDoc.getDocumentContext(conversation.updateUrl(url), getName(), getContextLabel(), parsedArgs))
-                .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                 .toList();
 
         // Combine preinitialization hooks with ragDocs
@@ -431,36 +431,36 @@ class PlanHatConfig {
 
         public String getToken() {
             return Try.of(getConfigToken()::get)
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> context.get("planhat_token"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> "")
                     .get();
         }
 
         public String getUrl() {
             return Try.of(getConfigUrl()::get)
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> context.get("planhat_url"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> "")
                     .get();
         }
 
         public String getToken2() {
             return Try.of(getConfigToken2()::get)
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> context.get("planhat_token2"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> "")
                     .get();
         }
 
         public String getUrl2() {
             return Try.of(getConfigUrl2()::get)
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> context.get("planhat_url2"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> "")
                     .get();
         }

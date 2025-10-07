@@ -184,7 +184,7 @@ public class GoogleDocs implements Tool<Void> {
                         .map(this::getDocumentText)
                         .map(document -> documentTrimmer.trimDocumentToKeywords(
                                 document, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
-                        .map(trimResult -> validateString.throwIfEmpty(trimResult, TrimResult::document))
+                        .map(trimResult -> validateString.throwIfBlank(trimResult, TrimResult::document))
                         .map(trimResult -> getDocumentContext(trimResult, parsedArgs))
                         // Get the metadata, which includes a rating against the filter question if present
                         .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))

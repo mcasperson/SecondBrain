@@ -158,7 +158,7 @@ public class Gong implements Tool<GongCallDetails> {
 
         final List<RagDocumentContext<GongCallDetails>> ragDocs = calls.stream()
                 .map(call -> dataToRagDoc.getDocumentContext(call, getName(), getContextLabel(), parsedArgs))
-                .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                 .toList();
 
         // Combine preinitialization hooks with ragDocs
@@ -380,7 +380,7 @@ class GongConfig {
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("gong_access_key")))
                     .recover(e -> context.get("gong_access_key"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recoverWith(e -> Try.of(() -> getConfigAccessKey().get()));
 
             if (token.isFailure() || StringUtils.isBlank(token.get())) {
@@ -395,7 +395,7 @@ class GongConfig {
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("gong_access_secret_key")))
                     .recover(e -> context.get("gong_access_secret_key"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recoverWith(e -> Try.of(() -> getConfigAccessSecretKey().get()));
 
             if (token.isFailure() || StringUtils.isBlank(token.get())) {

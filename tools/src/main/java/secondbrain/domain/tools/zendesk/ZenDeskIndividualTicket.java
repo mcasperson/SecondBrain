@@ -14,7 +14,9 @@ import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.*;
+import secondbrain.domain.context.IndividualContext;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
@@ -36,10 +38,7 @@ import secondbrain.infrastructure.zendesk.api.ZenDeskOrganizationItemResponse;
 import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -89,13 +88,10 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     private DebugToolArgs debugToolArgs;
 
     @Inject
-    private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SentenceVectorizer sentenceVectorizer;
-
-    @Inject
     private ValidateList validateList;
+
+    @Inject
+    private ValidateString validateString;
 
     @Inject
     private Logger logger;
@@ -135,10 +131,13 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         parsedArgs.getAuthHeader(),
                         parsedArgs.getNumComments(),
                         parsedArgs))
+                .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                 .map(ticket -> ticket.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ticket, parsedArgs)))
                 .map(ticket -> ticket.addIntermediateResult(
                         new IntermediateResult(ticket.document(), ticketToFileName(ticket))))
-                .map(List::of);
+                .map(List::of)
+                // deal with the filter failing
+                .recover(NoSuchElementException.class, ex -> List.of());
 
         return exceptionMapping.map(result).get();
     }
@@ -542,7 +541,7 @@ class ZenDeskTicketConfig {
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG)))
                     .recover(e -> context.get(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recoverWith(e -> Try.of(() -> argument));
 
             if (token.isFailure() || StringUtils.isBlank(token.get())) {
@@ -582,7 +581,7 @@ class ZenDeskTicketConfig {
 
             final Try<String> user = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_user")))
                     .recover(e -> context.get("zendesk_user"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recoverWith(e -> Try.of(() -> argument));
 
             if (user.isFailure() || StringUtils.isBlank(user.get())) {

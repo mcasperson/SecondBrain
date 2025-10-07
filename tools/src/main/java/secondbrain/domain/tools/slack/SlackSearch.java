@@ -178,7 +178,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                                 ragDoc.document(),
                                 parsedArgs.getFilterKeywords(),
                                 parsedArgs.getKeywordWindow())))
-                .filter(ragDoc -> validateString.isNotEmpty(ragDoc.document()))
+                .filter(ragDoc -> validateString.isNotBlank(ragDoc.document()))
                 .toList();
 
         // Combine preinitialization hooks with ragDocs

@@ -359,7 +359,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                 ticket.document(),
                                 parsedArgs.getKeywords(),
                                 parsedArgs.getKeywordWindow())))
-                .filter(ticket -> validateString.isNotEmpty(ticket.document()))
+                .filter(ticket -> validateString.isNotBlank(ticket.document()))
                 .collect(Collectors.toList());
     }
 
@@ -924,7 +924,7 @@ class ZenDeskConfig {
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_access_token")))
                     .recover(e -> context.get("zendesk_access_token"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recoverWith(e -> Try.of(() -> getConfigZenDeskAccessToken().get()));
 
             if (token.isFailure() || StringUtils.isBlank(token.get())) {
@@ -948,7 +948,7 @@ class ZenDeskConfig {
         public String getUser() {
             final Try<String> user = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_user")))
                     .recover(e -> context.get("zendesk_user"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recoverWith(e -> Try.of(() -> getConfigZenDeskUser().get()));
 
             if (user.isFailure() || StringUtils.isBlank(user.get())) {
@@ -972,7 +972,7 @@ class ZenDeskConfig {
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_access_token2")))
                     .recover(e -> context.get("zendesk_access_token2"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recoverWith(e -> Try.of(() -> getConfigZenDeskAccessToken2().get()));
 
             if (token.isFailure() || StringUtils.isBlank(token.get())) {

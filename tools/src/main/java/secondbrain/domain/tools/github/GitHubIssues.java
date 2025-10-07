@@ -419,7 +419,7 @@ class GitHubIssueConfig {
         public String getGitHubAccessToken() {
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("github_access_token")))
                     .recover(e -> context.get("github_access_token"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recoverWith(e -> Try.of(() -> getConfigAccessToken().get()));
 
             if (token.isFailure() || StringUtils.isBlank(token.get())) {

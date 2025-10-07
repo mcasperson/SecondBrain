@@ -156,7 +156,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                 .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
                 .map(emails -> Stream.of(emails)
                         .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabel(), parsedArgs))
-                        .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
+                        .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                         .toList());
 
         // Combine preinitialization hooks with ragDocs

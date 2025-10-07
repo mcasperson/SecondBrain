@@ -565,7 +565,7 @@ class GitHubDiffConfig {
         public String getToken() {
             return Try.of(() -> getTextEncryptor().decrypt(context.get("github_access_token")))
                     .recover(e -> context.get("github_access_token"))
-                    .mapTry(getValidateString()::throwIfEmpty)
+                    .mapTry(getValidateString()::throwIfBlank)
                     .recoverWith(e -> Try.of(getConfigGithubAccessToken()::get))
                     .getOrElseThrow(ex -> new InternalFailure("Failed to get GitHub access token", ex));
         }

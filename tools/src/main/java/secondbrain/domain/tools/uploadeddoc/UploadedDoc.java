@@ -169,7 +169,7 @@ public class UploadedDoc implements Tool<Void> {
                         contents,
                         parsedArgs.getKeywords(),
                         parsedArgs.getKeywordWindow()))
-                .map(trimDocument -> validateString.throwIfEmpty(trimDocument, TrimResult::document))
+                .map(trimDocument -> validateString.throwIfBlank(trimDocument, TrimResult::document))
                 .map(trimmedResult -> getTrimmedDocumentContext(trimmedResult, parsedArgs))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .get();
