@@ -157,14 +157,6 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                 .map(emails -> Stream.of(emails)
                         .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabel(), parsedArgs))
                         .filter(ragDoc -> !validateString.isEmpty(ragDoc, RagDocumentContext::document))
-                        // Get the metadata, which includes a rating against the filter question if present
-                        .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
-                        // Filter out any documents that don't meet the rating criteria
-                        .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
-                        .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Salesforce" + ragDoc.id() + ".txt")))
-                        .map(doc -> parsedArgs.getSummarizeDocument()
-                                ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "SalesforceEmail", doc, environmentSettings, parsedArgs)
-                                : doc)
                         .toList());
 
         // Combine preinitialization hooks with ragDocs
@@ -181,7 +173,17 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
             throw new InsufficientContext("No Salesforce emails found.");
         }
 
-        return filteredDocs;
+        // Only do the post processing after the hooks
+        return filteredDocs.stream()
+                // Get the metadata, which includes a rating against the filter question if present
+                .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
+                // Filter out any documents that don't meet the rating criteria
+                .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Salesforce" + ragDoc.id() + ".txt")))
+                .map(doc -> parsedArgs.getSummarizeDocument()
+                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "SalesforceEmail", doc, environmentSettings, parsedArgs)
+                        : doc)
+                .toList();
     }
 
     @Override
