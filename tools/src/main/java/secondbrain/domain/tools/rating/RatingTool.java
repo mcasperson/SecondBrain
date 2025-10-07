@@ -203,15 +203,15 @@ public class RatingTool implements Tool<Void> {
     }
 
     private Try<RagMultiDocumentContext<Void>> callLLM(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments, final RatingConfig.LocalArguments parsedArgs) {
-        final Try<List<RagDocumentContext<Void>>> ragDoc = Try.of(() -> getContext(environmentSettings, prompt, arguments));
+        final Try<List<RagDocumentContext<Void>>> context = Try.of(() -> getContext(environmentSettings, prompt, arguments));
 
         // Empty documents get a result of 0
         if (StringUtils.isBlank(prompt)) {
-            return ragDoc.map(r -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, r)
+            return context.map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc)
                     .updateResponse("0"));
         }
 
-        final Try<RagMultiDocumentContext<Void>> result = ragDoc
+        final Try<RagMultiDocumentContext<Void>> result = context
                 .map(validateList::throwIfEmpty)
                 .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
