@@ -185,13 +185,13 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
         logger.log(Level.INFO, "Calling " + getName());
 
-        final List<RagDocumentContext<SalesforceTaskRecord>> contextList = getContext(environmentSettings, prompt, arguments);
-
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getAccountId())) {
             throw new InternalFailure("You must provide an account ID to query");
         }
+
+        final List<RagDocumentContext<SalesforceTaskRecord>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final Try<RagMultiDocumentContext<SalesforceTaskRecord>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
