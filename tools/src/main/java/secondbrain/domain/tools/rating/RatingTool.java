@@ -213,7 +213,8 @@ public class RatingTool implements Tool<Void> {
                  */
                 .map(ragDoc -> ragDoc.updateResponse(
                         getFirstDigits.sanitize(
-                                findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim())));
+                                findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim())))
+                .onFailure(ex -> logger.warning("Failed to get rating for document: " + ex.getMessage()));
 
         return exceptionMapping.map(result);
     }
