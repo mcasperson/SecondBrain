@@ -10,18 +10,16 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
 import secondbrain.domain.config.LocalConfigFilteredParent;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptions.EmptyString;
@@ -31,7 +29,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.keyword.KeywordExtractor;
-import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.tooldefs.Tool;
@@ -74,6 +72,9 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
             """;
 
     @Inject
+    private DataToRagDoc dataToRagDoc;
+
+    @Inject
     private RatingMetadata ratingMetadata;
 
     @Inject
@@ -85,15 +86,6 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     @Inject
     @Preferred
     private LlmClient llmClient;
-
-    @Inject
-    private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SentenceVectorizer sentenceVectorizer;
-
-    @Inject
-    private DocumentTrimmer documentTrimmer;
 
     @Inject
     private ValidateString validateString;
@@ -172,12 +164,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                 .filter(matchedItem -> parsedArgs.getIgnoreChannels()
                         .stream()
                         .noneMatch(matchedItem.channelName()::equalsIgnoreCase))
-                .map(matchedItem -> getDocumentContext(matchedItem, parsedArgs))
-                .map(ragDoc -> ragDoc.updateDocument(
-                        documentTrimmer.trimDocumentToKeywords(
-                                ragDoc.document(),
-                                parsedArgs.getFilterKeywords(),
-                                parsedArgs.getKeywordWindow())))
+                .map(matchedItem -> dataToRagDoc.getDocumentContext(matchedItem, getName(), getContextLabel(), parsedArgs))
                 .filter(ragDoc -> validateString.isNotBlank(ragDoc.document()))
                 .toList();
 
@@ -226,28 +213,6 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
                 .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
-    }
-
-    private RagDocumentContext<SlackSearchResultResource> getDocumentContext(final SlackSearchResultResource meta, final SlackSearchConfig.LocalArguments parsedArgs) {
-        return Try.of(() -> sentenceSplitter.splitDocument(meta.text(), 10))
-                .map(sentences -> new RagDocumentContext<>(
-                        getName(),
-                        getContextLabel(),
-                        meta.text(),
-                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
-                        meta.id(),
-                        meta,
-                        matchToUrl(meta)))
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                .get();
-    }
-
-    private String matchToUrl(final SlackSearchResultResource matchedItem) {
-        return "[" + StringUtils.substring(matchedItem.text()
-                        .replaceAll(":.*?:", "")
-                        .replaceAll("[^A-Za-z0-9-._ ]", " ")
-                        .trim(),
-                0, 75) + "](" + matchedItem.permalink() + ")";
     }
 }
 
@@ -403,7 +368,7 @@ class SlackSearchConfig {
         return configPostInferenceHooks;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent {
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -436,13 +401,13 @@ class SlackSearchConfig {
             return retValue;
         }
 
-        public List<String> getFilterKeywords() {
+        public List<String> getKeywords() {
             return getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            SlackChannel.SLACK_KEYWORD_ARG,
-                            SlackChannel.SLACK_KEYWORD_ARG,
+                            SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG,
+                            SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
