@@ -28,6 +28,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
@@ -58,7 +59,6 @@ import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class SlackChannel implements Tool<Void> {
-    public static final String SLACK_CHANNEL_FILTER_RATING_META = "FilterRating";
     public static final String SLACK_CHANNEL_FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String SLACK_CHANEL_ARG = "slackChannel";
@@ -71,6 +71,9 @@ public class SlackChannel implements Tool<Void> {
     public static final String SLACK_SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
     public static final String SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
     public static final String SLACK_DEFAULT_RATING_ARG = "ticketDefaultRating";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final String INSTRUCTIONS = """
@@ -119,6 +122,9 @@ public class SlackChannel implements Tool<Void> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private HooksContainer hooksContainer;
+
     @Override
     public String getName() {
         return SlackChannel.class.getSimpleName();
@@ -153,6 +159,10 @@ public class SlackChannel implements Tool<Void> {
         logger.log(Level.INFO, "Getting context for " + getName());
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<Void>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         /*
             Get the oldest date to search from, starting from the starr of the current day.
@@ -209,7 +219,15 @@ public class SlackChannel implements Tool<Void> {
                 .map(messages::replaceDocument)
                 .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
 
-        return Stream.of(getDocumentContext(messagesWithUsersReplaced, channel, environmentSettings, parsedArgs))
+        final List<RagDocumentContext<Void>> ragDocs = List.of(getDocumentContext(messagesWithUsersReplaced, channel, environmentSettings, parsedArgs));
+
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<Void>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
+                .stream()
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
@@ -233,7 +251,11 @@ public class SlackChannel implements Tool<Void> {
                         environmentSettings,
                         getName()));
 
-        return exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final SlackChannelResource channelDetails, final Map<String, String> environmentSettings, final SlackChannelConfig.LocalArguments parsedArgs) {
@@ -390,6 +412,18 @@ class SlackChannelConfig {
     private Optional<String> configContextFilterDefaultRating;
 
     @Inject
+    @ConfigProperty(name = "sb.slackchannel.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.slackchannel.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.slackchannel.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -449,6 +483,18 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigContextFilterDefaultRating() {
         return configContextFilterDefaultRating;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent {
@@ -618,6 +664,36 @@ class SlackChannelConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    SlackChannel.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    SlackChannel.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    SlackChannel.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    SlackChannel.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    SlackChannel.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    SlackChannel.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

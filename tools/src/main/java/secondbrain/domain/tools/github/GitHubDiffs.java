@@ -7,6 +7,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -16,6 +17,7 @@ import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.list.ListUtilsEx;
 import secondbrain.domain.tooldefs.Tool;
@@ -34,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 /**
  * The GitHubDiffs tool provides a list of Git diffs and answers questions about them. It works by first summarizing
@@ -53,6 +56,9 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     public static final String GITHUB_DIFF_MAX_DIFFS_ARG = "maxDiffs";
     public static final String GITHUB_DIFF_SUMMARY_PROMPT_ARG = "githubIssueSummaryPrompt";
     public static final String GITHUB_DIFF_SUMMARIZE_ARG = "githubSummarizeDiff";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     private static final String INSTRUCTIONS = """
             You are an expert in reading Git diffs.
             You are given a question and a list of summaries of Git Diffs and their associated commit messages.
@@ -65,7 +71,6 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
             You will be penalized for responding that you don't have access to real-time data or repositories.
             If there are no Git Diffs or commit messages, you must indicate that in the answer.
             """;
-
     @Inject
     private GitHubDiffConfig config;
 
@@ -91,6 +96,9 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
     @Inject
     private ExceptionMapping exceptionMapping;
+
+    @Inject
+    private HooksContainer hooksContainer;
 
     @Override
     public String getName() {
@@ -137,9 +145,13 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
         final String authHeader = "Bearer " + parsedArgs.getToken();
 
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<GitHubCommitAndDiff>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
+
         // If we have a sha, then we are only interested in a single commit
         if (StringUtils.isNotBlank(parsedArgs.getSha())) {
-            return convertCommitsToDiffSummaries(
+            final List<RagDocumentContext<GitHubCommitAndDiff>> ragDocs = convertCommitsToDiffSummaries(
                     Try.withResources(ClientBuilder::newClient)
                             .of(client ->
                                     Try
@@ -149,10 +161,17 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                             .get(),
                     parsedArgs,
                     environmentSettings);
+
+            // Combine preinitialization hooks with ragDocs
+            final List<RagDocumentContext<GitHubCommitAndDiff>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+            // Apply preprocessing hooks
+            return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                    .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
         }
 
         // Otherwise, we are interested in a range of commits
-        return Try
+        final List<RagDocumentContext<GitHubCommitAndDiff>> ragDocs = Try
                 .of(() -> getCommits(
                         parsedArgs.getOwner(),
                         parsedArgs.getRepo(),
@@ -167,6 +186,13 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                         parsedArgs.getMaxDiffs() > 0 ? parsedArgs.getMaxDiffs() : commitsResponse.size()))
                 .map(commits -> convertCommitsToDiffSummaries(commits, parsedArgs, environmentSettings))
                 .get();
+
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<GitHubCommitAndDiff>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override
@@ -184,7 +210,11 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 .map(ragDocs -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDocs, debugArgs))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        return exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<GitHubCommitAndDiff> mappedResult = exceptionMapping.map(result).get();
+
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     private List<RagDocumentContext<GitHubCommitAndDiff>> convertCommitsToDiffSummaries(
@@ -334,6 +364,18 @@ class GitHubDiffConfig {
     private Optional<String> configSummarizeDiff;
 
     @Inject
+    @ConfigProperty(name = "sb.github.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.github.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.github.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -384,6 +426,18 @@ class GitHubDiffConfig {
 
     public Optional<String> getConfigSummarizeDiff() {
         return configSummarizeDiff;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -538,6 +592,36 @@ class GitHubDiffConfig {
                     "").value();
 
             return BooleanUtils.toBoolean(value);
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    GitHubDiffs.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    GitHubDiffs.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    GitHubDiffs.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    GitHubDiffs.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    GitHubDiffs.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    GitHubDiffs.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

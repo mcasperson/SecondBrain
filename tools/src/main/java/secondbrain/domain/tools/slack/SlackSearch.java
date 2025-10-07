@@ -12,6 +12,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
@@ -27,6 +28,7 @@ import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.keyword.KeywordExtractor;
 import secondbrain.domain.limit.DocumentTrimmer;
@@ -45,6 +47,7 @@ import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -61,6 +64,9 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String SLACK_GENERATE_KEYWORDS_ARG = "generateKeywords";
     public static final String SLACK_DEFAULT_RATING_ARG = "defaultRating";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
@@ -103,6 +109,9 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     @Inject
     private Logger logger;
 
+    @Inject
+    private HooksContainer hooksContainer;
+
     @Override
     public String getName() {
         return SlackSearch.class.getSimpleName();
@@ -140,6 +149,10 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
             return List.of();
         }
 
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<SlackSearchResultResource>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
+
         final List<SlackSearchResultResource> searchResult = Try.of(() -> slackClient.search(
                         Slack.getInstance().methodsAsync(),
                         parsedArgs.getAccessToken(),
@@ -153,7 +166,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
             return List.of();
         }
 
-        return searchResult
+        final List<RagDocumentContext<SlackSearchResultResource>> ragDocs = searchResult
                 .stream()
                 .filter(matchedItem -> parsedArgs.getDays() == 0 || dateParser.parseDate(matchedItem.timestamp()).isAfter(parsedArgs.getFromDate()))
                 .filter(matchedItem -> parsedArgs.getIgnoreChannels()
@@ -166,12 +179,20 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                                 parsedArgs.getFilterKeywords(),
                                 parsedArgs.getKeywordWindow())))
                 .filter(ragDoc -> validateString.isNotEmpty(ragDoc.document()))
+                .toList();
+
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<SlackSearchResultResource>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
+                .stream()
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .toList();
-
     }
 
     @Override
@@ -184,6 +205,8 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
         final List<RagDocumentContext<SlackSearchResultResource>> contextList = getContext(environmentSettings, prompt, arguments);
 
+        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
         final Try<RagMultiDocumentContext<SlackSearchResultResource>> result = Try.of(() -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, contextList))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
@@ -192,7 +215,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
-        return result
+        final RagMultiDocumentContext<SlackSearchResultResource> mappedResult = result
                 .mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Slack channel had no matching messages")),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
@@ -200,6 +223,9 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                         API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
                 .get();
 
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     private RagDocumentContext<SlackSearchResultResource> getDocumentContext(final SlackSearchResultResource meta, final SlackSearchConfig.LocalArguments parsedArgs) {
@@ -293,6 +319,18 @@ class SlackSearchConfig {
     @ConfigProperty(name = "sb.slack.contextFilterDefaultRating")
     private Optional<String> configContextFilterDefaultRating;
 
+    @Inject
+    @ConfigProperty(name = "sb.slacksearch.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.slacksearch.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.slacksearch.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -351,6 +389,18 @@ class SlackSearchConfig {
 
     public Optional<String> getConfigContextFilterDefaultRating() {
         return configContextFilterDefaultRating;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent {
@@ -536,6 +586,36 @@ class SlackSearchConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    SlackSearch.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    SlackSearch.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    SlackSearch.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    SlackSearch.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    SlackSearch.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    SlackSearch.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

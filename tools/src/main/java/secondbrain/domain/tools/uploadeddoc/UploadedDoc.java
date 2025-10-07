@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
@@ -17,6 +18,7 @@ import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.converter.FileToText;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
@@ -32,6 +34,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * A tool that downloads a public file from HTTP and uses it as the context for a query.
@@ -41,6 +44,9 @@ public class UploadedDoc implements Tool<Void> {
     public static final String UPLOADED_DOC_KEYWORD_ARG = "keywords";
     public static final String UPLOADED_DOC_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String UPLOADED_DOC_ENTITY_NAME_CONTEXT_ARG = "entityName";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -78,6 +84,9 @@ public class UploadedDoc implements Tool<Void> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private HooksContainer hooksContainer;
+
     @Override
     public String getName() {
         return UploadedDoc.class.getSimpleName();
@@ -112,7 +121,18 @@ public class UploadedDoc implements Tool<Void> {
             throw new InternalFailure("No document found in context");
         }
 
-        return List.of(getDocumentContext(parsedArgs));
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<Void>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
+
+        final List<RagDocumentContext<Void>> ragDocs = List.of(getDocumentContext(parsedArgs));
+
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<Void>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override
@@ -121,6 +141,8 @@ public class UploadedDoc implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
+        final UploadDocConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
@@ -128,7 +150,11 @@ public class UploadedDoc implements Tool<Void> {
                         environmentSettings,
                         getName()));
 
-        return exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     private RagDocumentContext<Void> getDocumentContext(final UploadDocConfig.LocalArguments parsedArgs) {
@@ -182,6 +208,18 @@ class UploadDocConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
+    @ConfigProperty(name = "sb.upload.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.upload.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.upload.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     public Optional<String> getConfigUploadKeywords() {
@@ -190,6 +228,18 @@ class UploadDocConfig {
 
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -254,6 +304,36 @@ class UploadDocConfig {
                     context,
                     null,
                     UploadedDoc.UPLOADED_DOC_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    UploadedDoc.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    UploadedDoc.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    UploadedDoc.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    UploadedDoc.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    UploadedDoc.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    UploadedDoc.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     "").value();
         }
     }

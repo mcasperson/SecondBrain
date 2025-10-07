@@ -7,6 +7,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.context.RagDocumentContext;
@@ -17,6 +18,7 @@ import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
@@ -34,6 +36,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
@@ -51,6 +54,9 @@ public class GitHubIssues implements Tool<GitHubIssue> {
     public static final String GITHUB_START_DATE_ARG = "githubStartDate";
     public static final String GITHUB_END_DATE_ARG = "githubEndDate";
     public static final String GITHUB_DAYS_ARG = "githubDays";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     private static final String INSTRUCTIONS = """
             You are an expert in reading GitHub issues diffs.
             You are given a question and a list of summaries of GitHub Issues.
@@ -90,6 +96,9 @@ public class GitHubIssues implements Tool<GitHubIssue> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private HooksContainer hooksContainer;
+
     @Override
     public String getName() {
         return GitHubIssues.class.getSimpleName();
@@ -109,7 +118,11 @@ public class GitHubIssues implements Tool<GitHubIssue> {
     public List<RagDocumentContext<GitHubIssue>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        return Try
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<GitHubIssue>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
+
+        final List<RagDocumentContext<GitHubIssue>> ragDocs = Try
                 .of(() -> gitHubIssuesClient.getIssues(
                         parsedArgs.getGitHubAccessToken(),
                         parsedArgs.getGitHubOrganization(),
@@ -119,9 +132,16 @@ public class GitHubIssues implements Tool<GitHubIssue> {
                         parsedArgs.getIssueLabels(),
                         parsedArgs.getIssueState()))
                 .map(issues -> convertIssueToRagDoc(issues, parsedArgs, environmentSettings))
-                .map(ragDocs -> updateMetadata(ragDocs, parsedArgs))
-                .map(ragDocs -> parsedArgs.getSummarizeIssue() ? getSummary(ragDocs, environmentSettings, parsedArgs) : ragDocs)
+                .map(ragDocs1 -> updateMetadata(ragDocs1, parsedArgs))
+                .map(ragDocs1 -> parsedArgs.getSummarizeIssue() ? getSummary(ragDocs1, environmentSettings, parsedArgs) : ragDocs1)
                 .get();
+
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<GitHubIssue>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
     }
 
     private List<RagDocumentContext<GitHubIssue>> convertIssueToRagDoc(
@@ -163,7 +183,11 @@ public class GitHubIssues implements Tool<GitHubIssue> {
                         environmentSettings,
                         getName()));
 
-        return exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<GitHubIssue> mappedResult = exceptionMapping.map(result).get();
+
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override
@@ -289,6 +313,18 @@ class GitHubIssueConfig {
     private Optional<String> configDays;
 
     @Inject
+    @ConfigProperty(name = "sb.githubissue.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.githubissue.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.githubissue.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -343,6 +379,18 @@ class GitHubIssueConfig {
 
     public Optional<String> getConfigDays() {
         return configDays;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -531,6 +579,36 @@ class GitHubIssueConfig {
                     .recover(throwable -> 0)
                     .map(i -> Math.max(0, i))
                     .get();
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    GitHubIssues.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    GitHubIssues.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    GitHubIssues.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    GitHubIssues.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    GitHubIssues.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    GitHubIssues.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    "").value();
         }
     }
 }

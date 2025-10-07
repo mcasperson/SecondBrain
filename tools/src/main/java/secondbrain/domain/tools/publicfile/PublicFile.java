@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
@@ -16,6 +17,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.converter.FileToText;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.reader.FileReader;
@@ -30,6 +32,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * A tool that downloads a public file from HTTP or accesses a file from a local disk
@@ -42,6 +45,9 @@ public class PublicFile implements Tool<FileContents> {
     public static final String PUBLICWEB_KEYWORD_ARG = "keywords";
     public static final String PUBLICWEB_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String PUBLICWEB_ENTITY_NAME_CONTEXT_ARG = "entityName";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -71,6 +77,9 @@ public class PublicFile implements Tool<FileContents> {
 
     @Inject
     private ExceptionMapping exceptionMapping;
+
+    @Inject
+    private HooksContainer hooksContainer;
 
     @Override
     public String getName() {
@@ -111,16 +120,27 @@ public class PublicFile implements Tool<FileContents> {
             throw new InternalFailure("You must provide a URL to download");
         }
 
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<FileContents>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
+
         final Try<String> contents = Files.isRegularFile(Paths.get(parsedArgs.getUrl()))
                 ? Try.of(() -> fileToText.convert(parsedArgs.getUrl()))
                 : Try.of(() -> fileReader.read(parsedArgs.getUrl()));
 
-        return contents
+        final List<RagDocumentContext<FileContents>> ragDocs = contents
                 .map(content -> new FileContents(parsedArgs.getUrl(), parsedArgs.getUrl(), content))
                 .map(document -> dataToRagDoc.getDocumentContext(document, getName(), getContextLabel(), parsedArgs))
                 .map(List::of)
                 .recover(ex -> List.of())
                 .get();
+
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<FileContents>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override
@@ -144,7 +164,11 @@ public class PublicFile implements Tool<FileContents> {
                         environmentSettings,
                         getName()));
 
-        return exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<FileContents> mappedResult = exceptionMapping.map(result).get();
+
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 }
 
@@ -164,6 +188,18 @@ class PublicWebConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
+    @ConfigProperty(name = "sb.publicfile.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.publicfile.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.publicfile.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     public Optional<String> getConfigUrl() {
@@ -176,6 +212,18 @@ class PublicWebConfig {
 
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -237,6 +285,36 @@ class PublicWebConfig {
                     context,
                     null,
                     PublicFile.PUBLICWEB_ENTITY_NAME_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    PublicFile.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    PublicFile.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    PublicFile.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    PublicFile.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    PublicFile.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    PublicFile.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     "").value();
         }
     }

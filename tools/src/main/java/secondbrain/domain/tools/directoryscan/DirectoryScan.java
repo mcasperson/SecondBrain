@@ -7,6 +7,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jooq.lambda.Seq;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
@@ -20,6 +21,7 @@ import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.files.PathSpec;
+import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
@@ -40,6 +42,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Scans the files in a directory and answers questions about them. This is useful when you have a bunch of reports
@@ -52,12 +55,13 @@ public class DirectoryScan implements Tool<Void> {
     public static final String DIRECTORYSCAN_SUMMARIZE_KEYWORDS = "keywords";
     public static final String DIRECTORYSCAN_EXCLUDE_FILES = "excludeFiles";
     public static final String DIRECTORYSCAN_PATHSPEC = "pathspec";
-    public static final String DIRECTORYSCAN_FILE_CONTENT_WINDOW = "fileContextWindow";
     public static final String DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT = "individualDocumentPrompt";
-    public static final String DIRECTORYSCAN_FILE_CUSTOM_MODEL = "fileCustomModel";
     public static final String DIRECTORYSCAN_MAX_FILES = "maxfiles";
     public static final String DIRECTORYSCAN_DIRECTORY = "directory";
     public static final String DIRECTORYSCAN_ENTITY_NAME_CONTEXT_ARG = "entityName";
+    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
+    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
+    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
     private static final String INSTRUCTIONS = """
             You are given a question and the answer to the question from many individual files.
@@ -120,6 +124,9 @@ public class DirectoryScan implements Tool<Void> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private HooksContainer hooksContainer;
+
     @Override
     public String getName() {
         return DirectoryScan.class.getSimpleName();
@@ -159,10 +166,21 @@ public class DirectoryScan implements Tool<Void> {
             throw new InternalFailure("You must provide a directory to scan");
         }
 
-        return Try
+        // Get preinitialization hooks before ragdocs
+        final List<RagDocumentContext<Void>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
+
+        final List<RagDocumentContext<Void>> ragDocs = Try
                 .of(() -> getFiles(parsedArgs))
                 .map(files -> convertFilesToSummaries(files, parsedArgs, environmentSettings))
                 .get();
+
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<Void>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override
@@ -185,7 +203,11 @@ public class DirectoryScan implements Tool<Void> {
                         environmentSettings,
                         getName()));
 
-        return exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     private List<String> getFiles(final DirectoryScanConfig.LocalArguments parsedArgs) {
@@ -372,6 +394,18 @@ class DirectoryScanConfig {
     private Optional<String> configSummarizeIndividualFiles;
 
     @Inject
+    @ConfigProperty(name = "sb.directoryscan.preprocessorHooks", defaultValue = "")
+    private Optional<String> configPreprocessorHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.directoryscan.preinitializationHooks", defaultValue = "")
+    private Optional<String> configPreinitializationHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.directoryscan.postinferenceHooks", defaultValue = "")
+    private Optional<String> configPostInferenceHooks;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -415,6 +449,18 @@ class DirectoryScanConfig {
 
     public Optional<String> getConfigSummarizeIndividualFiles() {
         return configSummarizeIndividualFiles;
+    }
+
+    public Optional<String> getConfigPreprocessorHooks() {
+        return configPreprocessorHooks;
+    }
+
+    public Optional<String> getConfigPreinitializationHooks() {
+        return configPreinitializationHooks;
+    }
+
+    public Optional<String> getConfigPostInferenceHooks() {
+        return configPostInferenceHooks;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -548,6 +594,35 @@ class DirectoryScanConfig {
                     DirectoryScan.DIRECTORYSCAN_ENTITY_NAME_CONTEXT_ARG,
                     "").value();
         }
+
+        public String getPreprocessingHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreprocessorHooks()::get,
+                    arguments,
+                    context,
+                    DirectoryScan.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    DirectoryScan.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPreinitializationHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPreinitializationHooks()::get,
+                    arguments,
+                    context,
+                    DirectoryScan.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    DirectoryScan.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
+
+        public String getPostInferenceHooks() {
+            return getArgsAccessor().getArgument(
+                    getConfigPostInferenceHooks()::get,
+                    arguments,
+                    context,
+                    DirectoryScan.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    DirectoryScan.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    "").value();
+        }
     }
 }
-
