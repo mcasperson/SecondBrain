@@ -36,6 +36,9 @@ public class LimitContextSizeHook implements PreProcessingHook {
             return ragDocumentContexts;
         }
 
-        return limiter.limitListContent(ragDocumentContexts, RagDocumentContext::document, maxSize);
+        return ragDocumentContexts.stream()
+                .map(ragDocumentContext -> ragDocumentContext.updateDocument(
+                        ragDocumentContext.document().substring(0, Math.min(ragDocumentContext.document().length(), maxSize))))
+                .toList();
     }
 }
