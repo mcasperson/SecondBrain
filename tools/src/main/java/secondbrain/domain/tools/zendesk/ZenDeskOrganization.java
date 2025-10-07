@@ -72,6 +72,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_TICKET_SUMMARY_PROMPT_ARG = "ticketSummaryPrompt";
     public static final String ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG = "ticketFilterQuestion";
     public static final String ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG = "ticketFilterMinimumRating";
+    public static final String ZENDESK_ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
     public static final String ZENDESK_SUMMARIZE_TICKET_ARG = "summarizeTicket";
     public static final String ZENDESK_MAX_TICKETS_ARG = "maxTickets";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
@@ -542,6 +543,10 @@ class ZenDeskConfig {
     private SanitizeArgument sanitizeOrganization;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.contextFilterGreaterThan")
+    private Optional<String> configContextFilterGreaterThan;
+
+    @Inject
     @ConfigProperty(name = "sb.zendesk.preprocessorHooks", defaultValue = "")
     private Optional<String> configPreprocessorHooks;
 
@@ -686,6 +691,10 @@ class ZenDeskConfig {
 
     public Optional<String> getConfigTicketFilterMinimumRating() {
         return configTicketFilterMinimumRating;
+    }
+
+    public Optional<String> getConfigContextFilterGreaterThan() {
+        return configContextFilterGreaterThan;
     }
 
     public Optional<String> getConfigPreprocessorHooks() {
@@ -1144,6 +1153,18 @@ class ZenDeskConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public boolean isContextFilterGreaterThan() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigContextFilterGreaterThan()::get,
+                    arguments,
+                    context,
+                    ZenDeskOrganization.ZENDESK_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    ZenDeskOrganization.ZENDESK_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         public String getPreprocessingHooks() {

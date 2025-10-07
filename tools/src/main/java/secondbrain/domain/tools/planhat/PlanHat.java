@@ -53,6 +53,7 @@ import java.util.stream.Stream;
 public class PlanHat implements Tool<Conversation> {
     public static final String PLANHAT_FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String PLANHAT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String PLANHAT_ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
     public static final String PLANHAT_DEFAULT_RATING_ARG = "ticketDefaultRating";
     public static final String DAYS_ARG = "days";
     public static final String SEARCH_TTL_ARG = "searchTtl";
@@ -306,6 +307,10 @@ class PlanHatConfig {
     private Optional<String> configContextFilterDefaultRating;
 
     @Inject
+    @ConfigProperty(name = "sb.planhat.contextFilterGreaterThan")
+    private Optional<String> configContextFilterGreaterThan;
+
+    @Inject
     @ConfigProperty(name = "sb.planhat.preprocessorHooks", defaultValue = "")
     private Optional<String> configPreprocessorHooks;
 
@@ -379,6 +384,10 @@ class PlanHatConfig {
 
     public Optional<String> getConfigContextFilterDefaultRating() {
         return configContextFilterDefaultRating;
+    }
+
+    public Optional<String> getConfigContextFilterGreaterThan() {
+        return configContextFilterGreaterThan;
     }
 
     public Optional<String> getConfigPreprocessorHooks() {
@@ -571,6 +580,18 @@ class PlanHatConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public boolean isContextFilterGreaterThan() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigContextFilterGreaterThan()::get,
+                    arguments,
+                    context,
+                    PlanHat.PLANHAT_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    PlanHat.PLANHAT_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         public String getPreprocessingHooks() {

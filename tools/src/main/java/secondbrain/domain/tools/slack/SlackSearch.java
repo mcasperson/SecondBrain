@@ -53,6 +53,7 @@ import static com.google.common.base.Predicates.instanceOf;
 public class SlackSearch implements Tool<SlackSearchResultResource> {
     public static final String SLACK_FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String SLACK_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String SLACK_ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
     public static final String SLACK_SEARCH_DAYS_ARG = "days";
     public static final String SLACK_SEARCH_KEYWORDS_ARG = "searchKeywords";
     public static final String SLACK_SEARCH_FILTER_KEYWORDS_ARG = "keywords";
@@ -285,6 +286,10 @@ class SlackSearchConfig {
     private Optional<String> configContextFilterDefaultRating;
 
     @Inject
+    @ConfigProperty(name = "sb.slack.contextFilterGreaterThan")
+    private Optional<String> configContextFilterGreaterThan;
+
+    @Inject
     @ConfigProperty(name = "sb.slacksearch.preprocessorHooks", defaultValue = "")
     private Optional<String> configPreprocessorHooks;
 
@@ -354,6 +359,10 @@ class SlackSearchConfig {
 
     public Optional<String> getConfigContextFilterDefaultRating() {
         return configContextFilterDefaultRating;
+    }
+
+    public Optional<String> getConfigContextFilterGreaterThan() {
+        return configContextFilterGreaterThan;
     }
 
     public Optional<String> getConfigPreprocessorHooks() {
@@ -551,6 +560,18 @@ class SlackSearchConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public boolean isContextFilterGreaterThan() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigContextFilterGreaterThan()::get,
+                    arguments,
+                    context,
+                    SlackSearch.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    SlackSearch.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         public String getPreprocessingHooks() {

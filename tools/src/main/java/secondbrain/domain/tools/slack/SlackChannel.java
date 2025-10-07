@@ -61,6 +61,7 @@ import static com.google.common.base.Predicates.instanceOf;
 public class SlackChannel implements Tool<Void> {
     public static final String SLACK_CHANNEL_FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String SLACK_ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
     public static final String SLACK_CHANEL_ARG = "slackChannel";
     public static final String DAYS_ARG = "days";
     public static final String API_DELAY_ARG = "apiDelay";
@@ -412,6 +413,10 @@ class SlackChannelConfig {
     private Optional<String> configContextFilterDefaultRating;
 
     @Inject
+    @ConfigProperty(name = "sb.slack.contextFilterGreaterThan")
+    private Optional<String> configContextFilterGreaterThan;
+
+    @Inject
     @ConfigProperty(name = "sb.slackchannel.preprocessorHooks", defaultValue = "")
     private Optional<String> configPreprocessorHooks;
 
@@ -483,6 +488,10 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigContextFilterDefaultRating() {
         return configContextFilterDefaultRating;
+    }
+
+    public Optional<String> getConfigContextFilterGreaterThan() {
+        return configContextFilterGreaterThan;
     }
 
     public Optional<String> getConfigPreprocessorHooks() {
@@ -664,6 +673,18 @@ class SlackChannelConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public boolean isContextFilterGreaterThan() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigContextFilterGreaterThan()::get,
+                    arguments,
+                    context,
+                    SlackChannel.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    SlackChannel.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         public String getPreprocessingHooks() {

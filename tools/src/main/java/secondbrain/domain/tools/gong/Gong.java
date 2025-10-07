@@ -51,6 +51,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 public class Gong implements Tool<GongCallDetails> {
     public static final String GONG_FILTER_QUESTION_ARG = "callRatingQuestion";
     public static final String GONG_FILTER_MINIMUM_RATING_ARG = "callFilterMinimumRating";
+    public static final String GONG_ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
     public static final String GONG_DEFAULT_RATING_ARG = "defaultRating";
     public static final String DAYS_ARG = "days";
     public static final String COMPANY_ARG = "company";
@@ -262,6 +263,10 @@ class GongConfig {
     private Optional<String> configContextFilterQuestion;
 
     @Inject
+    @ConfigProperty(name = "sb.gong.contextFilterGreaterThan")
+    private Optional<String> configContextFilterGreaterThan;
+
+    @Inject
     @ConfigProperty(name = "sb.gong.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
 
@@ -360,6 +365,10 @@ class GongConfig {
 
     public Optional<String> getConfigPostInferenceHooks() {
         return configPostInferenceHooks;
+    }
+
+    public Optional<String> getConfigContextFilterGreaterThan() {
+        return configContextFilterGreaterThan;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
@@ -556,6 +565,18 @@ class GongConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public boolean isContextFilterGreaterThan() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigContextFilterGreaterThan()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    Gong.GONG_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         public String getPreprocessingHooks() {

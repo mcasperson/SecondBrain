@@ -58,6 +58,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     public static final String ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
     public static final String DEFAULT_RATING_ARG = "ticketDefaultRating";
     public static final String SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
     public static final String SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
@@ -285,6 +286,10 @@ class SalesforceConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
+    @ConfigProperty(name = "sb.salesforce.contextFilterGreaterThan")
+    private Optional<String> configContextFilterGreaterThan;
+
+    @Inject
     @ConfigProperty(name = "sb.salesforce.preprocessorHooks", defaultValue = "")
     private Optional<String> configPreprocessorHooks;
 
@@ -358,6 +363,10 @@ class SalesforceConfig {
 
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
+    }
+
+    public Optional<String> getConfigContextFilterGreaterThan() {
+        return configContextFilterGreaterThan;
     }
 
     public Optional<String> getConfigPreprocessorHooks() {
@@ -565,6 +574,18 @@ class SalesforceConfig {
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public boolean isContextFilterGreaterThan() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigContextFilterGreaterThan()::get,
+                    arguments,
+                    context,
+                    Salesforce.ENSURE_GREATER_THAN_PROMPT_ARG,
+                    Salesforce.ENSURE_GREATER_THAN_PROMPT_ARG,
+                    "").value();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         public boolean getSummarizeDocument() {
