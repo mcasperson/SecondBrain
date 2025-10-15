@@ -68,6 +68,8 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     public static final String GONG_OBJECT_1_ARG = "object1";
     public static final String GONG_OBJECT_1_NAME_ARG = "object1Name";
+    public static final String GONG_OBJECT_2_ARG = "object2";
+    public static final String GONG_OBJECT_2_NAME_ARG = "object2Name";
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of call transcripts from Gong.
@@ -157,7 +159,8 @@ public class Gong implements Tool<GongCallDetails> {
                                         .orElse("Unknown"),
                                 gong.parties(),
                                 gongClient.getCallTranscript(parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), gong),
-                                getMeta(gong, parsedArgs.getObject1Name(), parsedArgs.getObject1System(), parsedArgs.getObject1Type(), parsedArgs.getObject1Field())))
+                                getMeta(gong, parsedArgs.getObject1Name(), parsedArgs.getObject1System(), parsedArgs.getObject1Type(), parsedArgs.getObject1Field()),
+                                getMeta(gong, parsedArgs.getObject2Name(), parsedArgs.getObject2System(), parsedArgs.getObject2Type(), parsedArgs.getObject2Field())))
                         .toList())
                 .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
@@ -346,6 +349,14 @@ class GongConfig {
     private Optional<String> configGongObject1;
 
     @Inject
+    @ConfigProperty(name = "sb.gong.object2name", defaultValue = "")
+    private Optional<String> configGongObject2Name;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object2", defaultValue = "")
+    private Optional<String> configGongObject2;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -436,6 +447,14 @@ class GongConfig {
 
     public Optional<String> getConfigGongObject1Name() {
         return configGongObject1Name;
+    }
+
+    public Optional<String> getConfigGongObject2() {
+        return configGongObject2;
+    }
+
+    public Optional<String> getConfigGongObject2Name() {
+        return configGongObject2Name;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
@@ -716,6 +735,50 @@ class GongConfig {
             final String[] object1 = getObject1().split(":");
             if (object1.length == 3) {
                 return object1[2];
+            }
+            return "";
+        }
+
+        public String getObject2Name() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject2Name()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_2_NAME_ARG,
+                    Gong.GONG_OBJECT_2_NAME_ARG,
+                    "").value();
+        }
+
+        public String getObject2() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject2()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_2_ARG,
+                    Gong.GONG_OBJECT_2_ARG,
+                    "").value();
+        }
+
+        public String getObject2System() {
+            final String[] object2 = getObject2().split(":");
+            if (object2.length == 3) {
+                return object2[0];
+            }
+            return "";
+        }
+
+        public String getObject2Type() {
+            final String[] object2 = getObject2().split(":");
+            if (object2.length == 3) {
+                return object2[1];
+            }
+            return "";
+        }
+
+        public String getObject2Field() {
+            final String[] object2 = getObject2().split(":");
+            if (object2.length == 3) {
+                return object2[2];
             }
             return "";
         }

@@ -9,6 +9,8 @@ import secondbrain.domain.tooldefs.MetaObjectResults;
 import secondbrain.infrastructure.gong.api.GongCallExtensiveParty;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * This class represents the contract between a tool and the Gong API.
@@ -22,7 +24,8 @@ public record GongCallDetails(String id,
                               String company,
                               List<GongCallExtensiveParty> parties,
                               String transcript,
-                              @Nullable MetaObjectResult meta1) implements IdData, TextData, UrlData {
+                              @Nullable MetaObjectResult meta1,
+                              @Nullable MetaObjectResult meta2) implements IdData, TextData, UrlData {
 
     @Override
     public String getId() {
@@ -45,14 +48,6 @@ public record GongCallDetails(String id,
     }
 
     public MetaObjectResults getMetaObjectResults() {
-        if (meta1 != null) {
-            return new MetaObjectResults(List.of(meta1));
-        } else {
-            return new MetaObjectResults(List.of());
-        }
-    }
-
-    public GongCallDetails updateMeta1(final MetaObjectResult meta1) {
-        return new GongCallDetails(id, url, company, parties, transcript, meta1);
+        return new MetaObjectResults(Stream.of(meta1, meta2).filter(Objects::nonNull).toList());
     }
 }
