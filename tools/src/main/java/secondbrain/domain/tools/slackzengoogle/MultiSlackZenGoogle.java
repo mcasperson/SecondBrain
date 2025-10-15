@@ -807,11 +807,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
 
-        // Elevate the metadata extracted from the planhat usage. This is considered "top-level" metadata
-        // that applies to all the context.
+        // Elevate the metadata extracted from the child documents to the top level
         final List<MetaObjectResult> metadata = context
                 .stream()
-                .filter(ragDoc -> planHatUsage.getName().equals(ragDoc.getTool()))
                 .flatMap(ragDoc -> ragDoc.getMetadata().stream())
                 .toList();
 

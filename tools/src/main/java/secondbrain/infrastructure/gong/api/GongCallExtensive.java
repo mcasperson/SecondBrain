@@ -19,6 +19,17 @@ public record GongCallExtensive(GongCallExtensiveMetadata metaData,
                 .findFirst();
     }
 
+    public Optional<GongCallExtensiveContextObjectField> getSystemContext(final String system, final String objectType, final String fieldName) {
+        return Objects.requireNonNullElse(context(), List.<GongCallExtensiveContext>of())
+                .stream()
+                .filter(c -> system.equals(c.system()))
+                .flatMap(c -> c.objects().stream())
+                .filter(o -> objectType.equals(o.objectType()))
+                .flatMap(o -> o.getFields().stream())
+                .filter(f -> fieldName.equals(f.name()))
+                .findFirst();
+    }
+
     @Nullable
     public GongCallExtensiveParty getPartyFromId(final String speakerId) {
         if (parties == null || parties.isEmpty() || speakerId == null || speakerId.isBlank()) {

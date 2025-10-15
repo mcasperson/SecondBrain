@@ -14,4 +14,13 @@ public record GongCallExtensiveContext(String system, List<GongCallExtensiveCont
                         .filter(f -> fieldName.equals(f.name()))
                         .findFirst();
     }
+
+    public Optional<GongCallExtensiveContextObjectField> getObject(final String objectType, final String fieldName) {
+        return objects == null ? Optional.empty() :
+                objects.stream()
+                        .filter(o -> o.objectType().equals(objectType))
+                        .flatMap(o -> o.getFields().stream())
+                        .filter(f -> fieldName.equals(f.name()))
+                        .findFirst();
+    }
 }

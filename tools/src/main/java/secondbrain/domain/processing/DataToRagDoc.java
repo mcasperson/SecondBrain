@@ -5,6 +5,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
+import secondbrain.domain.tooldefs.MetaObjectResults;
 
 /**
  * Represents a service that will convert a raw data object, usually sourced from an external API,
@@ -15,6 +16,13 @@ public interface DataToRagDoc {
             final T task,
             final String toolName,
             final String contextLabel,
+            final LocalConfigKeywordsEntity parsedArgs);
+
+    <T extends TextData & IdData & UrlData> RagDocumentContext<T> getDocumentContext(
+            final T task,
+            final String toolName,
+            final String contextLabel,
+            final MetaObjectResults meta,
             final LocalConfigKeywordsEntity parsedArgs);
 
     <T extends TextData> RagDocumentContext<T> getUnlinkedDocumentContext(

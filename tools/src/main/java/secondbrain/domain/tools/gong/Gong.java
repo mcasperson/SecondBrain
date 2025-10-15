@@ -27,12 +27,14 @@ import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
+import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.gong.GongClient;
+import secondbrain.infrastructure.gong.api.GongCallExtensive;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.time.OffsetDateTime;
@@ -64,6 +66,8 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
     public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
     public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
+    public static final String GONG_OBJECT_1_ARG = "object1";
+    public static final String GONG_OBJECT_1_NAME_ARG = "object1Name";
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of call transcripts from Gong.
@@ -152,13 +156,14 @@ public class Gong implements Tool<GongCallDetails> {
                                         .map(f -> f.value().toString())
                                         .orElse("Unknown"),
                                 gong.parties(),
-                                gongClient.getCallTranscript(parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), gong)))
+                                gongClient.getCallTranscript(parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), gong),
+                                getMeta(gong, parsedArgs.getObject1Name(), parsedArgs.getObject1System(), parsedArgs.getObject1Type(), parsedArgs.getObject1Field())))
                         .toList())
                 .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
 
         final List<RagDocumentContext<GongCallDetails>> ragDocs = calls.stream()
-                .map(call -> dataToRagDoc.getDocumentContext(call, getName(), getContextLabel(), parsedArgs))
+                .map(call -> dataToRagDoc.getDocumentContext(call, getName(), getContextLabel(), call.getMetaObjectResults(), parsedArgs))
                 .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                 .toList();
 
@@ -170,7 +175,7 @@ public class Gong implements Tool<GongCallDetails> {
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
                 // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc -> ragDoc.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
+                .map(ragDoc -> ragDoc.addMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 /*
@@ -184,6 +189,18 @@ public class Gong implements Tool<GongCallDetails> {
                         ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "Gong", ragDoc, environmentSettings, parsedArgs)
                         : ragDoc)
                 .toList();
+    }
+
+    private MetaObjectResult getMeta(final GongCallExtensive gong, final String name, final String system, final String type, final String field) {
+        if (StringUtils.isAnyBlank(system, type, field)) {
+            return null;
+        }
+
+        return new MetaObjectResult(
+                name,
+                gong.getSystemContext(system, type, field)
+                        .map(f -> f.value().toString())
+                        .orElse("Unknown"));
     }
 
     @Override
@@ -287,6 +304,48 @@ class GongConfig {
     private Optional<String> configPostInferenceHooks;
 
     @Inject
+    @ConfigProperty(name = "sb.gong.object1name", defaultValue = "")
+    private Optional<String> configGongObject1Name;
+
+    /**
+     * Format is system:type:field e.g. Salesforce:Account:BillingCity. This is used to match the values in the context
+     * array. An example array is shown below:
+     * <p>
+     * {
+     * "context": [
+     * {
+     * "system": "Salesforce",
+     * "objects": [
+     * {
+     * "objectType": "Account",
+     * "objectId": "1234567890",
+     * "fields": [
+     * {
+     * "name": "BillingCity",
+     * "value": "Burwood East VIC"
+     * }
+     * ]
+     * },
+     * {
+     * "objectType": "Opportunity",
+     * "objectId": "1234567890",
+     * "fields": [
+     * {
+     * "name": "LeadSource",
+     * "value": "Sales - Outreach"
+     * }
+     * ]
+     * }
+     * ]
+     * }
+     * ]
+     * }
+     */
+    @Inject
+    @ConfigProperty(name = "sb.gong.object1", defaultValue = "")
+    private Optional<String> configGongObject1;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -369,6 +428,14 @@ class GongConfig {
 
     public Optional<String> getConfigContextFilterGreaterThan() {
         return configContextFilterGreaterThan;
+    }
+
+    public Optional<String> getConfigGongObject1() {
+        return configGongObject1;
+    }
+
+    public Optional<String> getConfigGongObject1Name() {
+        return configGongObject1Name;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
@@ -607,6 +674,50 @@ class GongConfig {
                     Gong.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     Gong.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     "").value();
+        }
+
+        public String getObject1Name() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject1Name()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_1_NAME_ARG,
+                    Gong.GONG_OBJECT_1_NAME_ARG,
+                    "").value();
+        }
+
+        public String getObject1() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject1()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_1_ARG,
+                    Gong.GONG_OBJECT_1_ARG,
+                    "").value();
+        }
+
+        public String getObject1System() {
+            final String[] object1 = getObject1().split(":");
+            if (object1.length == 3) {
+                return object1[0];
+            }
+            return "";
+        }
+
+        public String getObject1Type() {
+            final String[] object1 = getObject1().split(":");
+            if (object1.length == 3) {
+                return object1[1];
+            }
+            return "";
+        }
+
+        public String getObject1Field() {
+            final String[] object1 = getObject1().split(":");
+            if (object1.length == 3) {
+                return object1[2];
+            }
+            return "";
         }
     }
 }

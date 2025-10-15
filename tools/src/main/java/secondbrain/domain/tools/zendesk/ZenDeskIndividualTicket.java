@@ -132,7 +132,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                         parsedArgs.getNumComments(),
                         parsedArgs))
                 .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
-                .map(ticket -> ticket.updateMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ticket, parsedArgs)))
+                .map(ticket -> ticket.addMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ticket, parsedArgs)))
                 .map(ticket -> ticket.addIntermediateResult(
                         new IntermediateResult(ticket.document(), ticketToFileName(ticket))))
                 .map(List::of)

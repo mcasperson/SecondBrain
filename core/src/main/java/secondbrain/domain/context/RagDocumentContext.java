@@ -103,6 +103,12 @@ public record RagDocumentContext<T>(String tool,
         return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metadata, intermediateResults, link, keywordMatches);
     }
 
+    public RagDocumentContext<T> addMetadata(final MetaObjectResults metadata) {
+        final MetaObjectResults metaObjectResults = getMetadata();
+        metaObjectResults.addAll(metadata);
+        return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metaObjectResults, intermediateResults, link, keywordMatches);
+    }
+
     public RagDocumentContext<T> updateContextLabel(final String contextLabel) {
         return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metadata, intermediateResults, link, keywordMatches);
     }
