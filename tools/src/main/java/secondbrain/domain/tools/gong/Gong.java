@@ -70,6 +70,22 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String GONG_OBJECT_1_NAME_ARG = "object1Name";
     public static final String GONG_OBJECT_2_ARG = "object2";
     public static final String GONG_OBJECT_2_NAME_ARG = "object2Name";
+    public static final String GONG_OBJECT_3_ARG = "object3";
+    public static final String GONG_OBJECT_3_NAME_ARG = "object3Name";
+    public static final String GONG_OBJECT_4_ARG = "object4";
+    public static final String GONG_OBJECT_4_NAME_ARG = "object4Name";
+    public static final String GONG_OBJECT_5_ARG = "object5";
+    public static final String GONG_OBJECT_5_NAME_ARG = "object5Name";
+    public static final String GONG_OBJECT_6_ARG = "object6";
+    public static final String GONG_OBJECT_6_NAME_ARG = "object6Name";
+    public static final String GONG_OBJECT_7_ARG = "object7";
+    public static final String GONG_OBJECT_7_NAME_ARG = "object7Name";
+    public static final String GONG_OBJECT_8_ARG = "object8";
+    public static final String GONG_OBJECT_8_NAME_ARG = "object8Name";
+    public static final String GONG_OBJECT_9_ARG = "object9";
+    public static final String GONG_OBJECT_9_NAME_ARG = "object9Name";
+    public static final String GONG_OBJECT_10_ARG = "object10";
+    public static final String GONG_OBJECT_10_NAME_ARG = "object10Name";
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of call transcripts from Gong.
@@ -160,7 +176,15 @@ public class Gong implements Tool<GongCallDetails> {
                                 gong.parties(),
                                 gongClient.getCallTranscript(parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), gong),
                                 getMeta(gong, parsedArgs.getObject1Name(), parsedArgs.getObject1System(), parsedArgs.getObject1Type(), parsedArgs.getObject1Field()),
-                                getMeta(gong, parsedArgs.getObject2Name(), parsedArgs.getObject2System(), parsedArgs.getObject2Type(), parsedArgs.getObject2Field())))
+                                getMeta(gong, parsedArgs.getObject2Name(), parsedArgs.getObject2System(), parsedArgs.getObject2Type(), parsedArgs.getObject2Field()),
+                                getMeta(gong, parsedArgs.getObject3Name(), parsedArgs.getObject3System(), parsedArgs.getObject3Type(), parsedArgs.getObject3Field()),
+                                getMeta(gong, parsedArgs.getObject4Name(), parsedArgs.getObject4System(), parsedArgs.getObject4Type(), parsedArgs.getObject4Field()),
+                                getMeta(gong, parsedArgs.getObject5Name(), parsedArgs.getObject5System(), parsedArgs.getObject5Type(), parsedArgs.getObject5Field()),
+                                getMeta(gong, parsedArgs.getObject6Name(), parsedArgs.getObject6System(), parsedArgs.getObject6Type(), parsedArgs.getObject6Field()),
+                                getMeta(gong, parsedArgs.getObject7Name(), parsedArgs.getObject7System(), parsedArgs.getObject7Type(), parsedArgs.getObject7Field()),
+                                getMeta(gong, parsedArgs.getObject8Name(), parsedArgs.getObject8System(), parsedArgs.getObject8Type(), parsedArgs.getObject8Field()),
+                                getMeta(gong, parsedArgs.getObject9Name(), parsedArgs.getObject9System(), parsedArgs.getObject9Type(), parsedArgs.getObject9Field()),
+                                getMeta(gong, parsedArgs.getObject10Name(), parsedArgs.getObject10System(), parsedArgs.getObject10Type(), parsedArgs.getObject10Field())))
                         .toList())
                 .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
@@ -359,6 +383,70 @@ class GongConfig {
     private Optional<String> configGongObject2;
 
     @Inject
+    @ConfigProperty(name = "sb.gong.object3name", defaultValue = "")
+    private Optional<String> configGongObject3Name;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object3", defaultValue = "")
+    private Optional<String> configGongObject3;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object4name", defaultValue = "")
+    private Optional<String> configGongObject4Name;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object4", defaultValue = "")
+    private Optional<String> configGongObject4;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object5name", defaultValue = "")
+    private Optional<String> configGongObject5Name;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object5", defaultValue = "")
+    private Optional<String> configGongObject5;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object6name", defaultValue = "")
+    private Optional<String> configGongObject6Name;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object6", defaultValue = "")
+    private Optional<String> configGongObject6;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object7name", defaultValue = "")
+    private Optional<String> configGongObject7Name;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object7", defaultValue = "")
+    private Optional<String> configGongObject7;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object8name", defaultValue = "")
+    private Optional<String> configGongObject8Name;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object8", defaultValue = "")
+    private Optional<String> configGongObject8;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object9name", defaultValue = "")
+    private Optional<String> configGongObject9Name;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object9", defaultValue = "")
+    private Optional<String> configGongObject9;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object10name", defaultValue = "")
+    private Optional<String> configGongObject10Name;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.object10", defaultValue = "")
+    private Optional<String> configGongObject10;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -457,6 +545,70 @@ class GongConfig {
 
     public Optional<String> getConfigGongObject2Name() {
         return configGongObject2Name;
+    }
+
+    public Optional<String> getConfigGongObject3() {
+        return configGongObject3;
+    }
+
+    public Optional<String> getConfigGongObject3Name() {
+        return configGongObject3Name;
+    }
+
+    public Optional<String> getConfigGongObject4() {
+        return configGongObject4;
+    }
+
+    public Optional<String> getConfigGongObject4Name() {
+        return configGongObject4Name;
+    }
+
+    public Optional<String> getConfigGongObject5() {
+        return configGongObject5;
+    }
+
+    public Optional<String> getConfigGongObject5Name() {
+        return configGongObject5Name;
+    }
+
+    public Optional<String> getConfigGongObject6() {
+        return configGongObject6;
+    }
+
+    public Optional<String> getConfigGongObject6Name() {
+        return configGongObject6Name;
+    }
+
+    public Optional<String> getConfigGongObject7() {
+        return configGongObject7;
+    }
+
+    public Optional<String> getConfigGongObject7Name() {
+        return configGongObject7Name;
+    }
+
+    public Optional<String> getConfigGongObject8() {
+        return configGongObject8;
+    }
+
+    public Optional<String> getConfigGongObject8Name() {
+        return configGongObject8Name;
+    }
+
+    public Optional<String> getConfigGongObject9() {
+        return configGongObject9;
+    }
+
+    public Optional<String> getConfigGongObject9Name() {
+        return configGongObject9Name;
+    }
+
+    public Optional<String> getConfigGongObject10() {
+        return configGongObject10;
+    }
+
+    public Optional<String> getConfigGongObject10Name() {
+        return configGongObject10Name;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
@@ -781,6 +933,358 @@ class GongConfig {
             final String[] object2 = getObject2().split(":");
             if (object2.length == 3) {
                 return object2[2];
+            }
+            return "";
+        }
+
+        public String getObject3Name() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject3Name()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_3_NAME_ARG,
+                    Gong.GONG_OBJECT_3_NAME_ARG,
+                    "").value();
+        }
+
+        public String getObject3() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject3()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_3_ARG,
+                    Gong.GONG_OBJECT_3_ARG,
+                    "").value();
+        }
+
+        public String getObject3System() {
+            final String[] object3 = getObject3().split(":");
+            if (object3.length == 3) {
+                return object3[0];
+            }
+            return "";
+        }
+
+        public String getObject3Type() {
+            final String[] object3 = getObject3().split(":");
+            if (object3.length == 3) {
+                return object3[1];
+            }
+            return "";
+        }
+
+        public String getObject3Field() {
+            final String[] object3 = getObject3().split(":");
+            if (object3.length == 3) {
+                return object3[2];
+            }
+            return "";
+        }
+
+        public String getObject4Name() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject4Name()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_4_NAME_ARG,
+                    Gong.GONG_OBJECT_4_NAME_ARG,
+                    "").value();
+        }
+
+        public String getObject4() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject4()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_4_ARG,
+                    Gong.GONG_OBJECT_4_ARG,
+                    "").value();
+        }
+
+        public String getObject4System() {
+            final String[] object4 = getObject4().split(":");
+            if (object4.length == 3) {
+                return object4[0];
+            }
+            return "";
+        }
+
+        public String getObject4Type() {
+            final String[] object4 = getObject4().split(":");
+            if (object4.length == 3) {
+                return object4[1];
+            }
+            return "";
+        }
+
+        public String getObject4Field() {
+            final String[] object4 = getObject4().split(":");
+            if (object4.length == 3) {
+                return object4[2];
+            }
+            return "";
+        }
+
+        public String getObject5Name() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject5Name()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_5_NAME_ARG,
+                    Gong.GONG_OBJECT_5_NAME_ARG,
+                    "").value();
+        }
+
+        public String getObject5() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject5()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_5_ARG,
+                    Gong.GONG_OBJECT_5_ARG,
+                    "").value();
+        }
+
+        public String getObject5System() {
+            final String[] object5 = getObject5().split(":");
+            if (object5.length == 3) {
+                return object5[0];
+            }
+            return "";
+        }
+
+        public String getObject5Type() {
+            final String[] object5 = getObject5().split(":");
+            if (object5.length == 3) {
+                return object5[1];
+            }
+            return "";
+        }
+
+        public String getObject5Field() {
+            final String[] object5 = getObject5().split(":");
+            if (object5.length == 3) {
+                return object5[2];
+            }
+            return "";
+        }
+
+        public String getObject6Name() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject6Name()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_6_NAME_ARG,
+                    Gong.GONG_OBJECT_6_NAME_ARG,
+                    "").value();
+        }
+
+        public String getObject6() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject6()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_6_ARG,
+                    Gong.GONG_OBJECT_6_ARG,
+                    "").value();
+        }
+
+        public String getObject6System() {
+            final String[] object6 = getObject6().split(":");
+            if (object6.length == 3) {
+                return object6[0];
+            }
+            return "";
+        }
+
+        public String getObject6Type() {
+            final String[] object6 = getObject6().split(":");
+            if (object6.length == 3) {
+                return object6[1];
+            }
+            return "";
+        }
+
+        public String getObject6Field() {
+            final String[] object6 = getObject6().split(":");
+            if (object6.length == 3) {
+                return object6[2];
+            }
+            return "";
+        }
+
+        public String getObject7Name() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject7Name()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_7_NAME_ARG,
+                    Gong.GONG_OBJECT_7_NAME_ARG,
+                    "").value();
+        }
+
+        public String getObject7() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject7()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_7_ARG,
+                    Gong.GONG_OBJECT_7_ARG,
+                    "").value();
+        }
+
+        public String getObject7System() {
+            final String[] object7 = getObject7().split(":");
+            if (object7.length == 3) {
+                return object7[0];
+            }
+            return "";
+        }
+
+        public String getObject7Type() {
+            final String[] object7 = getObject7().split(":");
+            if (object7.length == 3) {
+                return object7[1];
+            }
+            return "";
+        }
+
+        public String getObject7Field() {
+            final String[] object7 = getObject7().split(":");
+            if (object7.length == 3) {
+                return object7[2];
+            }
+            return "";
+        }
+
+        public String getObject8Name() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject8Name()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_8_NAME_ARG,
+                    Gong.GONG_OBJECT_8_NAME_ARG,
+                    "").value();
+        }
+
+        public String getObject8() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject8()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_8_ARG,
+                    Gong.GONG_OBJECT_8_ARG,
+                    "").value();
+        }
+
+        public String getObject8System() {
+            final String[] object8 = getObject8().split(":");
+            if (object8.length == 3) {
+                return object8[0];
+            }
+            return "";
+        }
+
+        public String getObject8Type() {
+            final String[] object8 = getObject8().split(":");
+            if (object8.length == 3) {
+                return object8[1];
+            }
+            return "";
+        }
+
+        public String getObject8Field() {
+            final String[] object8 = getObject8().split(":");
+            if (object8.length == 3) {
+                return object8[2];
+            }
+            return "";
+        }
+
+        public String getObject9Name() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject9Name()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_9_NAME_ARG,
+                    Gong.GONG_OBJECT_9_NAME_ARG,
+                    "").value();
+        }
+
+        public String getObject9() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject9()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_9_ARG,
+                    Gong.GONG_OBJECT_9_ARG,
+                    "").value();
+        }
+
+        public String getObject9System() {
+            final String[] object9 = getObject9().split(":");
+            if (object9.length == 3) {
+                return object9[0];
+            }
+            return "";
+        }
+
+        public String getObject9Type() {
+            final String[] object9 = getObject9().split(":");
+            if (object9.length == 3) {
+                return object9[1];
+            }
+            return "";
+        }
+
+        public String getObject9Field() {
+            final String[] object9 = getObject9().split(":");
+            if (object9.length == 3) {
+                return object9[2];
+            }
+            return "";
+        }
+
+        public String getObject10Name() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject10Name()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_10_NAME_ARG,
+                    Gong.GONG_OBJECT_10_NAME_ARG,
+                    "").value();
+        }
+
+        public String getObject10() {
+            return getArgsAccessor().getArgument(
+                    getConfigGongObject10()::get,
+                    arguments,
+                    context,
+                    Gong.GONG_OBJECT_10_ARG,
+                    Gong.GONG_OBJECT_10_ARG,
+                    "").value();
+        }
+
+        public String getObject10System() {
+            final String[] object10 = getObject10().split(":");
+            if (object10.length == 3) {
+                return object10[0];
+            }
+            return "";
+        }
+
+        public String getObject10Type() {
+            final String[] object10 = getObject10().split(":");
+            if (object10.length == 3) {
+                return object10[1];
+            }
+            return "";
+        }
+
+        public String getObject10Field() {
+            final String[] object10 = getObject10().split(":");
+            if (object10.length == 3) {
+                return object10[2];
             }
             return "";
         }

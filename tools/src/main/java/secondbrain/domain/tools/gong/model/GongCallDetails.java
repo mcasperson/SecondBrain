@@ -25,7 +25,15 @@ public record GongCallDetails(String id,
                               List<GongCallExtensiveParty> parties,
                               String transcript,
                               @Nullable MetaObjectResult meta1,
-                              @Nullable MetaObjectResult meta2) implements IdData, TextData, UrlData {
+                              @Nullable MetaObjectResult meta2,
+                              @Nullable MetaObjectResult meta3,
+                              @Nullable MetaObjectResult meta4,
+                              @Nullable MetaObjectResult meta5,
+                              @Nullable MetaObjectResult meta6,
+                              @Nullable MetaObjectResult meta7,
+                              @Nullable MetaObjectResult meta8,
+                              @Nullable MetaObjectResult meta9,
+                              @Nullable MetaObjectResult meta10) implements IdData, TextData, UrlData {
 
     @Override
     public String getId() {
@@ -48,6 +56,6 @@ public record GongCallDetails(String id,
     }
 
     public MetaObjectResults getMetaObjectResults() {
-        return new MetaObjectResults(Stream.of(meta1, meta2).filter(Objects::nonNull).toList());
+        return new MetaObjectResults(Stream.of(meta1, meta2, meta3, meta4, meta5, meta6, meta7, meta8, meta9, meta10).filter(Objects::nonNull).toList());
     }
 }
