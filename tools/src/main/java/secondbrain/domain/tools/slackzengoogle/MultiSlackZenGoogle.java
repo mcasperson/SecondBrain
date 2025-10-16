@@ -568,6 +568,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .of(() -> List.of(
                         new ToolArgs(SlackSearch.SLACK_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(SlackSearch.SLACK_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(SlackSearch.SLACK_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, String.join(",", keywords), true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + parsedArgs.getDays(), true)))
@@ -599,6 +600,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(Gong.GONG_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(Gong.GONG_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(Gong.GONG_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(Gong.GONG_SUMMARIZE_TRANSCRIPT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(Gong.GONG_KEYWORD_ARG, parsedArgs.getKeywords(), true),
@@ -631,6 +633,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(Salesforce.FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(Salesforce.FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(Salesforce.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(Salesforce.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(Salesforce.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(Salesforce.KEYWORD_ARG, parsedArgs.getKeywords(), true),
@@ -662,6 +665,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(PlanHat.PLANHAT_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(PlanHat.PLANHAT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(PlanHat.PLANHAT_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(PlanHat.PLANHAT_KEYWORD_ARG, parsedArgs.getKeywords(), true),
@@ -745,6 +749,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(SlackChannel.SLACK_CHANNEL_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(SlackChannel.SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(SlackChannel.SLACK_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),

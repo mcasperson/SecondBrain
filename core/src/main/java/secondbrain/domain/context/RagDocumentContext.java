@@ -105,7 +105,7 @@ public record RagDocumentContext<T>(String tool,
 
     public RagDocumentContext<T> addMetadata(final MetaObjectResults metadata) {
         final MetaObjectResults metaObjectResults = getMetadata();
-        metaObjectResults.addAll(metadata);
+        metaObjectResults.addAll(metadata.stream().filter(Objects::nonNull).toList());
         return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metaObjectResults, intermediateResults, link, keywordMatches);
     }
 

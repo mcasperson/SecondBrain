@@ -19,10 +19,12 @@ public interface LocalConfigFilteredParent {
     Integer getDefaultRating();
 
     /**
-     * If this is true, items will be filtered out if their rating is less than the minimum rating.
-     * If false, items will be filtered out if their rating is greater than the minimum rating
+     * Determines if the context filter rating must be "greater than" or "less than" the calculated rating.
+     * <p>
+     * If this is true, items will be filtered out if their rating is greater than the minimum rating (i.e. the context filter limit represents an upper limit).
+     * If false, items will be filtered out if their rating is less than the minimum rating (i.e. the context filter limit represents a lower limit).
      *
-     * @return True if items should be filtered out if their rating is less than the minimum rating. False if items should be filtered out if their rating is greater than the minimum rating.
+     * @return True if items should be filtered out if their rating is greater than the minimum rating. False if items should be filtered out if their rating is less than the minimum rating.
      */
-    boolean isContextFilterGreaterThan();
+    boolean isContextFilterUpperLimit();
 }

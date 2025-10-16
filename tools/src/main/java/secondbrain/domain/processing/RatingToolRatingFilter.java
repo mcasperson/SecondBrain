@@ -25,13 +25,13 @@ public class RatingToolRatingFilter implements RatingFilter {
             return true;
         }
 
-        if (parsedArgs.isContextFilterGreaterThan()) {
+        if (parsedArgs.isContextFilterUpperLimit()) {
             return fixedMetadata.getIntValueByName(FILTER_RATING_META, parsedArgs.getDefaultRating())
-                    >= parsedArgs.getContextFilterMinimumRating();
+                    <= parsedArgs.getContextFilterMinimumRating();
         }
 
         return fixedMetadata.getIntValueByName(FILTER_RATING_META, parsedArgs.getDefaultRating())
-                <= parsedArgs.getContextFilterMinimumRating();
+                >= parsedArgs.getContextFilterMinimumRating();
     }
 
     @Override

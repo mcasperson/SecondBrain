@@ -1155,7 +1155,7 @@ class ZenDeskConfig {
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
 
-        public boolean isContextFilterGreaterThan() {
+        public boolean isContextFilterUpperLimit() {
             final String value = getArgsAccessor().getArgument(
                     getConfigContextFilterGreaterThan()::get,
                     arguments,
