@@ -369,7 +369,7 @@ public class GoogleDocs implements Tool<Void> {
                     .recover(ex -> 10)
                     .get();
 
-            metadata.add(new MetaObjectResult(GOOGLE_DOC_FILTER_RATING_META, filterRating));
+            metadata.add(new MetaObjectResult(GOOGLE_DOC_FILTER_RATING_META, filterRating, document.id(), getName()));
         }
 
         return new MetaObjectResults(

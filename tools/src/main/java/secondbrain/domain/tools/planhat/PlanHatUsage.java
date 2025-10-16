@@ -143,7 +143,11 @@ public class PlanHatUsage implements Tool<Company> {
                         List.of(),
                         company.id() + ":" + pair.getRight(),
                         company,
-                        new MetaObjectResults(new MetaObjectResult(pair.getLeft(), company.usage().getOrDefault(pair.getRight(), 0).toString())),
+                        new MetaObjectResults(new MetaObjectResult(
+                                pair.getLeft(),
+                                company.usage().getOrDefault(pair.getRight(), 0).toString(),
+                                company.id(),
+                                getName())),
                         null,
                         null,
                         List.of()))
@@ -164,7 +168,11 @@ public class PlanHatUsage implements Tool<Company> {
                         List.of(),
                         company.id() + ":" + custom,
                         company,
-                        new MetaObjectResults(new MetaObjectResult(custom, company.custom().getOrDefault(custom, "").toString())),
+                        new MetaObjectResults(new MetaObjectResult(
+                                custom,
+                                company.custom().getOrDefault(custom, "").toString(),
+                                company.id(),
+                                getName())),
                         null,
                         null,
                         List.of()))

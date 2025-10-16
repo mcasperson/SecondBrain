@@ -26,11 +26,11 @@ public record ZenDeskTicket(String id, String submitter_id, String assignee_id, 
 
     public List<MetaObjectResult> toMetaObjectResult() {
         return List.of(
-                new MetaObjectResult("ID", id),
-                new MetaObjectResult("Subject", subject),
-                new MetaObjectResult("OrganizationId", organization_id),
-                new MetaObjectResult("SubmittedId", submitter_id),
-                new MetaObjectResult("AssigneeId", assignee_id));
+                new MetaObjectResult("ID", id, id, "ZenDesk"),
+                new MetaObjectResult("Subject", subject, id, "ZenDesk"),
+                new MetaObjectResult("OrganizationId", organization_id, id, "ZenDesk"),
+                new MetaObjectResult("SubmittedId", submitter_id, id, "ZenDesk"),
+                new MetaObjectResult("AssigneeId", assignee_id, id, "ZenDesk"));
     }
 
     @Override

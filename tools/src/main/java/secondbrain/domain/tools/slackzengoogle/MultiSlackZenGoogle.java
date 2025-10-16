@@ -470,7 +470,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private MetaObjectResult getContextCount(final List<RagDocumentContext<Void>> ragContext) {
         return new MetaObjectResult(
                 "ContextCount",
-                ragContext.size());
+                ragContext.size(),
+                null,
+                getName());
     }
 
     private List<MetaObjectResult> getMetaResults(final List<RagDocumentContext<Void>> ragContext, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
@@ -516,7 +518,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .recover(ex -> 0)
                         .get();
 
-                results.add(new MetaObjectResult(metaField.getLeft(), value));
+                results.add(new MetaObjectResult(metaField.getLeft(), value, null, getName()));
             }
         }
 

@@ -203,7 +203,9 @@ public class Gong implements Tool<GongCallDetails> {
                 name,
                 gong.getSystemContext(system, type, field)
                         .map(f -> f.value().toString())
-                        .orElse("Unknown"));
+                        .orElse("Unknown"),
+                gong.metaData().id(),
+                getName());
     }
 
     @Override

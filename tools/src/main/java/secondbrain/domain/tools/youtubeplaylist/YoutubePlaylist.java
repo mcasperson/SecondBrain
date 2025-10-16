@@ -301,31 +301,31 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
     private MetaObjectResults getMetadata(
             final Map<String, String> environmentSettings,
-            final RagDocumentContext<YoutubeVideo> gongCall,
+            final RagDocumentContext<YoutubeVideo> youtubeVideo,
             final YoutubeConfig.LocalArguments parsedArgs) {
 
         final List<MetaObjectResult> metadata = new ArrayList<>();
 
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
-                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, gongCall.document())
-                .addToolCall(getName() + "[" + gongCall.id() + "]");
+                .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, youtubeVideo.document())
+                .addToolCall(getName() + "[" + youtubeVideo.id() + "]");
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
                     .map(rating -> Integer.parseInt(rating.trim()))
-                    .onFailure(e -> logger.warning("Failed to get Gong call rating for ticket " + gongCall.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
+                    .onFailure(e -> logger.warning("Failed to get Gong call rating for ticket " + youtubeVideo.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(ex -> parsedArgs.getDefaultRating())
                     .get();
 
-            metadata.add(new MetaObjectResult(YOUTUBE_FILTER_RATING_META, filterRating));
+            metadata.add(new MetaObjectResult(YOUTUBE_FILTER_RATING_META, filterRating, youtubeVideo.id(), getName()));
         }
 
         return new MetaObjectResults(
                 metadata,
-                "Youtube-" + gongCall.id() + ".json",
-                gongCall.id());
+                "Youtube-" + youtubeVideo.id() + ".json",
+                youtubeVideo.id());
     }
 
     private boolean contextMeetsRating(

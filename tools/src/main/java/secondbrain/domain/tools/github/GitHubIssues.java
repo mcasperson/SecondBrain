@@ -220,7 +220,7 @@ public class GitHubIssues implements Tool<GitHubIssue> {
                     .recover(ex -> 10)
                     .get();
 
-            metadata.add(new MetaObjectResult(GITHUB_ISSUE_FILTER_RATING_META, filterRating));
+            metadata.add(new MetaObjectResult(GITHUB_ISSUE_FILTER_RATING_META, filterRating, issue.id(), getName()));
         }
 
         return new MetaObjectResults(

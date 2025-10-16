@@ -49,7 +49,7 @@ public class RatingToolRatingMetadata implements RatingMetadata {
                     .recover(ex -> parsedArgs.getDefaultRating())
                     .get();
 
-            metadata.add(new MetaObjectResult(FILTER_RATING_META, filterRating));
+            metadata.add(new MetaObjectResult(FILTER_RATING_META, filterRating, activity.id(), toolName));
         }
 
         return new MetaObjectResults(
