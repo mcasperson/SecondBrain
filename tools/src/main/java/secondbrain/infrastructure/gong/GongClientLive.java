@@ -97,14 +97,10 @@ public class GongClientLive implements GongClient {
          There is no way to filter by salesforce ID. So we instead get all the calls during the period,
          cache the result, and then filter the calls by the company ID.
          */
-        final GongCallExtensive[] calls = localStorage.getOrPutObject(
-                        GongClientLive.class.getSimpleName(),
-                        "GongAPICallsExtensiveV2",
-                        DigestUtils.sha256Hex(fromDateTimeFinal + toDateTimeFinal + callId),
-                        TTL,
-                        GongCallExtensive[].class,
-                        () -> getCallsExtensiveApi(fromDateTime, toDateTime, callId, username, password, ""))
-                .result();
+        final GongCallExtensive[] calls = mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".extensive",
+                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, cursor));
 
         if (calls == null) {
             return List.of();
@@ -141,19 +137,6 @@ public class GongClientLive implements GongClient {
                 .getTranscript(call);
     }
 
-    private GongCallExtensive[] getCallsExtensiveApi(
-            final String fromDateTime,
-            final String toDateTime,
-            final String callId,
-            final String username,
-            final String password,
-            final String cursor) {
-        return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
-                lockFile + ".extensive",
-                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, cursor));
-    }
-
     /**
      * https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/extensive
      */
@@ -183,22 +166,31 @@ public class GongClientLive implements GongClient {
                 cursor
         );
 
-        return httpClientCaller.call(
-                this::getClient,
-                client -> client.target(target)
-                        .request(MediaType.APPLICATION_JSON_TYPE)
-                        .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
-                        .post(Entity.entity(body, MediaType.APPLICATION_JSON)),
-                response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(GongCallsExtensive.class))
-                        // Recurse if there is a next page, and we have not gone too far
-                        .map(r -> ArrayUtils.addAll(
-                                r.calls(),
-                                StringUtils.isNotBlank(r.records().cursor())
-                                        ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, r.records().cursor())
-                                        : new GongCallExtensive[]{}))
-                        .get(),
-                e -> new RuntimeException("Failed to get calls from Gong API", e));
+        // Cache at the level of each page of results. This reduces the size of each cached result.
+        // CosmoDB especially has a limit on the size of each cached object.
+        final GongCallsExtensive calls = localStorage.getOrPutObject(
+                        GongClientLive.class.getSimpleName(),
+                        "GongAPICallsExtensiveV2",
+                        DigestUtils.sha256Hex(fromDateTime + toDateTime + callId + cursor),
+                        TTL,
+                        GongCallsExtensive.class,
+                        () -> httpClientCaller.call(
+                                this::getClient,
+                                client -> client.target(target)
+                                        .request(MediaType.APPLICATION_JSON_TYPE)
+                                        .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
+                                        .post(Entity.entity(body, MediaType.APPLICATION_JSON)),
+                                response -> Try.of(() -> responseValidation.validate(response, target))
+                                        .map(r -> r.readEntity(GongCallsExtensive.class))
+                                        .get(),
+                                e -> new RuntimeException("Failed to get calls from Gong API", e)))
+                .result();
+
+        return ArrayUtils.addAll(
+                calls.calls(),
+                StringUtils.isNotBlank(calls.records().cursor())
+                        ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, calls.records().cursor())
+                        : new GongCallExtensive[]{});
     }
 
     private GongCallTranscript getCallTranscriptApi(
