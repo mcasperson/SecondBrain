@@ -16,6 +16,7 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.infrastructure.google.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -77,6 +78,7 @@ public class GoogleClient implements LlmClient {
     private Logger logger;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Inject

@@ -20,6 +20,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.FailedOllama;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.prompt.PromptBuilder;
 import secondbrain.domain.prompt.PromptBuilderSelector;
@@ -73,6 +74,7 @@ public class OllamaClient implements LlmClient {
     private Logger logger;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Inject

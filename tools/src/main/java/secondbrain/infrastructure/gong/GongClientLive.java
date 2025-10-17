@@ -14,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.httpclient.HttpClientCaller;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
@@ -53,6 +54,7 @@ public class GongClientLive implements GongClient {
     private String url;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Inject

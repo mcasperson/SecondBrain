@@ -11,6 +11,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.githubissues.api.GitHubIssue;
@@ -37,6 +38,7 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
     private ResponseValidation responseValidation;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Inject

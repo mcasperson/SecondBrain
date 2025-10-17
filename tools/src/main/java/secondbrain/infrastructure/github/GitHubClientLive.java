@@ -8,6 +8,7 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
 import secondbrain.domain.constants.Constants;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.github.api.GitHubCommitAndDiff;
@@ -32,6 +33,7 @@ public class GitHubClientLive implements GitHubClient {
     private Logger logger;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Override

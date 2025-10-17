@@ -15,6 +15,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.httpclient.HttpClientCaller;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
@@ -46,6 +47,7 @@ public class YoutubeClientLive implements YoutubeClient {
     private ResponseValidation responseValidation;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Inject

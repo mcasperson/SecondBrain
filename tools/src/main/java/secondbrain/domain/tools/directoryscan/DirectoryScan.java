@@ -85,6 +85,7 @@ public class DirectoryScan implements Tool<Void> {
             If the file content is empty, you must indicate that in the answer.
             """;
     @Inject
+    @Preferred
     LocalStorage localStorage;
 
     @Inject

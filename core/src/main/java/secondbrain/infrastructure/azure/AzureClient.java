@@ -18,6 +18,7 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.*;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.StringToList;
@@ -159,6 +160,7 @@ public class AzureClient implements LlmClient {
     private ListLimiter listLimiter;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Inject

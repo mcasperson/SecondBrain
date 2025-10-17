@@ -11,6 +11,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.faulttolerance.Retry;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
@@ -34,6 +35,7 @@ public class PlanHatClientLive implements PlanHatClient {
     private ResponseValidation responseValidation;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Inject

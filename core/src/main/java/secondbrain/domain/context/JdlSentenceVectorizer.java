@@ -13,6 +13,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.persist.LocalStorage;
 
 import java.util.List;
@@ -34,6 +35,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
     private Logger logger;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @PostConstruct

@@ -17,6 +17,7 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
@@ -59,6 +60,7 @@ public class SalesforceClientLive implements SalesforceClient {
     private ResponseValidation responseValidation;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Inject

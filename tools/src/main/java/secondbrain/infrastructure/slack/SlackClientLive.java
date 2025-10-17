@@ -21,6 +21,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tools.slack.ChannelDetails;
@@ -53,6 +54,7 @@ public class SlackClientLive implements SlackClient {
     private ValidateString validateString;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Inject
