@@ -149,10 +149,6 @@ public class GongClientLive implements GongClient {
             final String cursor) {
         logger.log(Level.INFO, "Getting Gong calls extensive with IDs " + callId + " from " + fromDateTime + " to " + toDateTime + " with cursor " + cursor);
 
-        RATE_LIMITER.acquire();
-
-        final String target = url + "/v2/calls/extensive";
-
         final List<String> callIds = StringUtils.isBlank(callId) ? null : Arrays.stream(callId.split(",")).toList();
         final String nullableFromDateTime = StringUtils.isBlank(fromDateTime) ? null : fromDateTime;
         final String nullableToDateTime = StringUtils.isBlank(toDateTime) ? null : toDateTime;
@@ -174,16 +170,7 @@ public class GongClientLive implements GongClient {
                         DigestUtils.sha256Hex(fromDateTime + toDateTime + callId + cursor),
                         TTL,
                         GongCallsExtensive.class,
-                        () -> httpClientCaller.call(
-                                this::getClient,
-                                client -> client.target(target)
-                                        .request(MediaType.APPLICATION_JSON_TYPE)
-                                        .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
-                                        .post(Entity.entity(body, MediaType.APPLICATION_JSON)),
-                                response -> Try.of(() -> responseValidation.validate(response, target))
-                                        .map(r -> r.readEntity(GongCallsExtensive.class))
-                                        .get(),
-                                e -> new RuntimeException("Failed to get calls from Gong API", e)))
+                        () -> callApi(body, username, password))
                 .result();
 
         return ArrayUtils.addAll(
@@ -192,6 +179,26 @@ public class GongClientLive implements GongClient {
                         ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, calls.records().cursor())
                         : new GongCallExtensive[]{});
     }
+
+    private GongCallsExtensive callApi(final GongCallExtensiveQuery body,
+                                       final String username,
+                                       final String password) {
+        RATE_LIMITER.acquire();
+
+        final String target = url + "/v2/calls/extensive";
+
+        return httpClientCaller.call(
+                this::getClient,
+                client -> client.target(target)
+                        .request(MediaType.APPLICATION_JSON_TYPE)
+                        .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
+                        .post(Entity.entity(body, MediaType.APPLICATION_JSON)),
+                response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(GongCallsExtensive.class))
+                        .get(),
+                e -> new RuntimeException("Failed to get calls from Gong API", e));
+    }
+
 
     private GongCallTranscript getCallTranscriptApi(
             final String id,
