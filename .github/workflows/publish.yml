@@ -96,11 +96,13 @@ jobs:
       - name: Build with Maven
         run: mvn --batch-mode clean install -DskipTests
 
+      # Import the certificate after we downloaded the dependencies. This gives the emulator time to start up.
       - name: Import self signed cert
         run: |
           curl --insecure https://localhost:9081/_explorer/emulator.pem > ~/emulatorcert.crt
           keytool -noprompt -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore $JAVA_HOME/lib/security/cacerts
 
+      # Once the certs are imported we can run the tests.
       - name: Test with Maven
         run: mvn --batch-mode test
 
