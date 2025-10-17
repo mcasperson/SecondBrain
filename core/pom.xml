@@ -27,6 +27,16 @@
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-cosmos</artifactId>
+            <exclusions>
+                <!--
+                    Fix this error:
+                    Unsatisfied dependencies for type MeterRegistry with qualifiers @Default
+                -->
+                <exclusion>
+                    <groupId>io.micrometer</groupId>
+                    <artifactId>micrometer-core</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.tika</groupId>

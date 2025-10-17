@@ -1,10 +1,8 @@
 package secondbrain.domain.persist;
 
+import com.azure.core.util.MetricsOptions;
 import com.azure.cosmos.*;
-import com.azure.cosmos.models.CosmosContainerProperties;
-import com.azure.cosmos.models.CosmosItemRequestOptions;
-import com.azure.cosmos.models.CosmosItemResponse;
-import com.azure.cosmos.models.PartitionKey;
+import com.azure.cosmos.models.*;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
@@ -122,10 +120,17 @@ public class CosmosLocalStorage implements LocalStorage {
             throw new LocalStorageFailure("Cosmos DB endpoint and key must be configured");
         }
 
+        final MetricsOptions metricsOptions = new MetricsOptions();
+        metricsOptions.setEnabled(false);
+
+        final CosmosClientTelemetryConfig telemetryOptions = new CosmosClientTelemetryConfig();
+        telemetryOptions.metricsOptions(metricsOptions);
+
         cosmosClient = new CosmosClientBuilder()
                 .endpoint(cosmosEndpoint.get())
                 .key(cosmosKey.get())
                 .consistencyLevel(ConsistencyLevel.SESSION)
+                .clientTelemetryConfig(telemetryOptions)
                 .buildClient();
 
         cosmosClient.createDatabaseIfNotExists(databaseName.orElse("secondbrain"));
