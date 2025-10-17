@@ -87,10 +87,7 @@ jobs:
           cache: 'maven'
 
       - name: Run Cosmos DB
-        run: |
-          docker run --publish 9081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
-          sleep 60
-
+        run: docker run --publish 9081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
         shell: bash
 
       - name: Build with Maven
