@@ -120,7 +120,7 @@ public class CosmosLocalStorage implements LocalStorage {
             throw new LocalStorageFailure("Cosmos DB endpoint and key must be configured");
         }
 
-        final MetricsOptions metricsOptions = new MetricsOptions();
+        final MetricsOptions metricsOptions = new CosmosMicrometerMetricsOptions();
         metricsOptions.setEnabled(false);
 
         final CosmosClientTelemetryConfig telemetryOptions = new CosmosClientTelemetryConfig();
