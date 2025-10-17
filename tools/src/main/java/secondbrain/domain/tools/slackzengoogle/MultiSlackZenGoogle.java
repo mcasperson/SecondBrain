@@ -223,9 +223,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Getting context for " + getName());
+        logger.info("Getting context for " + getName());
 
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        logger.info("Settings are:\n" + parsedArgs);
 
         final EntityDirectory entityDirectory = Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
@@ -1378,6 +1380,21 @@ class MultiSlackZenGoogleConfig {
             this.context = context;
         }
 
+        public String toString() {
+            final List<String> values = Arrays.stream(getClass().getMethods())
+                    .filter(method -> method.getName().startsWith("get") &&
+                            !method.getName().equals("getClass") && // Exclude getClass()
+                            method.getParameterCount() == 0 &&
+                            method.getReturnType() != void.class)
+                    .map(getterMethod -> Try.of(() -> getterMethod.invoke(this))
+                            .map(value -> getterMethod.getName() + " = " + value)
+                            .getOrNull())
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            return String.join("\n", values);
+        }
+
         public String getUrl() {
             return getArgsAccessor().getArgument(
                     getConfigUrl()::get,
@@ -2021,4 +2038,5 @@ class MultiSlackZenGoogleConfig {
         }
     }
 }
+
 
