@@ -12,6 +12,7 @@ import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.persist.H2LocalStorage;
+import secondbrain.domain.persist.LocalStorageProducer;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(JdlSentenceVectorizer.class)
 @AddBeanClasses(H2LocalStorage.class)
+@AddBeanClasses(LocalStorageProducer.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
