@@ -40,9 +40,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -153,6 +151,8 @@ public class Gong implements Tool<GongCallDetails> {
 
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        logger.info("Settings are:\n" + parsedArgs);
+
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<GongCallDetails>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
@@ -161,8 +161,8 @@ public class Gong implements Tool<GongCallDetails> {
                         gongClient.getCallsExtensive(
                                 parsedArgs.getCompany(),
                                 parsedArgs.getCallId(),
-                                parsedArgs.getAccessKey(),
-                                parsedArgs.getAccessSecretKey(),
+                                parsedArgs.getSecretAccessKey(),
+                                parsedArgs.getSecretAccessSecretKey(),
                                 parsedArgs.getStartDate(),
                                 parsedArgs.getEndDate()))
                 .map(e -> e.stream()
@@ -174,7 +174,7 @@ public class Gong implements Tool<GongCallDetails> {
                                         .map(f -> f.value().toString())
                                         .orElse("Unknown"),
                                 gong.parties(),
-                                gongClient.getCallTranscript(parsedArgs.getAccessKey(), parsedArgs.getAccessSecretKey(), gong),
+                                gongClient.getCallTranscript(parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), gong),
                                 getMeta(gong, parsedArgs.getObject1Name(), parsedArgs.getObject1System(), parsedArgs.getObject1Type(), parsedArgs.getObject1Field()),
                                 getMeta(gong, parsedArgs.getObject2Name(), parsedArgs.getObject2System(), parsedArgs.getObject2Type(), parsedArgs.getObject2Field()),
                                 getMeta(gong, parsedArgs.getObject3Name(), parsedArgs.getObject3System(), parsedArgs.getObject3Type(), parsedArgs.getObject3Field()),
@@ -624,7 +624,23 @@ class GongConfig {
             this.context = context;
         }
 
-        public String getAccessKey() {
+        public String toString() {
+            final List<String> values = Arrays.stream(getClass().getMethods())
+                    .filter(method -> method.getName().startsWith("get") &&
+                            !method.getName().equals("getClass") &&
+                            !method.getName().startsWith("getSecret") &&
+                            method.getParameterCount() == 0 &&
+                            method.getReturnType() != void.class)
+                    .map(getterMethod -> Try.of(() -> getterMethod.invoke(this))
+                            .map(value -> getterMethod.getName() + " = " + value)
+                            .getOrNull())
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            return String.join("\n", values);
+        }
+
+        public String getSecretAccessKey() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("gong_access_key")))
@@ -639,7 +655,7 @@ class GongConfig {
             return token.get();
         }
 
-        public String getAccessSecretKey() {
+        public String getSecretAccessSecretKey() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("gong_access_secret_key")))

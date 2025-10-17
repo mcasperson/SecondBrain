@@ -1383,7 +1383,8 @@ class MultiSlackZenGoogleConfig {
         public String toString() {
             final List<String> values = Arrays.stream(getClass().getMethods())
                     .filter(method -> method.getName().startsWith("get") &&
-                            !method.getName().equals("getClass") && // Exclude getClass()
+                            !method.getName().equals("getClass") &&
+                            !method.getName().startsWith("getSecret") &&
                             method.getParameterCount() == 0 &&
                             method.getReturnType() != void.class)
                     .map(getterMethod -> Try.of(() -> getterMethod.invoke(this))
