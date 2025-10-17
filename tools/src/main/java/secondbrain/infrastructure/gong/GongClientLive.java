@@ -100,7 +100,7 @@ public class GongClientLive implements GongClient {
         final GongCallExtensive[] calls = mutex.acquire(
                 MUTEX_TIMEOUT_MS,
                 lockFile + ".extensive",
-                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, ""));
+                () -> getCallsExtensiveApiLocked(fromDateTimeFinal, toDateTimeFinal, callId, username, password, ""));
 
         if (calls == null) {
             return List.of();
