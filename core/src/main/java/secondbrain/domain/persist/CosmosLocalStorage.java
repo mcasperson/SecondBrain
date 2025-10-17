@@ -78,9 +78,8 @@ public class CosmosLocalStorage implements LocalStorage {
         logger.info("Initializing Cosmos DB local storage");
         synchronized (CosmosLocalStorage.class) {
             if (cosmosClient == null) {
-                Try.of(this::initializeCosmosClient)
-                        .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
-                        .onSuccess(v -> deleteExpired());
+                Try.run(this::initializeCosmosClient)
+                        .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
             }
         }
         logger.info("Initialized Cosmos DB local storage");
@@ -115,7 +114,7 @@ public class CosmosLocalStorage implements LocalStorage {
         return totalReads.get() > 0 ? (float) totalCacheHits.get() / totalReads.get() * 100 : 0;
     }
 
-    private Void initializeCosmosClient() {
+    private void initializeCosmosClient() {
         if (cosmosEndpoint.isEmpty() || cosmosKey.isEmpty()) {
             throw new LocalStorageFailure("Cosmos DB endpoint and key must be configured");
         }
@@ -150,8 +149,6 @@ public class CosmosLocalStorage implements LocalStorage {
                 .onFailure(ex -> logger.warning("Failed to create container: " + exceptionHandler.getExceptionMessage(ex)));
 
         container = database.getContainer(containerName.orElse("localstorage"));
-
-        return null;
     }
 
     private boolean isDisabled() {
@@ -164,11 +161,6 @@ public class CosmosLocalStorage implements LocalStorage {
 
     private boolean isWriteOnly() {
         return writeOnly.isPresent() && Boolean.parseBoolean(writeOnly.get());
-    }
-
-    private boolean deleteExpired() {
-        // Cosmos DB handles TTL automatically, so this is a no-op
-        return true;
     }
 
     private String generateId(final String tool, final String source, final String promptHash) {
