@@ -17,7 +17,9 @@ import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.persist.CosmosLocalStorage;
 import secondbrain.domain.persist.H2LocalStorage;
+import secondbrain.domain.persist.LocalStorageProducer;
 
 import java.util.List;
 
@@ -28,10 +30,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(SentenceVectorizerDataToRagDoc.class)
 @AddBeanClasses(SimpleSentenceSplitter.class)
+@AddBeanClasses(H2LocalStorage.class)
+@AddBeanClasses(CosmosLocalStorage.class)
+@AddBeanClasses(LocalStorageProducer.class)
 @AddBeanClasses(JdlSentenceVectorizer.class)
 @AddBeanClasses(DocumentTrimmerExactKeywords.class)
 @AddBeanClasses(Loggers.class)
-@AddBeanClasses(H2LocalStorage.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 class SentenceVectorizerDataToRagDocTest {
