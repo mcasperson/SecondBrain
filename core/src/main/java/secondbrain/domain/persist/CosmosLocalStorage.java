@@ -116,7 +116,7 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     private Void initializeCosmosClient() {
-        if (!cosmosEndpoint.isPresent() || !cosmosKey.isPresent()) {
+        if (cosmosEndpoint.isEmpty() || cosmosKey.isEmpty()) {
             throw new LocalStorageFailure("Cosmos DB endpoint and key must be configured");
         }
 
