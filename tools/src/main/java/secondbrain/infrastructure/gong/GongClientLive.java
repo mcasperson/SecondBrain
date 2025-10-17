@@ -88,11 +88,6 @@ public class GongClientLive implements GongClient {
                 ? OffsetDateTime.now(ZoneId.systemDefault()).truncatedTo(ChronoUnit.DAYS).format(ISO_OFFSET_DATE_TIME)
                 : toDateTime;
 
-        // Build a "from" date for the cache key
-        final String fromDateTimeFinal = StringUtils.isBlank(fromDateTime)
-                ? "0000-00-00T00:00:00-00:00"
-                : fromDateTime;
-
         /*
          There is no way to filter by salesforce ID. So we instead get all the calls during the period,
          cache the result, and then filter the calls by the company ID.
@@ -100,7 +95,7 @@ public class GongClientLive implements GongClient {
         final GongCallExtensive[] calls = mutex.acquire(
                 MUTEX_TIMEOUT_MS,
                 lockFile + ".extensive",
-                () -> getCallsExtensiveApiLocked(fromDateTimeFinal, toDateTimeFinal, callId, username, password, ""));
+                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, ""));
 
         if (calls == null) {
             return List.of();
