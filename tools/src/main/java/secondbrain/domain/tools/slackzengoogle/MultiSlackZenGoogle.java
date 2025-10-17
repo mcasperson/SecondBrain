@@ -26,6 +26,7 @@ import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
@@ -904,6 +905,9 @@ class MultiSlackZenGoogleConfig {
     private static final int DEFAULT_RATING = 10;
 
     @Inject
+    private ToStringGenerator toStringGenerator;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -1381,19 +1385,7 @@ class MultiSlackZenGoogleConfig {
         }
 
         public String toString() {
-            final List<String> values = Arrays.stream(getClass().getMethods())
-                    .filter(method -> method.getName().startsWith("get") &&
-                            !method.getName().equals("getClass") &&
-                            !method.getName().startsWith("getSecret") &&
-                            method.getParameterCount() == 0 &&
-                            method.getReturnType() != void.class)
-                    .map(getterMethod -> Try.of(() -> getterMethod.invoke(this))
-                            .map(value -> getterMethod.getName() + " = " + value)
-                            .getOrNull())
-                    .filter(Objects::nonNull)
-                    .toList();
-
-            return String.join("\n", values);
+            return toStringGenerator.generateGetterConfig(this);
         }
 
         public String getUrl() {

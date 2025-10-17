@@ -23,6 +23,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
@@ -40,7 +41,9 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -267,6 +270,9 @@ public class Gong implements Tool<GongCallDetails> {
 @ApplicationScoped
 class GongConfig {
     private static final int DEFAULT_RATING = 10;
+
+    @Inject
+    private ToStringGenerator toStringGenerator;
 
     @Inject
     @ConfigProperty(name = "sb.gong.accessKey")
@@ -625,19 +631,7 @@ class GongConfig {
         }
 
         public String toString() {
-            final List<String> values = Arrays.stream(getClass().getMethods())
-                    .filter(method -> method.getName().startsWith("get") &&
-                            !method.getName().equals("getClass") &&
-                            !method.getName().startsWith("getSecret") &&
-                            method.getParameterCount() == 0 &&
-                            method.getReturnType() != void.class)
-                    .map(getterMethod -> Try.of(() -> getterMethod.invoke(this))
-                            .map(value -> getterMethod.getName() + " = " + value)
-                            .getOrNull())
-                    .filter(Objects::nonNull)
-                    .toList();
-
-            return String.join("\n", values);
+            return toStringGenerator.generateGetterConfig(this);
         }
 
         public String getSecretAccessKey() {
