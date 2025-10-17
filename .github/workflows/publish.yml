@@ -121,6 +121,14 @@ jobs:
           EOT
         shell: bash
 
+      - name: Run Cosmos DB
+        run: |
+          docker run --publish 9081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+          sleep 60
+          curl --insecure https://localhost:9081/_explorer/emulator.pem > ~/emulatorcert.crt
+          keytool -noprompt -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore $JAVA_HOME/lib/security/cacerts
+        shell: bash
+
       - name: Publish to GitHub Packages
         run: mvn -s settings.xml --batch-mode -DskipTests deploy
         env:
