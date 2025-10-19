@@ -2,11 +2,8 @@ package secondbrain.domain.cdi;
 
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.spi.AnnotatedType;
-import jakarta.enterprise.inject.spi.CDI;
 import jakarta.enterprise.inject.spi.Extension;
 import jakarta.enterprise.inject.spi.ProcessAnnotatedType;
-
-import java.util.logging.Logger;
 
 /**
  * Need to fix this error introduce by the Azure Cosmos DB SDK dependency:
@@ -15,15 +12,12 @@ import java.util.logging.Logger;
  */
 public class Veto implements Extension {
     public void vetoSpecificClass(@Observes final ProcessAnnotatedType<?> pat) {
-        final Logger logger = CDI.current().select(Logger.class).get();
-
         final AnnotatedType<?> annotatedType = pat.getAnnotatedType();
         final Class<?> clazz = annotatedType.getJavaClass();
 
         // We want to exclude any fault tolerance classes from being managed by CDI
         if (clazz.getPackageName().startsWith("io.smallrye.faulttolerance")) {
             pat.veto(); // Veto the class
-            logger.fine("Vetoed class: " + clazz.getName());
         }
     }
 }
