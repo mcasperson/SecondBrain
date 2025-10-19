@@ -617,6 +617,10 @@ class GongConfig {
         return configGongObject10Name;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
 
@@ -631,7 +635,7 @@ class GongConfig {
         }
 
         public String toString() {
-            return toStringGenerator.generateGetterConfig(this);
+            return getToStringGenerator().generateGetterConfig(this);
         }
 
         public String getSecretAccessKey() {

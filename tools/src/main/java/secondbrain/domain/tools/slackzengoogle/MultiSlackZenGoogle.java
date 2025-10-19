@@ -1371,6 +1371,10 @@ class MultiSlackZenGoogleConfig {
         return configIndividualContextSummaryPrompt;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -1385,7 +1389,7 @@ class MultiSlackZenGoogleConfig {
         }
 
         public String toString() {
-            return toStringGenerator.generateGetterConfig(this);
+            return getToStringGenerator().generateGetterConfig(this);
         }
 
         public String getUrl() {
