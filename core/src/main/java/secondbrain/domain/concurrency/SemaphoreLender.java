@@ -1,5 +1,7 @@
 package secondbrain.domain.concurrency;
 
+import io.vavr.control.Try;
+
 import java.util.concurrent.Semaphore;
 
 /**
@@ -18,6 +20,14 @@ public class SemaphoreLender {
      */
     public SemaphorePermit lend() throws InterruptedException {
         return new SemaphorePermit(semaphore);
+    }
+
+    /**
+     * Lend a permit from the semaphore. Use this when you have no other closable resource to manage
+     * in a try-with-resources block.
+     */
+    public Try.WithResources1<SemaphorePermit> lendAutoClose() {
+        return Try.withResources(() -> new SemaphorePermit(semaphore));
     }
 
     /**

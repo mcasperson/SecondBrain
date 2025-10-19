@@ -175,7 +175,7 @@ public class GoogleDocs implements Tool<Void> {
             throw new InternalFailure("Failed to get Google access token: " + token.getCause().getMessage());
         }
 
-        final Try<List<RagDocumentContext<Void>>> result = Try.withResources(SEMAPHORE_LENDER::lend)
+        final Try<List<RagDocumentContext<Void>>> result = SEMAPHORE_LENDER.lendAutoClose()
                 .of(s -> Try.of(GoogleNetHttpTransport::newTrustedTransport)
                         .map(transport -> new Docs.Builder(transport, JSON_FACTORY, token.get())
                                 .setApplicationName(APPLICATION_NAME)

@@ -21,7 +21,7 @@ public class UrlReadingStrategy implements FileReadingStrategy {
     private ResponseValidation responseValidation;
 
     private String downloadDocument(final Client client, final String url) {
-        return Try.withResources(SEMAPHORE_LENDER::lend)
+        return SEMAPHORE_LENDER.lendAutoClose()
                 .of(s -> downloadDocumentLoop(client, url, 0))
                 .get();
     }
