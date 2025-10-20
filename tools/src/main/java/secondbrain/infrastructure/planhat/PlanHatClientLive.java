@@ -8,9 +8,9 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.faulttolerance.Retry;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
@@ -26,6 +26,7 @@ import java.util.List;
 public class PlanHatClientLive implements PlanHatClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
+    private static final int PAGE_SIZE = 100;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.lock", defaultValue = "sb_planhat.lock")
@@ -54,7 +55,7 @@ public class PlanHatClientLive implements PlanHatClient {
                         DigestUtils.sha256Hex(company + url),
                         ttlSeconds,
                         Conversation[].class,
-                        () -> getConversationsApi(client, company, url, token))
+                        () -> getConversationsApi(client, company, url, token, ttlSeconds))
                 .result();
 
         return conversations == null
@@ -83,23 +84,40 @@ public class PlanHatClientLive implements PlanHatClient {
             final Client client,
             final String company,
             final String url,
-            final String token) {
+            final String token,
+            final int ttlSeconds) {
         return mutex.acquire(
                 MUTEX_TIMEOUT_MS,
                 lockFile + ".conversations",
-                () -> getConversationsApiLocked(client, company, url, token));
+                () -> getConversationsApiLocked(client, company, url, token, ttlSeconds, 0));
     }
 
-    @Retry
-    private Conversation[] getConversationsApiLocked(final Client client, final String company, final String url, final String token) {
+    private Conversation[] getConversationsApiLocked(final Client client, final String company, final String url, final String token, final int ttlSeconds, final int offset) {
+        final Conversation[] conversations = localStorage.getOrPutObject(
+                        PlanHatClientLive.class.getSimpleName(),
+                        "PlanHatAPICompany",
+                        DigestUtils.sha256Hex(company + url + offset),
+                        ttlSeconds,
+                        Conversation[].class,
+                        () -> callApi(client, company, url, token, offset))
+                .result();
+
+        return ArrayUtils.addAll(
+                conversations,
+                conversations.length != 0
+                        ? getConversationsApiLocked(client, company, url, token, ttlSeconds, offset + PAGE_SIZE)
+                        : new Conversation[]{});
+    }
+
+    private Conversation[] callApi(final Client client, final String company, final String url, final String token, final int offset) {
         RATE_LIMITER.acquire();
 
         final String target = url + "/conversations";
 
         // https://docs.planhat.com/#get_conversation_list
         final WebTarget webTarget = StringUtils.isNotBlank(company)
-                ? client.target(target).queryParam("cId", company).queryParam("limit", 2000)
-                : client.target(target).queryParam("limit", 2000);
+                ? client.target(target).queryParam("cId", company).queryParam("limit", PAGE_SIZE).queryParam("offset", offset)
+                : client.target(target).queryParam("limit", PAGE_SIZE).queryParam("offset", offset);
 
         return Try.withResources(() -> webTarget
                         .request()
@@ -123,7 +141,6 @@ public class PlanHatClientLive implements PlanHatClient {
                 () -> getCompanyApiLocked(client, company, url, token));
     }
 
-    @Retry
     private Company getCompanyApiLocked(
             final Client client,
             final String company,
