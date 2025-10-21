@@ -113,12 +113,13 @@ public class PlanHatClientLive implements PlanHatClient {
         logger.info("Fetching PlanHat conversations for company " + company + " with offset " + offset);
 
         // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
-        final String today = endDate.format(ISO_OFFSET_DATE_TIME);
+        final String end = endDate.format(ISO_OFFSET_DATE_TIME);
+        final String start = startDate.format(ISO_OFFSET_DATE_TIME);
 
         final Conversation[] conversations = localStorage.getOrPutObject(
                         PlanHatClientLive.class.getSimpleName(),
                         "PlanHatAPICompany",
-                        DigestUtils.sha256Hex(company + url + today + offset),
+                        DigestUtils.sha256Hex(company + url + start + end + offset),
                         ttlSeconds,
                         Conversation[].class,
                         () -> callApi(client, company, url, token, offset))
