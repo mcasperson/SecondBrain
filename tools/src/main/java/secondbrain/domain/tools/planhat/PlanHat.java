@@ -189,8 +189,6 @@ public class PlanHat implements Tool<Conversation> {
 
         final List<RagDocumentContext<Conversation>> ragDocs = conversations.stream()
                 .filter(conversation -> parsedArgs.getCompany().equals(conversation.companyId()))
-                .filter(conversation -> parsedArgs.getDays() == 0
-                        || dateParser.parseDate(conversation.date()).isAfter(parsedArgs.getStartDate()))
                 .filter(conversation -> !"ticket".equals(conversation.type()))
                 .map(conversation -> conversation.updateDescriptionAndSnippet(
                         htmlToText.getText(conversation.description()),
