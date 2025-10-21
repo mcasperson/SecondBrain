@@ -33,6 +33,7 @@ public class PlanHatClientLive implements PlanHatClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(5);
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final int PAGE_SIZE = 10;
+    private static final int MAX_OFFSET = 2000;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.lock", defaultValue = "sb_planhat.lock")
@@ -115,6 +116,11 @@ public class PlanHatClientLive implements PlanHatClient {
             final ZonedDateTime startDate,
             final ZonedDateTime endDate,
             final int offset) {
+        if (offset >= MAX_OFFSET) {
+            logger.warning("Reached maximum offset of " + MAX_OFFSET + " when fetching PlanHat conversations for company " + company);
+            return new Conversation[]{};
+        }
+
         logger.info("Fetching PlanHat conversations for company " + company + " with offset " + offset);
 
         // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
