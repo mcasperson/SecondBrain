@@ -1,10 +1,10 @@
 package secondbrain.domain.httpclient;
 
-import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import secondbrain.domain.timeout.TimeoutFunctionCallback;
 import secondbrain.domain.timeout.TimeoutService;
+import secondbrain.domain.tryext.TryExtensions;
 
 @ApplicationScoped
 public class TimeoutTryHttpClientCalled implements TimeoutHttpClientCaller {
@@ -23,11 +23,10 @@ public class TimeoutTryHttpClientCalled implements TimeoutHttpClientCaller {
             final long retryDelaySeconds,
             final int maxRetries) {
         // Clients are not guaranteed to be thread safe, so we build a new client for each call.
-        return timeoutService.executeWithTimeoutAndRetry(() -> Try.withResources(builder::buildClient)
-                        .of(client -> Try.withResources(() -> callback.call(client))
-                                .of(responseCallback::handleResponse)
-                                .get()
-                        )
+        return timeoutService.executeWithTimeoutAndRetry(() -> TryExtensions.withResources(
+                                builder::buildClient,
+                                callback::call,
+                                responseCallback::handleResponse)
                         .getOrElseThrow(exceptionBuilder::buildException),
                 timeoutCallback,
                 timeoutSeconds,
