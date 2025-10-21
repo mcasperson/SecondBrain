@@ -65,9 +65,14 @@ public class PlanHatClientLive implements PlanHatClient {
             final int ttlSeconds) {
         final Conversation[] conversations = getConversationsApi(client, company, url, token, startDate, endDate, ttlSeconds);
 
+        // Do one last filter to ensure we only return conversations before the end date.
+        // We don't do this earlier as we need to work all the way back to the start date,
+        // and then trim any of the later results that are after the end date.
         return conversations == null
                 ? List.of()
-                : List.of(conversations);
+                : List.of(conversations).stream()
+                .filter(c -> dateParser.parseDate(c.date()).isBefore(endDate))
+                .toList();
     }
 
     @Override
@@ -132,7 +137,6 @@ public class PlanHatClientLive implements PlanHatClient {
          */
         final Conversation[] filtered = Stream.of(conversations)
                 .filter(c -> dateParser.parseDate(c.date()).isAfter(startDate))
-                .filter(c -> dateParser.parseDate(c.date()).isBefore(endDate))
                 .toArray(Conversation[]::new);
 
         return ArrayUtils.addAll(
