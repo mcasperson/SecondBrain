@@ -41,6 +41,7 @@ public class GongClientLive implements GongClient {
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
+    private static final int MAX_PAGES = 100;
 
     @Inject
     @ConfigProperty(name = "sb.gong.lock", defaultValue = "sb_gong.lock")
@@ -95,7 +96,7 @@ public class GongClientLive implements GongClient {
         final GongCallExtensive[] calls = mutex.acquire(
                 MUTEX_TIMEOUT_MS,
                 lockFile + ".extensive",
-                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, ""));
+                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0));
 
         if (calls == null) {
             return List.of();
@@ -141,7 +142,13 @@ public class GongClientLive implements GongClient {
             final String callId,
             final String username,
             final String password,
-            final String cursor) {
+            final String cursor,
+            final int page) {
+        if (page >= MAX_PAGES) {
+            logger.log(Level.WARNING, "Reached maximum pages of " + MAX_PAGES + " when fetching Gong calls extensive");
+            return new GongCallExtensive[]{};
+        }
+
         logger.log(Level.INFO, "Getting Gong calls extensive with IDs " + callId + " from " + fromDateTime + " to " + toDateTime + " with cursor " + cursor);
 
         final List<String> callIds = StringUtils.isBlank(callId) ? null : Arrays.stream(callId.split(",")).toList();
@@ -171,7 +178,7 @@ public class GongClientLive implements GongClient {
         return ArrayUtils.addAll(
                 calls.calls(),
                 StringUtils.isNotBlank(calls.records().cursor())
-                        ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, calls.records().cursor())
+                        ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, calls.records().cursor(), page + 1)
                         : new GongCallExtensive[]{});
     }
 
