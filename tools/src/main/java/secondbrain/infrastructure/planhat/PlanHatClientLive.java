@@ -100,7 +100,7 @@ public class PlanHatClientLive implements PlanHatClient {
     private Conversation[] getConversationsApiLocked(final Client client, final String company, final String url, final String token, final int ttlSeconds, final int offset) {
         // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
         final String today = OffsetDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(ChronoUnit.DAYS)
+                .truncatedTo(ChronoUnit.MONTHS)
                 .format(ISO_OFFSET_DATE_TIME);
 
         final Conversation[] conversations = localStorage.getOrPutObject(

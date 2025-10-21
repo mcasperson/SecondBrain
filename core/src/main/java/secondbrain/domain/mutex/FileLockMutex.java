@@ -50,25 +50,32 @@ public class FileLockMutex implements Mutex {
     }
 
     public <T> T establishFileLock(final long timeout, final String lockName, final MutexCallback<T> callback) {
-        return Try.withResources(() -> new RandomAccessFile(lockName, "rw").getChannel())
-                .of(channel -> Try.withResources(() -> channel.tryLock(0, 0, false))
-                        .of(lock -> callIfNotNull(lock, callback))
-                        .onFailure(OverlappingFileLockException.class, ex -> {
-                            log.severe("""
-                                    Lock file is already locked by this JVM (OverlappingFileLockException).
-                                    This implementation is not reentrant.
-                                    This exception usually means you attempted to get the lock again from the originally locked method.""".stripIndent());
-                        })
-                        .get())
-                .recover(LockFail.class, ex -> {
-                    if (timeout <= 0) {
-                        throw new LockFail("Failed to obtain file lock within the specified timeout");
-                    }
-                    log.info("Lock file " + lockName + " is already locked, waiting up to " + timeout + " milliseconds...");
-                    Try.run(() -> Thread.sleep(Math.min(SLEEP, timeout)));
-                    return establishFileLock(Math.max(timeout - SLEEP, 0), lockName, callback);
-                })
-                .get();
+        long timeoutRemaining = timeout;
+
+        while (true) {
+            final Try<T> result = Try.withResources(() -> new RandomAccessFile(lockName, "rw").getChannel())
+                    .of(channel -> Try.withResources(() -> channel.tryLock(0, 0, false))
+                            .of(lock -> callIfNotNull(lock, callback))
+                            .onFailure(OverlappingFileLockException.class, ex -> {
+                                log.severe("""
+                                        Lock file is already locked by this JVM (OverlappingFileLockException).
+                                        This implementation is not reentrant.
+                                        This exception usually means you attempted to get the lock again from the originally locked method.""".stripIndent());
+                            })
+                            .get());
+
+            if (result.isSuccess()) {
+                return result.get();
+            }
+
+            timeoutRemaining -= SLEEP;
+
+            if (timeoutRemaining <= 0) {
+                throw new LockFail("Failed to obtain file lock within the specified timeout");
+            }
+
+            Try.run(() -> Thread.sleep(Math.min(SLEEP, timeout)));
+        }
     }
 
     private <T> T callIfNotNull(final FileLock lock, final MutexCallback<T> callback) {
