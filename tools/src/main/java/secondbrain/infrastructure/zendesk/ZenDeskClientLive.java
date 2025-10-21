@@ -21,6 +21,7 @@ import secondbrain.infrastructure.zendesk.api.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 public class ZenDeskClientLive implements ZenDeskClient {
@@ -61,6 +62,9 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
     @Inject
     private Mutex mutex;
+
+    @Inject
+    private Logger logger;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -150,6 +154,8 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Query is required");
         }
 
+        logger.info("Getting ZenDesk tickets, page " + page + " for query: " + query);
+
         RATE_LIMITER.acquire();
 
         final String target = url + "/api/v2/search.json";
@@ -205,6 +211,8 @@ public class ZenDeskClientLive implements ZenDeskClient {
         if (StringUtils.isBlank(id)) {
             throw new IllegalArgumentException("Ticket ID is required");
         }
+
+        logger.info("Getting ZenDesk ticket ID: " + id);
 
         RATE_LIMITER.acquire();
 
@@ -269,6 +277,8 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Ticket ID is required");
         }
 
+        logger.info("Getting ZenDesk comments for ticket ID: " + ticketId);
+
         RATE_LIMITER.acquire();
 
         final String target = url + "/api/v2/tickets/" + ticketId + "/comments";
@@ -315,6 +325,8 @@ public class ZenDeskClientLive implements ZenDeskClient {
         if (StringUtils.isBlank(orgId)) {
             throw new IllegalArgumentException("Organization ID is required");
         }
+
+        logger.info("Getting ZenDesk organization ID: " + orgId);
 
         RATE_LIMITER.acquire();
 
