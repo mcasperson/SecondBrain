@@ -20,7 +20,12 @@ import secondbrain.infrastructure.planhat.api.Conversation;
 
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class PlanHatClientLive implements PlanHatClient {
@@ -93,10 +98,15 @@ public class PlanHatClientLive implements PlanHatClient {
     }
 
     private Conversation[] getConversationsApiLocked(final Client client, final String company, final String url, final String token, final int ttlSeconds, final int offset) {
+        // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
+        final String today = OffsetDateTime.now(ZoneId.systemDefault())
+                .truncatedTo(ChronoUnit.DAYS)
+                .format(ISO_OFFSET_DATE_TIME);
+
         final Conversation[] conversations = localStorage.getOrPutObject(
                         PlanHatClientLive.class.getSimpleName(),
                         "PlanHatAPICompany",
-                        DigestUtils.sha256Hex(company + url + offset),
+                        DigestUtils.sha256Hex(company + url + today + offset),
                         ttlSeconds,
                         Conversation[].class,
                         () -> callApi(client, company, url, token, offset))
