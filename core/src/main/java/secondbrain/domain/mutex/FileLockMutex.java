@@ -64,7 +64,7 @@ public class FileLockMutex implements Mutex {
                     if (timeout <= 0) {
                         throw new LockFail("Failed to obtain file lock within the specified timeout");
                     }
-                    log.info("Lock file is already locked, waiting...");
+                    log.info("Lock file " + lockName + " is already locked, waiting...");
                     Try.run(() -> Thread.sleep(Math.min(SLEEP, timeout)));
                     return establishFileLock(Math.max(timeout - SLEEP, 0), lockName, callback);
                 })
