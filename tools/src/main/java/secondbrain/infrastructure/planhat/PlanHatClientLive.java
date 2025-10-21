@@ -153,7 +153,7 @@ public class PlanHatClientLive implements PlanHatClient {
     }
 
     private Conversation[] callApi(final Client client, final String company, final String url, final String token, final int offset) {
-        logger.info("Calling PlanHat Conversations API with offset " + offset);
+        logger.info("Calling PlanHat Conversations API for company " + company + " with offset " + offset);
 
         RATE_LIMITER.acquire();
 
