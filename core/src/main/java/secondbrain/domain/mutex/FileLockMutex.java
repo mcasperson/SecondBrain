@@ -5,6 +5,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import secondbrain.domain.exceptions.LockFail;
+import secondbrain.domain.tryext.TryExtensions;
 
 import java.io.RandomAccessFile;
 import java.nio.channels.FileLock;
@@ -53,16 +54,16 @@ public class FileLockMutex implements Mutex {
         long timeoutRemaining = timeout;
 
         while (true) {
-            final Try<T> result = Try.withResources(() -> new RandomAccessFile(lockName, "rw").getChannel())
-                    .of(channel -> Try.withResources(() -> channel.tryLock(0, 0, false))
-                            .of(lock -> callIfNotNull(lock, callback))
-                            .onFailure(OverlappingFileLockException.class, ex -> {
-                                log.severe("""
-                                        Lock file is already locked by this JVM (OverlappingFileLockException).
-                                        This implementation is not reentrant.
-                                        This exception usually means you attempted to get the lock again from the originally locked method.""".stripIndent());
-                            })
-                            .get());
+            final Try<T> result = TryExtensions.withResources(
+                            () -> new RandomAccessFile(lockName, "rw").getChannel(),
+                            channel -> channel.tryLock(0, 0, false))
+                    .of(lock -> callIfNotNull(lock, callback))
+                    .onFailure(OverlappingFileLockException.class, ex -> {
+                        log.severe("""
+                                Lock file is already locked by this JVM (OverlappingFileLockException).
+                                This implementation is not reentrant.
+                                This exception usually means you attempted to get the lock again from the originally locked method.""".stripIndent());
+                    });
 
             if (result.isSuccess()) {
                 return result.get();
