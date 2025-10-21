@@ -14,6 +14,7 @@ public interface PlanHatClient {
             String url,
             String token,
             ZonedDateTime startDate,
+            ZonedDateTime endDate,
             int ttlSeconds);
 
     Company getCompany(

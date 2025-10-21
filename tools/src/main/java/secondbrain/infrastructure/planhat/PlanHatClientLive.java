@@ -21,11 +21,9 @@ import secondbrain.infrastructure.planhat.api.Conversation;
 
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
@@ -53,6 +51,9 @@ public class PlanHatClientLive implements PlanHatClient {
     @Inject
     private DateParser dateParser;
 
+    @Inject
+    private Logger logger;
+
     @Override
     public List<Conversation> getConversations(
             final Client client,
@@ -60,15 +61,9 @@ public class PlanHatClientLive implements PlanHatClient {
             final String url,
             final String token,
             final ZonedDateTime startDate,
+            final ZonedDateTime endDate,
             final int ttlSeconds) {
-        final Conversation[] conversations = localStorage.getOrPutObject(
-                        PlanHatClientLive.class.getSimpleName(),
-                        "PlanHatAPIConversations",
-                        DigestUtils.sha256Hex(company + url),
-                        ttlSeconds,
-                        Conversation[].class,
-                        () -> getConversationsApi(client, company, url, token, startDate, ttlSeconds))
-                .result();
+        final Conversation[] conversations = getConversationsApi(client, company, url, token, startDate, endDate, ttlSeconds);
 
         return conversations == null
                 ? List.of()
@@ -98,11 +93,12 @@ public class PlanHatClientLive implements PlanHatClient {
             final String url,
             final String token,
             final ZonedDateTime startDate,
+            final ZonedDateTime endDate,
             final int ttlSeconds) {
         return mutex.acquire(
                 MUTEX_TIMEOUT_MS,
                 lockFile + ".conversations",
-                () -> getConversationsApiLocked(client, company, url, token, ttlSeconds, startDate, 0));
+                () -> getConversationsApiLocked(client, company, url, token, ttlSeconds, startDate, endDate, 0));
     }
 
     private Conversation[] getConversationsApiLocked(
@@ -112,11 +108,12 @@ public class PlanHatClientLive implements PlanHatClient {
             final String token,
             final int ttlSeconds,
             final ZonedDateTime startDate,
+            final ZonedDateTime endDate,
             final int offset) {
+        logger.info("Fetching PlanHat conversations for company " + company + " with offset " + offset);
+
         // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
-        final String today = OffsetDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(ChronoUnit.MONTHS)
-                .format(ISO_OFFSET_DATE_TIME);
+        final String today = endDate.format(ISO_OFFSET_DATE_TIME);
 
         final Conversation[] conversations = localStorage.getOrPutObject(
                         PlanHatClientLive.class.getSimpleName(),
@@ -134,16 +131,19 @@ public class PlanHatClientLive implements PlanHatClient {
          */
         final Conversation[] filtered = Stream.of(conversations)
                 .filter(c -> dateParser.parseDate(c.date()).isAfter(startDate))
+                .filter(c -> dateParser.parseDate(c.date()).isBefore(endDate))
                 .toArray(Conversation[]::new);
 
         return ArrayUtils.addAll(
                 filtered,
                 filtered.length != 0
-                        ? getConversationsApiLocked(client, company, url, token, ttlSeconds, startDate, offset + PAGE_SIZE)
+                        ? getConversationsApiLocked(client, company, url, token, ttlSeconds, startDate, endDate, offset + PAGE_SIZE)
                         : new Conversation[]{});
     }
 
     private Conversation[] callApi(final Client client, final String company, final String url, final String token, final int offset) {
+        logger.info("Calling PlanHat Conversations API with offset " + offset);
+
         RATE_LIMITER.acquire();
 
         final String target = url + "/conversations";
@@ -180,6 +180,8 @@ public class PlanHatClientLive implements PlanHatClient {
             final String company,
             final String url,
             final String token) {
+        logger.info("Calling PlanHat Company API for company " + company);
+
         RATE_LIMITER.acquire();
 
         final String target = url + "/companies/" + URLEncoder.encode(company, Charset.defaultCharset());

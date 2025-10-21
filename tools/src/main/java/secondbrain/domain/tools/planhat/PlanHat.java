@@ -178,6 +178,7 @@ public class PlanHat implements Tool<Conversation> {
                                 pair.getLeft(),
                                 pair.getRight(),
                                 parsedArgs.getStartDate(),
+                                parsedArgs.getEndDate(),
                                 parsedArgs.getSearchTTL()))
                         // Don't let the failure of one instance affect the other
                         .onFailure(throwable -> logger.warning("Failed to get conversations: " + ExceptionUtils.getRootCauseMessage(throwable)))

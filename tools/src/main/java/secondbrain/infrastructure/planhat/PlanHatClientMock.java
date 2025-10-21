@@ -22,7 +22,7 @@ public class PlanHatClientMock implements PlanHatClient {
     private LlmClient llmClient;
 
     @Override
-    public List<Conversation> getConversations(Client client, String company, String url, String token, ZonedDateTime startDate, int ttlSeconds) {
+    public List<Conversation> getConversations(Client client, String company, String url, String token, ZonedDateTime startDate, ZonedDateTime endDate, int ttlSeconds) {
         // Create a list of mock conversations
         return List.of(
                 createMockConversation(),
