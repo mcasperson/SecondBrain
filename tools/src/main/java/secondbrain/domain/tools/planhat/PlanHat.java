@@ -40,8 +40,10 @@ import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.api.Conversation;
 
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -175,6 +177,7 @@ public class PlanHat implements Tool<Conversation> {
                                 "",
                                 pair.getLeft(),
                                 pair.getRight(),
+                                parsedArgs.getStartDate(),
                                 parsedArgs.getSearchTTL()))
                         // Don't let the failure of one instance affect the other
                         .onFailure(throwable -> logger.warning("Failed to get conversations: " + ExceptionUtils.getRootCauseMessage(throwable)))
@@ -186,7 +189,7 @@ public class PlanHat implements Tool<Conversation> {
         final List<RagDocumentContext<Conversation>> ragDocs = conversations.stream()
                 .filter(conversation -> parsedArgs.getCompany().equals(conversation.companyId()))
                 .filter(conversation -> parsedArgs.getDays() == 0
-                        || dateParser.parseDate(conversation.date()).isAfter(ZonedDateTime.now(ZoneOffset.UTC).minusDays(parsedArgs.getDays())))
+                        || dateParser.parseDate(conversation.date()).isAfter(parsedArgs.getStartDate()))
                 .filter(conversation -> !"ticket".equals(conversation.type()))
                 .map(conversation -> conversation.updateDescriptionAndSnippet(
                         htmlToText.getText(conversation.description()),
@@ -435,6 +438,26 @@ class PlanHatConfig {
                     "");
 
             return NumberUtils.toInt(argument.value(), 1);
+        }
+
+        public ZonedDateTime getStartDate() {
+            if (getDays() == 0) {
+                return null;
+            }
+
+            return ZonedDateTime.now(ZoneOffset.UTC)
+                    .truncatedTo(ChronoUnit.DAYS)
+                    .minusDays(getDays());
+        }
+
+        public ZonedDateTime getEndDate() {
+            if (getDays() == 0) {
+                return null;
+            }
+
+            return ZonedDateTime.now(ZoneId.systemDefault())
+                    // truncate to the day to increase the chances of getting a cache hit
+                    .truncatedTo(ChronoUnit.DAYS);
         }
 
 

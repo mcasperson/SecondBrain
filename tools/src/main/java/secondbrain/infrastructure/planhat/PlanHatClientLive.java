@@ -11,6 +11,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.date.DateParser;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
@@ -22,8 +23,10 @@ import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
@@ -47,12 +50,16 @@ public class PlanHatClientLive implements PlanHatClient {
     @Inject
     private Mutex mutex;
 
+    @Inject
+    private DateParser dateParser;
+
     @Override
     public List<Conversation> getConversations(
             final Client client,
             final String company,
             final String url,
             final String token,
+            final ZonedDateTime startDate,
             final int ttlSeconds) {
         final Conversation[] conversations = localStorage.getOrPutObject(
                         PlanHatClientLive.class.getSimpleName(),
@@ -60,7 +67,7 @@ public class PlanHatClientLive implements PlanHatClient {
                         DigestUtils.sha256Hex(company + url),
                         ttlSeconds,
                         Conversation[].class,
-                        () -> getConversationsApi(client, company, url, token, ttlSeconds))
+                        () -> getConversationsApi(client, company, url, token, startDate, ttlSeconds))
                 .result();
 
         return conversations == null
@@ -90,14 +97,22 @@ public class PlanHatClientLive implements PlanHatClient {
             final String company,
             final String url,
             final String token,
+            final ZonedDateTime startDate,
             final int ttlSeconds) {
         return mutex.acquire(
                 MUTEX_TIMEOUT_MS,
                 lockFile + ".conversations",
-                () -> getConversationsApiLocked(client, company, url, token, ttlSeconds, 0));
+                () -> getConversationsApiLocked(client, company, url, token, ttlSeconds, startDate, 0));
     }
 
-    private Conversation[] getConversationsApiLocked(final Client client, final String company, final String url, final String token, final int ttlSeconds, final int offset) {
+    private Conversation[] getConversationsApiLocked(
+            final Client client,
+            final String company,
+            final String url,
+            final String token,
+            final int ttlSeconds,
+            final ZonedDateTime startDate,
+            final int offset) {
         // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
         final String today = OffsetDateTime.now(ZoneId.systemDefault())
                 .truncatedTo(ChronoUnit.MONTHS)
@@ -112,10 +127,19 @@ public class PlanHatClientLive implements PlanHatClient {
                         () -> callApi(client, company, url, token, offset))
                 .result();
 
+        /*
+         There is no way to select a date range with the Planhat API,
+         so instead we keep recursing over the API until all the conversations
+         are before the start date.
+         */
+        final Conversation[] filtered = Stream.of(conversations)
+                .filter(c -> dateParser.parseDate(c.date()).isAfter(startDate))
+                .toArray(Conversation[]::new);
+
         return ArrayUtils.addAll(
-                conversations,
-                conversations.length != 0
-                        ? getConversationsApiLocked(client, company, url, token, ttlSeconds, offset + PAGE_SIZE)
+                filtered,
+                filtered.length != 0
+                        ? getConversationsApiLocked(client, company, url, token, ttlSeconds, startDate, offset + PAGE_SIZE)
                         : new Conversation[]{});
     }
 

@@ -4,6 +4,7 @@ import jakarta.ws.rs.client.Client;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 public interface PlanHatClient {
@@ -12,6 +13,7 @@ public interface PlanHatClient {
             String company,
             String url,
             String token,
+            ZonedDateTime startDate,
             int ttlSeconds);
 
     Company getCompany(
