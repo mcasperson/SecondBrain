@@ -24,7 +24,7 @@ import java.util.List;
 
 @ApplicationScoped
 public class PlanHatClientLive implements PlanHatClient {
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(2);
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final int PAGE_SIZE = 10;
 
