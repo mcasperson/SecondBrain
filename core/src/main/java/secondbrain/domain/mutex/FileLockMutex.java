@@ -56,8 +56,8 @@ public class FileLockMutex implements Mutex {
         while (true) {
             final Try<T> result = TryExtensions.withResources(
                             () -> new RandomAccessFile(lockName, "rw").getChannel(),
-                            channel -> channel.tryLock(0, 0, false))
-                    .of(lock -> callIfNotNull(lock, callback))
+                            channel -> channel.tryLock(0, 0, false),
+                            lock -> callIfNotNull(lock, callback))
                     .onFailure(OverlappingFileLockException.class, ex -> {
                         log.severe("""
                                 Lock file is already locked by this JVM (OverlappingFileLockException).
