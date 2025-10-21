@@ -26,7 +26,7 @@ import java.util.List;
 public class PlanHatClientLive implements PlanHatClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
-    private static final int PAGE_SIZE = 100;
+    private static final int PAGE_SIZE = 10;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.lock", defaultValue = "sb_planhat.lock")
