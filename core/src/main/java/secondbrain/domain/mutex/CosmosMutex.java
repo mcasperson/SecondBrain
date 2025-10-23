@@ -160,10 +160,12 @@ public class CosmosMutex implements Mutex {
                         new CosmosItemRequestOptions().setIfMatchETag(lockDoc.eTag())))
                 .map(CosmosItemResponse::getETag);
 
+        // If we failed, return the failure
         if (etag.isFailure()) {
             return Try.failure(etag.getCause());
         }
 
+        // If we succeeded, run the callback, and then clean up the lock
         return Try.of(callback::apply)
                 .andFinally(() -> releaseLock(etag.get(), lockName));
     }
