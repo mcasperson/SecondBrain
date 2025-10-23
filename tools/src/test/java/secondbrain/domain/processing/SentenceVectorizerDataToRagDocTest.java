@@ -1,10 +1,15 @@
 package secondbrain.domain.processing;
 
+import io.smallrye.config.PropertiesConfigSource;
+import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.context.JdlSentenceVectorizer;
@@ -13,6 +18,7 @@ import secondbrain.domain.context.SimpleSentenceSplitter;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
+import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
@@ -22,6 +28,7 @@ import secondbrain.domain.persist.H2LocalStorage;
 import secondbrain.domain.persist.LocalStorageProducer;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -38,10 +45,34 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
+@AddBeanClasses(JasyptEncryptor.class)
 class SentenceVectorizerDataToRagDocTest {
 
     @Inject
     private SentenceVectorizerDataToRagDoc sentenceVectorizerDataToRagDoc;
+
+    @BeforeEach
+    void updateConfig() {
+        final var configSource = new PropertiesConfigSource(
+                Map.of(
+                        "sb.encryption.password", "1234567890"
+                ),
+                "TestConfig",
+                Integer.MAX_VALUE
+        );
+        final Config newConfig = new SmallRyeConfigBuilder()
+                .withSources(configSource)
+                .build();
+
+        final var configProviderResolver = ConfigProviderResolver.instance();
+        final var oldConfig = configProviderResolver.getConfig();
+
+        configProviderResolver.releaseConfig(oldConfig);
+        configProviderResolver.registerConfig(
+                newConfig,
+                Thread.currentThread().getContextClassLoader()
+        );
+    }
 
     @Test
     void testGetDocumentContext_Success() {
