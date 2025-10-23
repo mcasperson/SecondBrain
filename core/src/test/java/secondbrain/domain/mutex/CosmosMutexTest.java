@@ -3,6 +3,7 @@ package secondbrain.domain.mutex;
 import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
+import io.vavr.control.Try;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
@@ -68,5 +69,26 @@ public class CosmosMutexTest {
     public void testLocking() {
         final String result = cosmosMutex.acquire(5000, "mytestlock8", () -> "hi");
         Assertions.assertEquals("hi", result);
+    }
+
+    @Test
+    public void testFailedLocking() {
+        // start a thread that locks the mutex for 60 seconds
+        new Thread(() -> cosmosMutex.acquire(5000, "testFailedLocking4", () -> Try.run(() -> Thread.sleep(60000))))
+                .start();
+
+        for (int i = 0; i < 5; i++) {
+
+            Try<String> result = Try.of(() -> cosmosMutex.acquire(1000, "testFailedLocking4", () -> "hi"));
+            if (result.isFailure()) {
+                return;
+            }
+
+            // wait for the lock to be acquired
+            Try.run(() -> Thread.sleep(2000));
+        }
+
+        // We should have failed to acquire the lock by now
+        Assertions.fail();
     }
 }
