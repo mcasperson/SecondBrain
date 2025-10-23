@@ -168,7 +168,7 @@ public class CosmosMutex implements Mutex {
                 // NoSuchElementException means the lock exists and is not stale.
                 // We failed to obtain the lock.
                 .recover(NoSuchElementException.class, ex -> {
-                    throw new LockFail("Failed to obtain lock", ex);
+                    throw new LockFail("Failed to obtain lock - lock " + lockName + " is currently held", ex);
                 })
                 // get a new etag for a stale lock, or the first etag for a new lock
                 .map(lockDoc -> container.upsertItem(
