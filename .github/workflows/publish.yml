@@ -96,8 +96,18 @@ jobs:
       # Import the certificate after we downloaded the dependencies. This gives the emulator time to start up.
       - name: Import self signed cert
         run: |
-          curl --insecure https://localhost:9081/_explorer/emulator.pem > ~/emulatorcert.crt
-          keytool -noprompt -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore $JAVA_HOME/lib/security/cacerts
+          # Wait for emulator to be ready (max 5 minutes)
+          for i in {1..60}; do
+            if curl --insecure --silent --fail https://localhost:9081/_explorer/emulator.pem > ~/emulatorcert.crt 2>/dev/null; then
+              echo "Successfully downloaded certificate"
+              keytool -noprompt -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit
+              exit 0
+            fi
+            echo "Waiting for Cosmos DB emulator to be ready... (attempt $i/60)"
+            sleep 5
+          done
+          echo "Cosmos DB emulator failed to start within 5 minutes"
+          exit 1
 
       # Once the certs are imported we can run the tests.
       - name: Test with Maven
