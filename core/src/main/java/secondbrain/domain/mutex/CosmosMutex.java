@@ -199,9 +199,5 @@ public class CosmosMutex implements Mutex {
             return lockTime.plusSeconds(DEFAULT_TTL_SECONDS).isBefore(now);
         }
     }
-
-    private record LockResult<T>(T result, String etag) {
-
-    }
 }
 
