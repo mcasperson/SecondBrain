@@ -2,6 +2,7 @@ package secondbrain.domain.mutex;
 
 import com.azure.core.util.MetricsOptions;
 import com.azure.cosmos.*;
+import com.azure.cosmos.implementation.NotFoundException;
 import com.azure.cosmos.models.*;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
@@ -15,6 +16,7 @@ import secondbrain.domain.exceptions.LockFail;
 import secondbrain.domain.persist.CosmosLocalStorage;
 
 import java.time.Instant;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -140,66 +142,43 @@ public class CosmosMutex implements Mutex {
     }
 
     private <T> Try<T> tryAcquireAndExecute(final CosmosContainer container, final String lockName, final MutexCallback<T> callback) {
-        return Try.of(() -> {
-            // Try to read existing lock
-            final Try<LockDocument> existingLock = Try.of(() ->
-                    container.readItem(lockName, new PartitionKey(lockName), LockDocument.class).getItem()
-            );
+        // We either
+        final Try<String> etag = Try.of(() -> container.readItem(lockName, new PartitionKey(lockName), LockDocument.class).getItem())
+                // We can proceed if the existing lock is stale
+                .filter(LockDocument::isLockStale)
+                // If the existing lock was not found, we create a new lock
+                .recover(NotFoundException.class, ex -> new LockDocument(lockName, ownerId, Instant.now()))
+                // NoSuchElementException means the lock exists and is not stale.
+                // We failed to obtain the lock.
+                .recover(NoSuchElementException.class, ex -> {
+                    throw new LockFail("Failed to obtain lock", ex);
+                })
+                // get a new etag for a stale lock, or the first etag for a new lock
+                .map(lockDoc -> container.upsertItem(
+                        lockDoc,
+                        new PartitionKey(lockName),
+                        new CosmosItemRequestOptions().setIfMatchETag(lockDoc.eTag())))
+                .map(CosmosItemResponse::getETag);
 
-            final LockDocument lockDoc;
+        if (etag.isFailure()) {
+            return Try.failure(etag.getCause());
+        }
 
-            if (existingLock.isSuccess()) {
-                final LockDocument existing = existingLock.get();
-
-                // Check if lock is stale
-                if (isLockStale(existing)) {
-                    logger.info("Lock is stale, attempting to acquire: " + lockName);
-                    lockDoc = new LockDocument(lockName, ownerId, Instant.now(), existing.eTag());
-                } else {
-                    // Lock is held by another process
-                    throw new LockFail("Lock is currently held by: " + existing.ownerId());
-                }
-            } else {
-                // Lock doesn't exist, create new one
-                lockDoc = new LockDocument(lockName, ownerId, Instant.now());
-            }
-
-            // Try to acquire the lock using optimistic concurrency
-            final CosmosItemRequestOptions options = new CosmosItemRequestOptions();
-            if (lockDoc.eTag() != null) {
-                options.setIfMatchETag(lockDoc.eTag());
-            }
-
-            final CosmosItemResponse<LockDocument> response = container.upsertItem(lockDoc, new PartitionKey(lockName), options);
-            final String newETag = response.getETag();
-
-            try {
-                // Execute the callback with the lock held
-                final T result = callback.apply();
-                return result;
-            } finally {
-                // Release the lock
-                releaseLock(container, lockName, newETag);
-            }
-        });
+        return Try.of(callback::apply)
+                .andFinally(() -> releaseLock(etag.get(), lockName));
     }
 
-    private boolean isLockStale(final LockDocument lock) {
-        final Instant lockTime = lock.acquiredAt();
-        final Instant now = Instant.now();
-        return lockTime.plusSeconds(DEFAULT_TTL_SECONDS).isBefore(now);
-    }
-
-    private void releaseLock(final CosmosContainer container, final String lockName, final String etag) {
+    private void releaseLock(final String etag, final String lockName) {
         Try.of(() -> new CosmosItemRequestOptions().setIfMatchETag(etag))
                 .map(options -> container.deleteItem(lockName, new PartitionKey(lockName), options))
                 .onFailure(ex -> logger.warning("Failed to release lock: " + lockName + " - " + ex.getMessage()));
     }
 
+
     /**
      * Represents a lock document stored in Cosmos DB
      */
-    public record LockDocument(String id, String ownerId, Instant acquiredAt, String eTag) {
+    private record LockDocument(String id, String ownerId, Instant acquiredAt, String eTag) {
         public LockDocument() {
             this("", "", Instant.EPOCH, "");
         }
@@ -211,6 +190,16 @@ public class CosmosMutex implements Mutex {
         public LockDocument updateETag(String newETag) {
             return new LockDocument(this.id, this.ownerId, this.acquiredAt, newETag);
         }
+
+        public boolean isLockStale() {
+            final Instant lockTime = acquiredAt();
+            final Instant now = Instant.now();
+            return lockTime.plusSeconds(DEFAULT_TTL_SECONDS).isBefore(now);
+        }
+    }
+
+    private record LockResult<T>(T result, String etag) {
+
     }
 }
 
