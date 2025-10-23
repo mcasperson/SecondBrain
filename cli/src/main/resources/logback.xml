@@ -18,4 +18,5 @@
     <logger name="org.apache.pdfbox.pdmodel" level="error"/>
     <logger name="org.apache.fontbox" level="error"/>
     <logger name="com.slack.api.methods.impl.AsyncRateLimitExecutor" level="error"/>
+    <logger name="com.azure.cosmos.CosmosClientBuilder" level="error"/>
 </configuration>
