@@ -11,6 +11,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
@@ -69,6 +70,9 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private Encryptor encryptor;
 
     private CosmosClient cosmosClient;
     private CosmosContainer container;
@@ -198,7 +202,10 @@ public class CosmosLocalStorage implements LocalStorage {
                         }
 
                         totalCacheHits.incrementAndGet();
-                        return new CacheResult<String>(item.response, true);
+
+                        final String decrypted = encryptor.decrypt(item.response);
+
+                        return new CacheResult<String>(decrypted, true);
                     })
                     .recover(CosmosException.class, ex -> {
                         if (ex.getStatusCode() == 404) {
@@ -304,7 +311,9 @@ public class CosmosLocalStorage implements LocalStorage {
                         final int ttl = ttlSeconds > 0 ? ttlSeconds : -1;
                         final Long timestamp = ttlSeconds > 0 ? Instant.now().getEpochSecond() + ttlSeconds : null;
 
-                        final CacheItem item = new CacheItem(id, tool, source, promptHash, value, timestamp, ttl);
+                        final String encrypted = encryptor.encrypt(value);
+
+                        final CacheItem item = new CacheItem(id, tool, source, promptHash, encrypted, timestamp, ttl);
 
                         return container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions());
                     })
