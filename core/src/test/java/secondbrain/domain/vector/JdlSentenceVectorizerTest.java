@@ -8,6 +8,7 @@ import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.context.JdlSentenceVectorizer;
 import secondbrain.domain.context.RagStringContext;
+import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
@@ -24,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
+@AddBeanClasses(JasyptEncryptor.class)
 public class JdlSentenceVectorizerTest {
 
     @Inject
