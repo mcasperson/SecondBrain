@@ -52,7 +52,8 @@ public class CosmosLocalStorageTest {
                         "sb.cosmos.endpoint", "https://localhost:9081",
                         "sb.cosmos.key", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
                         "sb.cosmos.database", "testdb",
-                        "sb.cosmos.container", "testcontainer"
+                        "sb.cosmos.container", "testcontainer",
+                        "sb.encryption.password", "1234567890"
                 ),
                 "TestConfig",
                 Integer.MAX_VALUE
