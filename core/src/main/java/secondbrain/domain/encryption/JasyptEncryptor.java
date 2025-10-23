@@ -6,17 +6,20 @@ import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.StrongTextEncryptor;
 
+import java.util.Optional;
+
 @ApplicationScoped
 public class JasyptEncryptor implements Encryptor {
     private final StrongTextEncryptor textEncryptor = new StrongTextEncryptor();
 
     @Inject
     @ConfigProperty(name = "sb.encryption.password")
-    private String encryptionPassword;
+    private Optional<String> encryptionPassword;
 
     @PostConstruct
     public void construct() {
-        textEncryptor.setPassword(encryptionPassword);
+        // throw if the password was not set
+        textEncryptor.setPassword(encryptionPassword.get());
     }
 
     @Override
