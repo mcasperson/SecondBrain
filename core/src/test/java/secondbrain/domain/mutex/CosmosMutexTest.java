@@ -67,8 +67,10 @@ public class CosmosMutexTest {
 
     @Test
     public void testLocking() {
-        final String result = cosmosMutex.acquire(5000, "mytestlock8", () -> "hi");
-        Assertions.assertEquals("hi", result);
+        for (int i = 0; i < 5; i++) {
+            final String result = cosmosMutex.acquire(5000, "mytestlock7", () -> "hi");
+            Assertions.assertEquals("hi", result);
+        }
     }
 
     @Test
