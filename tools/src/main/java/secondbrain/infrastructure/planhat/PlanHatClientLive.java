@@ -47,6 +47,7 @@ public class PlanHatClientLive implements PlanHatClient {
     private LocalStorage localStorage;
 
     @Inject
+    @Preferred
     private Mutex mutex;
 
     @Inject

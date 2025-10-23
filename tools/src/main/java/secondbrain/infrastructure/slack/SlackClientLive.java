@@ -61,6 +61,7 @@ public class SlackClientLive implements SlackClient {
     private Logger logger;
 
     @Inject
+    @Preferred
     private Mutex mutex;
 
     @Override

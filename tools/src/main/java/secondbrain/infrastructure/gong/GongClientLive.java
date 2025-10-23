@@ -65,6 +65,7 @@ public class GongClientLive implements GongClient {
     private HttpClientCaller httpClientCaller;
 
     @Inject
+    @Preferred
     private Mutex mutex;
 
     private Client getClient() {

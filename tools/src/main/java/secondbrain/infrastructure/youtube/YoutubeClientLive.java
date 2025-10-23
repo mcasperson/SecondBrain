@@ -57,6 +57,7 @@ public class YoutubeClientLive implements YoutubeClient {
     private HttpClientCaller httpClientCaller;
 
     @Inject
+    @Preferred
     private Mutex mutex;
 
     private Client getClient() {

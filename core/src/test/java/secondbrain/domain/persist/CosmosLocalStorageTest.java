@@ -34,7 +34,7 @@ public class CosmosLocalStorageTest {
     /**
      * <a href="https://github.com/weld/weld-testing/issues/81#issuecomment-1564002983">...</a>
      * Also need to run local cosmos emulator for this test to pass:
-     * docker run --publish 9081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+     * docker run --publish 9081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach --restart unless-stopped mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
      * <p>
      * Get the self signed certificate
      * curl --insecure https://localhost:9081/_explorer/emulator.pem > ~/emulatorcert.crt

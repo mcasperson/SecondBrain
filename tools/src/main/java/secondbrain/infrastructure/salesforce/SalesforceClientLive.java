@@ -70,6 +70,7 @@ public class SalesforceClientLive implements SalesforceClient {
     private TimeoutHttpClientCaller httpClientCaller;
 
     @Inject
+    @Preferred
     private Mutex mutex;
 
     private Client getClient() {

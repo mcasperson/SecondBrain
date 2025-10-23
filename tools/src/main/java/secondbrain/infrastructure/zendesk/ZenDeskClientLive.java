@@ -61,6 +61,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
     private TimeoutHttpClientCaller httpClientCaller;
 
     @Inject
+    @Preferred
     private Mutex mutex;
 
     @Inject

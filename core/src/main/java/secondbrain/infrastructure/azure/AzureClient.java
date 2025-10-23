@@ -142,6 +142,7 @@ public class AzureClient implements LlmClient {
     private String lockFile;
 
     @Inject
+    @Preferred
     private Mutex mutex;
 
     @Inject
