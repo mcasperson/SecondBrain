@@ -10,10 +10,12 @@ import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
+import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
+import secondbrain.domain.exceptions.LockFail;
 import secondbrain.domain.logger.Loggers;
 
 import java.util.Map;
@@ -79,18 +81,9 @@ public class CosmosMutexTest {
         new Thread(() -> cosmosMutex.acquire(5000, "testFailedLocking4", () -> Try.run(() -> Thread.sleep(60000))))
                 .start();
 
-        for (int i = 0; i < 5; i++) {
+        // wait a bit to ensure the other thread has acquired the lock
+        Try.run(() -> Thread.sleep(5000));
 
-            Try<String> result = Try.of(() -> cosmosMutex.acquire(1000, "testFailedLocking4", () -> "hi"));
-            if (result.isFailure()) {
-                return;
-            }
-
-            // wait for the lock to be acquired
-            Try.run(() -> Thread.sleep(2000));
-        }
-
-        // We should have failed to acquire the lock by now
-        Assertions.fail();
+        Assert.assertThrows(LockFail.class, () -> cosmosMutex.acquire(1000, "testFailedLocking4", () -> "hi"));
     }
 }
