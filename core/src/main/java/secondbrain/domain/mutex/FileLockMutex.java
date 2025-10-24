@@ -65,7 +65,8 @@ public class FileLockMutex implements Mutex {
                                 This exception usually means you attempted to get the lock again from the originally locked method.""".stripIndent());
                     });
 
-            if (result.isSuccess()) {
+            // Get the result if we succeeded, or throw if we failed for any reason other than lock contention
+            if (result.isSuccess() || !(result.getCause() instanceof LockFail)) {
                 return result.get();
             }
 
