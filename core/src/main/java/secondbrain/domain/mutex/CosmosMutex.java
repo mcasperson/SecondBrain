@@ -162,7 +162,7 @@ public class CosmosMutex implements Mutex {
                 // If there are any cosmosdb errors, we want to log them
                 .onFailure(ex -> {
                     if (!(ex instanceof NotFoundException)) {
-                        logger.warning("Failed to acquire lock: " + lockName + " - " + exceptionHandler.getExceptionMessage(ex))
+                        logger.warning("Failed to acquire lock: " + lockName + " - " + exceptionHandler.getExceptionMessage(ex));
                     }
                 })
                 // We can proceed if the existing lock is stale
