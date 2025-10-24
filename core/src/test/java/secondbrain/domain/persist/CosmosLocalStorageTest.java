@@ -13,10 +13,12 @@ import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import secondbrain.domain.encryption.JasyptBinaryEncryptor;
 import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.zip.ApacheCompressZipper;
 
 import java.util.Map;
 import java.util.UUID;
@@ -28,6 +30,8 @@ import java.util.UUID;
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
 @AddBeanClasses(JasyptEncryptor.class)
+@AddBeanClasses(JasyptBinaryEncryptor.class)
+@AddBeanClasses(ApacheCompressZipper.class)
 public class CosmosLocalStorageTest {
 
     @Inject
