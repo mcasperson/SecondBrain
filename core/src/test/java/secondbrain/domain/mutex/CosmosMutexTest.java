@@ -86,4 +86,11 @@ public class CosmosMutexTest {
 
         Assert.assertThrows(LockFail.class, () -> cosmosMutex.acquire(1000, "testFailedLocking4", () -> "hi"));
     }
+
+    @Test
+    public void testExceptionHandling() {
+        Assert.assertThrows(RuntimeException.class, () -> cosmosMutex.acquire(1000, "testFailedLocking4", () -> {
+            throw new RuntimeException("Test exception");
+        }));
+    }
 }

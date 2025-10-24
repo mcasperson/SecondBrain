@@ -161,11 +161,7 @@ public class CosmosMutex implements Mutex {
         // We either
         final Try<String> etag = Try.of(() -> container.readItem(lockName, new PartitionKey(LOCK_PARTITION_VALUE), LockDocument.class).getItem())
                 // If there are any cosmosdb errors, we want to log them
-                .onFailure(ex -> {
-                    if (!(ex instanceof NotFoundException)) {
-                        logger.warning("Failed to acquire lock: " + lockName + " - " + exceptionHandler.getExceptionMessage(ex));
-                    }
-                })
+                .onFailure(ex -> logReadItemFailure(lockName, ex))
                 // We can proceed if the existing lock is stale
                 .filter(lockDoc -> lockDoc.isLockStale(getLockTtlSeconds()))
                 // If the existing lock was not found, we create a new lock
@@ -190,6 +186,13 @@ public class CosmosMutex implements Mutex {
         // If we succeeded, run the callback, and then clean up the lock
         return Try.of(callback::apply)
                 .andFinally(() -> releaseLock(etag.get(), lockName));
+    }
+
+    private void logReadItemFailure(final String lockName, final Throwable ex) {
+        // We ignore not found exceptions as they are expected when the lock does not exist
+        if (!(ex instanceof NotFoundException)) {
+            logger.warning("Failed to read lock item: " + lockName + " - " + exceptionHandler.getExceptionMessage(ex));
+        }
     }
 
     private void releaseLock(final String etag, final String lockName) {
