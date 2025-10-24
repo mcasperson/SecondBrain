@@ -312,21 +312,17 @@ public class CosmosLocalStorage implements LocalStorage {
                 resetConnection();
             }
 
-            final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> {
-                        final String id = generateId(tool, source, promptHash);
-
-                        // Set TTL and timestamp if specified
-                        final int ttl = ttlSeconds > 0 ? ttlSeconds : -1;
-                        final Long timestamp = ttlSeconds > 0 ? Instant.now().getEpochSecond() + ttlSeconds : null;
-
-                        final String compressed = zipper.compressString(value);
-
-                        final String encrypted = encryptor.encrypt(compressed);
-
-                        final CacheItem item = new CacheItem(id, tool, source, promptHash, encrypted, timestamp, ttl);
-
-                        return container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions());
-                    })
+            final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
+                    .map(encryptor::encrypt)
+                    .map(encrypted -> new CacheItem(
+                            generateId(tool, source, promptHash),
+                            tool,
+                            source,
+                            promptHash,
+                            encrypted,
+                            getTimestamp(ttlSeconds),
+                            sanitizeTtl(ttlSeconds)))
+                    .map(item -> container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions()))
                     .onFailure(ex -> totalFailures.incrementAndGet())
                     .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
@@ -336,6 +332,20 @@ public class CosmosLocalStorage implements LocalStorage {
                     )
                     .get();
         }
+    }
+
+    private Integer sanitizeTtl(final int ttlSeconds) {
+        if (ttlSeconds > 0) {
+            return ttlSeconds;
+        }
+        return -1;
+    }
+
+    private Long getTimestamp(final int ttlSeconds) {
+        if (ttlSeconds > 0) {
+            return Instant.now().getEpochSecond() + ttlSeconds;
+        }
+        return null;
     }
 
     @Override
