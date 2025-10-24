@@ -171,7 +171,9 @@ public class CosmosMutex implements Mutex {
                 .recover(NoSuchElementException.class, ex -> {
                     throw new LockFail("Failed to obtain lock - lock " + lockName + " is currently held", ex);
                 })
-                // get a new etag for a stale lock, or the first etag for a new lock
+                // Get a new etag for a stale lock, or the first etag for a new lock.
+                // If we have two processes trying to acquire the same lock at the same time,
+                // one of them will fail here due to the etag mismatch.
                 .map(lockDoc -> container.upsertItem(
                         lockDoc,
                         new PartitionKey(LOCK_PARTITION_VALUE),
@@ -198,9 +200,19 @@ public class CosmosMutex implements Mutex {
     private void releaseLock(final String etag, final String lockName) {
         Try.of(() -> new CosmosItemRequestOptions().setIfMatchETag(etag))
                 .map(options -> container.deleteItem(lockName, new PartitionKey(LOCK_PARTITION_VALUE), options))
+                /*
+                    There are a number of reasons for this to fail:
+                    1. The lock was already deleted (e.g. due to TTL expiry)
+                    2. The lock expired due to TTL expiry, was deleted by Cosmos DB, and recreated by another process so there is a new etag
+
+                    We don't fail the process of releasing a lock, as the locked operation has already completed successfully.
+                 */
                 .onFailure(ex -> {
+                    final boolean isNotFound = ex instanceof NotFoundException;
+                    final boolean isPreconditionFailed = ex instanceof CosmosException cosmosEx && cosmosEx.getStatusCode() == 412;
+
                     // We ignore errors when the lock file was deleted due to TTL expiry
-                    if (!(ex instanceof NotFoundException)) {
+                    if (!isNotFound && !isPreconditionFailed) {
                         logger.warning("Failed to release lock: " + lockName + " - " + ex.getMessage());
                     }
                 });
