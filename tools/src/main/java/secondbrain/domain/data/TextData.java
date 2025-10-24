@@ -1,7 +1,7 @@
 package secondbrain.domain.data;
 
 /**
- * Represents a data source that exoses text content.
+ * Represents a data source that exposes text content.
  */
 public interface TextData {
     String getText();

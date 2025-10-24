@@ -32,12 +32,20 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 public class PlanHatClientLive implements PlanHatClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(5);
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
-    private static final int PAGE_SIZE = 5;
-    private static final int MAX_OFFSET = 2000;
+    private static final int DEFAULT_PAGE_SIZE = 5;
+    private static final int DEFAULT_MAX_OFFSET = 2000;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.lock", defaultValue = "sb_planhat.lock")
     private String lockFile;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.pagesize", defaultValue = DEFAULT_PAGE_SIZE + "")
+    private String pageSize;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.maxoffset", defaultValue = DEFAULT_MAX_OFFSET + "")
+    private String maxOffset;
 
     @Inject
     private ResponseValidation responseValidation;
@@ -117,8 +125,8 @@ public class PlanHatClientLive implements PlanHatClient {
             final ZonedDateTime startDate,
             final ZonedDateTime endDate,
             final int offset) {
-        if (offset >= MAX_OFFSET) {
-            logger.warning("Reached maximum offset of " + MAX_OFFSET + " when fetching PlanHat conversations for company " + company);
+        if (offset >= getMaxOffset()) {
+            logger.warning("Reached maximum offset of " + getMaxOffset() + " when fetching PlanHat conversations for company " + company);
             return new Conversation[]{};
         }
 
@@ -149,7 +157,7 @@ public class PlanHatClientLive implements PlanHatClient {
         return ArrayUtils.addAll(
                 filtered,
                 filtered.length != 0
-                        ? getConversationsApiLocked(client, company, url, token, ttlSeconds, startDate, endDate, offset + PAGE_SIZE)
+                        ? getConversationsApiLocked(client, company, url, token, ttlSeconds, startDate, endDate, offset + getPageSize())
                         : new Conversation[]{});
     }
 
@@ -162,8 +170,8 @@ public class PlanHatClientLive implements PlanHatClient {
 
         // https://docs.planhat.com/#get_conversation_list
         final WebTarget webTarget = StringUtils.isNotBlank(company)
-                ? client.target(target).queryParam("cId", company).queryParam("limit", PAGE_SIZE).queryParam("offset", offset)
-                : client.target(target).queryParam("limit", PAGE_SIZE).queryParam("offset", offset);
+                ? client.target(target).queryParam("cId", company).queryParam("limit", getPageSize()).queryParam("offset", offset)
+                : client.target(target).queryParam("limit", getPageSize()).queryParam("offset", offset);
 
         return Try.withResources(() -> webTarget
                         .request()
@@ -207,5 +215,17 @@ public class PlanHatClientLive implements PlanHatClient {
                         .map(r -> r.readEntity(Company.class))
                         .get())
                 .get();
+    }
+
+    private int getPageSize() {
+        return Try.of(() -> Integer.parseInt(pageSize))
+                .filter(size -> size > 0)
+                .getOrElse(() -> DEFAULT_PAGE_SIZE);
+    }
+
+    private int getMaxOffset() {
+        return Try.of(() -> Integer.parseInt(maxOffset))
+                .filter(size -> size > 0)
+                .getOrElse(() -> DEFAULT_MAX_OFFSET);
     }
 }
