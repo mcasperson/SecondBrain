@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
@@ -17,6 +18,8 @@ import java.util.Base64;
  */
 @ApplicationScoped
 public class ApacheCompressZipper implements Zipper {
+    private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
+
     @Override
     public String compressString(final String data) {
         if (StringUtils.isEmpty(data)) {
@@ -47,11 +50,11 @@ public class ApacheCompressZipper implements Zipper {
                         .get())
                 .get();
 
-        return new String(uncompressed, StandardCharsets.UTF_8);
+        return new String(uncompressed, DEFAULT_CHARSET);
     }
 
     private ByteArrayOutputStream writeStream(final GzipCompressorOutputStream gcos, final ByteArrayOutputStream bos, final String data) throws Exception {
-        gcos.write(data.getBytes(StandardCharsets.UTF_8));
+        gcos.write(data.getBytes(DEFAULT_CHARSET));
         return bos;
     }
 
