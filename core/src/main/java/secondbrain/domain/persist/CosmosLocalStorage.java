@@ -15,6 +15,7 @@ import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
+import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -27,6 +28,8 @@ import java.util.logging.Logger;
 @ApplicationScoped
 public class CosmosLocalStorage implements LocalStorage {
 
+    private static final String CONTAINER_NAME = "localstoragezipped";
+    private static final String DATABASE_NAME = "secondbrain";
     private static final int DEFAULT_TTL_SECONDS = 86400;
     private static final int MAX_FAILURES = 5;
 
@@ -55,11 +58,11 @@ public class CosmosLocalStorage implements LocalStorage {
     private Optional<String> cosmosKey;
 
     @Inject
-    @ConfigProperty(name = "sb.cosmos.database", defaultValue = "secondbrain")
+    @ConfigProperty(name = "sb.cosmos.database", defaultValue = DATABASE_NAME)
     private Optional<String> databaseName;
 
     @Inject
-    @ConfigProperty(name = "sb.cosmos.container", defaultValue = "localstorage")
+    @ConfigProperty(name = "sb.cosmos.container", defaultValue = CONTAINER_NAME)
     private Optional<String> containerName;
 
     @Inject
@@ -73,6 +76,9 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Inject
     private Encryptor encryptor;
+
+    @Inject
+    private Zipper zipper;
 
     private CosmosClient cosmosClient;
     private CosmosContainer container;
@@ -136,13 +142,13 @@ public class CosmosLocalStorage implements LocalStorage {
                 .clientTelemetryConfig(telemetryOptions)
                 .buildClient();
 
-        cosmosClient.createDatabaseIfNotExists(databaseName.orElse("secondbrain"));
+        cosmosClient.createDatabaseIfNotExists(databaseName.orElse(DATABASE_NAME));
 
-        final CosmosDatabase database = cosmosClient.getDatabase(databaseName.orElse("secondbrain"));
+        final CosmosDatabase database = cosmosClient.getDatabase(databaseName.orElse(DATABASE_NAME));
 
         // Create container if it doesn't exist
         final CosmosContainerProperties containerProperties = new CosmosContainerProperties(
-                containerName.orElse("localstorage"),
+                containerName.orElse(CONTAINER_NAME),
                 "/tool"
         );
 
@@ -152,7 +158,7 @@ public class CosmosLocalStorage implements LocalStorage {
         Try.of(() -> database.createContainerIfNotExists(containerProperties))
                 .onFailure(ex -> logger.warning("Failed to create container: " + exceptionHandler.getExceptionMessage(ex)));
 
-        container = database.getContainer(containerName.orElse("localstorage"));
+        container = database.getContainer(containerName.orElse(CONTAINER_NAME));
     }
 
     private boolean isDisabled() {
@@ -203,10 +209,11 @@ public class CosmosLocalStorage implements LocalStorage {
 
                         totalCacheHits.incrementAndGet();
 
-                        final String decrypted = Try.of(() -> encryptor.decrypt(item.response))
+                        final String original = Try.of(() -> encryptor.decrypt(item.response))
+                                .map(decrypted -> zipper.decompressString(decrypted))
                                 .getOrNull();
 
-                        return new CacheResult<String>(decrypted, true);
+                        return new CacheResult<String>(original, true);
                     })
                     .recover(CosmosException.class, ex -> {
                         if (ex.getStatusCode() == 404) {
@@ -312,7 +319,9 @@ public class CosmosLocalStorage implements LocalStorage {
                         final int ttl = ttlSeconds > 0 ? ttlSeconds : -1;
                         final Long timestamp = ttlSeconds > 0 ? Instant.now().getEpochSecond() + ttlSeconds : null;
 
-                        final String encrypted = encryptor.encrypt(value);
+                        final String compressed = zipper.compressString(value);
+
+                        final String encrypted = encryptor.encrypt(compressed);
 
                         final CacheItem item = new CacheItem(id, tool, source, promptHash, encrypted, timestamp, ttl);
 
