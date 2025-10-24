@@ -142,7 +142,8 @@ public class CosmosMutex implements Mutex {
         while (true) {
             final Try<T> result = tryAcquireAndExecute(container, lockName, callback);
 
-            if (result.isSuccess()) {
+            // Get the result if we succeeded, or throw if we failed for any reason other than lock contention
+            if (result.isSuccess() || !(result.getCause() instanceof LockFail)) {
                 return result.get();
             }
 
