@@ -168,7 +168,7 @@ public class CosmosMutex implements Mutex {
                 // We can proceed if the existing lock is stale
                 .filter(lockDoc -> lockDoc.isLockStale(getLockTtlSeconds()))
                 // If the existing lock was not found, we create a new lock
-                .recover(NotFoundException.class, ex -> new LockDocument(lockName, LOCK_PARTITION_VALUE, Instant.now()))
+                .recover(NotFoundException.class, ex -> new LockDocument(lockName, LOCK_PARTITION_VALUE, Instant.now(), getLockTtlSeconds()))
                 // NoSuchElementException means the lock exists and is not stale.
                 // We failed to obtain the lock.
                 .recover(NoSuchElementException.class, ex -> {
@@ -207,10 +207,10 @@ public class CosmosMutex implements Mutex {
      * Represents a lock document stored in Cosmos DB
      */
     private record LockDocument(String id, String lock, Instant acquiredAt,
-                                @JsonProperty("_etag") String eTag) {
+                                @JsonProperty("_etag") String eTag, Integer ttl) {
 
-        public LockDocument(String id, String lock, Instant acquiredAt) {
-            this(id, lock, acquiredAt, null);
+        public LockDocument(String id, String lock, Instant acquiredAt, Integer ttl) {
+            this(id, lock, acquiredAt, null, ttl);
         }
 
         public String getFixedEtag() {
