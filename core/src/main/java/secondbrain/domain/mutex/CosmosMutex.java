@@ -194,7 +194,12 @@ public class CosmosMutex implements Mutex {
     private void releaseLock(final String etag, final String lockName) {
         Try.of(() -> new CosmosItemRequestOptions().setIfMatchETag(etag))
                 .map(options -> container.deleteItem(lockName, new PartitionKey(LOCK_PARTITION_VALUE), options))
-                .onFailure(ex -> logger.warning("Failed to release lock: " + lockName + " - " + ex.getMessage()));
+                .onFailure(ex -> {
+                    // We ignore errors when the lock file was deleted due to TTL expiry
+                    if (!(ex instanceof NotFoundException)) {
+                        logger.warning("Failed to release lock: " + lockName + " - " + ex.getMessage());
+                    }
+                });
     }
 
 
