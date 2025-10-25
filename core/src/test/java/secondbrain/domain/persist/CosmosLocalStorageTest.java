@@ -146,6 +146,37 @@ public class CosmosLocalStorageTest {
     }
 
     @Test
+    public void testSaveObjectArray() {
+        TestObject[] array = new TestObject[]{
+                new TestObject("A"),
+                new TestObject("B"),
+                new TestObject("C"),
+        };
+
+        Assertions.assertArrayEquals(array, cosmosLocalStorage.getOrPutObjectArray(
+                        CosmosLocalStorageTest.class.getSimpleName(),
+                        "testSaveObjectArray",
+                        Arrays.hashCode(array) + "",
+                        Integer.MAX_VALUE,
+                        TestObject.class,
+                        () -> array)
+                .result());
+
+        for (int i = 0; i < 5; i++) {
+            CacheResult<TestObject[]> result = cosmosLocalStorage.getOrPutObjectArray(
+                    CosmosLocalStorageTest.class.getSimpleName(),
+                    "testSaveObjectArray",
+                    Arrays.hashCode(array) + "",
+                    Integer.MAX_VALUE,
+                    TestObject.class,
+                    () -> array);
+
+            Assertions.assertArrayEquals(array, result.result());
+            Assertions.assertTrue(result.fromCache());
+        }
+    }
+
+    @Test
     public void testTTL() {
         final String randomValue = UUID.randomUUID().toString();
         Assertions.assertEquals(randomValue, cosmosLocalStorage.getOrPutString(
