@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
@@ -156,7 +157,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         final Try<List<RagDocumentContext<SalesforceTaskRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getClientSecret()))
                 .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
                 .map(emails -> Stream.of(emails)
-                        .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabel(), parsedArgs))
+                        .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabelWithDate(email), parsedArgs))
                         .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                         .toList());
 
@@ -182,7 +183,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Salesforce" + ragDoc.id() + ".txt")))
                 .map(doc -> parsedArgs.getSummarizeDocument()
-                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "SalesforceEmail", doc, environmentSettings, parsedArgs)
+                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(doc.source()), "SalesforceEmail", doc, environmentSettings, parsedArgs)
                         : doc)
                 .toList();
     }
@@ -217,6 +218,14 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     @Override
     public String getContextLabel() {
         return "Salesforce Email";
+    }
+
+    private String getContextLabelWithDate(@Nullable final SalesforceTaskRecord record) {
+        if (record == null || record.getCreatedDate() == null) {
+            return getContextLabel();
+        }
+
+        return getContextLabel() + " " + record.getCreatedDate();
     }
 }
 

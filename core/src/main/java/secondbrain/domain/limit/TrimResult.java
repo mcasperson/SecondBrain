@@ -7,7 +7,7 @@ public record TrimResult(String document, List<String> keywordMatches) {
         this("", List.of());
     }
 
-    public TrimResult replaceDocument(String document) {
+    public TrimResult replaceDocument(final String document) {
         return new TrimResult(document, keywordMatches);
     }
 }

@@ -12,6 +12,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
@@ -139,6 +140,14 @@ public class PlanHat implements Tool<Conversation> {
         return "PlanHat Activity";
     }
 
+    private String getContextLabelWithDate(@Nullable final Conversation conversation) {
+        if (conversation == null || conversation.date() == null) {
+            return getContextLabel();
+        }
+
+        return getContextLabel() + " " + conversation.date();
+    }
+
     @Override
     public List<ToolArguments> getArguments() {
         return ImmutableList.of(
@@ -194,7 +203,7 @@ public class PlanHat implements Tool<Conversation> {
                         htmlToText.getText(conversation.description()),
                         htmlToText.getText(conversation.snippet()))
                 )
-                .map(conversation -> dataToRagDoc.getDocumentContext(conversation.updateUrl(url), getName(), getContextLabel(), parsedArgs))
+                .map(conversation -> dataToRagDoc.getDocumentContext(conversation.updateUrl(url), getName(), getContextLabelWithDate(conversation), parsedArgs))
                 .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                 .toList();
 
@@ -211,7 +220,7 @@ public class PlanHat implements Tool<Conversation> {
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "PlanHat" + ragDoc.id() + ".txt")))
                 .map(doc -> parsedArgs.getSummarizeDocument()
-                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "PlanHat", doc, environmentSettings, parsedArgs)
+                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(doc.source()), "PlanHat", doc, environmentSettings, parsedArgs)
                         : doc)
                 .toList();
     }
