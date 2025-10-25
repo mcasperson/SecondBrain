@@ -190,7 +190,7 @@ public class PlanHat implements Tool<Conversation> {
                                 parsedArgs.getEndDate(),
                                 parsedArgs.getSearchTTL()))
                         // Don't let the failure of one instance affect the other
-                        .onFailure(throwable -> logger.warning("Failed to get conversations from " + pair.getLeft() + ": " + ExceptionUtils.getRootCauseMessage(throwable)))
+                        .onFailure(throwable -> logger.warning("Failed to get conversations from " + pair.getLeft() + " with token ending in " + StringUtils.substring(pair.getRight(), -4) + ": " + ExceptionUtils.getRootCauseMessage(throwable)))
                         .recover(ex -> List.of())
                         .get()
                         .stream())
