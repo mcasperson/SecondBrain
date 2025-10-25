@@ -25,4 +25,12 @@ public interface RagDocSummarizer {
             final List<RagDocumentContext<T>> ragDoc,
             final Map<String, String> environmentSettings,
             final LocalConfigSummarizer parsedArgs);
+
+    <T> List<RagDocumentContext<T>> getDocumentSummary(
+            final String toolName,
+            final ContextLabelCallback<T> contextLabelCallback,
+            final String datasource,
+            final List<RagDocumentContext<T>> ragDoc,
+            final Map<String, String> environmentSettings,
+            final LocalConfigSummarizer parsedArgs);
 }

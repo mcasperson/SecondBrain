@@ -62,4 +62,24 @@ public class LLMRagDocSummarizer implements RagDocSummarizer {
                 .map(doc -> getDocumentSummary(toolName, contextLabel, datasource, doc, environmentSettings, parsedArgs))
                 .toList();
     }
+
+    @Override
+    public <T> List<RagDocumentContext<T>> getDocumentSummary(
+            final String toolName,
+            final ContextLabelCallback<T> contextLabelCallback,
+            final String datasource,
+            final List<RagDocumentContext<T>> ragDoc,
+            final Map<String, String> environmentSettings,
+            final LocalConfigSummarizer parsedArgs) {
+        return ragDoc
+                .stream()
+                .map(doc -> getDocumentSummary(
+                        toolName,
+                        contextLabelCallback.getContextLabel(doc.source()),
+                        datasource,
+                        doc,
+                        environmentSettings,
+                        parsedArgs))
+                .toList();
+    }
 }

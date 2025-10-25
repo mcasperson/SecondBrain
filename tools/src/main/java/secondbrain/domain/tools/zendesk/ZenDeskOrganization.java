@@ -12,6 +12,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredParent;
@@ -176,6 +177,13 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         return "ZenDesk Ticket";
     }
 
+    private String getContextLabelWithDate(@Nullable final ZenDeskTicket ticket) {
+        if (ticket == null || ticket.createdAt() == null) {
+            return getContextLabel();
+        }
+        return getContextLabel() + " " + ticket.createdAt();
+    }
+
     @Override
     public List<RagDocumentContext<ZenDeskTicket>> getContext(
             final Map<String, String> environmentSettings,
@@ -291,7 +299,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                     one a small number of tickets.
                  */
                 .map(tickets -> parsedArgs.getSummarizeTicket()
-                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "ZenDesk", tickets, environmentSettings, parsedArgs)
+                        ? ragDocSummarizer.getDocumentSummary(getName(), this::getContextLabelWithDate, "ZenDesk", tickets, environmentSettings, parsedArgs)
                         : tickets)
                 // Don't let one failed instance block the others
                 .onFailure(throwable -> logger.warning("Failed to get tickets: " + ExceptionUtils.getRootCauseMessage(throwable)))
@@ -345,11 +353,11 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         }
 
         return tickets.stream()
-                .filter(ticket -> !exclude.contains(ticket.submitter_id()))
-                .filter(ticket -> !excludedOwner.contains(ticket.organization_id()))
-                .filter(ticket -> !forceAssignee || !StringUtils.isBlank(ticket.assignee_id()))
+                .filter(ticket -> !exclude.contains(ticket.submitterId()))
+                .filter(ticket -> !excludedOwner.contains(ticket.organizationId()))
+                .filter(ticket -> !forceAssignee || !StringUtils.isBlank(ticket.assigneeId()))
                 .filter(ticket -> StringUtils.isBlank(recipient) || recipient.equals(ticket.recipient()))
-                .filter(ticket -> StringUtils.isBlank(organization) || organization.equals(ticket.organization_id()))
+                .filter(ticket -> StringUtils.isBlank(organization) || organization.equals(ticket.organizationId()))
                 .collect(Collectors.toList());
     }
 
@@ -384,9 +392,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         List.of(
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ID_ARG, ticket.id(), true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG, ticket.subject(), true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG, ticket.organization_id(), true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG, ticket.submitter_id(), true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ASSIGNEE_ARG, ticket.assignee_id(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG, ticket.organizationId(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_CREATED_AT_ARG, ticket.createdAt(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG, ticket.submitterId(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ASSIGNEE_ARG, ticket.assigneeId(), true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_URL_ARG, url, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_EMAIL_ARG, email, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG, token, true),

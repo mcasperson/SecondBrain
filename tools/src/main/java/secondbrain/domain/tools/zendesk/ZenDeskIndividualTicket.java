@@ -55,6 +55,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_TICKET_SUBJECT_ARG = "ticketSubject";
     public static final String ZENDESK_TICKET_SUBMITTER_ARG = "ticketSubmitter";
     public static final String ZENDESK_TICKET_ORGANIZATION_ARG = "ticketOrganization";
+    public static final String ZENDESK_TICKET_CREATED_AT_ARG = "ticketCreatedAt";
     public static final String ZENDESK_TICKET_ASSIGNEE_ARG = "ticketAssignee";
     public static final String ZENDESK_URL_ARG = "zendeskUrl";
     public static final String ZENDESK_EMAIL_ARG = "zendeskEmail";
@@ -117,6 +118,13 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     @Override
     public String getContextLabel() {
         return "ZenDesk Ticket";
+    }
+
+    private String getContextLabelWithDate(@Nullable final ZenDeskTicket ticket) {
+        if (ticket == null || ticket.createdAt() == null) {
+            return getContextLabel();
+        }
+        return getContextLabel() + " " + ticket.createdAt();
     }
 
     @Override
@@ -196,14 +204,14 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
     private String getOrganization(final String authHeader, final String url, final ZenDeskTicket meta) {
         // Best effort to get the organization name, but don't treat this as a failure
-        return Try.of(() -> zenDeskClient.getOrganization(authHeader, url, meta.organization_id()))
+        return Try.of(() -> zenDeskClient.getOrganization(authHeader, url, meta.organizationId()))
                 .map(ZenDeskOrganizationItemResponse::name)
                 .getOrElse("Unknown Organization");
     }
 
     private String getUser(final String authHeader, final String url, final ZenDeskTicket meta) {
         // Best effort to get the username, but don't treat this as a failure
-        return Try.of(() -> zenDeskClient.getUser(authHeader, url, meta.assignee_id()))
+        return Try.of(() -> zenDeskClient.getUser(authHeader, url, meta.assigneeId()))
                 .map(ZenDeskUserItemResponse::name)
                 .getOrElse("Unknown User");
     }
@@ -215,7 +223,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     @Nullable
     private String getOrganizationName(final ZenDeskTicket meta, final String authHeader, final String url) {
         return Try
-                .of(() -> zenDeskClient.getOrganization(authHeader, url, meta.organization_id()))
+                .of(() -> zenDeskClient.getOrganization(authHeader, url, meta.organizationId()))
                 .map(ZenDeskOrganizationItemResponse::name)
                 // Do a best effort here - we don't want to fail the whole process because we can't get the organization name
                 .getOrNull();
@@ -276,7 +284,8 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                 parsedArgs.getTicketOrganization(),
                                 "",
                                 null,
-                                null)))
+                                null,
+                                parsedArgs.getCreatedAt())))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
                 .map(comments -> getDocumentContext(
                         ticketToText(comments),
@@ -295,7 +304,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
             final ZenDeskTicketConfig.LocalArguments parsedArgs) {
         final String contextLabel = String.join(
                 " ",
-                Stream.of(getContextLabel(), getOrganizationName(meta, authHeader, parsedArgs.getUrl()))
+                Stream.of(getContextLabelWithDate(meta), getOrganizationName(meta, authHeader, parsedArgs.getUrl()))
                         .filter(StringUtils::isNotBlank)
                         .toList());
 
@@ -331,6 +340,10 @@ class ZenDeskTicketConfig {
     @Inject
     @ConfigProperty(name = "sb.zendesk.ticketorganization")
     private Optional<String> configTicketOrganization;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.tickercreatedat")
+    private Optional<String> configTicketCreatedAt;
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.ticketassignee")
@@ -449,6 +462,10 @@ class ZenDeskTicketConfig {
         return configKeywordWindow;
     }
 
+    public Optional<String> getConfigTicketCreatedAt() {
+        return configTicketCreatedAt;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
@@ -508,6 +525,17 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG,
+                    "").value();
+
+        }
+
+        public String getCreatedAt() {
+            return getArgsAccessor().getArgument(
+                    getConfigTicketCreatedAt()::get,
+                    arguments,
+                    context,
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_CREATED_AT_ARG,
+                    ZenDeskIndividualTicket.ZENDESK_TICKET_CREATED_AT_ARG,
                     "").value();
 
         }
