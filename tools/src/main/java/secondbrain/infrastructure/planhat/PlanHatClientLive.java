@@ -32,7 +32,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 public class PlanHatClientLive implements PlanHatClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(5);
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
-    private static final int DEFAULT_PAGE_SIZE = 100;
+    private static final int DEFAULT_PAGE_SIZE = 5;
     private static final int DEFAULT_MAX_OFFSET = 2000;
 
     @Inject
