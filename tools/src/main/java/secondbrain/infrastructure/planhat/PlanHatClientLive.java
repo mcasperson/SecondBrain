@@ -32,7 +32,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 public class PlanHatClientLive implements PlanHatClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(5);
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
-    private static final int DEFAULT_PAGE_SIZE = 5;
+    private static final int DEFAULT_PAGE_SIZE = 100;
     private static final int DEFAULT_MAX_OFFSET = 2000;
 
     @Inject
@@ -136,12 +136,14 @@ public class PlanHatClientLive implements PlanHatClient {
         final String end = endDate.format(ISO_OFFSET_DATE_TIME);
         final String start = startDate.format(ISO_OFFSET_DATE_TIME);
 
-        final Conversation[] conversations = localStorage.getOrPutObject(
+        // Each conversation is cached individually because some local storage implementations
+        // have limits on the size of each cached object.
+        final Conversation[] conversations = localStorage.getOrPutObjectArray(
                         PlanHatClientLive.class.getSimpleName(),
                         "PlanHatAPICompany",
                         DigestUtils.sha256Hex(company + url + start + end + offset),
                         ttlSeconds,
-                        Conversation[].class,
+                        Conversation.class,
                         () -> callApi(client, company, url, token, offset))
                 .result();
 
