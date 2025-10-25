@@ -6,7 +6,9 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
@@ -23,6 +25,7 @@ import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
 
 import static com.google.common.base.Predicates.instanceOf;
 
@@ -375,6 +378,67 @@ public class H2LocalStorage implements LocalStorage {
     @Override
     public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final Class<T> clazz, final GenerateValue<T> generateValue) {
         return getOrPutObject(tool, source, promptHash, 0, clazz, generateValue);
+    }
+
+    @Override
+    public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T[]> generateValue) {
+        if (isDisabled() || connection == null) {
+            return new CacheResult<T[]>(generateValue.generate(), false);
+        }
+
+        logger.fine("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
+
+        return Try.of(() -> getString(tool, source, promptHash))
+                .filter(result -> StringUtils.isNotBlank(result.result()))
+                .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
+                .mapTry(r -> NumberUtils.toInt(r.result(), 0))
+                // The cached result is the number of items in the array.
+                // We then loop pver each index to get the individual items.
+                .map(count -> IntStream.range(0, count)
+                        .mapToObj(index -> getString(tool, source, promptHash + "_" + index))
+                        .map(r -> jsonDeserializer.deserialize(r.result(), clazz))
+                        .toList()
+                )
+                // The list becomes an array
+                .map(list -> list.toArray(ArrayUtils.newInstance(clazz, list.size())))
+                // The array is wrapped in a CacheResult
+                .map(array -> new CacheResult<T[]>(array, true))
+                .recoverWith(ex -> Try.of(() -> {
+                            logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                            logger.fine("Exception: " + exceptionHandler.getExceptionMessage(ex));
+                            return persistArrayResult(tool, source, promptHash, ttlSeconds, generateValue);
+                        })
+                )
+                .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
+                .recover(LocalStorageFailure.class, ex -> {
+                    logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                    return new CacheResult<T[]>(generateValue.generate(), false);
+                })
+                .get();
+    }
+
+    private <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T[]> generateValue) {
+        final T[] value = generateValue.generate();
+
+        // The result associated with the original hash is the count of items
+        putString(
+                tool,
+                source,
+                promptHash,
+                ttlSeconds,
+                value.length + "");
+
+        // each item is persisted with an index suffix
+        for (int i = 0; i < value.length; i++) {
+            putString(
+                    tool,
+                    source,
+                    promptHash + "_" + i,
+                    ttlSeconds,
+                    jsonDeserializer.serialize(value[i]));
+        }
+
+        return new CacheResult<T[]>(value, false);
     }
 
     @Override

@@ -59,6 +59,19 @@ public interface LocalStorage {
     <T> CacheResult<T> getOrPutObject(String tool, String source, String promptHash, Class<T> clazz, GenerateValue<T> generateValue);
 
     /**
+     * Get the array value associated with a tool, source, and prompt hash, or save a new value if one is not found.
+     *
+     * @param tool          The name of the tool
+     * @param source        A way to identify the source
+     * @param promptHash    A way to identify the prompt
+     * @param generateValue A way to generate a new value
+     * @param clazz         The class of the array elements
+     * @param ttlSeconds    The time to live in seconds for the cached value
+     * @return The value, if one was saved, or the generated value
+     */
+    <T> CacheResult<T[]> getOrPutObjectArray(String tool, String source, String promptHash, int ttlSeconds, Class<T> clazz, GenerateValue<T[]> generateValue);
+
+    /**
      * Save a value associated with a tool, source, and prompt hash.
      *
      * @param tool       The name of the tool

@@ -20,6 +20,7 @@ import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.zip.ApacheCompressZipper;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 
@@ -114,6 +115,33 @@ public class CosmosLocalStorageTest {
                             TestObject.class,
                             () -> new TestObject(randomValue))
                     .result().value());
+        }
+    }
+
+    @Test
+    public void testSaveArray() {
+        final String[] array = new String[]{"A", "B", "C"};
+
+        Assertions.assertArrayEquals(array, cosmosLocalStorage.getOrPutObjectArray(
+                        CosmosLocalStorageTest.class.getSimpleName(),
+                        "test",
+                        Arrays.hashCode(array) + "",
+                        Integer.MAX_VALUE,
+                        String.class,
+                        () -> array)
+                .result());
+
+        for (int i = 0; i < 5; i++) {
+            CacheResult<String[]> result = cosmosLocalStorage.getOrPutObjectArray(
+                    CosmosLocalStorageTest.class.getSimpleName(),
+                    "test",
+                    Arrays.hashCode(array) + "",
+                    Integer.MAX_VALUE,
+                    String.class,
+                    () -> array);
+
+            Assertions.assertArrayEquals(array, result.result());
+            Assertions.assertTrue(result.fromCache());
         }
     }
 
