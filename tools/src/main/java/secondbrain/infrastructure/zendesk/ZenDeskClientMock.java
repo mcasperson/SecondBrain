@@ -35,6 +35,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
                 UUID.randomUUID().toString(),
                 UUID.randomUUID().toString(),
                 UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
                 null,
                 null
         );
@@ -103,6 +104,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
                     subject,
                     organizationId,
                     email,
+                    null,
                     null,
                     null
             ));
