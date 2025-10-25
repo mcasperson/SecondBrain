@@ -7,6 +7,8 @@ import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
 
+import java.util.Objects;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record Conversation(@JsonProperty("_id") String id,
                            String description,
@@ -32,7 +34,7 @@ public record Conversation(@JsonProperty("_id") String id,
 
     @Override
     public String getText() {
-        return StringUtils.isBlank(description) ? snippet : description;
+        return StringUtils.isBlank(description) ? getSnippet() : getDescription();
     }
 
     @Override
@@ -43,5 +45,13 @@ public record Conversation(@JsonProperty("_id") String id,
     @Override
     public String getUrl() {
         return url + "/profile/" + companyId() + "?conversationId=" + id();
+    }
+
+    public String getDescription() {
+        return Objects.requireNonNullElse(description, "");
+    }
+
+    public String getSnippet() {
+        return Objects.requireNonNullElse(snippet, "");
     }
 }

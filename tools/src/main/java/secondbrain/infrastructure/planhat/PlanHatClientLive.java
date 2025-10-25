@@ -34,6 +34,7 @@ public class PlanHatClientLive implements PlanHatClient {
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final int DEFAULT_PAGE_SIZE = 5;
     private static final int DEFAULT_MAX_OFFSET = 2000;
+    private static final int MAX_LENGTH = 524288; // About 1MB for 2 byte characters.
 
     @Inject
     @ConfigProperty(name = "sb.planhat.lock", defaultValue = "sb_planhat.lock")
@@ -46,6 +47,10 @@ public class PlanHatClientLive implements PlanHatClient {
     @Inject
     @ConfigProperty(name = "sb.planhat.maxoffset", defaultValue = DEFAULT_MAX_OFFSET + "")
     private String maxOffset;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.maxlength", defaultValue = MAX_LENGTH + "")
+    private String maxLength;
 
     @Inject
     private ResponseValidation responseValidation;
@@ -175,7 +180,7 @@ public class PlanHatClientLive implements PlanHatClient {
                 ? client.target(target).queryParam("cId", company).queryParam("limit", getPageSize()).queryParam("offset", offset)
                 : client.target(target).queryParam("limit", getPageSize()).queryParam("offset", offset);
 
-        return Try.withResources(() -> webTarget
+        final Conversation[] result = Try.withResources(() -> webTarget
                         .request()
                         .header("Authorization", "Bearer " + token)
                         .header("Accept", MediaType.APPLICATION_JSON)
@@ -184,6 +189,17 @@ public class PlanHatClientLive implements PlanHatClient {
                         .map(r -> r.readEntity(Conversation[].class))
                         .get())
                 .get();
+
+        // Trim description and snippet to max length if needed.
+        if (getMaxLength() > 0) {
+            return Stream.of(result)
+                    .map(c -> c.updateDescriptionAndSnippet(
+                            StringUtils.substring(c.description(), 0, getMaxLength()),
+                            StringUtils.substring(c.snippet(), 0, getMaxLength())))
+                    .toArray(Conversation[]::new);
+        }
+
+        return result;
     }
 
     private Company getCompanyApi(
@@ -229,5 +245,11 @@ public class PlanHatClientLive implements PlanHatClient {
         return Try.of(() -> Integer.parseInt(maxOffset))
                 .filter(size -> size > 0)
                 .getOrElse(() -> DEFAULT_MAX_OFFSET);
+    }
+
+    private int getMaxLength() {
+        return Try.of(() -> Integer.parseInt(maxLength))
+                .filter(size -> size > 0)
+                .getOrElse(() -> MAX_LENGTH);
     }
 }
