@@ -11,10 +11,10 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ZenDeskTicket(String id,
-                            @JsonProperty("created_at") String submitterId,
-                            @JsonProperty("assigneeId") String assigneeId,
+                            @JsonProperty("submitter_id") String submitterId,
+                            @JsonProperty("assignee_id") String assigneeId,
                             String subject,
-                            @JsonProperty("organizationId") String organizationId,
+                            @JsonProperty("organization_id") String organizationId,
                             String recipient,
                             String comments,
                             String url,
