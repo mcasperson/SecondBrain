@@ -140,7 +140,7 @@ public class PlanHatClientLive implements PlanHatClient {
         // have limits on the size of each cached object.
         final Conversation[] conversations = localStorage.getOrPutObjectArray(
                         PlanHatClientLive.class.getSimpleName(),
-                        "PlanHatAPICompany",
+                        "PlanHatAPIConversation",
                         DigestUtils.sha256Hex(company + url + start + end + offset),
                         ttlSeconds,
                         Conversation.class,
