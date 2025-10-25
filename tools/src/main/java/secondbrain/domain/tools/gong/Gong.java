@@ -9,6 +9,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
@@ -18,6 +19,7 @@ import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.date.DateParser;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
@@ -132,6 +134,9 @@ public class Gong implements Tool<GongCallDetails> {
     @Inject
     private HooksContainer hooksContainer;
 
+    @Inject
+    private DateParser dateParser;
+
     @Override
     public String getName() {
         return Gong.class.getSimpleName();
@@ -178,6 +183,7 @@ public class Gong implements Tool<GongCallDetails> {
                                         .orElse("Unknown"),
                                 gong.parties(),
                                 gongClient.getCallTranscript(parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), gong),
+                                dateParser.parseDate(gong.metaData().started()),
                                 getMeta(gong, parsedArgs.getObject1Name(), parsedArgs.getObject1System(), parsedArgs.getObject1Type(), parsedArgs.getObject1Field()),
                                 getMeta(gong, parsedArgs.getObject2Name(), parsedArgs.getObject2System(), parsedArgs.getObject2Type(), parsedArgs.getObject2Field()),
                                 getMeta(gong, parsedArgs.getObject3Name(), parsedArgs.getObject3System(), parsedArgs.getObject3Type(), parsedArgs.getObject3Field()),
@@ -193,7 +199,7 @@ public class Gong implements Tool<GongCallDetails> {
                 .get();
 
         final List<RagDocumentContext<GongCallDetails>> ragDocs = calls.stream()
-                .map(call -> dataToRagDoc.getDocumentContext(call, getName(), getContextLabel(), call.getMetaObjectResults(), parsedArgs))
+                .map(call -> dataToRagDoc.getDocumentContext(call, getName(), getContextLabelWithDate(call), call.getMetaObjectResults(), parsedArgs))
                 .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                 .toList();
 
@@ -216,7 +222,7 @@ public class Gong implements Tool<GongCallDetails> {
                     call transcripts.
                  */
                 .map(ragDoc -> parsedArgs.getSummarizeTranscript()
-                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabel(), "Gong", ragDoc, environmentSettings, parsedArgs)
+                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(ragDoc.source()), "Gong", ragDoc, environmentSettings, parsedArgs)
                         : ragDoc)
                 .toList();
     }
@@ -264,6 +270,13 @@ public class Gong implements Tool<GongCallDetails> {
     @Override
     public String getContextLabel() {
         return "Gong Call";
+    }
+
+    private String getContextLabelWithDate(@Nullable final GongCallDetails call) {
+        if (call == null || call.started() == null) {
+            return getContextLabel();
+        }
+        return getContextLabel() + " " + call.started().format(ISO_OFFSET_DATE_TIME);
     }
 }
 

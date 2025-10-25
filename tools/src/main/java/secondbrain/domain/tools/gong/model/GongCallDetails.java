@@ -8,6 +8,7 @@ import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.MetaObjectResults;
 import secondbrain.infrastructure.gong.api.GongCallExtensiveParty;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -24,6 +25,7 @@ public record GongCallDetails(String id,
                               String company,
                               List<GongCallExtensiveParty> parties,
                               String transcript,
+                              ZonedDateTime started,
                               @Nullable MetaObjectResult meta1,
                               @Nullable MetaObjectResult meta2,
                               @Nullable MetaObjectResult meta3,
