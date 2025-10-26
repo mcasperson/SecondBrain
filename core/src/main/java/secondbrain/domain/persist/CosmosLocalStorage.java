@@ -16,6 +16,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
+import secondbrain.domain.exceptions.SerializationFailed;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.zip.Zipper;
 
@@ -326,10 +327,13 @@ public class CosmosLocalStorage implements LocalStorage {
                         })
                 )
                 .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(SerializationFailed.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 .recover(LocalStorageFailure.class, ex -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                     return new CacheResult<T>(generateValue.generate(), false);
                 })
+                // Gracefully deal with an object that can't be serialized
+                .recover(SerializationFailed.class, ex -> new CacheResult<T>(generateValue.generate(), false))
                 .get();
     }
 

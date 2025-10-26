@@ -12,6 +12,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
+import secondbrain.domain.exceptions.SerializationFailed;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.nio.file.Files;
@@ -366,12 +367,13 @@ public class H2LocalStorage implements LocalStorage {
                     we still need to know if something went wrong.
                  */
                 .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
-                // If there was an error with the local storage, bypass it and generate the value
+                .onFailure(SerializationFailed.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 .recover(LocalStorageFailure.class, ex -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                     return new CacheResult<T>(generateValue.generate(), false);
                 })
-                // For all other errors, we return the value or rethrow the exception
+                // Gracefully deal with an object that can't be serialized
+                .recover(SerializationFailed.class, ex -> new CacheResult<T>(generateValue.generate(), false))
                 .get();
     }
 
