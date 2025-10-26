@@ -4,6 +4,7 @@ import com.azure.core.util.MetricsOptions;
 import com.azure.cosmos.*;
 import com.azure.cosmos.implementation.NotFoundException;
 import com.azure.cosmos.models.*;
+import com.azure.cosmos.util.CosmosPagedIterable;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
@@ -18,6 +19,7 @@ import secondbrain.domain.exceptions.LockFail;
 import secondbrain.domain.persist.CosmosLocalStorage;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -29,6 +31,8 @@ import java.util.logging.Logger;
 @ApplicationScoped
 public class CosmosMutex implements Mutex {
 
+    private static final String DATABASE_NAME = "secondbrainlock";
+    private static final String CONTAINER_NAME = "locks";
     private static final String LOCK_PARTITION_KEY = "/lock";
     private static final String LOCK_PARTITION_VALUE = "lock";
     private static final int DEFAULT_TTL = 60 * 5;
@@ -46,16 +50,20 @@ public class CosmosMutex implements Mutex {
     @ConfigProperty(name = "sb.cosmos.lockttl", defaultValue = DEFAULT_TTL + "")
     private Optional<String> lockTtl;
 
+    @Inject
+    @ConfigProperty(name = "sb.cosmos.clearonstartup", defaultValue = "false")
+    private Optional<Boolean> clearOnStartup;
+
     /**
      * The default TTL represents how long a lock can be held. Either the lock becomes stale,
      * or Cosmos DB automatically deletes it.
      */
     @Inject
-    @ConfigProperty(name = "sb.cosmos.lockdatabase", defaultValue = "secondbrainlock")
+    @ConfigProperty(name = "sb.cosmos.lockdatabase", defaultValue = DATABASE_NAME)
     private Optional<String> databaseName;
 
     @Inject
-    @ConfigProperty(name = "sb.cosmos.lockscontainer", defaultValue = "locks")
+    @ConfigProperty(name = "sb.cosmos.lockscontainer", defaultValue = CONTAINER_NAME)
     private Optional<String> containerName;
 
     @Inject
@@ -81,6 +89,8 @@ public class CosmosMutex implements Mutex {
             }
         }
         logger.info("Initialized Cosmos DB local storage");
+
+        clearLocksOnStartup();
     }
 
     @PreDestroy
@@ -95,13 +105,35 @@ public class CosmosMutex implements Mutex {
         }
     }
 
+    private void clearLocksOnStartup() {
+        if (!clearOnStartup.orElse(false)) {
+            return;
+        }
+
+        final String query = "SELECT * FROM c";
+        final String databaseName = this.databaseName.orElse(DATABASE_NAME);
+        final String containerName = this.containerName.orElse(CONTAINER_NAME);
+
+        logger.info("Clearing all locks from Cosmos DB on startup");
+        Try.of(() -> cosmosClient.getDatabase(databaseName))
+                .map(database -> database.getContainer(containerName))
+                .map(container -> deleteFiles(container, container.queryItems(query, new CosmosQueryRequestOptions(), LockDocument.class)))
+                .onFailure(ex -> logger.warning("Failed to clear locks on startup: " + exceptionHandler.getExceptionMessage(ex)));
+    }
+
+    private List<CosmosItemResponse<Object>> deleteFiles(final CosmosContainer container, final CosmosPagedIterable<LockDocument> lockDocuments) {
+        return lockDocuments.stream()
+                .map(doc -> container.deleteItem(doc.id(), new PartitionKey(LOCK_PARTITION_VALUE), new CosmosItemRequestOptions()))
+                .toList();
+    }
+
     private void initializeCosmosClient() {
         if (cosmosEndpoint.isEmpty() || cosmosKey.isEmpty()) {
             throw new LocalStorageFailure("Cosmos DB endpoint and key must be configured");
         }
 
-        final String databaseName = this.databaseName.orElse("secondbrainlock");
-        final String containerName = this.containerName.orElse("locks");
+        final String databaseName = this.databaseName.orElse(DATABASE_NAME);
+        final String containerName = this.containerName.orElse(CONTAINER_NAME);
 
         final MetricsOptions metricsOptions = new CosmosMicrometerMetricsOptions();
         metricsOptions.setEnabled(false);
