@@ -21,9 +21,13 @@ import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
+
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 
 /**
  * Azure Cosmos DB implementation of LocalStorage for caching API calls and LLM results.
@@ -31,6 +35,7 @@ import java.util.stream.IntStream;
 @ApplicationScoped
 public class CosmosLocalStorage implements LocalStorage {
 
+    private static final int BATCH_SIZE = 10;
     private static final String CONTAINER_NAME = "localstoragezipped";
     private static final String DATABASE_NAME = "secondbrain";
     private static final int DEFAULT_TTL_SECONDS = 86400;
@@ -182,57 +187,55 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Override
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
-        synchronized (CosmosLocalStorage.class) {
-            if (isDisabled() || isWriteOnly() || container == null) {
-                return null;
-            }
-
-            if (totalFailures.get() > MAX_FAILURES) {
-                resetConnection();
-            }
-
-            totalReads.incrementAndGet();
-
-            final Try<CacheResult<String>> result = Try.of(() -> {
-                        final String id = generateId(tool, source, promptHash);
-                        final PartitionKey partitionKey = new PartitionKey(tool);
-
-                        final CosmosItemResponse<CacheItem> response = container.readItem(
-                                id,
-                                partitionKey,
-                                CacheItem.class
-                        );
-
-                        final CacheItem item = response.getItem();
-
-                        // Check if item has expired (if timestamp is set)
-                        if (item.timestamp != null && item.timestamp < Instant.now().getEpochSecond()) {
-                            return new CacheResult<String>(null, false);
-                        }
-
-                        totalCacheHits.incrementAndGet();
-
-                        final String original = Try.of(() -> encryptor.decrypt(item.response))
-                                .map(decrypted -> zipper.decompressString(decrypted))
-                                .getOrNull();
-
-                        return new CacheResult<String>(original, true);
-                    })
-                    .recover(CosmosException.class, ex -> {
-                        if (ex.getStatusCode() == 404) {
-                            return new CacheResult<String>(null, false);
-                        }
-                        throw ex;
-                    })
-                    .onFailure(ex -> totalFailures.incrementAndGet())
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
-
-            return result
-                    .mapFailure(
-                            API.Case(API.$(), ex -> new LocalStorageFailure("Failed to get record", ex))
-                    )
-                    .get();
+        if (isDisabled() || isWriteOnly() || container == null) {
+            return null;
         }
+
+        if (totalFailures.get() > MAX_FAILURES) {
+            resetConnection();
+        }
+
+        totalReads.incrementAndGet();
+
+        final Try<CacheResult<String>> result = Try.of(() -> {
+                    final String id = generateId(tool, source, promptHash);
+                    final PartitionKey partitionKey = new PartitionKey(tool);
+
+                    final CosmosItemResponse<CacheItem> response = container.readItem(
+                            id,
+                            partitionKey,
+                            CacheItem.class
+                    );
+
+                    final CacheItem item = response.getItem();
+
+                    // Check if item has expired (if timestamp is set)
+                    if (item.timestamp != null && item.timestamp < Instant.now().getEpochSecond()) {
+                        return new CacheResult<String>(null, false);
+                    }
+
+                    totalCacheHits.incrementAndGet();
+
+                    final String original = Try.of(() -> encryptor.decrypt(item.response))
+                            .map(decrypted -> zipper.decompressString(decrypted))
+                            .getOrNull();
+
+                    return new CacheResult<String>(original, true);
+                })
+                .recover(CosmosException.class, ex -> {
+                    if (ex.getStatusCode() == 404) {
+                        return new CacheResult<String>(null, false);
+                    }
+                    throw ex;
+                })
+                .onFailure(ex -> totalFailures.incrementAndGet())
+                .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+
+        return result
+                .mapFailure(
+                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to get record", ex))
+                )
+                .get();
     }
 
     @Override
@@ -312,6 +315,8 @@ public class CosmosLocalStorage implements LocalStorage {
 
         logger.fine("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
 
+        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
+
         return Try.of(() -> getString(tool, source, promptHash))
                 .filter(result -> StringUtils.isNotBlank(result.result()))
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
@@ -319,7 +324,8 @@ public class CosmosLocalStorage implements LocalStorage {
                 // The cached result is the number of items in the array.
                 // We then loop pver each index to get the individual items.
                 .map(count -> IntStream.range(0, count)
-                        .mapToObj(index -> getString(tool, source, promptHash + "_" + index))
+                        .boxed()
+                        .collect(parallelToStream(index -> getString(tool, source, promptHash + "_" + index), executor, BATCH_SIZE))
                         .map(r -> jsonDeserializer.deserialize(r.result(), clazz))
                         .toList()
                 )
@@ -353,49 +359,55 @@ public class CosmosLocalStorage implements LocalStorage {
                 value.length + "");
 
         // each item is persisted with an index suffix
-        for (int i = 0; i < value.length; i++) {
-            putString(
-                    tool,
-                    source,
-                    promptHash + "_" + i,
-                    ttlSeconds,
-                    jsonDeserializer.serialize(value[i]));
-        }
+        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
+        IntStream.range(0, value.length)
+                .boxed()
+                .collect(parallelToStream(index -> {
+                                    putString(
+                                            tool,
+                                            source,
+                                            promptHash + "_" + index,
+                                            ttlSeconds,
+                                            jsonDeserializer.serialize(value[index]));
+
+                                    return index;
+                                },
+                                executor,
+                                BATCH_SIZE)
+                );
 
         return new CacheResult<T[]>(value, false);
     }
 
     @Override
     public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String value) {
-        synchronized (CosmosLocalStorage.class) {
-            if (isDisabled() || isReadOnly() || container == null) {
-                return;
-            }
-
-            if (totalFailures.get() > MAX_FAILURES) {
-                resetConnection();
-            }
-
-            final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
-                    .map(encryptor::encrypt)
-                    .map(encrypted -> new CacheItem(
-                            generateId(tool, source, promptHash),
-                            tool,
-                            source,
-                            promptHash,
-                            encrypted,
-                            getTimestamp(ttlSeconds),
-                            sanitizeTtl(ttlSeconds)))
-                    .map(item -> container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions()))
-                    .onFailure(ex -> totalFailures.incrementAndGet())
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
-
-            result
-                    .mapFailure(
-                            API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
-                    )
-                    .get();
+        if (isDisabled() || isReadOnly() || container == null) {
+            return;
         }
+
+        if (totalFailures.get() > MAX_FAILURES) {
+            resetConnection();
+        }
+
+        final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
+                .map(encryptor::encrypt)
+                .map(encrypted -> new CacheItem(
+                        generateId(tool, source, promptHash),
+                        tool,
+                        source,
+                        promptHash,
+                        encrypted,
+                        getTimestamp(ttlSeconds),
+                        sanitizeTtl(ttlSeconds)))
+                .map(item -> container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions()))
+                .onFailure(ex -> totalFailures.incrementAndGet())
+                .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+
+        result
+                .mapFailure(
+                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
+                )
+                .get();
     }
 
     private Integer sanitizeTtl(final int ttlSeconds) {
