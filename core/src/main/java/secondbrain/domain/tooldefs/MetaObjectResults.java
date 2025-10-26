@@ -1,6 +1,5 @@
 package secondbrain.domain.tooldefs;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.tika.utils.StringUtils;
 
@@ -86,12 +85,10 @@ public class MetaObjectResults extends ArrayList<MetaObjectResult> {
                 .map(Object::toString);
     }
 
-    @JsonIgnore
     public String getFilename() {
         return filename;
     }
 
-    @JsonIgnore
     public String getId() {
         return id;
     }
