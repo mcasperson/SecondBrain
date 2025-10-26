@@ -1,5 +1,6 @@
 package secondbrain.domain.context;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.vavr.control.Try;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -61,6 +62,7 @@ public record RagMultiDocumentContext<T>(String prompt,
         return metadata;
     }
 
+    @JsonIgnore
     public List<String> getLinks() {
         return individualContexts.stream()
                 .map(RagDocumentContext::link)
@@ -84,6 +86,7 @@ public record RagMultiDocumentContext<T>(String prompt,
         return new RagMultiDocumentContext<T>(prompt, instructions, individualContexts, response, debug, annotationPrefix, metadata);
     }
 
+    @JsonIgnore
     public String getDocumentLeft(final int length) {
         if (length <= 0) {
             return "";
@@ -92,6 +95,7 @@ public record RagMultiDocumentContext<T>(String prompt,
         return getResponse().substring(0, Math.min(getResponse().length(), length));
     }
 
+    @JsonIgnore
     public String getDocumentRight(final int length) {
         if (length <= 0) {
             return "";
@@ -136,6 +140,7 @@ public record RagMultiDocumentContext<T>(String prompt,
         return new AnnotationResult<>(result, getReferences(lookups), (float) annotationIds / individualContexts.size(), this);
     }
 
+    @JsonIgnore
     private String getReferences(final List<RagSentence> lookups) {
         if (lookups.isEmpty()) {
             return "";
@@ -158,6 +163,7 @@ public record RagMultiDocumentContext<T>(String prompt,
         return String.join(System.lineSeparator(), output);
     }
 
+    @JsonIgnore
     public List<RagSentence> getAnnotationLookup(final Set<RagSentenceAndOriginal> annotations) {
         return annotations
                 .stream()
@@ -166,6 +172,7 @@ public record RagMultiDocumentContext<T>(String prompt,
                 .toList();
     }
 
+    @JsonIgnore
     public Set<RagSentenceAndOriginal> getAnnotations(final float minSimilarity,
                                                       final int minWords,
                                                       final SentenceSplitter sentenceSplitter,
@@ -196,6 +203,7 @@ public record RagMultiDocumentContext<T>(String prompt,
                 .collect(Collectors.toSet());
     }
 
+    @JsonIgnore
     public List<MetaObjectResults> getMetaObjectResults() {
 
         // get all the individual metadata from the RagDocumentContext objects
@@ -210,6 +218,7 @@ public record RagMultiDocumentContext<T>(String prompt,
         return results;
     }
 
+    @JsonIgnore
     public List<IntermediateResult> getIntermediateResults() {
         return individualContexts
                 .stream()
@@ -221,6 +230,7 @@ public record RagMultiDocumentContext<T>(String prompt,
     /**
      * Convert this into a RagMultiDocumentContext with a Void source type.
      */
+    @JsonIgnore
     public RagMultiDocumentContext<Void> getRagMultiDocumentContextVoid() {
         return new RagMultiDocumentContext<>(
                 prompt,
