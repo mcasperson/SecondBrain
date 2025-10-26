@@ -27,6 +27,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
@@ -127,6 +128,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_META_FIELD_20_ARG = "contextMetaField20";
     public static final String MULTI_SLACK_ZEN_META_PROMPT_20_ARG = "contextMetaPrompt20";
     public static final String MULTI_SLACK_ZEN_MIN_TIME_BASED_CONTENT_ARG = "minTimeBasedContent";
+
+    private static final int TTL_SECONDS = 60 * 60 * 24; // 24 hours
     private static final int BATCH_SIZE = 10;
     private static final String INSTRUCTIONS = """
             You are helpful agent.
@@ -192,6 +195,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private ExceptionMapping exceptionMapping;
+
+    @Inject
+    private LocalStorage localStorage;
 
     @Override
     public String getName() {
@@ -271,6 +277,24 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final List<ToolArgs> arguments) {
         logger.log(Level.INFO, "Calling " + getName());
 
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
+        return localStorage.getOrPutObject(
+                        getName(),
+                        "MultiSlackZenGoogle",
+                        Integer.toString(cacheKey.hashCode()),
+                        TTL_SECONDS,
+                        RagMultiDocumentContext.class,
+                        () -> callPrivate(environmentSettings, prompt, arguments))
+                .result()
+                .getRagMultiDocumentContextVoid();
+    }
+
+    private RagMultiDocumentContext callPrivate(
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))

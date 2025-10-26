@@ -217,4 +217,21 @@ public record RagMultiDocumentContext<T>(String prompt,
                 .filter(Objects::nonNull)
                 .toList();
     }
+
+    /**
+     * Convert this into a RagMultiDocumentContext with a Void source type.
+     */
+    public RagMultiDocumentContext<Void> getRagMultiDocumentContextVoid() {
+        return new RagMultiDocumentContext<>(
+                prompt,
+                instructions,
+                individualContexts.stream()
+                        .map(RagDocumentContext::getRagDocumentContextVoid)
+                        .toList(),
+                response,
+                debug,
+                annotationPrefix,
+                metadata
+        );
+    }
 }
