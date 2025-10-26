@@ -19,18 +19,13 @@ import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.zip.Zipper;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
@@ -100,6 +95,9 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Inject
     private Zipper zipper;
+
+    @Inject
+    private LocalStorageReadWrite localStorageReadWrite;
 
     private CosmosClient cosmosClient;
     private CosmosContainer container;
@@ -198,75 +196,6 @@ public class CosmosLocalStorage implements LocalStorage {
         return tool + "_" + source + "_" + promptHash;
     }
 
-    /**
-     * Get the value from the local cache if it exists and is not expired.
-     */
-    private String getFromCache(final String tool, final String source, final String promptHash) {
-        synchronized (CosmosLocalStorage.class) {
-
-            final String cacheDir = cosmosCache.orElse("cosmoscache");
-
-            // Clear expired cache files
-            Try.of(() -> Path.of(cacheDir))
-                    .mapTry(Files::list)
-                    .map(files -> files
-                            .map(file -> LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString()))
-                            .filter(Matcher::matches)
-                            // Keep files for deletion that have a timestamp that is not 0 (no expiration) and in the past
-                            .filter(matcher -> NumberUtils.toLong(matcher.group(2), 0L) != 0 && NumberUtils.toLong(matcher.group(2), 0L) < Instant.now().getEpochSecond())
-                            .map(matcher -> Path.of(cacheDir, matcher.group(0)))
-                            .toList())
-                    .peek(files -> {
-                        if (!files.isEmpty()) {
-                            logger.info("Deleting " + files.size() + " expired cache files: " + files);
-                        }
-                    })
-                    .peek(files -> files.forEach(file -> Try.run(() -> Files.delete(file))
-                            .onFailure(ex -> logger.warning("Failed to delete expired cache file " + file + ": " + exceptionHandler.getExceptionMessage(ex)))));
-
-            // Return unexpired cache file if exists
-            return Try.of(() -> Path.of(cacheDir))
-                    .mapTry(Files::list)
-                    // Find the matching cache file that is not expired
-                    .map(files -> files
-                            // Files must match the regex
-                            .map(file -> LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString()))
-                            .filter(Matcher::matches)
-                            // the first group of the regex match must match the tool, source, and promptHash
-                            .filter(matcher -> matcher.group(1).equals(tool + "_" + source + "_" + promptHash))
-                            // The second group (timestamp) must be 0 or in the future
-                            .filter(matcher -> NumberUtils.toLong(matcher.group(2), -1L) == 0 || NumberUtils.toLong(matcher.group(2), 0L) >= Instant.now().getEpochSecond())
-                            // get the most recent item
-                            .sorted((Matcher m1, Matcher m2) -> Long.compare(
-                                    Long.parseLong(m2.group(2)),
-                                    Long.parseLong(m1.group(2))
-                            ))
-                            // We want the path of the first matching file
-                            .map(matcher -> Path.of(cacheDir, matcher.group(0)))
-                            // Get teh first matching file
-                            .findFirst())
-                    // Get the cached result, failing if the Optional is empty
-                    .map(Optional::get)
-                    .mapTry(Files::readString)
-                    .getOrNull();
-        }
-    }
-
-    /**
-     * Write the value to a local cache file with the given TTL.
-     */
-    private String writeToCache(final String tool, final String source, final String promptHash, final Long timestamp, final String value) {
-        synchronized (CosmosLocalStorage.class) {
-            Try.of(() -> Path.of(cosmosCache.orElse("cosmoscache")))
-                    .mapTry(Files::createDirectories)
-                    .onFailure(ex -> logger.warning("Failed to create cache directory: " + exceptionHandler.getExceptionMessage(ex)))
-                    .map(path -> path.resolve(tool + "_" + source + "_" + promptHash + ".cache." + Objects.requireNonNullElse(timestamp, 0L)))
-                    .mapTry(path -> Files.writeString(path, value, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
-                    .onFailure(ex -> logger.warning("Failed to write cache file timestamp: " + exceptionHandler.getExceptionMessage(ex)));
-            return value;
-        }
-    }
-
     @Override
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
         if (isDisabled() || isWriteOnly() || container == null) {
@@ -281,11 +210,11 @@ public class CosmosLocalStorage implements LocalStorage {
 
         final Try<CacheResult<String>> result = Try
                 // Attempt to get from local cache first
-                .of(() -> getFromCache(tool, source, promptHash))
+                .of(() -> localStorageReadWrite.getString(tool, source, promptHash))
                 // We only accept the local cache value if it's not blank
-                .filter(StringUtils::isNotBlank)
+                .filter(Optional::isPresent)
                 // Convert to a CacheResult
-                .map(cache -> new CacheResult<String>(cache, true))
+                .map(cache -> new CacheResult<String>(cache.get(), true))
                 // If there was no locally cached value, get from Cosmos DB
                 .recover(NoSuchElementException.class, ex -> {
                     final String id = generateId(tool, source, promptHash);
@@ -305,7 +234,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     }
 
                     // If we are loading this from the remote cache, save it locally too
-                    writeToCache(tool, source, promptHash, getTimestamp(response.getItem().timestamp), response.getItem().response());
+                    localStorageReadWrite.putString(tool, source, promptHash, getTimestamp(response.getItem().timestamp), response.getItem().response());
 
                     return new CacheResult<String>(response.getItem().response(), true);
                 })
@@ -493,7 +422,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
         final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
                 .map(encryptor::encrypt)
-                .map(encrypted -> writeToCache(tool, source, promptHash, getTimestamp((long) ttlSeconds), encrypted))
+                .map(encrypted -> localStorageReadWrite.putString(tool, source, promptHash, getTimestamp((long) ttlSeconds), encrypted))
                 .map(encrypted -> new CacheItem(
                         generateId(tool, source, promptHash),
                         tool,

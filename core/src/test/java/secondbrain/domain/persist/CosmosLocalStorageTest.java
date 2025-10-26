@@ -27,6 +27,7 @@ import java.util.UUID;
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(CosmosLocalStorage.class)
+@AddBeanClasses(FileLocalStorageReadWrite.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
