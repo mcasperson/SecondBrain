@@ -196,6 +196,9 @@ public class CosmosLocalStorage implements LocalStorage {
         return tool + "_" + source + "_" + promptHash;
     }
 
+    /**
+     * Get the value from the local cache if it exists and is not expired.
+     */
     private String getFromCache(final String tool, final String source, final String promptHash) {
         synchronized (CosmosLocalStorage.class) {
 
@@ -237,12 +240,15 @@ public class CosmosLocalStorage implements LocalStorage {
         }
     }
 
+    /**
+     * Write the value to a local cache file with the given TTL.
+     */
     private String writeToCache(final String tool, final String source, final String promptHash, final int ttlSeconds, final String value) {
         synchronized (CosmosLocalStorage.class) {
             Try.of(() -> Path.of(cosmosCache.orElse("cosmoscache")))
                     .mapTry(Files::createDirectories)
                     .onFailure(ex -> logger.warning("Failed to create cache directory: " + exceptionHandler.getExceptionMessage(ex)))
-                    .map(path -> path.resolve(tool + "_" + source + "_" + promptHash + ".cache" + getTimestamp(ttlSeconds)))
+                    .map(path -> path.resolve(tool + "_" + source + "_" + promptHash + ".cache." + getTimestamp(ttlSeconds)))
                     .mapTry(path -> Files.writeString(path, value, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(ex -> logger.warning("Failed to write cache file timestamp: " + exceptionHandler.getExceptionMessage(ex)));
             return value;
