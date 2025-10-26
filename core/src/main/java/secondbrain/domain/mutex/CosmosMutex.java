@@ -51,7 +51,7 @@ public class CosmosMutex implements Mutex {
     private Optional<String> lockTtl;
 
     @Inject
-    @ConfigProperty(name = "sb.cosmos.clearonstartup", defaultValue = "false")
+    @ConfigProperty(name = "sb.cosmos.clearlocksonstartup", defaultValue = "false")
     private Optional<Boolean> clearOnStartup;
 
     /**
