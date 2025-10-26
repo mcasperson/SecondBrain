@@ -210,7 +210,8 @@ public class CosmosLocalStorage implements LocalStorage {
                     .map(files -> files
                             .map(file -> LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString()))
                             .filter(Matcher::matches)
-                            .filter(matcher -> Long.parseLong(matcher.group(2)) != 0 && Long.parseLong(matcher.group(2)) >= Instant.now().getEpochSecond())
+                            // Keep files for deletion that have a timestamp that is not 0 (no expiration) and in the past
+                            .filter(matcher -> NumberUtils.toLong(matcher.group(2), 0L) != 0 && NumberUtils.toLong(matcher.group(2), 0L) < Instant.now().getEpochSecond())
                             .map(matcher -> Path.of(matcher.group(0)))
                             .toList())
                     .peek(files -> files.forEach(file -> Try.run(() -> Files.delete(file))));
@@ -225,8 +226,8 @@ public class CosmosLocalStorage implements LocalStorage {
                             .filter(Matcher::matches)
                             // the first group of the regex match must match the tool, source, and promptHash
                             .filter(matcher -> matcher.group(1).equals(tool + "_" + source + "_" + promptHash))
-                            // The second group (timestamp) must be in the future
-                            .filter(matcher -> Long.parseLong(matcher.group(2)) < Instant.now().getEpochSecond())
+                            // The second group (timestamp) must be 0 or in the future
+                            .filter(matcher -> NumberUtils.toLong(matcher.group(2), -1L) == 0 || NumberUtils.toLong(matcher.group(2), 0L) >= Instant.now().getEpochSecond())
                             // get the most recent item
                             .sorted((Matcher m1, Matcher m2) -> Long.compare(
                                     Long.parseLong(m2.group(2)),
