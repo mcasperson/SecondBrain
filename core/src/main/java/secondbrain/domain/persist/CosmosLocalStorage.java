@@ -424,7 +424,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> NumberUtils.toInt(r.result(), 0))
                 // The cached result is the number of items in the array.
-                // We then loop pver each index to get the individual items.
+                // We then loop over each index to get the individual items.
                 .map(count -> IntStream.range(0, count)
                         .boxed()
                         .collect(parallelToStream(index -> getString(tool, source, promptHash + "_" + index), executor, BATCH_SIZE))
