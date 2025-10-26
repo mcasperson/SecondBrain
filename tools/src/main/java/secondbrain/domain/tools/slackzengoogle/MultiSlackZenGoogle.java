@@ -197,6 +197,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     private ExceptionMapping exceptionMapping;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Override
