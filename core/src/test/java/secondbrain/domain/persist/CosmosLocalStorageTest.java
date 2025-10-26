@@ -126,7 +126,7 @@ public class CosmosLocalStorageTest {
                         CosmosLocalStorageTest.class.getSimpleName(),
                         "test",
                         Arrays.hashCode(array) + "",
-                        Integer.MAX_VALUE,
+                        60,
                         String.class,
                         () -> array)
                 .result());
@@ -139,7 +139,7 @@ public class CosmosLocalStorageTest {
                     CosmosLocalStorageTest.class.getSimpleName(),
                     "test",
                     Arrays.hashCode(array) + "",
-                    Integer.MAX_VALUE,
+                    60,
                     String.class,
                     () -> array);
 
@@ -170,7 +170,7 @@ public class CosmosLocalStorageTest {
                     CosmosLocalStorageTest.class.getSimpleName(),
                     "testSaveObjectArray",
                     Arrays.hashCode(array) + "",
-                    Integer.MAX_VALUE,
+                    60,
                     TestObject.class,
                     () -> array);
 
