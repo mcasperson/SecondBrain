@@ -291,7 +291,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .getRagMultiDocumentContextVoid();
     }
 
-    private RagMultiDocumentContext callPrivate(
+    private RagMultiDocumentContext<Void> callPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
