@@ -59,7 +59,7 @@ public class FileLocalStorageReadWriteTest {
     public void testConnection() {
         Assertions.assertTrue(fileLocalStorage.getString(
                 FileLocalStorageReadWriteTest.class.getSimpleName(),
-                "test",
+                "testconnection",
                 UUID.randomUUID().toString()
         ).isEmpty());
     }
@@ -69,14 +69,14 @@ public class FileLocalStorageReadWriteTest {
         final String randomValue = UUID.randomUUID().toString();
         fileLocalStorage.putString(
                 FileLocalStorageReadWriteTest.class.getSimpleName(),
-                "test",
+                "testsave",
                 randomValue,
                 0L,
                 randomValue
         );
         Assertions.assertEquals(Optional.of(randomValue), fileLocalStorage.getString(
                 FileLocalStorageReadWriteTest.class.getSimpleName(),
-                "test",
+                "testsave",
                 randomValue
         ));
     }
@@ -86,14 +86,14 @@ public class FileLocalStorageReadWriteTest {
         final String randomValue = UUID.randomUUID().toString();
         fileLocalStorage.putString(
                 FileLocalStorageReadWriteTest.class.getSimpleName(),
-                "test",
+                "testttl",
                 randomValue,
                 Instant.now().getEpochSecond() + 1,
                 randomValue
         );
         Assertions.assertEquals(Optional.of(randomValue), fileLocalStorage.getString(
                 FileLocalStorageReadWriteTest.class.getSimpleName(),
-                "test",
+                "testttl",
                 randomValue
         ));
         try {
@@ -102,7 +102,7 @@ public class FileLocalStorageReadWriteTest {
         }
         Assertions.assertTrue(fileLocalStorage.getString(
                 FileLocalStorageReadWriteTest.class.getSimpleName(),
-                "test",
+                "testttl",
                 randomValue
         ).isEmpty());
     }
