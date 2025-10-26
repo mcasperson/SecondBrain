@@ -19,12 +19,18 @@ import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.zip.Zipper;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
@@ -35,6 +41,7 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
 @ApplicationScoped
 public class CosmosLocalStorage implements LocalStorage {
 
+    private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
     private static final int BATCH_SIZE = 100;
     private static final String CONTAINER_NAME = "localstoragezipped";
     private static final String DATABASE_NAME = "secondbrain";
@@ -72,6 +79,10 @@ public class CosmosLocalStorage implements LocalStorage {
     @Inject
     @ConfigProperty(name = "sb.cosmos.container", defaultValue = CONTAINER_NAME)
     private Optional<String> containerName;
+
+    @Inject
+    @ConfigProperty(name = "sb.cosmos.localcache", defaultValue = "cosmoscache")
+    private Optional<String> cosmosCache;
 
     @Inject
     private JsonDeserializer jsonDeserializer;
@@ -185,6 +196,59 @@ public class CosmosLocalStorage implements LocalStorage {
         return tool + "_" + source + "_" + promptHash;
     }
 
+    private String getFromCache(final String tool, final String source, final String promptHash) {
+        synchronized (CosmosLocalStorage.class) {
+
+            // Clear expired cache files
+            Try.of(() -> Path.of(cosmosCache.orElse("cosmoscache")))
+                    .mapTry(Files::list)
+                    .map(files -> files
+                            .map(file -> LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString()))
+                            .filter(Matcher::matches)
+                            .filter(matcher -> Long.parseLong(matcher.group(2)) >= Instant.now().getEpochSecond())
+                            .map(matcher -> Path.of(matcher.group(0)))
+                            .toList())
+                    .peek(files -> files.forEach(file -> Try.run(() -> Files.delete(file))));
+
+            // Return unexpired cache file if exists
+            return Try.of(() -> Path.of(cosmosCache.orElse("cosmoscache")))
+                    .mapTry(Files::list)
+                    // Find the matching cache file that is not expired
+                    .map(files -> files
+                            // Files must match the regex
+                            .map(file -> LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString()))
+                            .filter(Matcher::matches)
+                            // the first group of the regex match must match the tool, source, and promptHash
+                            .filter(matcher -> matcher.group(1).equals(tool + "_" + source + "_" + promptHash))
+                            // The second group (timestamp) must be in the future
+                            .filter(matcher -> Long.parseLong(matcher.group(2)) < Instant.now().getEpochSecond())
+                            // get the most recent item
+                            .sorted((Matcher m1, Matcher m2) -> Long.compare(
+                                    Long.parseLong(m2.group(2)),
+                                    Long.parseLong(m1.group(2))
+                            ))
+                            // We want the path of the first matching file
+                            .map(matcher -> Path.of(matcher.group(0)))
+                            // Get teh first matching file
+                            .findFirst())
+                    // Get the cached result, failing if the Optional is empty
+                    .mapTry(path -> Files.readString(path.get()))
+                    .getOrNull();
+        }
+    }
+
+    private String writeToCache(final String tool, final String source, final String promptHash, final int ttlSeconds, final String value) {
+        synchronized (CosmosLocalStorage.class) {
+            Try.of(() -> Path.of(cosmosCache.orElse("cosmoscache")))
+                    .mapTry(Files::createDirectories)
+                    .onFailure(ex -> logger.warning("Failed to create cache directory: " + exceptionHandler.getExceptionMessage(ex)))
+                    .map(path -> path.resolve(tool + "_" + source + "_" + promptHash + ".cache" + getTimestamp(ttlSeconds)))
+                    .mapTry(path -> Files.writeString(path, value, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+                    .onFailure(ex -> logger.warning("Failed to write cache file timestamp: " + exceptionHandler.getExceptionMessage(ex)));
+            return value;
+        }
+    }
+
     @Override
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
         if (isDisabled() || isWriteOnly() || container == null) {
@@ -197,7 +261,15 @@ public class CosmosLocalStorage implements LocalStorage {
 
         totalReads.incrementAndGet();
 
-        final Try<CacheResult<String>> result = Try.of(() -> {
+        final Try<CacheResult<String>> result = Try
+                // Attempt to get from local cache first
+                .of(() -> getFromCache(tool, source, promptHash))
+                // We only accept the local cache value if it's not blank
+                .filter(StringUtils::isNotBlank)
+                // Convert to a CacheResult
+                .map(cache -> new CacheResult<String>(cache, true))
+                // If there was no locally cached value, get from Cosmos DB
+                .recover(NoSuchElementException.class, ex -> {
                     final String id = generateId(tool, source, promptHash);
                     final PartitionKey partitionKey = new PartitionKey(tool);
 
@@ -207,16 +279,22 @@ public class CosmosLocalStorage implements LocalStorage {
                             CacheItem.class
                     );
 
-                    final CacheItem item = response.getItem();
-
                     // Check if item has expired (if timestamp is set)
-                    if (item.timestamp != null && item.timestamp < Instant.now().getEpochSecond()) {
+                    if (response.getItem().timestamp != null && response.getItem().timestamp < Instant.now().getEpochSecond()) {
                         return new CacheResult<String>(null, false);
+                    }
+
+                    return new CacheResult<String>(response.getItem().response(), true);
+                })
+                // Decrypt and decompress the result if it was from cache
+                .map(r -> {
+                    if (!r.fromCache()) {
+                        return r;
                     }
 
                     totalCacheHits.incrementAndGet();
 
-                    final String original = Try.of(() -> encryptor.decrypt(item.response))
+                    final String original = Try.of(() -> encryptor.decrypt(r.result()))
                             .map(decrypted -> zipper.decompressString(decrypted))
                             .getOrNull();
 
@@ -391,6 +469,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
         final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
                 .map(encryptor::encrypt)
+                .map(encrypted -> writeToCache(tool, source, promptHash, ttlSeconds, encrypted))
                 .map(encrypted -> new CacheItem(
                         generateId(tool, source, promptHash),
                         tool,
