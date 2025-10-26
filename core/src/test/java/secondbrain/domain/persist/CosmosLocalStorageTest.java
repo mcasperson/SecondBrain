@@ -165,6 +165,9 @@ public class CosmosLocalStorageTest {
                         () -> array)
                 .result());
 
+        // Give the cosmos some time to finalize the write
+        Try.run(() -> Thread.sleep(3000));
+
         for (int i = 0; i < 5; i++) {
             CacheResult<TestObject[]> result = cosmosLocalStorage.getOrPutObjectArray(
                     CosmosLocalStorageTest.class.getSimpleName(),
