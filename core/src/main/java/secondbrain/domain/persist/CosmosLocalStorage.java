@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -37,6 +38,7 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
 
 /**
  * Azure Cosmos DB implementation of LocalStorage for caching API calls and LLM results.
+ * This implementation uses a local file cache to potentially speed up reads and reduce Cosmos DB read costs.
  */
 @ApplicationScoped
 public class CosmosLocalStorage implements LocalStorage {
@@ -208,7 +210,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     .map(files -> files
                             .map(file -> LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString()))
                             .filter(Matcher::matches)
-                            .filter(matcher -> Long.parseLong(matcher.group(2)) >= Instant.now().getEpochSecond())
+                            .filter(matcher -> Long.parseLong(matcher.group(2)) != 0 && Long.parseLong(matcher.group(2)) >= Instant.now().getEpochSecond())
                             .map(matcher -> Path.of(matcher.group(0)))
                             .toList())
                     .peek(files -> files.forEach(file -> Try.run(() -> Files.delete(file))));
@@ -243,12 +245,12 @@ public class CosmosLocalStorage implements LocalStorage {
     /**
      * Write the value to a local cache file with the given TTL.
      */
-    private String writeToCache(final String tool, final String source, final String promptHash, final int ttlSeconds, final String value) {
+    private String writeToCache(final String tool, final String source, final String promptHash, final Long timestamp, final String value) {
         synchronized (CosmosLocalStorage.class) {
             Try.of(() -> Path.of(cosmosCache.orElse("cosmoscache")))
                     .mapTry(Files::createDirectories)
                     .onFailure(ex -> logger.warning("Failed to create cache directory: " + exceptionHandler.getExceptionMessage(ex)))
-                    .map(path -> path.resolve(tool + "_" + source + "_" + promptHash + ".cache." + getTimestamp(ttlSeconds)))
+                    .map(path -> path.resolve(tool + "_" + source + "_" + promptHash + ".cache." + Objects.requireNonNullElse(timestamp, 0L)))
                     .mapTry(path -> Files.writeString(path, value, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(ex -> logger.warning("Failed to write cache file timestamp: " + exceptionHandler.getExceptionMessage(ex)));
             return value;
@@ -286,9 +288,14 @@ public class CosmosLocalStorage implements LocalStorage {
                     );
 
                     // Check if item has expired (if timestamp is set)
-                    if (response.getItem().timestamp != null && response.getItem().timestamp < Instant.now().getEpochSecond()) {
-                        return new CacheResult<String>(null, false);
+                    if (response.getItem().timestamp != null) {
+                        if (response.getItem().timestamp < Instant.now().getEpochSecond()) {
+                            return new CacheResult<String>(null, false);
+                        }
                     }
+
+                    // If we are loading this from the remote cache, save it locally too
+                    writeToCache(tool, source, promptHash, getTimestamp(response.getItem().timestamp), response.getItem().response());
 
                     return new CacheResult<String>(response.getItem().response(), true);
                 })
@@ -303,6 +310,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     final String original = Try.of(() -> encryptor.decrypt(r.result()))
                             .map(decrypted -> zipper.decompressString(decrypted))
                             .getOrNull();
+
 
                     return new CacheResult<String>(original, true);
                 })
@@ -475,14 +483,14 @@ public class CosmosLocalStorage implements LocalStorage {
 
         final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
                 .map(encryptor::encrypt)
-                .map(encrypted -> writeToCache(tool, source, promptHash, ttlSeconds, encrypted))
+                .map(encrypted -> writeToCache(tool, source, promptHash, getTimestamp((long) ttlSeconds), encrypted))
                 .map(encrypted -> new CacheItem(
                         generateId(tool, source, promptHash),
                         tool,
                         source,
                         promptHash,
                         encrypted,
-                        getTimestamp(ttlSeconds),
+                        getTimestamp((long) ttlSeconds),
                         sanitizeTtl(ttlSeconds)))
                 .map(item -> container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions()))
                 .onFailure(ex -> totalFailures.incrementAndGet())
@@ -502,8 +510,8 @@ public class CosmosLocalStorage implements LocalStorage {
         return -1;
     }
 
-    private Long getTimestamp(final int ttlSeconds) {
-        if (ttlSeconds > 0) {
+    private Long getTimestamp(final Long ttlSeconds) {
+        if (ttlSeconds != null && ttlSeconds > 0) {
             return Instant.now().getEpochSecond() + ttlSeconds;
         }
         return null;
