@@ -35,7 +35,7 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
 @ApplicationScoped
 public class CosmosLocalStorage implements LocalStorage {
 
-    private static final int BATCH_SIZE = 10;
+    private static final int BATCH_SIZE = 100;
     private static final String CONTAINER_NAME = "localstoragezipped";
     private static final String DATABASE_NAME = "secondbrain";
     private static final int DEFAULT_TTL_SECONDS = 86400;
