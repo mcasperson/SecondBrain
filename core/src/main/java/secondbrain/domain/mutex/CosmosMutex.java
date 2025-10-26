@@ -31,7 +31,7 @@ public class CosmosMutex implements Mutex {
 
     private static final String LOCK_PARTITION_KEY = "/lock";
     private static final String LOCK_PARTITION_VALUE = "lock";
-    private static final int DEFAULT_TTL = 60 * 30;
+    private static final int DEFAULT_TTL = 60 * 5;
     private static final long SLEEP_MS = 1000;
 
     @Inject
