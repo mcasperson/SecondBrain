@@ -242,11 +242,12 @@ public class CosmosLocalStorage implements LocalStorage {
                                     Long.parseLong(m1.group(2))
                             ))
                             // We want the path of the first matching file
-                            .map(matcher -> Path.of(matcher.group(0)))
+                            .map(matcher -> Path.of(cacheDir, matcher.group(0)))
                             // Get teh first matching file
                             .findFirst())
                     // Get the cached result, failing if the Optional is empty
-                    .mapTry(path -> Files.readString(path.get()))
+                    .map(Optional::get)
+                    .mapTry(Files::readString)
                     .getOrNull();
         }
     }
