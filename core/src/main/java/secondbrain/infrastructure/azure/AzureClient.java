@@ -78,8 +78,8 @@ public class AzureClient implements LlmClient {
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
-    // Default rate is around 250 requests per minute. 2 requests per second keeps us well under that.
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(2);
+    // Default rate is around 250 requests per minute.
+    private static final RateLimiter RATE_LIMITER = RateLimiter.create(4);
 
     @Inject
     @ConfigProperty(name = "sb.azurellm.apikey")
