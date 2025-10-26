@@ -204,20 +204,28 @@ public class CosmosLocalStorage implements LocalStorage {
     private String getFromCache(final String tool, final String source, final String promptHash) {
         synchronized (CosmosLocalStorage.class) {
 
+            final String cacheDir = cosmosCache.orElse("cosmoscache");
+
             // Clear expired cache files
-            Try.of(() -> Path.of(cosmosCache.orElse("cosmoscache")))
+            Try.of(() -> Path.of(cacheDir))
                     .mapTry(Files::list)
                     .map(files -> files
                             .map(file -> LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString()))
                             .filter(Matcher::matches)
                             // Keep files for deletion that have a timestamp that is not 0 (no expiration) and in the past
                             .filter(matcher -> NumberUtils.toLong(matcher.group(2), 0L) != 0 && NumberUtils.toLong(matcher.group(2), 0L) < Instant.now().getEpochSecond())
-                            .map(matcher -> Path.of(matcher.group(0)))
+                            .map(matcher -> Path.of(cacheDir, matcher.group(0)))
                             .toList())
-                    .peek(files -> files.forEach(file -> Try.run(() -> Files.delete(file))));
+                    .peek(files -> {
+                        if (!files.isEmpty()) {
+                            logger.info("Deleting " + files.size() + " expired cache files: " + files);
+                        }
+                    })
+                    .peek(files -> files.forEach(file -> Try.run(() -> Files.delete(file))
+                            .onFailure(ex -> logger.warning("Failed to delete expired cache file " + file + ": " + exceptionHandler.getExceptionMessage(ex)))));
 
             // Return unexpired cache file if exists
-            return Try.of(() -> Path.of(cosmosCache.orElse("cosmoscache")))
+            return Try.of(() -> Path.of(cacheDir))
                     .mapTry(Files::list)
                     // Find the matching cache file that is not expired
                     .map(files -> files
