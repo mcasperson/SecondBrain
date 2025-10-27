@@ -364,7 +364,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .map(array -> new CacheResult<T[]>(array, true));
 
         if (localCacheTry.isSuccess()) {
-            logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash + " in local cache");
+            logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash + " in local cache");
             return localCacheTry.get();
         }
 
