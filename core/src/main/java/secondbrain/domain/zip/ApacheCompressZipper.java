@@ -4,6 +4,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
+import org.apache.commons.compress.compressors.gzip.GzipParameters;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.ByteArrayInputStream;
@@ -26,8 +27,11 @@ public class ApacheCompressZipper implements Zipper {
             return null;
         }
 
+        final GzipParameters parameters = new GzipParameters();
+        parameters.setCompressionLevel(9); // Maximum compression
+
         return Try.withResources(ByteArrayOutputStream::new)
-                .of(bos -> Try.withResources(() -> new GzipCompressorOutputStream(bos))
+                .of(bos -> Try.withResources(() -> new GzipCompressorOutputStream(bos, parameters))
                         .of(gcos -> writeStream(gcos, bos, data))
                         .get())
                 .map(ByteArrayOutputStream::toByteArray)
