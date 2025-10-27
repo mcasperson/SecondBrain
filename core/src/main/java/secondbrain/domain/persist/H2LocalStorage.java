@@ -62,7 +62,7 @@ public class H2LocalStorage implements LocalStorage {
     @ConfigProperty(name = "sb.cache.writeonly")
     private Optional<String> writeOnly;
     @Inject
-    @ConfigProperty(name = "sb.cache.path")
+    @ConfigProperty(name = "sb.h2cache.path")
     private Optional<String> path;
     @Inject
     private JsonDeserializer jsonDeserializer;
