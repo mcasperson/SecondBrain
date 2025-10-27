@@ -368,9 +368,8 @@ public class CosmosLocalStorage implements LocalStorage {
             return localCacheTry.get();
         }
 
-        Try.of(() -> localStorageReadWrite.getString(tool, source, promptHash + "_all"));
-        return Try
-                .of(() -> getString(tool, source, promptHash))
+
+        return Try.of(() -> getString(tool, source, promptHash))
                 .filter(result -> StringUtils.isNotBlank(result.result()))
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> NumberUtils.toInt(r.result(), 0))
@@ -384,6 +383,8 @@ public class CosmosLocalStorage implements LocalStorage {
                 )
                 // The list becomes an array
                 .map(list -> list.toArray(ArrayUtils.newInstance(clazz, list.size())))
+                // Persist the full array in local storage for next time
+                .peek(array -> persistArrayResultLocal(tool, source, promptHash, ttlSeconds, array))
                 // The array is wrapped in a CacheResult
                 .map(array -> new CacheResult<T[]>(array, true))
                 .recoverWith(ex -> Try.of(() -> {
@@ -400,15 +401,19 @@ public class CosmosLocalStorage implements LocalStorage {
                 .get();
     }
 
-    private <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T[]> generateValue) {
-        final T[] value = generateValue.generate();
-
-        // Persist the full array as a single compressed and encrypted item in local storage
+    private <T> void persistArrayResultLocal(final String tool, final String source, final String promptHash, final int ttlSeconds, final T[] value) {
         Try.of(() -> jsonDeserializer.serialize(value))
                 .map(zipper::compressString)
                 .map(encryptor::encrypt)
                 .map(result -> localStorageReadWrite.putString(tool, source, promptHash + "_all", getTimestamp((long) ttlSeconds), result))
                 .onFailure(ex -> logger.warning("Failed to persist full array result to local storage: " + exceptionHandler.getExceptionMessage(ex)));
+    }
+
+    private <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T[]> generateValue) {
+        final T[] value = generateValue.generate();
+
+        // Persist the full array as a single compressed and encrypted item in local storage
+        persistArrayResultLocal(tool, source, promptHash, ttlSeconds, value);
 
         // The result associated with the original hash is the count of items
         putString(
