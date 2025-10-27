@@ -3,13 +3,13 @@ package secondbrain.domain.persist;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.io.output.LockableFileWriter;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
@@ -75,7 +75,12 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                 .mapTry(Files::createDirectories)
                 .onFailure(ex -> logger.warning("Failed to create cache directory: " + exceptionHandler.getExceptionMessage(ex)))
                 .map(path -> path.resolve(tool + "_" + source + "_" + promptHash + ".cache." + Objects.requireNonNullElse(timestamp, 0L)))
-                .mapTry(path -> Files.writeString(path, value, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+                // LockableFileWriter deals with multiple threads trying to write to the same file
+                .flatMap(path -> Try.withResources(() -> new LockableFileWriter.Builder().setFile(path.toFile()).setAppend(false).get())
+                        .of(w -> {
+                            w.write(value);
+                            return value;
+                        }))
                 .onFailure(ex -> logger.warning("Failed to write cache file timestamp: " + exceptionHandler.getExceptionMessage(ex)));
         return value;
     }
