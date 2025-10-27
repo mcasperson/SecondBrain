@@ -69,7 +69,7 @@ public interface LocalStorage {
      * @param ttlSeconds    The time to live in seconds for the cached value
      * @return The value, if one was saved, or the generated value
      */
-    <T> CacheResult<T[]> getOrPutObjectArray(String tool, String source, String promptHash, int ttlSeconds, Class<T> clazz, GenerateValue<T[]> generateValue);
+    <T> CacheResult<T[]> getOrPutObjectArray(String tool, String source, String promptHash, int ttlSeconds, Class<T> clazz, Class<T[]> arrayClazz, GenerateValue<T[]> generateValue);
 
     /**
      * Save a value associated with a tool, source, and prompt hash.

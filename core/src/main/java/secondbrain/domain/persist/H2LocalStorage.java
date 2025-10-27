@@ -383,7 +383,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T[]> generateValue) {
+    public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
         if (isDisabled() || connection == null) {
             return new CacheResult<T[]>(generateValue.generate(), false);
         }

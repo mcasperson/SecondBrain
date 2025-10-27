@@ -149,6 +149,7 @@ public class PlanHatClientLive implements PlanHatClient {
                         DigestUtils.sha256Hex(company + url + start + end + offset),
                         ttlSeconds,
                         Conversation.class,
+                        Conversation[].class,
                         () -> callApi(client, company, url, token, offset))
                 .result();
 

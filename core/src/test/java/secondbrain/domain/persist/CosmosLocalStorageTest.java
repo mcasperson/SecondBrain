@@ -129,6 +129,7 @@ public class CosmosLocalStorageTest {
                         Arrays.hashCode(array) + "",
                         60,
                         String.class,
+                        String[].class,
                         () -> array)
                 .result());
 
@@ -142,6 +143,7 @@ public class CosmosLocalStorageTest {
                     Arrays.hashCode(array) + "",
                     60,
                     String.class,
+                    String[].class,
                     () -> array);
 
             Assertions.assertArrayEquals(array, result.result());
@@ -163,6 +165,7 @@ public class CosmosLocalStorageTest {
                         Arrays.hashCode(array) + "",
                         Integer.MAX_VALUE,
                         TestObject.class,
+                        TestObject[].class,
                         () -> array)
                 .result());
 
@@ -176,6 +179,7 @@ public class CosmosLocalStorageTest {
                     Arrays.hashCode(array) + "",
                     60,
                     TestObject.class,
+                    TestObject[].class,
                     () -> array);
 
             Assertions.assertArrayEquals(array, result.result());
