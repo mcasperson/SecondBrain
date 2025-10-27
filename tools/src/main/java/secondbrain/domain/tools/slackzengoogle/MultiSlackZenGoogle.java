@@ -71,6 +71,7 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
  */
 @ApplicationScoped
 public class MultiSlackZenGoogle implements Tool<Void> {
+    public static final String MULTI_SLACK_ZEN_TTL_SECONDS_ARG = "ttlSeconds";
     public static final String MULTI_SLACK_ZEN_KEYWORD_ARG = "keywords";
     public static final String MULTI_SLACK_ZEN_WINDOW_ARG = "keywordWindow";
     public static final String MULTI_SLACK_ZEN_URL_ARG = "url";
@@ -129,7 +130,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_META_PROMPT_20_ARG = "contextMetaPrompt20";
     public static final String MULTI_SLACK_ZEN_MIN_TIME_BASED_CONTENT_ARG = "minTimeBasedContent";
 
-    private static final int TTL_SECONDS = 60 * 60 * 24; // 24 hours
     private static final int BATCH_SIZE = 10;
     private static final String INSTRUCTIONS = """
             You are helpful agent.
@@ -285,7 +285,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         getName(),
                         "MultiSlackZenGoogle",
                         Integer.toString(cacheKey.hashCode()),
-                        TTL_SECONDS,
+                        parsedArgs.getCacheTtl(),
                         RagMultiDocumentContext.class,
                         () -> callPrivate(environmentSettings, prompt, arguments))
                 .result()
@@ -928,12 +928,17 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 class MultiSlackZenGoogleConfig {
 
     private static final int DEFAULT_RATING = 10;
+    private static final int DEFAULT_TTL_SECONDS = 60 * 60 * 24; // 24 hours
 
     @Inject
     private ToStringGenerator toStringGenerator;
 
     @Inject
     private ArgsAccessor argsAccessor;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.ttlSeconds")
+    private Optional<String> configTtlSeconds;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.url")
@@ -1398,6 +1403,10 @@ class MultiSlackZenGoogleConfig {
 
     public ToStringGenerator getToStringGenerator() {
         return toStringGenerator;
+    }
+
+    public Optional<String> getConfigTtlSeconds() {
+        return configTtlSeconds;
     }
 
     public class LocalArguments {
@@ -2055,6 +2064,18 @@ class MultiSlackZenGoogleConfig {
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_DEFAULT_RATING_ARG,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        public int getCacheTtl() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigTtlSeconds()::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_TTL_SECONDS_ARG,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_TTL_SECONDS_ARG,
+                    DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
