@@ -364,14 +364,14 @@ public class CosmosLocalStorage implements LocalStorage {
                 .map(array -> new CacheResult<T[]>(array, true));
 
         if (localCacheTry.isSuccess()) {
-            logger.info("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash + " in local cache");
+            logger.info("Local cache hit for tool " + tool + " source " + source + " prompt " + promptHash + " in local cache");
             return localCacheTry.get();
         }
 
 
         return Try.of(() -> getString(tool, source, promptHash))
                 .filter(result -> StringUtils.isNotBlank(result.result()))
-                .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
+                .onSuccess(v -> logger.fine("Remote cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> NumberUtils.toInt(r.result(), 0))
                 // The cached result is the number of items in the array.
                 // We then loop over each index to get the individual items.
