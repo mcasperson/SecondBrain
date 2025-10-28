@@ -141,6 +141,16 @@ public class PromptHandlerOllama implements PromptHandler {
     }
 
     private PromptHandlerResponse generateAnnotatedResponse(final RagMultiDocumentContext<?> document, final float parsedMinSimilarity, final int parsedMinWords, final boolean argumentDebugging) {
+        if (disableAnnotations) {
+            return new PromptResponseSimple(
+                    document.getResponse(),
+                    "",
+                    disableLinks ? "" : getLinks(document),
+                    debug ? getDebugLinks(document) : "",
+                    document.getMetaObjectResults(),
+                    document.getIntermediateResults());
+        }
+
         final AnnotationResult<? extends RagMultiDocumentContext<?>> result = document.annotateDocumentContext(
                 parsedMinSimilarity,
                 parsedMinWords,
@@ -149,8 +159,8 @@ public class PromptHandlerOllama implements PromptHandler {
                 sentenceVectorizer);
 
         return new PromptResponseSimple(
-                disableAnnotations ? document.getResponse() : result.annotatedContent(),
-                disableAnnotations ? "" : result.annotations(),
+                result.annotatedContent(),
+                result.annotations(),
                 disableLinks ? "" : getLinks(document),
                 debug ? getDebugLinks(document) : "",
                 document.getMetaObjectResults(),
