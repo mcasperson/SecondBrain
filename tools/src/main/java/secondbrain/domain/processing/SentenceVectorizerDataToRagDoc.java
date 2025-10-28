@@ -99,6 +99,20 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
     public <T extends TextData> RagDocumentContext<T> getUnlinkedDocumentContext(final T task, final String toolName, final String contextLabel, final LocalConfigKeywordsEntity parsedArgs) {
         final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(task.getText(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
 
+        // If annotations are disabled, return context without vectors, saving some CPU
+        if (disableAnnotations) {
+            return new RagDocumentContext<T>(
+                    toolName,
+                    contextLabel,
+                    trimmedConversationResult.document(),
+                    null,
+                    null,
+                    null,
+                    null,
+                    trimmedConversationResult.keywordMatches());
+        }
+
+
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<T>(
                         toolName,
