@@ -4,6 +4,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.context.RagDocumentContext;
@@ -28,6 +29,10 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
     @Inject
     private DocumentTrimmer documentTrimmer;
 
+    @Inject
+    @ConfigProperty(name = "sb.output.disableAnnotations", defaultValue = "false")
+    private Boolean disableAnnotations;
+
     @Override
     public <T extends TextData & IdData & UrlData> RagDocumentContext<T> getDocumentContext(
             final T task,
@@ -46,12 +51,27 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
             final LocalConfigKeywordsEntity parsedArgs) {
         final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(task.getText(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
 
+        // If annotations are disabled, return context without vectors, saving some CPU
+        if (disableAnnotations) {
+            return new RagDocumentContext<T>(
+                    toolName,
+                    contextLabel,
+                    trimmedConversationResult.document(),
+                    null,
+                    task.getId(),
+                    task,
+                    meta,
+                    null,
+                    "[" + task.getLinkText() + "](" + task.getUrl() + ")",
+                    trimmedConversationResult.keywordMatches());
+        }
+
         return Try.of(() -> sentenceSplitter.splitDocument(trimmedConversationResult.document(), 10))
                 .map(sentences -> new RagDocumentContext<T>(
                         toolName,
                         contextLabel,
                         trimmedConversationResult.document(),
-                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
+                        disableAnnotations ? null : sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
                         task.getId(),
                         task,
                         meta,
