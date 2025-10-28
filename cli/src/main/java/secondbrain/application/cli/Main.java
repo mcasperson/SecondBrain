@@ -9,6 +9,7 @@ import org.jboss.weld.environment.se.WeldContainer;
 import secondbrain.Marker;
 import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.converter.StringConverterSelector;
+import secondbrain.domain.files.FileSanitizer;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.json.JsonDeserializer;
@@ -59,6 +60,9 @@ public class Main {
     @Inject
     @ConfigProperty(name = "sb.output.directory", defaultValue = ".")
     private String directory;
+
+    @Inject
+    private FileSanitizer fileSanitizer;
 
     public static void main(final String[] args) {
         final Weld weld = new Weld();
@@ -195,7 +199,7 @@ public class Main {
     }
 
     private Path getFilePath(final String path) {
-        final Path directoryPath = Paths.get(path);
+        final Path directoryPath = Paths.get(fileSanitizer.sanitizeFileName(path));
         if (directoryPath.isAbsolute()) {
             return directoryPath;
         } else if (StringUtils.isNotBlank(directory)) {
