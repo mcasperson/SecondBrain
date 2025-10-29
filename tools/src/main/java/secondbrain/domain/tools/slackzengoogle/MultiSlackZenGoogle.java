@@ -231,11 +231,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        logger.info("Getting context for " + getName());
+        logger.fine("Getting context for " + getName());
 
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        logger.info("Settings are:\n" + parsedArgs);
+        logger.fine("Settings are:\n" + parsedArgs);
 
         final EntityDirectory entityDirectory = Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
@@ -276,7 +276,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Calling " + getName());
+        logger.fine("Calling " + getName());
 
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -455,7 +455,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final Map<String, String> context,
             final String prompt,
             final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
-        logger.log(Level.INFO, "Getting context for " + positionalEntity.entity().name());
+        logger.info("Getting context for " + positionalEntity.entity().name());
 
         final Entity entity = positionalEntity.entity();
 
@@ -576,7 +576,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
      * to slack by the salesforce integration.
      */
     private List<RagDocumentContext<Void>> getSlackKeywordContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context, final String id) {
-        logger.log(Level.INFO, "Getting Slack keywords for " + positionalEntity.entity().name());
+        logger.fine("Getting Slack keywords for " + positionalEntity.entity().name());
 
         // Add any specific keywords
         final List<String> keywords = new ArrayList<>(Arrays.stream(parsedArgs.getKeywords().split(",")).toList());
@@ -617,7 +617,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getGongContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.log(Level.INFO, "Getting Gong transcripts for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.fine("Getting Gong transcripts for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
@@ -650,7 +650,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getSalesforceContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.log(Level.INFO, "Getting Salesforce emails for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.fine("Getting Salesforce emails for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
@@ -683,7 +683,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getPlanhatContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.log(Level.INFO, "Getting PlanHat activities for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.fine("Getting PlanHat activities for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(PlanHat.PLANHAT_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
@@ -716,7 +716,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getPlanhatUsageContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.log(Level.INFO, "Getting PlanHat usage for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.fine("Getting PlanHat usage for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
@@ -738,7 +738,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getGoogleContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.log(Level.INFO, "Getting Google Docs for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.fine("Getting Google Docs for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
@@ -767,7 +767,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getSlackContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.log(Level.INFO, "Getting Slack channel for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.fine("Getting Slack channel for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
@@ -799,7 +799,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getZenContext(final PositionalEntity positionalEntity, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt, final Map<String, String> context) {
-        logger.log(Level.INFO, "Getting ZenDesk tickets for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.fine("Getting ZenDesk tickets for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())

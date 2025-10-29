@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -143,7 +142,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Getting context for " + getName());
+        logger.fine("Getting context for " + getName());
 
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -194,7 +193,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        logger.log(Level.INFO, "Calling " + getName());
+        logger.fine("Calling " + getName());
 
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 

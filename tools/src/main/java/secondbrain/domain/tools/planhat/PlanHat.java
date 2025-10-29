@@ -48,7 +48,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -159,7 +158,7 @@ public class PlanHat implements Tool<Conversation> {
 
     @Override
     public List<RagDocumentContext<Conversation>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Getting context for " + getName());
+        logger.fine("Getting context for " + getName());
 
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -227,7 +226,7 @@ public class PlanHat implements Tool<Conversation> {
 
     @Override
     public RagMultiDocumentContext<Conversation> call(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Calling " + getName());
+        logger.fine("Calling " + getName());
 
         final List<RagDocumentContext<Conversation>> contextList = getContext(environmentSettings, prompt, arguments);
 

@@ -135,7 +135,7 @@ public class PlanHatClientLive implements PlanHatClient {
             return new Conversation[]{};
         }
 
-        logger.info("Fetching PlanHat conversations for company " + company + " with offset " + offset);
+        logger.fine("Fetching PlanHat conversations for company " + company + " with offset " + offset);
 
         // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
         final String end = endDate.format(ISO_OFFSET_DATE_TIME);
@@ -170,7 +170,7 @@ public class PlanHatClientLive implements PlanHatClient {
     }
 
     private Conversation[] callApi(final Client client, final String company, final String url, final String token, final int offset) {
-        logger.info("Calling PlanHat Conversations API for company " + company + " with offset " + offset);
+        logger.fine("Calling PlanHat Conversations API for company " + company + " with offset " + offset);
 
         RATE_LIMITER.acquire();
 
@@ -219,7 +219,7 @@ public class PlanHatClientLive implements PlanHatClient {
             final String company,
             final String url,
             final String token) {
-        logger.info("Calling PlanHat Company API for company " + company);
+        logger.fine("Calling PlanHat Company API for company " + company);
 
         RATE_LIMITER.acquire();
 

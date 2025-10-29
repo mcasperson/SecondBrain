@@ -95,7 +95,7 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private YoutubeSearchItem[] searchVideosApi(final String query, final String channelId, final String pageToken, final String key) {
-        logger.log(Level.INFO, "Getting Youtube API search " + query + ", channelId: " + channelId + ", pageToken: " + pageToken);
+        logger.fine("Getting Youtube API search " + query + ", channelId: " + channelId + ", pageToken: " + pageToken);
 
         RATE_LIMITER.acquire();
 
@@ -144,7 +144,7 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private String getTranscriptApiLocked(final String videoId, final String lang) {
-        logger.log(Level.INFO, "Getting Youtube transcript " + videoId + " lang: " + lang);
+        logger.fine("Getting Youtube transcript " + videoId + " lang: " + lang);
 
         RATE_LIMITER.acquire();
 
@@ -169,7 +169,7 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private YoutubePlaylistsItem[] getPlaylistItemsApi(final String playlistId, final String pageToken, final String key) {
-        logger.log(Level.INFO, "Getting Youtube API playlist " + playlistId + ", pageToken: " + pageToken);
+        logger.fine("Getting Youtube API playlist " + playlistId + ", pageToken: " + pageToken);
 
         RATE_LIMITER.acquire();
 

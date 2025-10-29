@@ -151,7 +151,7 @@ public class SalesforceClientLive implements SalesforceClient {
     }
 
     private SalesforceTaskRecord[] getTasksApiLocked(final String token, final String accountId, final String type, final String startDate, final String endDate, final int retryCount) {
-        logger.log(Level.INFO, "Getting Salesforce tasks for account " + accountId + " from " + startDate + " to " + endDate);
+        logger.fine("Getting Salesforce tasks for account " + accountId + " from " + startDate + " to " + endDate);
 
         if (retryCount > API_RETRIES) {
             throw new ExternalFailure("Exceeded maximum retries calling Salesforce API");

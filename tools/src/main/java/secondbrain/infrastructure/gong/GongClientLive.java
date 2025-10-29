@@ -150,7 +150,7 @@ public class GongClientLive implements GongClient {
             return new GongCallExtensive[]{};
         }
 
-        logger.log(Level.INFO, "Getting Gong calls extensive with IDs " + callId + " from " + fromDateTime + " to " + toDateTime + " with cursor " + cursor);
+        logger.fine("Getting Gong calls extensive with IDs " + callId + " from " + fromDateTime + " to " + toDateTime + " with cursor " + cursor);
 
         final List<String> callIds = StringUtils.isBlank(callId) ? null : Arrays.stream(callId.split(",")).toList();
         final String nullableFromDateTime = StringUtils.isBlank(fromDateTime) ? null : fromDateTime;
@@ -220,7 +220,7 @@ public class GongClientLive implements GongClient {
             final String id,
             final String username,
             final String password) {
-        logger.log(Level.INFO, "Getting Gong call transcript from " + id);
+        logger.fine("Getting Gong call transcript from " + id);
 
         RATE_LIMITER.acquire();
 

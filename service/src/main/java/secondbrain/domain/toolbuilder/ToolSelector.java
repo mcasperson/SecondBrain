@@ -87,7 +87,7 @@ public class ToolSelector {
             if (StringUtils.isNotBlank(forcedTool)) {
                 logger.warning("There is no tool named '" + forcedTool + "' available to be forced.");
             } else {
-                logger.info("The LLM was unable to select a tool.");
+                logger.warning("The LLM was unable to select a tool.");
             }
         }
 

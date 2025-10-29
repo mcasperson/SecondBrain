@@ -48,7 +48,6 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -189,7 +188,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Getting context for " + getName());
+        logger.fine("Getting context for " + getName());
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         // Get preinitialization hooks before ragdocs
@@ -311,7 +310,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
     @Override
     public RagMultiDocumentContext<ZenDeskTicket> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Calling " + getName());
+        logger.fine("Calling " + getName());
 
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 

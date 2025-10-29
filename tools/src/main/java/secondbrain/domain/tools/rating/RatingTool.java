@@ -170,7 +170,7 @@ public class RatingTool implements Tool<Void> {
                 .average()
                 .orElse(0.0);
 
-        logger.info("RatingTool: Values = " + String.join(",", results.stream().map(Object::toString).toList()) + ", Average = " + average + ". " + myEnvironmentSettings.getToolCall());
+        logger.fine("RatingTool: Values = " + String.join(",", results.stream().map(Object::toString).toList()) + ", Average = " + average + ". " + myEnvironmentSettings.getToolCall());
 
         final RagMultiDocumentContext<Void> retvalue = new RagMultiDocumentContext<Void>(
                 prompt,

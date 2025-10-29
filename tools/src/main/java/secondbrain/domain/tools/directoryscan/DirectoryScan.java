@@ -259,7 +259,7 @@ public class DirectoryScan implements Tool<Void> {
     }
 
     private RagDocumentContext<Void> getRawFile(final String file, final DirectoryScanConfig.LocalArguments parsedArgs) {
-        logger.info("DirectoryScan processing file: " + file);
+        logger.fine("DirectoryScan processing file: " + file);
 
         /*
              Each individual file is converted to text and used to answer the prompt.
@@ -291,7 +291,7 @@ public class DirectoryScan implements Tool<Void> {
      * into a single document to be summarised again.
      */
     private RagDocumentContext<Void> getFileSummary(final String file, final DirectoryScanConfig.LocalArguments parsedArgs, final Map<String, String> environmentSettings) {
-        logger.info("DirectoryScan processing file: " + file);
+        logger.fine("DirectoryScan processing file: " + file);
 
         /*
              Each individual file is converted to text and used to answer the prompt.

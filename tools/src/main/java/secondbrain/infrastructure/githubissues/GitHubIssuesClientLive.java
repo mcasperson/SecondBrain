@@ -81,7 +81,7 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
                 "&labels=" + URLEncoder.encode(String.join(",", labels), StandardCharsets.UTF_8) +
                 "&per_page=100";
 
-        logger.info("Fetching GitHub issues from: " + target);
+        logger.fine("Fetching GitHub issues from: " + target);
 
         return httpClientCaller.call(
                 this::getClient,

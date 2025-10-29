@@ -112,7 +112,7 @@ public class SlackClientLive implements SlackClient {
         RATE_LIMITER.acquire();
 
         if (retryCount > 0) {
-            logger.info("Retrying Slack conversationsHistory");
+            logger.fine("Retrying Slack conversationsHistory");
             Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
         }
 
@@ -188,7 +188,7 @@ public class SlackClientLive implements SlackClient {
         RATE_LIMITER.acquire();
 
         if (retryCount > 0) {
-            logger.info("Retrying Slack usersInfo");
+            logger.fine("Retrying Slack usersInfo");
             Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
         }
 
@@ -265,7 +265,7 @@ public class SlackClientLive implements SlackClient {
         RATE_LIMITER.acquire();
 
         if (retryCount > 0) {
-            logger.info("Retrying Slack channel");
+            logger.fine("Retrying Slack channel");
             Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
         }
 
@@ -354,7 +354,7 @@ public class SlackClientLive implements SlackClient {
         RATE_LIMITER.acquire();
 
         if (retryCount > 0) {
-            logger.info("Retrying Slack searchAll");
+            logger.fine("Retrying Slack searchAll");
             Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
         }
 
@@ -469,7 +469,7 @@ public class SlackClientLive implements SlackClient {
         RATE_LIMITER.acquire();
 
         if (retryCount > 0) {
-            logger.info("Retrying Slack conversationsList");
+            logger.fine("Retrying Slack conversationsList");
             Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
         }
 

@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -236,7 +235,7 @@ public class GitHubIssues implements Tool<GitHubIssue> {
     }
 
     private RagDocumentContext<GitHubIssue> getSummary(final RagDocumentContext<GitHubIssue> ragDoc, final Map<String, String> environmentSettings, final GitHubIssueConfig.LocalArguments parsedArgs) {
-        logger.log(Level.INFO, "Summarising GitHub issues");
+        logger.fine("Summarising GitHub issues");
 
         final RagDocumentContext<String> context = new RagDocumentContext<>(
                 getName(),

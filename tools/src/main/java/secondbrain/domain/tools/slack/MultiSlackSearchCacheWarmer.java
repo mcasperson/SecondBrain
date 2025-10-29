@@ -133,8 +133,8 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
     private List<RagDocumentContext<Void>> getEntityContext(final PositionalEntity positionalEntity, final Map<String, String> context, final String prompt, final MultiSlackSearchCacheWarmerConfig.LocalArguments parsedArgs) {
         final Entity entity = positionalEntity.entity();
 
-        logger.info("Getting Slack keywords for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
-        logger.info("Percent complete: " + ((float) COUNTER.incrementAndGet() / positionalEntity.total * 100) + "%");
+        logger.fine("Getting Slack keywords for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+        logger.fine("Percent complete: " + ((float) COUNTER.incrementAndGet() / positionalEntity.total * 100) + "%");
 
         if (entity.disabled()) {
             return List.of();

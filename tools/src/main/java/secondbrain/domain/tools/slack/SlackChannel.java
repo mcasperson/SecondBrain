@@ -157,7 +157,7 @@ public class SlackChannel implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        logger.log(Level.INFO, "Getting context for " + getName());
+        logger.fine(Level.INFO, "Getting context for " + getName());
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -241,7 +241,7 @@ public class SlackChannel implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Calling " + getName());
+        logger.fine(Level.INFO, "Calling " + getName());
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 

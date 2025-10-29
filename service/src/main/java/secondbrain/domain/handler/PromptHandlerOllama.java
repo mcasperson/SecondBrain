@@ -14,7 +14,6 @@ import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
 
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -103,7 +102,7 @@ public class PromptHandlerOllama implements PromptHandler {
             return new PromptResponseSimple("No tool found");
         }
 
-        logger.log(Level.INFO, "Calling tool " + toolCall.tool().getName());
+        logger.fine("Calling tool " + toolCall.tool().getName());
 
         final float parsedMinSimilarity = Try.of(() -> Float.parseFloat(minSimilarity))
                 .recover(throwable -> 0.5f)
@@ -118,7 +117,7 @@ public class PromptHandlerOllama implements PromptHandler {
                 .recover(e -> false)
                 .get();
 
-        logger.log(Level.INFO, "Using minSimilarity: " + parsedMinSimilarity
+        logger.fine("Using minSimilarity: " + parsedMinSimilarity
                 + ", minWords: " + parsedMinWords
                 + ", argumentDebugging: " + argumentDebugging);
 

@@ -46,7 +46,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -155,11 +154,11 @@ public class Gong implements Tool<GongCallDetails> {
     @Override
     public List<RagDocumentContext<GongCallDetails>> getContext(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Getting context for " + getName());
+        logger.fine("Getting context for " + getName());
 
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        logger.info("Settings are:\n" + parsedArgs);
+        logger.fine("Settings are:\n" + parsedArgs);
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<GongCallDetails>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
@@ -243,7 +242,7 @@ public class Gong implements Tool<GongCallDetails> {
 
     @Override
     public RagMultiDocumentContext<GongCallDetails> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Calling " + getName());
+        logger.fine("Calling " + getName());
 
         final List<RagDocumentContext<GongCallDetails>> contextList = getContext(environmentSettings, prompt, arguments);
 

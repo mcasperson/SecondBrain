@@ -155,7 +155,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Query is required");
         }
 
-        logger.info("Getting ZenDesk tickets, page " + page + " for query: " + query);
+        logger.fine("Getting ZenDesk tickets, page " + page + " for query: " + query);
 
         RATE_LIMITER.acquire();
 
@@ -213,7 +213,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Ticket ID is required");
         }
 
-        logger.info("Getting ZenDesk ticket ID: " + id);
+        logger.fine("Getting ZenDesk ticket ID: " + id);
 
         RATE_LIMITER.acquire();
 
@@ -278,7 +278,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Ticket ID is required");
         }
 
-        logger.info("Getting ZenDesk comments for ticket ID: " + ticketId);
+        logger.fine("Getting ZenDesk comments for ticket ID: " + ticketId);
 
         RATE_LIMITER.acquire();
 
@@ -327,7 +327,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Organization ID is required");
         }
 
-        logger.info("Getting ZenDesk organization ID: " + orgId);
+        logger.fine("Getting ZenDesk organization ID: " + orgId);
 
         RATE_LIMITER.acquire();
 

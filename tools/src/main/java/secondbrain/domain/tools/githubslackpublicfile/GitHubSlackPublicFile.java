@@ -30,7 +30,6 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
@@ -131,7 +130,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Calling " + getName());
+        logger.fine("Calling " + getName());
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragContext -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragContext))
@@ -165,7 +164,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
             return List.of();
         }
 
-        logger.log(Level.INFO, "Getting Slack channels for " + String.join(", ", entity.getSlack()));
+        logger.fine("Getting Slack channels for " + String.join(", ", entity.getSlack()));
         return entity.getSlack()
                 .stream()
                 .filter(StringUtils::isNotBlank)
@@ -189,7 +188,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
             return List.of();
         }
 
-        logger.log(Level.INFO, "Getting GitHub issues for " + entity.getIssues());
+        logger.fine("Getting GitHub issues for " + entity.getIssues());
         return entity.getIssues()
                 .stream()
                 .map(id -> List.of(
@@ -215,7 +214,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
             return List.of();
         }
 
-        logger.log(Level.INFO, "Getting GitHub diffs for " + entity.getRepos());
+        logger.fine("Getting GitHub diffs for " + entity.getRepos());
         return entity.getRepos()
                 .stream()
                 .map(id ->

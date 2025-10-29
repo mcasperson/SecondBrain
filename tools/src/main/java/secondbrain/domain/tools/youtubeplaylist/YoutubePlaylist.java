@@ -33,7 +33,6 @@ import secondbrain.infrastructure.youtube.api.YoutubeSearchItem;
 import secondbrain.infrastructure.youtube.model.YoutubeVideo;
 
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -234,7 +233,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
     @Override
     public RagMultiDocumentContext<YoutubeVideo> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        logger.log(Level.INFO, "Calling " + getName());
+        logger.fine("Calling " + getName());
 
         final List<RagDocumentContext<YoutubeVideo>> contextList = getContext(environmentSettings, prompt, arguments);
 
@@ -269,7 +268,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
      * Summarise an individual call transcript
      */
     private RagDocumentContext<YoutubeVideo> getCallSummary(final RagDocumentContext<YoutubeVideo> ragDoc, final Map<String, String> environmentSettings, final YoutubeConfig.LocalArguments parsedArgs) {
-        logger.log(Level.INFO, "Summarising Youtube video transcript");
+        logger.fine("Summarising Youtube video transcript");
 
         final String title = ragDoc.source() == null ? "Unknown title" : ragDoc.source().title();
         final String videoId = ragDoc.source() == null ? "Unknown ID" : ragDoc.source().id();
