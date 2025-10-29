@@ -199,13 +199,16 @@ public class Main {
     }
 
     private Path getFilePath(final String path) {
-        final Path directoryPath = Paths.get(fileSanitizer.sanitizeFileName(path));
+        final Path directoryPath = Paths.get(fileSanitizer.sanitizeFilePath(path));
         if (directoryPath.isAbsolute()) {
+            // Return the absolute path as is
             return directoryPath;
         } else if (StringUtils.isNotBlank(directory)) {
-            return Paths.get(directory, path);
+            // Return the relative path within the specified directory
+            return Paths.get(directory, fileSanitizer.sanitizeFileName(path));
         } else {
-            return directoryPath;
+            // Return the relative path as is
+            return Paths.get(fileSanitizer.sanitizeFileName(path));
         }
     }
 }
