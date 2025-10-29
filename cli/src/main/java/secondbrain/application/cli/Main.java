@@ -127,7 +127,7 @@ public class Main {
 
         if (StringUtils.isNotBlank(annotations)) {
             Try.run(() -> Files.write(getFilePath(annotationsFile.get()), annotations.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
-                    .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
+                    .onFailure(e -> System.err.println("Failed to write annotations to file: " + e.getMessage()));
         }
     }
 
@@ -142,7 +142,7 @@ public class Main {
                             ("Links:" + System.lineSeparator() + content.getLinks()).getBytes(),
                             StandardOpenOption.CREATE,
                             StandardOpenOption.TRUNCATE_EXISTING))
-                    .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
+                    .onFailure(e -> System.err.println("Failed to write links to file: " + e.getMessage()));
         }
     }
 
@@ -153,7 +153,7 @@ public class Main {
 
         if (StringUtils.isNotBlank(content.getDebugInfo())) {
             Try.run(() -> Files.write(getFilePath(debugFile.get()), content.getDebugInfo().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
-                    .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
+                    .onFailure(e -> System.err.println("Failed to write debug to file: " + e.getMessage()));
         }
     }
 
@@ -167,7 +167,7 @@ public class Main {
                 : StandardOpenOption.TRUNCATE_EXISTING;
 
         Try.run(() -> Files.write(getFilePath(file.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, option))
-                .onFailure(e -> System.err.println("Failed to write to file: " + e.getMessage()));
+                .onFailure(e -> System.err.println("Failed to write output to file: " + e.getMessage()));
     }
 
     private void saveMetadata(final PromptHandlerResponse content) {
