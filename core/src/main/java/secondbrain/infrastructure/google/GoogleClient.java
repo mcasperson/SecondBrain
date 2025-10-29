@@ -157,7 +157,7 @@ public class GoogleClient implements LlmClient {
         checkState(model.isPresent());
 
         logger.fine("Calling Google LLM");
-        logger.info(request.generatePromptText());
+        logger.fine(request.generatePromptText());
 
         RATE_LIMITER.acquire();
 

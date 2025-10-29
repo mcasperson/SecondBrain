@@ -150,7 +150,7 @@ public class OllamaClient implements LlmClient {
             throw new FailedOllama("OllamaClient failed to call Ollama after " + MAX_RETIES + " retries.");
         }
 
-        logger.info(body.prompt());
+        logger.fine(body.prompt());
         logger.fine("Calling: " + uri);
         logger.fine("Called with model: " + body.model());
         logger.fine("Called with context window: " + Optional.ofNullable(body.options()).map(OllamaGenerateBodyOptions::num_ctx).map(Object::toString).orElse("null"));
