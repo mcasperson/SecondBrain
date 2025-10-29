@@ -27,7 +27,6 @@ import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -206,7 +205,7 @@ public class SalesforceClientLive implements SalesforceClient {
                     throw new ExternalFailure("Could not call salesforce query", ex);
                 })
                 .onFailure(e -> logger.severe("Failed to get tasks for salesforce account " + accountId + "\n" + e.getMessage()))
-                .onSuccess(records -> logger.fine(Level.INFO, "Retrieved " + (records != null ? records.length : 0) + " tasks from Salesforce for account " + accountId))
+                .onSuccess(records -> logger.fine("Retrieved " + (records != null ? records.length : 0) + " tasks from Salesforce for account " + accountId))
                 .get();
     }
 }
