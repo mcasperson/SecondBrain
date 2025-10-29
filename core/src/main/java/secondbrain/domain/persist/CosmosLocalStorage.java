@@ -105,14 +105,14 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @PostConstruct
     public void postConstruct() {
-        logger.info("Initializing Cosmos DB local storage");
+        logger.fine("Initializing Cosmos DB local storage");
         synchronized (CosmosLocalStorage.class) {
             if (cosmosClient == null) {
                 Try.run(this::initializeCosmosClient)
                         .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
             }
         }
-        logger.info("Initialized Cosmos DB local storage");
+        logger.fine("Initialized Cosmos DB local storage");
     }
 
     @PreDestroy
@@ -364,7 +364,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .map(array -> new CacheResult<T[]>(array, true));
 
         if (localCacheTry.isSuccess()) {
-            logger.info("Local cache hit for tool " + tool + " source " + source + " prompt " + promptHash + " in local cache");
+            logger.fine("Local cache hit for tool " + tool + " source " + source + " prompt " + promptHash + " in local cache");
             return localCacheTry.get();
         }
 

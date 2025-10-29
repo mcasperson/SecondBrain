@@ -81,14 +81,14 @@ public class CosmosMutex implements Mutex {
 
     @PostConstruct
     public void postConstruct() {
-        logger.info("Initializing Cosmos DB local storage");
+        logger.fine("Initializing Cosmos DB local storage");
         synchronized (CosmosLocalStorage.class) {
             if (cosmosClient == null) {
                 Try.run(this::initializeCosmosClient)
                         .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
             }
         }
-        logger.info("Initialized Cosmos DB local storage");
+        logger.fine("Initialized Cosmos DB local storage");
 
         clearLocksOnStartup();
     }
@@ -114,7 +114,7 @@ public class CosmosMutex implements Mutex {
         final String databaseName = this.databaseName.orElse(DATABASE_NAME);
         final String containerName = this.containerName.orElse(CONTAINER_NAME);
 
-        logger.info("Clearing all locks from Cosmos DB on startup");
+        logger.fine("Clearing all locks from Cosmos DB on startup");
         Try.of(() -> cosmosClient.getDatabase(databaseName))
                 .map(database -> database.getContainer(containerName))
                 .map(container -> deleteFiles(container, container.queryItems(query, new CosmosQueryRequestOptions(), LockDocument.class)))

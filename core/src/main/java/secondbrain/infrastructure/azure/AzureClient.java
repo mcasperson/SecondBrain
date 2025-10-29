@@ -258,7 +258,7 @@ public class AzureClient implements LlmClient {
 
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + url.orElse(""));
 
-        logger.info("Calling Azure LLM");
+        logger.fine("Calling Azure LLM");
         logger.info(request.generatePromptText());
 
         final CacheResult<String> result = handleCaching(request, tool, promptHash);

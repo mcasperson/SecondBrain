@@ -75,7 +75,7 @@ public class H2LocalStorage implements LocalStorage {
 
     @PostConstruct
     public void postConstruct() {
-        logger.info("Initializing local storage");
+        logger.fine("Initializing local storage");
         synchronized (H2LocalStorage.class) {
             if (connection == null) {
                 backupDatabase();
@@ -85,7 +85,7 @@ public class H2LocalStorage implements LocalStorage {
                         .getOrNull();
             }
         }
-        logger.info("Initialized local storage");
+        logger.fine("Initialized local storage");
     }
 
     @PreDestroy
@@ -98,7 +98,7 @@ public class H2LocalStorage implements LocalStorage {
         }
 
         if (totalReads.get() > 0) {
-            logger.info("Cache hits percentage: " + getCacheHitsPercentage() + "%");
+            logger.fine("Cache hits percentage: " + getCacheHitsPercentage() + "%");
         }
     }
 
@@ -125,7 +125,7 @@ public class H2LocalStorage implements LocalStorage {
         }
 
         if (count > 0) {
-            logger.info("Retrying connection to local storage " + count + " of " + MAX_RETRIES);
+            logger.fine("Retrying connection to local storage " + count + " of " + MAX_RETRIES);
             // Sleep with some jitter
             Try.run(() -> Thread.sleep(DELAY + (int) (Math.random() * 1000)));
         }

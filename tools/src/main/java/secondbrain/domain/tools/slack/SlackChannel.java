@@ -50,7 +50,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -157,7 +156,7 @@ public class SlackChannel implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        logger.fine(Level.INFO, "Getting context for " + getName());
+        logger.fine("Getting context for " + getName());
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -241,7 +240,7 @@ public class SlackChannel implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        logger.fine(Level.INFO, "Calling " + getName());
+        logger.fine("Calling " + getName());
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 

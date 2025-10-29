@@ -99,7 +99,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                         .toList())
                 .peek(files -> {
                     if (!files.isEmpty()) {
-                        logger.info("Deleting " + files.size() + " expired cache files: " + files);
+                        logger.fine("Deleting " + files.size() + " expired cache files: " + files);
                     }
                 })
                 .peek(files -> files.forEach(file -> Try.run(() -> Files.delete(file))

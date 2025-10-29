@@ -156,7 +156,7 @@ public class GoogleClient implements LlmClient {
         checkState(url.isPresent());
         checkState(model.isPresent());
 
-        logger.info("Calling Google LLM");
+        logger.fine("Calling Google LLM");
         logger.info(request.generatePromptText());
 
         RATE_LIMITER.acquire();
@@ -170,7 +170,7 @@ public class GoogleClient implements LlmClient {
                         .header("X-goog-api-key", apiKey.get())
                         .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
                 response -> Try.of(() -> response.readEntity(GoogleResponse.class))
-                        .map(r -> isError(r))
+                        .map(this::isError)
                         .map(r -> r.getCandidates().stream()
                                 .map(GoogleResponseCandidates::getContent)
                                 .flatMap(content -> content.getParts().stream())

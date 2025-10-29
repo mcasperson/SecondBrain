@@ -206,7 +206,7 @@ public class SalesforceClientLive implements SalesforceClient {
                     throw new ExternalFailure("Could not call salesforce query", ex);
                 })
                 .onFailure(e -> logger.severe("Failed to get tasks for salesforce account " + accountId + "\n" + e.getMessage()))
-                .onSuccess(records -> logger.log(Level.INFO, "Retrieved " + (records != null ? records.length : 0) + " tasks from Salesforce for account " + accountId))
+                .onSuccess(records -> logger.fine(Level.INFO, "Retrieved " + (records != null ? records.length : 0) + " tasks from Salesforce for account " + accountId))
                 .get();
     }
 }
