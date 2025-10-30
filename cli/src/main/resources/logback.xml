@@ -19,4 +19,5 @@
     <logger name="org.apache.fontbox" level="error"/>
     <logger name="com.slack.api.methods.impl.AsyncRateLimitExecutor" level="error"/>
     <logger name="com.azure.cosmos.CosmosClientBuilder" level="error"/>
+    <logger name="com.azure.cosmos.implementation.RxDocumentClientImpl" level="error"/>
 </configuration>
