@@ -5,13 +5,9 @@ import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.enterprise.inject.spi.InjectionPoint;
-import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 
-import java.util.Optional;
 import java.util.logging.FileHandler;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
@@ -20,10 +16,6 @@ public class Loggers {
 
     @Nullable
     private FileHandler fileHandler;
-
-    @Inject
-    @ConfigProperty(name = "sb.logger.level", defaultValue = "INFO")
-    private Optional<String> loggerLevel;
 
     @PostConstruct
     private void init() {
@@ -36,21 +28,8 @@ public class Loggers {
 
     @Produces
     public Logger getLogger(final InjectionPoint injectionPoint) {
-        final Logger logger = Logger.getLogger(injectionPoint.getMember().getDeclaringClass()
-                .getSimpleName());
-
-        final String level = loggerLevel.orElse("INFO");
-        if (level.equalsIgnoreCase("FINE")) {
-            logger.setLevel(Level.FINE);
-        } else if (level.equalsIgnoreCase("INFO")) {
-            logger.setLevel(Level.INFO);
-        } else if (level.equalsIgnoreCase("WARNING")) {
-            logger.setLevel(Level.WARNING);
-        } else if (level.equalsIgnoreCase("ERROR")) {
-            logger.setLevel(Level.SEVERE);
-        } else {
-            logger.setLevel(Level.INFO);
-        }
+        final Logger logger = Logger.getLogger(
+                injectionPoint.getMember().getDeclaringClass().getSimpleName());
 
         if (fileHandler != null) {
             logger.addHandler(fileHandler);
