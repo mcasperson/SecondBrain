@@ -22,6 +22,7 @@ import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.salesforce.api.SalesforceOauthTokenResponse;
+import secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
@@ -142,10 +143,64 @@ public class SalesforceClientLive implements SalesforceClient {
                 .result();
     }
 
+    @Override
+    public SalesforceOpportunityQuery getOpportunityByAccountId(final String token, final String accountId) {
+        checkState(domain.isPresent(), "Salesforce domain is not configured");
+
+        return localStorage.getOrPutObject(
+                        SalesforceClientLive.class.getSimpleName(),
+                        "SalesforceOpportunityByAccountId",
+                        DigestUtils.sha256Hex(domain.get()),
+                        DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
+                        SalesforceOpportunityQuery.class,
+                        () -> getOpportunityByAccountIdApi(token, accountId))
+                .result();
+    }
+
+    private SalesforceOpportunityQuery getOpportunityByAccountIdApi(final String token, final String accountId) {
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile,
+                () -> getOpportunityByAccountIdApiLocked(token, accountId));
+    }
+
+    private SalesforceOpportunityQuery getOpportunityByAccountIdApiLocked(final String token, final String accountId) {
+        logger.fine("Getting Salesforce opportunity for account " + accountId);
+
+        RATE_LIMITER.acquire();
+
+        final String url = getUrl() + "/services/data/" + version + "/query";
+
+        final String opportunitySoql = "SELECT FIELDS(ALL) FROM Opportunity WHERE AccountId='" + accountId + "' ORDER BY CloseDate DESC Limit 200";
+
+        return Try.of(() -> httpClientCaller.call(
+                        this::getClient,
+                        client -> client.target(url)
+                                .queryParam("q", opportunitySoql)
+                                .request()
+                                .header("Authorization", "Bearer " + token)
+                                .accept(MediaType.APPLICATION_JSON_TYPE)
+                                .get(),
+                        response -> Try.of(() -> responseValidation.validate(response, url))
+                                .map(r -> r.readEntity(SalesforceOpportunityQuery.class))
+                                .onFailure(e -> logger.severe(e.getMessage()))
+                                .get(),
+                        e -> new ExternalFailure("Failed to call the Salesforce API", e),
+                        () -> {
+                            throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                        },
+                        API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                        API_CALL_DELAY_SECONDS_DEFAULT,
+                        API_RETRIES))
+                .onFailure(e -> logger.severe("Failed to get opportunity query for salesforce account " + accountId + "\n" + e.getMessage()))
+                .onSuccess(record -> logger.fine("Retrieved opportunity from Salesforce for account " + accountId))
+                .get();
+    }
+
     private SalesforceTaskRecord[] getTasksApi(final String token, final String accountId, final String type, final String startDate, final String endDate) {
         return mutex.acquire(
                 MUTEX_TIMEOUT_MS,
-                lockFile + ".tasks",
+                lockFile,
                 () -> getTasksApiLocked(token, accountId, type, startDate, endDate, 0));
     }
 
