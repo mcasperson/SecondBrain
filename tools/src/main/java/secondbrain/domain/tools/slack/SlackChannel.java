@@ -32,6 +32,8 @@ import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
+import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.sanitize.SanitizeDocument;
@@ -74,6 +76,7 @@ public class SlackChannel implements Tool<Void> {
     public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
     public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
     public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
+    public static final String TTL_SECONDS_ARG = "ttlSeconds";
 
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final String INSTRUCTIONS = """
@@ -125,6 +128,10 @@ public class SlackChannel implements Tool<Void> {
     @Inject
     private HooksContainer hooksContainer;
 
+    @Inject
+    @Preferred
+    private LocalStorage localStorage;
+
     @Override
     public String getName() {
         return SlackChannel.class.getSimpleName();
@@ -152,6 +159,24 @@ public class SlackChannel implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
+        return localStorage.getOrPutGeneric(
+                        getName(),
+                        getName(),
+                        Integer.toString(cacheKey.hashCode()),
+                        parsedArgs.getCacheTtl(),
+                        List.class,
+                        RagDocumentContext.class,
+                        Void.class,
+                        () -> getContextPrivate(environmentSettings, prompt, arguments))
+                .result();
+    }
+
+    private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -362,6 +387,10 @@ class SlackChannelConfig {
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
     private static final int DEFAULT_API_DELAY = (1000 * 120);
     private static final int DEFAULT_RATING = 10;
+    private static final int DEFAULT_TTL_SECONDS = 60 * 60 * 24; // 24 hours
+
+    @Inject
+    private ToStringGenerator toStringGenerator;
 
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
@@ -426,6 +455,10 @@ class SlackChannelConfig {
     @Inject
     @ConfigProperty(name = "sb.slackchannel.postinferenceHooks", defaultValue = "")
     private Optional<String> configPostInferenceHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.slackchannel.ttlSeconds")
+    private Optional<String> configTtlSeconds;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -505,6 +538,14 @@ class SlackChannelConfig {
         return configPostInferenceHooks;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
+    public Optional<String> getConfigTtlSeconds() {
+        return configTtlSeconds;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent {
         private final List<ToolArgs> arguments;
 
@@ -516,6 +557,10 @@ class SlackChannelConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
         }
 
         public String getChannel() {
@@ -714,6 +759,18 @@ class SlackChannelConfig {
                     SlackChannel.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     SlackChannel.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     "").value();
+        }
+
+        public int getCacheTtl() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigTtlSeconds()::get,
+                    arguments,
+                    context,
+                    SlackChannel.TTL_SECONDS_ARG,
+                    SlackChannel.TTL_SECONDS_ARG,
+                    DEFAULT_TTL_SECONDS + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_TTL_SECONDS));
         }
     }
 }

@@ -28,6 +28,8 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.sanitize.SanitizeArgument;
@@ -35,6 +37,7 @@ import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateList;
@@ -57,6 +60,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
+    public static final String TTL_SECONDS = "ttlSeconds";
     public static final String ZENDESK_ORGANIZATION_ARG = "zenDeskOrganization";
     public static final String EXCLUDE_ORGANIZATION_ARG = "excludeOrganization";
     public static final String EXCLUDE_SUBMITTERS_ARG = "excludeSubmitters";
@@ -148,6 +152,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     @Inject
     private HooksContainer hooksContainer;
 
+    @Inject
+    @Preferred
+    private LocalStorage localStorage;
+
     @Override
     public String getName() {
         return ZenDeskOrganization.class.getSimpleName();
@@ -185,6 +193,22 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
 
     @Override
     public List<RagDocumentContext<ZenDeskTicket>> getContext(
+            final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
+        return localStorage.getOrPutGeneric(
+                        getName(),
+                        getName(),
+                        Integer.toString(cacheKey.hashCode()),
+                        parsedArgs.getCacheTtl(),
+                        List.class,
+                        RagDocumentContext.class,
+                        ZenDeskTicket.class,
+                        () -> getContextPrivate(environmentSettings, prompt, arguments))
+                .result();
+    }
+
+    private List<RagDocumentContext<ZenDeskTicket>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -415,6 +439,7 @@ class ZenDeskConfig {
     private static final int MAX_TICKETS = 100;
     private static final int DEFAULT_RATING = 10;
     private static final String DEFAULT_TTL_SECONDS = (60 * 60 * 24 * 90) + "";
+    private static final int DEFAULT_TOOL_TTL_SECONDS = 60 * 60 * 24;
 
     /**
      * Set this to true to include the organization in the query sent to the ZenDesk API.
@@ -565,6 +590,13 @@ class ZenDeskConfig {
     @Inject
     @ConfigProperty(name = "sb.zendesk.postinferenceHooks", defaultValue = "")
     private Optional<String> configPostInferenceHooks;
+
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.ttlSeconds")
+    private Optional<String> configTtlSeconds;
 
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
@@ -717,6 +749,14 @@ class ZenDeskConfig {
         return configPostInferenceHooks;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
+    public Optional<String> getConfigTtlSeconds() {
+        return configTtlSeconds;
+    }
+
     public class LocalArguments implements LocalConfigFilteredParent, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
 
@@ -728,6 +768,10 @@ class ZenDeskConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
         }
 
         public String getTicketFilterQuestion() {
@@ -1203,6 +1247,18 @@ class ZenDeskConfig {
                     PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     "").value();
+        }
+
+        public int getCacheTtl() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigTtlSeconds()::get,
+                    arguments,
+                    context,
+                    Gong.TTL_SECONDS_ARG,
+                    Gong.TTL_SECONDS_ARG,
+                    DEFAULT_TOOL_TTL_SECONDS + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
     }
 }

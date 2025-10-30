@@ -38,7 +38,6 @@ import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.tools.slackzengoogle.MultiSlackZenGoogle;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
@@ -71,6 +70,7 @@ public class PlanHat implements Tool<Conversation> {
     public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
     public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
     public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
+    public static final String PLANHAT_TTL_SECONDS_ARG = "ttlSeconds";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -702,8 +702,8 @@ class PlanHatConfig {
                     getConfigTtlSeconds()::get,
                     arguments,
                     context,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_TTL_SECONDS_ARG,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_TTL_SECONDS_ARG,
+                    PlanHat.PLANHAT_TTL_SECONDS_ARG,
+                    PlanHat.PLANHAT_TTL_SECONDS_ARG,
                     DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));

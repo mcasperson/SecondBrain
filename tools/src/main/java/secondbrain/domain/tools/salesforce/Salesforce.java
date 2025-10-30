@@ -24,6 +24,8 @@ import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
@@ -75,6 +77,7 @@ public class Salesforce implements Tool<SalesforceTaskDetails> {
     public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     public static final String OPPORTUNITY_ATTRIBUTE_1_ARG = "opportunityAttribute1";
     public static final String OPPORTUNITY_ATTRIBUTE_1_NAME_ARG = "opportunityAttributeName";
+    public static final String TTL_SECONDS_ARG = "ttlSeconds";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -119,6 +122,10 @@ public class Salesforce implements Tool<SalesforceTaskDetails> {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    @Preferred
+    private LocalStorage localStorage;
+
     @Override
     public String getName() {
         return Salesforce.class.getSimpleName();
@@ -139,6 +146,24 @@ public class Salesforce implements Tool<SalesforceTaskDetails> {
 
     @Override
     public List<RagDocumentContext<SalesforceTaskDetails>> getContext(
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
+        return localStorage.getOrPutGeneric(
+                        getName(),
+                        getName(),
+                        Integer.toString(cacheKey.hashCode()),
+                        parsedArgs.getCacheTtl(),
+                        List.class,
+                        RagDocumentContext.class,
+                        SalesforceTaskDetails.class,
+                        () -> getContextPrivate(environmentSettings, prompt, arguments))
+                .result();
+    }
+
+    private List<RagDocumentContext<SalesforceTaskDetails>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -268,6 +293,12 @@ public class Salesforce implements Tool<SalesforceTaskDetails> {
 
 @ApplicationScoped
 class SalesforceConfig {
+    private static final int DEFAULT_RATING = 10;
+    private static final int DEFAULT_TTL_SECONDS = 60 * 60 * 24; // 24 hours
+
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     @Inject
     private ArgsAccessor argsAccessor;
 
@@ -354,6 +385,10 @@ class SalesforceConfig {
     @Inject
     @ConfigProperty(name = "sb.salesforce.opportunity1")
     private Optional<String> configOpportunity1;
+
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.ttlSeconds")
+    private Optional<String> configTtlSeconds;
 
     public Optional<String> getConfigClientId() {
         return configClientId;
@@ -443,6 +478,14 @@ class SalesforceConfig {
         return configOpportunity1;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
+    public Optional<String> getConfigTtlSeconds() {
+        return configTtlSeconds;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private static final int DEFAULT_RATING = 10;
 
@@ -456,6 +499,10 @@ class SalesforceConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
         }
 
         public String getAccountId() {
@@ -769,6 +816,18 @@ class SalesforceConfig {
                     Salesforce.OPPORTUNITY_ATTRIBUTE_1_ARG,
                     Salesforce.OPPORTUNITY_ATTRIBUTE_1_ARG,
                     "").value();
+        }
+
+        public int getCacheTtl() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigTtlSeconds()::get,
+                    arguments,
+                    context,
+                    Salesforce.TTL_SECONDS_ARG,
+                    Salesforce.TTL_SECONDS_ARG,
+                    DEFAULT_TTL_SECONDS + "");
+
+            return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_TTL_SECONDS));
         }
     }
 }

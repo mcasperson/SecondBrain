@@ -29,6 +29,8 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.keyword.KeywordExtractor;
+import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
@@ -65,6 +67,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
     public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
     public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
+    public static final String TTL_SECONDS_ARG = "ttlSeconds";
 
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
@@ -104,6 +107,10 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     @Inject
     private HooksContainer hooksContainer;
 
+    @Inject
+    @Preferred
+    private LocalStorage localStorage;
+
     @Override
     public String getName() {
         return SlackSearch.class.getSimpleName();
@@ -128,6 +135,24 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
     @Override
     public List<RagDocumentContext<SlackSearchResultResource>> getContext(
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
+        return localStorage.getOrPutGeneric(
+                        getName(),
+                        getName(),
+                        Integer.toString(cacheKey.hashCode()),
+                        parsedArgs.getCacheTtl(),
+                        List.class,
+                        RagDocumentContext.class,
+                        SlackSearchResultResource.class,
+                        () -> getContextPrivate(environmentSettings, prompt, arguments))
+                .result();
+    }
+
+    private List<RagDocumentContext<SlackSearchResultResource>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -226,6 +251,10 @@ class SlackSearchConfig {
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24 * 6) + "";
     private static final int DEFAULT_API_DELAY = (1000 * 120);
     private static final int DEFAULT_RATING = 10;
+    private static final int DEFAULT_TTL_SECONDS = 60 * 60 * 24; // 24 hours
+
+    @Inject
+    private ToStringGenerator toStringGenerator;
 
     @Inject
     private ArgsAccessor argsAccessor;
@@ -299,6 +328,10 @@ class SlackSearchConfig {
     @Inject
     @ConfigProperty(name = "sb.slacksearch.postinferenceHooks", defaultValue = "")
     private Optional<String> configPostInferenceHooks;
+
+    @Inject
+    @ConfigProperty(name = "sb.slacksearch.ttlSeconds")
+    private Optional<String> configTtlSeconds;
 
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
@@ -376,6 +409,14 @@ class SlackSearchConfig {
         return configPostInferenceHooks;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
+    public Optional<String> getConfigTtlSeconds() {
+        return configTtlSeconds;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
@@ -387,6 +428,10 @@ class SlackSearchConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
         }
 
         public Set<String> getSearchKeywords() {
@@ -601,6 +646,18 @@ class SlackSearchConfig {
                     SlackSearch.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     SlackSearch.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     "").value();
+        }
+
+        public int getCacheTtl() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigTtlSeconds()::get,
+                    arguments,
+                    context,
+                    SlackSearch.TTL_SECONDS_ARG,
+                    SlackSearch.TTL_SECONDS_ARG,
+                    DEFAULT_TTL_SECONDS + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_TTL_SECONDS));
         }
     }
 }

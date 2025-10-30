@@ -26,6 +26,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
@@ -88,6 +89,7 @@ public class Gong implements Tool<GongCallDetails> {
     public static final String GONG_OBJECT_9_NAME_ARG = "object9Name";
     public static final String GONG_OBJECT_10_ARG = "object10";
     public static final String GONG_OBJECT_10_NAME_ARG = "object10Name";
+    public static final String TTL_SECONDS_ARG = "ttlSeconds";
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of call transcripts from Gong.
@@ -136,6 +138,10 @@ public class Gong implements Tool<GongCallDetails> {
     @Inject
     private DateParser dateParser;
 
+    @Inject
+    @Preferred
+    private LocalStorage localStorage;
+
     @Override
     public String getName() {
         return Gong.class.getSimpleName();
@@ -153,6 +159,22 @@ public class Gong implements Tool<GongCallDetails> {
 
     @Override
     public List<RagDocumentContext<GongCallDetails>> getContext(
+            final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
+        return localStorage.getOrPutGeneric(
+                        getName(),
+                        getName(),
+                        Integer.toString(cacheKey.hashCode()),
+                        parsedArgs.getCacheTtl(),
+                        List.class,
+                        RagDocumentContext.class,
+                        GongCallDetails.class,
+                        () -> getContextPrivate(environmentSettings, prompt, arguments))
+                .result();
+    }
+
+    private List<RagDocumentContext<GongCallDetails>> getContextPrivate(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         logger.fine("Getting context for " + getName());
 
@@ -282,9 +304,14 @@ public class Gong implements Tool<GongCallDetails> {
 @ApplicationScoped
 class GongConfig {
     private static final int DEFAULT_RATING = 10;
+    private static final int DEFAULT_TTL_SECONDS = 60 * 60 * 24; // 24 hours
 
     @Inject
     private ToStringGenerator toStringGenerator;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.ttlSeconds")
+    private Optional<String> configTtlSeconds;
 
     @Inject
     @ConfigProperty(name = "sb.gong.accessKey")
@@ -631,6 +658,10 @@ class GongConfig {
 
     public ToStringGenerator getToStringGenerator() {
         return toStringGenerator;
+    }
+
+    public Optional<String> getConfigTtlSeconds() {
+        return configTtlSeconds;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
@@ -1313,6 +1344,18 @@ class GongConfig {
                 return object10[2];
             }
             return "";
+        }
+
+        public int getCacheTtl() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigTtlSeconds()::get,
+                    arguments,
+                    context,
+                    Gong.TTL_SECONDS_ARG,
+                    Gong.TTL_SECONDS_ARG,
+                    DEFAULT_TTL_SECONDS + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
     }
 }
