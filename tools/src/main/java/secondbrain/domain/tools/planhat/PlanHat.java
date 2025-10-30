@@ -28,6 +28,8 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
@@ -36,6 +38,7 @@ import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.slackzengoogle.MultiSlackZenGoogle;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
@@ -124,6 +127,10 @@ public class PlanHat implements Tool<Conversation> {
     @Inject
     private HooksContainer hooksContainer;
 
+    @Inject
+    @Preferred
+    private LocalStorage localStorage;
+
     @Override
     public String getName() {
         return PlanHat.class.getSimpleName();
@@ -158,6 +165,22 @@ public class PlanHat implements Tool<Conversation> {
 
     @Override
     public List<RagDocumentContext<Conversation>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
+        return localStorage.getOrPutGeneric(
+                        getName(),
+                        getName(),
+                        Integer.toString(cacheKey.hashCode()),
+                        parsedArgs.getCacheTtl(),
+                        List.class,
+                        RagDocumentContext.class,
+                        Conversation.class,
+                        () -> getContextPrivate(environmentSettings, prompt, arguments))
+                .result();
+    }
+
+    private List<RagDocumentContext<Conversation>> getContextPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         logger.fine("Getting context for " + getName());
 
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
@@ -252,6 +275,14 @@ public class PlanHat implements Tool<Conversation> {
 class PlanHatConfig {
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
     private static final int DEFAULT_RATING = 10;
+    private static final int DEFAULT_TTL_SECONDS = 60 * 60 * 24; // 24 hours
+
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.ttlSeconds")
+    private Optional<String> configTtlSeconds;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.company")
@@ -412,6 +443,14 @@ class PlanHatConfig {
         return configPostInferenceHooks;
     }
 
+    public Optional<String> getConfigTtlSeconds() {
+        return configTtlSeconds;
+    }
+
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigSummarizer, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
@@ -423,6 +462,10 @@ class PlanHatConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
         }
 
         public String getCompany() {
@@ -652,6 +695,18 @@ class PlanHatConfig {
                     PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     "").value();
+        }
+
+        public int getCacheTtl() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigTtlSeconds()::get,
+                    arguments,
+                    context,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_TTL_SECONDS_ARG,
+                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_TTL_SECONDS_ARG,
+                    DEFAULT_TTL_SECONDS + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
     }
 }

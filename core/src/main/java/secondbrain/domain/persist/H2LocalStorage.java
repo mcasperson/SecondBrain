@@ -23,6 +23,7 @@ import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
@@ -336,6 +337,10 @@ public class H2LocalStorage implements LocalStorage {
 
     @Override
     public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
+        return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserialize(json, clazz));
+    }
+
+    private <T> CacheResult<T> getOrPutPrivate(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
         if (isDisabled() || connection == null) {
             return new CacheResult<T>(generateValue.generate(), false);
         }
@@ -347,7 +352,7 @@ public class H2LocalStorage implements LocalStorage {
                 .filter(result -> StringUtils.isNotBlank(result.result()))
                 // a cache hit means we deserialize the result
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
-                .mapTry(r -> new CacheResult<T>(jsonDeserializer.deserialize(r.result(), clazz), true))
+                .mapTry(r -> new CacheResult<T>(deserializer.deserialize(r.result()), true))
                 // a cache miss means we call the API and then save the result in the cache
                 .recoverWith(ex -> Try.of(() -> {
                             logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
@@ -380,6 +385,36 @@ public class H2LocalStorage implements LocalStorage {
     @Override
     public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final Class<T> clazz, final GenerateValue<T> generateValue) {
         return getOrPutObject(tool, source, promptHash, 0, clazz, generateValue);
+    }
+
+    @Override
+    public <T> CacheResult<List<T>> getOrPutList(final String tool, final String source, final String promptHash, final int ttlSeconds, Class<T> clazz, final GenerateValue<List<T>> generateValue) {
+        return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeCollection(json, clazz));
+    }
+
+    @Override
+    public <T> CacheResult<List<T>> getOrPutList(final String tool, final String source, final String promptHash, final Class<T> clazz, final GenerateValue<List<T>> generateValue) {
+        return getOrPutList(tool, source, promptHash, 0, clazz, generateValue);
+    }
+
+    @Override
+    public <T, U> CacheResult<T> getOrPutGeneric(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> container, final Class<U> contained, final GenerateValue<T> generateValue) {
+        return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeGeneric(json, container, contained));
+    }
+
+    @Override
+    public <T, U> CacheResult<T> getOrPutGeneric(final String tool, final String source, final String promptHash, final Class<T> container, final Class<U> contained, final GenerateValue<T> generateValue) {
+        return getOrPutGeneric(tool, source, promptHash, 0, container, contained, generateValue);
+    }
+
+    @Override
+    public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, int ttlSeconds, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
+        return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeGeneric(json, container, contained, contained2));
+    }
+
+    @Override
+    public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
+        return getOrPutGeneric(tool, source, promptHash, 0, container, contained, contained2, generateValue);
     }
 
     @Override

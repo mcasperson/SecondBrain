@@ -21,6 +21,7 @@ import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.Executor;
@@ -303,6 +304,43 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Override
     public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
+        return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserialize(json, clazz));
+    }
+
+    @Override
+    public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final Class<T> clazz, final GenerateValue<T> generateValue) {
+        return getOrPutObject(tool, source, promptHash, 0, clazz, generateValue);
+    }
+
+    @Override
+    public <T> CacheResult<List<T>> getOrPutList(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<List<T>> generateValue) {
+        return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeCollection(json, clazz));
+    }
+
+    @Override
+    public <T, U> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, int ttlSeconds, Class<T> container, Class<U> contained, GenerateValue<T> generateValue) {
+        return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeGeneric(json, container, contained));
+    }
+
+    @Override
+    public <T, U> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, Class<T> container, Class<U> contained, GenerateValue<T> generateValue) {
+        return getOrPutGeneric(tool, source, promptHash, 0, container, contained, generateValue);
+    }
+
+    @Override
+    public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, int ttlSeconds, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
+        return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeGeneric(json, container, contained, contained2));
+    }
+
+    @Override
+    public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
+        return getOrPutGeneric(tool, source, promptHash, 0, container, contained, contained2, generateValue);
+    }
+
+    /**
+     * A generic method to get or put an object or list of objects in the cache.
+     */
+    private <T> CacheResult<T> getOrPutPrivate(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
         if (isDisabled() || container == null) {
             return new CacheResult<T>(generateValue.generate(), false);
         }
@@ -312,7 +350,7 @@ public class CosmosLocalStorage implements LocalStorage {
         return Try.of(() -> getString(tool, source, promptHash))
                 .filter(result -> StringUtils.isNotBlank(result.result()))
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
-                .mapTry(r -> new CacheResult<T>(jsonDeserializer.deserialize(r.result(), clazz), true))
+                .mapTry(r -> new CacheResult<T>(deserializer.deserialize(r.result()), true))
                 .recoverWith(ex -> Try.of(() -> {
                             logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                             logger.fine("Exception: " + exceptionHandler.getExceptionMessage(ex));
@@ -338,9 +376,10 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     @Override
-    public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final Class<T> clazz, final GenerateValue<T> generateValue) {
-        return getOrPutObject(tool, source, promptHash, 0, clazz, generateValue);
+    public <T> CacheResult<List<T>> getOrPutList(final String tool, final String source, final String promptHash, final Class<T> clazz, final GenerateValue<List<T>> generateValue) {
+        return getOrPutList(tool, source, promptHash, 0, clazz, generateValue);
     }
+
 
     @Override
     public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {

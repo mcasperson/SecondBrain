@@ -1,6 +1,7 @@
 package secondbrain.domain.json;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import io.vavr.control.Try;
@@ -10,6 +11,7 @@ import jakarta.inject.Inject;
 import secondbrain.domain.exceptions.DeserializationFailed;
 import secondbrain.domain.exceptions.SerializationFailed;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -42,6 +44,38 @@ public class JsonDeserializerJackson implements JsonDeserializer {
                         json,
                         objectMapper.getTypeFactory().constructMapType(Map.class, key, value)))
                 .getOrElseThrow(ex -> new DeserializationFailed(ex));
+    }
+
+    @Override
+    public <U> List<U> deserializeCollection(final String json, final Class<U> value) {
+        return Try.of(this::createObjectMapper)
+                .mapTry(objectMapper -> objectMapper.<List<U>>readValue(
+                        json,
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, value)))
+                .getOrElseThrow(ex -> new DeserializationFailed(ex));
+    }
+
+    @Override
+    public <T, U> T deserializeGeneric(final String json, final Class<T> container, final Class<U> contained) {
+        return Try.of(this::createObjectMapper)
+                .mapTry(objectMapper -> objectMapper.<T>readValue(
+                        json,
+                        objectMapper.getTypeFactory().constructParametricType(container, contained)))
+                .getOrElseThrow(ex -> new DeserializationFailed(ex));
+    }
+
+    @Override
+    public <T, U, V> T deserializeGeneric(final String json, final Class<T> container, final Class<U> contained, final Class<V> contained2) {
+        return Try.of(this::createObjectMapper)
+                .mapTry(objectMapper -> objectMapper.<T>readValue(
+                        json,
+                        constructParametricType(objectMapper, container, contained, contained2)))
+                .getOrElseThrow(ex -> new DeserializationFailed(ex));
+    }
+
+    private <T, U, V> JavaType constructParametricType(final ObjectMapper objectMapper, final Class<T> container, final Class<U> contained, final Class<V> contained2) {
+        final JavaType inner = objectMapper.getTypeFactory().constructParametricType(contained, contained2);
+        return objectMapper.getTypeFactory().constructParametricType(container, inner);
     }
 
     private ObjectMapper createObjectMapper() {
