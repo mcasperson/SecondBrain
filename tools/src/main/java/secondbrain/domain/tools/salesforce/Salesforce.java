@@ -260,7 +260,7 @@ public class Salesforce implements Tool<SalesforceTaskDetails> {
 
         return new MetaObjectResult(
                 name,
-                opportunity.get(name),
+                opportunity.get(field),
                 opportunity.get("Id") == null ? null : opportunity.get("Id").toString(),
                 getName());
     }
