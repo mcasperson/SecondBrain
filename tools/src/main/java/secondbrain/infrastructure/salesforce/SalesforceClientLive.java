@@ -147,10 +147,12 @@ public class SalesforceClientLive implements SalesforceClient {
     public SalesforceOpportunityQuery getOpportunityByAccountId(final String token, final String accountId) {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
 
+        final String key = DigestUtils.sha256Hex(domain.get() + accountId);
+
         return localStorage.getOrPutObject(
                         SalesforceClientLive.class.getSimpleName(),
                         "SalesforceOpportunityByAccountId",
-                        DigestUtils.sha256Hex(domain.get()),
+                        DigestUtils.sha256Hex(key),
                         DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
                         SalesforceOpportunityQuery.class,
                         () -> getOpportunityByAccountIdApi(token, accountId))
