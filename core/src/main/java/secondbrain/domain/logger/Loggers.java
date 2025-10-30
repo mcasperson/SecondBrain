@@ -20,6 +20,7 @@ public class Loggers {
 
     @PostConstruct
     private void init() {
+        System.setProperty("java.util.logging.SimpleFormatter.format", "%4$s: %5$s %n");
         final SimpleFormatter formatter = new SimpleFormatter();
         this.fileHandler = Try.of(() -> new FileHandler("SecondBrain.log", true))
                 .onSuccess(handler -> handler.setFormatter(formatter))
