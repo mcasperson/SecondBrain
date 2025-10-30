@@ -178,7 +178,7 @@ public class Salesforce implements Tool<SalesforceTaskDetails> {
         final String startDate = StringUtils.isNotBlank(parsedArgs.getStartPeriod()) ? parsedArgs.getStartPeriod() : parsedArgs.getStartDate();
         final String endDate = StringUtils.isNotBlank(parsedArgs.getEndPeriod()) ? parsedArgs.getEndPeriod() : parsedArgs.getEndDate();
 
-        final Try<List<RagDocumentContext<SalesforceTaskDetails>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getClientSecret()))
+        final Try<List<RagDocumentContext<SalesforceTaskDetails>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
                 .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
                 .map(emails -> Stream.of(emails)
                         .map(email -> enrichTask(email, parsedArgs))
@@ -254,7 +254,7 @@ public class Salesforce implements Tool<SalesforceTaskDetails> {
     }
 
     private SalesforceTaskDetails enrichTask(final SalesforceTaskRecord email, final SalesforceConfig.LocalArguments parsedArgs) {
-        return Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getClientSecret()))
+        return Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
                 .map(token -> salesforceClient.getOpportunityByAccountId(token.accessToken(), parsedArgs.getAccountId()))
                 .map(opportunities -> opportunities.records().stream().findFirst())
                 .filter(Optional::isPresent)
@@ -525,7 +525,7 @@ class SalesforceConfig {
                     "").value();
         }
 
-        public String getClientSecret() {
+        public String getSecretClientSecret() {
             return getArgsAccessor().getArgument(
                     getConfigClientSecret()::get,
                     arguments,

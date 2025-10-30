@@ -141,13 +141,13 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         final Try<List<YoutubeVideo>> videos = parsedArgs.getPlaylistId().isEmpty() ?
-                Try.of(() -> youtubeClient.searchVideos(parsedArgs.getQuery(), parsedArgs.getChannelId(), "", parsedArgs.getApiKey())
+                Try.of(() -> youtubeClient.searchVideos(parsedArgs.getQuery(), parsedArgs.getChannelId(), "", parsedArgs.getSecretApiKey())
                         .stream()
                         .map(YoutubeSearchItem::toYoutubeVideo)
                         .toList()) :
                 Try.of(() -> parsedArgs.getPlaylistId()
                         .stream()
-                        .flatMap(playList -> youtubeClient.getPlaylistItems(playList, "", parsedArgs.getApiKey()).stream())
+                        .flatMap(playList -> youtubeClient.getPlaylistItems(playList, "", parsedArgs.getSecretApiKey()).stream())
                         .map(YoutubePlaylistsItem::toYoutubeVideo)
                         .toList());
 
@@ -489,7 +489,7 @@ class YoutubeConfig {
             this.context = context;
         }
 
-        public String getApiKey() {
+        public String getSecretApiKey() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get(YoutubePlaylist.YOUTUBE_API_KEY)))

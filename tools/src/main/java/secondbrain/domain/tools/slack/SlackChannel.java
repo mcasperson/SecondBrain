@@ -207,14 +207,14 @@ public class SlackChannel implements Tool<Void> {
 
         final SlackChannelResource channel = Try.of(() -> slackClient.findChannelId(
                         client,
-                        parsedArgs.getAccessToken(),
+                        parsedArgs.getSecretAccessToken(),
                         parsedArgs.getChannel(),
                         parsedArgs.getApiDelay()))
                 .getOrElseThrow(() -> new InternalFailure("Channel not found"));
 
         final Try<TrimResult> messagesTry = Try.of(() -> slackClient.conversationHistory(
                         client,
-                        parsedArgs.getAccessToken(),
+                        parsedArgs.getSecretAccessToken(),
                         channel.channelId(),
                         oldest,
                         parsedArgs.getSearchTTL(),
@@ -239,8 +239,8 @@ public class SlackChannel implements Tool<Void> {
                     + "* [Slack Channel](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")");
         }
 
-        final TrimResult messagesWithUsersReplaced = replaceUserIds(client, parsedArgs.getAccessToken(), messages.document(), parsedArgs)
-                .flatMap(message -> replaceChannelIds(client, parsedArgs.getAccessToken(), message, parsedArgs))
+        final TrimResult messagesWithUsersReplaced = replaceUserIds(client, parsedArgs.getSecretAccessToken(), messages.document(), parsedArgs)
+                .flatMap(message -> replaceChannelIds(client, parsedArgs.getSecretAccessToken(), message, parsedArgs))
                 .map(messages::replaceDocument)
                 .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
 
@@ -589,7 +589,7 @@ class SlackChannelConfig {
                     .get();
         }
 
-        public String getAccessToken() {
+        public String getSecretAccessToken() {
             return Try.of(() -> getTextEncryptor().decrypt(context.get("slack_access_token")))
                     .recover(e -> context.get("slack_access_token"))
                     .mapTry(Objects::requireNonNull)

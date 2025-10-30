@@ -143,7 +143,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
         final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final String authHeader = "Bearer " + parsedArgs.getToken();
+        final String authHeader = "Bearer " + parsedArgs.getDecretToken();
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<GitHubCommitAndDiff>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
@@ -562,7 +562,7 @@ class GitHubDiffConfig {
                     DEFAULT_BRANCH).value();
         }
 
-        public String getToken() {
+        public String getDecretToken() {
             return Try.of(() -> getTextEncryptor().decrypt(context.get("github_access_token")))
                     .recover(e -> context.get("github_access_token"))
                     .mapTry(getValidateString()::throwIfBlank)

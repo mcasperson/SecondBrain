@@ -172,7 +172,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
         final List<SlackSearchResultResource> searchResult = Try.of(() -> slackClient.search(
                         Slack.getInstance().methodsAsync(),
-                        parsedArgs.getAccessToken(),
+                        parsedArgs.getSecretAccessToken(),
                         parsedArgs.getSearchKeywords(),
                         parsedArgs.getSearchTTL(),
                         parsedArgs.getApiDelay()))
@@ -479,7 +479,7 @@ class SlackSearchConfig {
             return BooleanUtils.toBoolean(stringValue);
         }
 
-        public String getAccessToken() {
+        public String getSecretAccessToken() {
             return Try.of(() -> getTextEncryptor().decrypt(context.get("slack_access_token")))
                     .recover(e -> context.get("slack_access_token"))
                     .mapTry(Objects::requireNonNull)

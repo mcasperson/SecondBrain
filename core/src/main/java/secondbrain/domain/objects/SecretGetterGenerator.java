@@ -3,7 +3,9 @@ package secondbrain.domain.objects;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -20,9 +22,11 @@ public class SecretGetterGenerator implements ToStringGenerator {
         }
 
         final List<String> values = Arrays.stream(obj.getClass().getMethods())
+                .sorted(Comparator.comparing(Method::getName))
                 .filter(method -> method.getName().startsWith("get") &&
                         !method.getName().equals("getClass") &&
                         !method.getName().startsWith("getSecret") &&
+                        !method.getName().startsWith("getSensitive") &&
                         method.getParameterCount() == 0 &&
                         method.getReturnType() != void.class)
                 .map(getterMethod -> Try.of(() -> getterMethod.invoke(obj))

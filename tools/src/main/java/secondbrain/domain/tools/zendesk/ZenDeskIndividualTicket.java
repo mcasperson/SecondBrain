@@ -136,7 +136,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.of(() -> ticketToComments(
-                        parsedArgs.getAuthHeader(),
+                        parsedArgs.getSecretAuthHeader(),
                         parsedArgs.getNumComments(),
                         parsedArgs))
                 .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
@@ -551,12 +551,12 @@ class ZenDeskTicketConfig {
 
         }
 
-        public String getAuthHeader() {
+        public String getSecretAuthHeader() {
             return "Basic " + new String(Try.of(() -> new Base64().encode(
-                    (getUser() + "/token:" + getToken()).getBytes(UTF_8))).get(), UTF_8);
+                    (getUser() + "/token:" + getSecretToken()).getBytes(UTF_8))).get(), UTF_8);
         }
 
-        public String getToken() {
+        public String getSecretToken() {
             final String argument = getArgsAccessor().getArgument(
                     getConfigZenDeskAccessToken()::get,
                     arguments,

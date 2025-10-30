@@ -123,7 +123,7 @@ public class GitHubIssues implements Tool<GitHubIssue> {
 
         final List<RagDocumentContext<GitHubIssue>> ragDocs = Try
                 .of(() -> gitHubIssuesClient.getIssues(
-                        parsedArgs.getGitHubAccessToken(),
+                        parsedArgs.getSecretGitHubAccessToken(),
                         parsedArgs.getGitHubOrganization(),
                         parsedArgs.getGitHubRepo(),
                         parsedArgs.getStartDate(),
@@ -415,7 +415,7 @@ class GitHubIssueConfig {
             this.context = context;
         }
 
-        public String getGitHubAccessToken() {
+        public String getSecretGitHubAccessToken() {
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("github_access_token")))
                     .recover(e -> context.get("github_access_token"))
                     .mapTry(getValidateString()::throwIfBlank)

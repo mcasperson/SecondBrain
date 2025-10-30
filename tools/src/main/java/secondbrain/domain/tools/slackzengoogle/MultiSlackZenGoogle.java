@@ -283,7 +283,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return localStorage.getOrPutObject(
                         getName(),
-                        "MultiSlackZenGoogle",
+                        getName(),
                         Integer.toString(cacheKey.hashCode()),
                         parsedArgs.getCacheTtl(),
                         RagMultiDocumentContext.class,

@@ -248,13 +248,13 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         new ZenDeskCreds(
                                 parsedArgs.getUrl(),
                                 parsedArgs.getUser(),
-                                parsedArgs.getToken(),
-                                parsedArgs.getAuthHeader()),
+                                parsedArgs.getSecretToken(),
+                                parsedArgs.getSecretAuthHeader()),
                         new ZenDeskCreds(
                                 parsedArgs.getUrl2(),
                                 parsedArgs.getUser2(),
-                                parsedArgs.getToken2(),
-                                parsedArgs.getAuthHeader2())
+                                parsedArgs.getSecretToken2(),
+                                parsedArgs.getSecretAuthHeader2())
                 )
                 .filter(ZenDeskCreds::isValid)
                 .toList();
@@ -975,12 +975,12 @@ class ZenDeskConfig {
                     .get();
         }
 
-        public String getAuthHeader() {
+        public String getSecretAuthHeader() {
             return "Basic " + new String(Try.of(() -> new Base64().encode(
-                    (getUser() + "/token:" + getToken()).getBytes(UTF_8))).get(), UTF_8);
+                    (getUser() + "/token:" + getSecretToken()).getBytes(UTF_8))).get(), UTF_8);
         }
 
-        public String getToken() {
+        public String getSecretToken() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_access_token")))
@@ -1019,16 +1019,16 @@ class ZenDeskConfig {
             return user.get();
         }
 
-        public String getAuthHeader2() {
-            if (StringUtils.isBlank(getToken2())) {
+        public String getSecretAuthHeader2() {
+            if (StringUtils.isBlank(getSecretToken2())) {
                 return "";
             }
 
             return "Basic " + new String(Try.of(() -> new Base64().encode(
-                    (getUser2() + "/token:" + getToken2()).getBytes(UTF_8))).get(), UTF_8);
+                    (getUser2() + "/token:" + getSecretToken2()).getBytes(UTF_8))).get(), UTF_8);
         }
 
-        public String getToken2() {
+        public String getSecretToken2() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_access_token2")))

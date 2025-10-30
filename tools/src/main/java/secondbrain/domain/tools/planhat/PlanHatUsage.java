@@ -102,8 +102,8 @@ public class PlanHatUsage implements Tool<Company> {
 
         // We can process multiple planhat instances
         final List<Pair<String, String>> tokens = Stream.of(
-                        Pair.of(parsedArgs.getUrl(), parsedArgs.getToken()),
-                        Pair.of(parsedArgs.getUrl2(), parsedArgs.getToken2()))
+                        Pair.of(parsedArgs.getUrl(), parsedArgs.getSecretToken()),
+                        Pair.of(parsedArgs.getUrl2(), parsedArgs.getSecretToken2()))
                 .filter(pair -> StringUtils.isNotBlank(pair.getRight()) && StringUtils.isNotBlank(pair.getLeft()))
                 .toList();
 
@@ -420,7 +420,7 @@ class PlanHatUsageConfig {
                     .get();
         }
 
-        public String getToken() {
+        public String getSecretToken() {
             return Try.of(getConfigToken()::get)
                     .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> context.get("planhat_usage_token"))
@@ -429,7 +429,7 @@ class PlanHatUsageConfig {
                     .get();
         }
 
-        public String getToken2() {
+        public String getSecretToken2() {
             return Try.of(getConfigToken2()::get)
                     .mapTry(getValidateString()::throwIfBlank)
                     .recover(e -> context.get("planhat_token2"))
