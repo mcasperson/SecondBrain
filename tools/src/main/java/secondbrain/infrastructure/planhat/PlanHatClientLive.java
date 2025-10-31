@@ -158,7 +158,7 @@ public class PlanHatClientLive implements PlanHatClient {
     private Conversation[] callApi(final Client client, final String company, final String url, final String token, final int offset) {
         return mutex.acquire(
                 MUTEX_TIMEOUT_MS,
-                lockFile + ".conversations",
+                lockFile,
                 () -> callApiLocked(client, company, url, token, offset));
     }
 
@@ -203,7 +203,7 @@ public class PlanHatClientLive implements PlanHatClient {
             final String token) {
         return mutex.acquire(
                 MUTEX_TIMEOUT_MS,
-                lockFile + ".company",
+                lockFile,
                 () -> getCompanyApiLocked(client, company, url, token));
     }
 

@@ -185,7 +185,7 @@ public class GongClientLive implements GongClient {
                                        final String password) {
         return mutex.acquire(
                 MUTEX_TIMEOUT_MS,
-                lockFile + ".extensive",
+                lockFile,
                 () -> callApiLocked(body, username, password));
     }
 
@@ -215,7 +215,7 @@ public class GongClientLive implements GongClient {
             final String password) {
         return mutex.acquire(
                 MUTEX_TIMEOUT_MS,
-                lockFile + ".transcripts",
+                lockFile,
                 () -> getCallTranscriptApiLocked(id, username, password));
     }
 
