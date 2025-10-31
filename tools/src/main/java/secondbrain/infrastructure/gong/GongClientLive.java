@@ -94,10 +94,7 @@ public class GongClientLive implements GongClient {
          There is no way to filter by salesforce ID. So we instead get all the calls during the period,
          cache the result, and then filter the calls by the company ID.
          */
-        final GongCallExtensive[] calls = mutex.acquire(
-                MUTEX_TIMEOUT_MS,
-                lockFile + ".extensive",
-                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0));
+        final GongCallExtensive[] calls = getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0);
 
         if (calls == null) {
             return List.of();
@@ -186,6 +183,15 @@ public class GongClientLive implements GongClient {
     private GongCallsExtensive callApi(final GongCallExtensiveQuery body,
                                        final String username,
                                        final String password) {
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".extensive",
+                () -> callApiLocked(body, username, password));
+    }
+
+    private GongCallsExtensive callApiLocked(final GongCallExtensiveQuery body,
+                                             final String username,
+                                             final String password) {
         RATE_LIMITER.acquire();
 
         final String target = url + "/v2/calls/extensive";

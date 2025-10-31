@@ -78,7 +78,7 @@ public class PlanHatClientLive implements PlanHatClient {
             final ZonedDateTime startDate,
             final ZonedDateTime endDate,
             final int ttlSeconds) {
-        final Conversation[] conversations = getConversationsApi(client, company, url, token, startDate, endDate, ttlSeconds);
+        final Conversation[] conversations = getConversationsApi(client, company, url, token, ttlSeconds, startDate, endDate, 0);
 
         // Do one last filter to ensure we only return conversations before the end date.
         // We don't do this earlier as we need to work all the way back to the start date,
@@ -108,20 +108,6 @@ public class PlanHatClientLive implements PlanHatClient {
     }
 
     private Conversation[] getConversationsApi(
-            final Client client,
-            final String company,
-            final String url,
-            final String token,
-            final ZonedDateTime startDate,
-            final ZonedDateTime endDate,
-            final int ttlSeconds) {
-        return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
-                lockFile + ".conversations",
-                () -> getConversationsApiLocked(client, company, url, token, ttlSeconds, startDate, endDate, 0));
-    }
-
-    private Conversation[] getConversationsApiLocked(
             final Client client,
             final String company,
             final String url,
@@ -165,11 +151,18 @@ public class PlanHatClientLive implements PlanHatClient {
         return ArrayUtils.addAll(
                 filtered,
                 filtered.length != 0
-                        ? getConversationsApiLocked(client, company, url, token, ttlSeconds, startDate, endDate, offset + getPageSize())
+                        ? getConversationsApi(client, company, url, token, ttlSeconds, startDate, endDate, offset + getPageSize())
                         : new Conversation[]{});
     }
 
     private Conversation[] callApi(final Client client, final String company, final String url, final String token, final int offset) {
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile + ".conversations",
+                () -> callApiLocked(client, company, url, token, offset));
+    }
+
+    private Conversation[] callApiLocked(final Client client, final String company, final String url, final String token, final int offset) {
         logger.fine("Calling PlanHat Conversations API for company " + company + " with offset " + offset);
 
         RATE_LIMITER.acquire();
