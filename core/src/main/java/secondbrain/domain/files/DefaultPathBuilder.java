@@ -3,6 +3,7 @@ package secondbrain.domain.files;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -13,7 +14,7 @@ public class DefaultPathBuilder implements PathBuilder {
     private FileSanitizer fileSanitizer;
 
     @Override
-    public Path getFilePath(String directory, String path) {
+    public Path getFilePath(@Nullable final String directory, final String path) {
         final Path directoryPath = Paths.get(fileSanitizer.sanitizeFilePath(path));
         if (directoryPath.isAbsolute()) {
             // Return the absolute path as is
