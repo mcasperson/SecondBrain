@@ -7,7 +7,7 @@ public class Constants {
      */
     public static final int DEFAULT_SEMAPHORE_COUNT = 5;
 
-    public static final double DEFAULT_RATE_LIMIT_PER_SECOND = 0.25;
+    public static final double DEFAULT_RATE_LIMIT_PER_SECOND = 1;
 
     /**
      * The default content window size. Increasing this value increases the memory
