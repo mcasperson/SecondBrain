@@ -259,6 +259,12 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Override
     public CacheResult<String> getOrPutString(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
+        return Try.withResources(() -> new TimedOperation("Cached string result for " + tool))
+                .of(t -> getOrPutStringTimed(tool, source, promptHash, ttlSeconds, generateValue))
+                .get();
+    }
+
+    private CacheResult<String> getOrPutStringTimed(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
         if (localStorageCacheDisable.isDisabled() || container == null) {
             return new CacheResult<String>(generateValue.generate(), false);
         }
@@ -324,9 +330,18 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     /**
-     * A generic method to get or put an object or list of objects in the cache.
+     * Wrap up the cache operation in a timed operation for logging.
      */
     private <T> CacheResult<T> getOrPutPrivate(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
+        return Try.withResources(() -> new TimedOperation("Cached object result for " + tool))
+                .of(t -> getOrPutTimed(tool, source, promptHash, ttlSeconds, generateValue, deserializer))
+                .get();
+    }
+
+    /**
+     * A generic method to get or put an object or list of objects in the cache.
+     */
+    private <T> CacheResult<T> getOrPutTimed(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
         if (localStorageCacheDisable.isDisabled() || container == null) {
             return new CacheResult<T>(generateValue.generate(), false);
         }
@@ -366,9 +381,14 @@ public class CosmosLocalStorage implements LocalStorage {
         return getOrPutList(tool, source, promptHash, 0, clazz, generateValue);
     }
 
-
     @Override
     public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
+        return Try.withResources(() -> new TimedOperation("Cached array result for " + tool))
+                .of(t -> getOrPutObjectArrayTimed(tool, source, promptHash, ttlSeconds, clazz, arrayClazz, generateValue))
+                .get();
+    }
+
+    private <T> CacheResult<T[]> getOrPutObjectArrayTimed(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
         if (localStorageCacheDisable.isDisabled() || container == null) {
             return new CacheResult<T[]>(generateValue.generate(), false);
         }
