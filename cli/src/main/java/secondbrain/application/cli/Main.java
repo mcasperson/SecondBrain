@@ -9,14 +9,12 @@ import org.jboss.weld.environment.se.WeldContainer;
 import secondbrain.Marker;
 import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.converter.StringConverterSelector;
-import secondbrain.domain.files.FileSanitizer;
+import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.Objects;
@@ -62,7 +60,7 @@ public class Main {
     private String directory;
 
     @Inject
-    private FileSanitizer fileSanitizer;
+    private PathBuilder pathBuilder;
 
     public static void main(final String[] args) {
         final Weld weld = new Weld();
@@ -126,7 +124,7 @@ public class Main {
         final String annotations = content.getAnnotations() + content.getDebugInfo();
 
         if (StringUtils.isNotBlank(annotations)) {
-            Try.run(() -> Files.write(getFilePath(annotationsFile.get()), annotations.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+            Try.run(() -> Files.write(pathBuilder.getFilePath(directory, annotationsFile.get()), annotations.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(e -> System.err.println("Failed to write annotations to file: " + e.getMessage()));
         }
     }
@@ -138,7 +136,7 @@ public class Main {
 
         if (StringUtils.isNotBlank(content.getLinks())) {
             Try.run(() -> Files.write(
-                            getFilePath(linksFile.get()),
+                            pathBuilder.getFilePath(directory, linksFile.get()),
                             ("Links:" + System.lineSeparator() + content.getLinks()).getBytes(),
                             StandardOpenOption.CREATE,
                             StandardOpenOption.TRUNCATE_EXISTING))
@@ -152,7 +150,7 @@ public class Main {
         }
 
         if (StringUtils.isNotBlank(content.getDebugInfo())) {
-            Try.run(() -> Files.write(getFilePath(debugFile.get()), content.getDebugInfo().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+            Try.run(() -> Files.write(pathBuilder.getFilePath(directory, debugFile.get()), content.getDebugInfo().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(e -> System.err.println("Failed to write debug to file: " + e.getMessage()));
         }
     }
@@ -166,7 +164,7 @@ public class Main {
                 ? StandardOpenOption.APPEND
                 : StandardOpenOption.TRUNCATE_EXISTING;
 
-        Try.run(() -> Files.write(getFilePath(file.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, option))
+        Try.run(() -> Files.write(pathBuilder.getFilePath(directory, file.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, option))
                 .onFailure(e -> System.err.println("Failed to write output to file: " + e.getMessage()));
     }
 
@@ -177,7 +175,7 @@ public class Main {
                 .filter(Objects::nonNull)
                 .filter(meta -> StringUtils.isNotBlank(meta.getFilename()))
                 .forEach(meta -> Try.of(() -> Files.write(
-                                getFilePath(meta.getFilename()),
+                                pathBuilder.getFilePath(directory, meta.getFilename()),
                                 jsonDeserializer.serialize(meta).getBytes(),
                                 StandardOpenOption.CREATE,
                                 StandardOpenOption.TRUNCATE_EXISTING))
@@ -191,24 +189,10 @@ public class Main {
                 .filter(Objects::nonNull)
                 .filter(meta -> StringUtils.isNotBlank(meta.filename()) && meta.content() != null)
                 .forEach(meta -> Try.of(() -> Files.write(
-                                getFilePath(meta.filename()),
+                                pathBuilder.getFilePath(directory, meta.filename()),
                                 meta.content().getBytes(),
                                 StandardOpenOption.CREATE,
                                 StandardOpenOption.TRUNCATE_EXISTING))
                         .onFailure(e -> System.err.println("Failed to write intermediate result to files: " + e.getMessage())));
-    }
-
-    private Path getFilePath(final String path) {
-        final Path directoryPath = Paths.get(fileSanitizer.sanitizeFilePath(path));
-        if (directoryPath.isAbsolute()) {
-            // Return the absolute path as is
-            return directoryPath;
-        } else if (StringUtils.isNotBlank(directory)) {
-            // Return the relative path within the specified directory
-            return Paths.get(directory, fileSanitizer.sanitizeFileName(path));
-        } else {
-            // Return the relative path as is
-            return Paths.get(fileSanitizer.sanitizeFileName(path));
-        }
     }
 }
