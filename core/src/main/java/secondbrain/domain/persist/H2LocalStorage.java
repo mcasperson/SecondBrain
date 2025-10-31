@@ -14,6 +14,10 @@ import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.exceptions.SerializationFailed;
 import secondbrain.domain.json.JsonDeserializer;
+import secondbrain.domain.persist.config.LocalStorageCacheDisable;
+import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
+import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
+import secondbrain.domain.persist.config.LocalStorageDisableTool;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -48,20 +52,25 @@ public class H2LocalStorage implements LocalStorage {
     private final AtomicInteger totalFailures = new AtomicInteger();
 
     @Inject
-    @ConfigProperty(name = "sb.cache.disable")
-    private Optional<String> disable;
+    private LocalStorageDisableTool localStorageDisableTool;
+
+    @Inject
+    private LocalStorageCacheDisable localStorageCacheDisable;
+
+    @Inject
+    private LocalStorageCacheReadOnly localStorageCacheReadOnly;
+
+    @Inject
+    private LocalStorageCacheWriteOnly localStorageCacheWriteOnly;
+
     @Inject
     @ConfigProperty(name = "sb.cache.backup")
     private Optional<String> backup;
-    @Inject
-    @ConfigProperty(name = "sb.cache.readonly")
-    private Optional<String> readOnly;
+
     @Inject
     @ConfigProperty(name = "sb.cache.autoserver", defaultValue = "true")
     private Optional<String> autoserver;
-    @Inject
-    @ConfigProperty(name = "sb.cache.writeonly")
-    private Optional<String> writeOnly;
+
     @Inject
     @ConfigProperty(name = "sb.h2cache.path")
     private Optional<String> path;
@@ -209,15 +218,19 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     private boolean isDisabled() {
-        return disable != null && disable.isPresent() && Boolean.parseBoolean(disable.get());
+        return localStorageCacheDisable.isDisabled();
+    }
+
+    private boolean isDisabled(final String tool) {
+        return localStorageCacheDisable.isDisabled() || localStorageDisableTool.isToolDisabled(tool);
     }
 
     private boolean isReadOnly() {
-        return readOnly != null && readOnly.isPresent() && Boolean.parseBoolean(readOnly.get());
+        return localStorageCacheReadOnly.isReadOnly();
     }
 
     private boolean isWriteOnly() {
-        return writeOnly != null && writeOnly.isPresent() && Boolean.parseBoolean(writeOnly.get());
+        return localStorageCacheWriteOnly.isWriteOnly();
     }
 
     private boolean deleteExpired() {
@@ -253,7 +266,7 @@ public class H2LocalStorage implements LocalStorage {
     @Override
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
         synchronized (H2LocalStorage.class) {
-            if (isDisabled() || isWriteOnly() || this.connection == null) {
+            if (isDisabled(tool) || isWriteOnly() || this.connection == null) {
                 return null;
             }
 
@@ -297,7 +310,7 @@ public class H2LocalStorage implements LocalStorage {
 
     @Override
     public CacheResult<String> getOrPutString(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
-        if (isDisabled() || connection == null) {
+        if (isDisabled(tool) || connection == null) {
             return new CacheResult<String>(generateValue.generate(), false);
         }
 
@@ -341,7 +354,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     private <T> CacheResult<T> getOrPutPrivate(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
-        if (isDisabled() || connection == null) {
+        if (isDisabled(tool) || connection == null) {
             return new CacheResult<T>(generateValue.generate(), false);
         }
 
@@ -419,7 +432,7 @@ public class H2LocalStorage implements LocalStorage {
 
     @Override
     public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
-        if (isDisabled() || connection == null) {
+        if (isDisabled(tool) || connection == null) {
             return new CacheResult<T[]>(generateValue.generate(), false);
         }
 
@@ -481,7 +494,7 @@ public class H2LocalStorage implements LocalStorage {
     @Override
     public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
         synchronized (H2LocalStorage.class) {
-            if (isDisabled() || isReadOnly() || this.connection == null) {
+            if (isDisabled(tool) || isReadOnly() || this.connection == null) {
                 return;
             }
 

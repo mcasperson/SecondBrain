@@ -18,6 +18,10 @@ import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.exceptions.SerializationFailed;
 import secondbrain.domain.json.JsonDeserializer;
+import secondbrain.domain.persist.config.LocalStorageCacheDisable;
+import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
+import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
+import secondbrain.domain.persist.config.LocalStorageDisableTool;
 import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
@@ -28,7 +32,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
@@ -40,7 +43,6 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
 @ApplicationScoped
 public class CosmosLocalStorage implements LocalStorage {
 
-    private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
     private static final int BATCH_SIZE = 100;
     private static final String CONTAINER_NAME = "localstoragezipped";
     private static final String DATABASE_NAME = "secondbrain";
@@ -52,16 +54,16 @@ public class CosmosLocalStorage implements LocalStorage {
     private final AtomicInteger totalFailures = new AtomicInteger();
 
     @Inject
-    @ConfigProperty(name = "sb.cache.disable")
-    private Optional<String> disable;
+    private LocalStorageDisableTool localStorageDisableTool;
 
     @Inject
-    @ConfigProperty(name = "sb.cache.readonly")
-    private Optional<String> readOnly;
+    private LocalStorageCacheDisable localStorageCacheDisable;
 
     @Inject
-    @ConfigProperty(name = "sb.cache.writeonly")
-    private Optional<String> writeOnly;
+    private LocalStorageCacheReadOnly localStorageCacheReadOnly;
+
+    @Inject
+    private LocalStorageCacheWriteOnly localStorageCacheWriteOnly;
 
     @Inject
     @ConfigProperty(name = "sb.cosmos.endpoint")
@@ -78,10 +80,6 @@ public class CosmosLocalStorage implements LocalStorage {
     @Inject
     @ConfigProperty(name = "sb.cosmos.container", defaultValue = CONTAINER_NAME)
     private Optional<String> containerName;
-
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.localcache", defaultValue = "cosmoscache")
-    private Optional<String> cosmosCache;
 
     @Inject
     private JsonDeserializer jsonDeserializer;
@@ -182,25 +180,13 @@ public class CosmosLocalStorage implements LocalStorage {
         container = database.getContainer(containerName.orElse(CONTAINER_NAME));
     }
 
-    private boolean isDisabled() {
-        return disable.isPresent() && Boolean.parseBoolean(disable.get());
-    }
-
-    private boolean isReadOnly() {
-        return readOnly.isPresent() && Boolean.parseBoolean(readOnly.get());
-    }
-
-    private boolean isWriteOnly() {
-        return writeOnly.isPresent() && Boolean.parseBoolean(writeOnly.get());
-    }
-
     private String generateId(final String tool, final String source, final String promptHash) {
         return tool + "_" + source + "_" + promptHash;
     }
 
     @Override
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
-        if (isDisabled() || isWriteOnly() || container == null) {
+        if (localStorageCacheDisable.isDisabled() || localStorageDisableTool.isToolDisabled(tool) || localStorageCacheWriteOnly.isWriteOnly() || container == null) {
             return null;
         }
 
@@ -273,7 +259,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Override
     public CacheResult<String> getOrPutString(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
-        if (isDisabled() || container == null) {
+        if (localStorageCacheDisable.isDisabled() || container == null) {
             return new CacheResult<String>(generateValue.generate(), false);
         }
 
@@ -341,7 +327,7 @@ public class CosmosLocalStorage implements LocalStorage {
      * A generic method to get or put an object or list of objects in the cache.
      */
     private <T> CacheResult<T> getOrPutPrivate(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
-        if (isDisabled() || container == null) {
+        if (localStorageCacheDisable.isDisabled() || container == null) {
             return new CacheResult<T>(generateValue.generate(), false);
         }
 
@@ -383,7 +369,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Override
     public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
-        if (isDisabled() || container == null) {
+        if (localStorageCacheDisable.isDisabled() || container == null) {
             return new CacheResult<T[]>(generateValue.generate(), false);
         }
 
@@ -485,7 +471,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Override
     public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String value) {
-        if (isDisabled() || isReadOnly() || container == null) {
+        if (localStorageCacheDisable.isDisabled() || localStorageCacheReadOnly.isReadOnly() || container == null) {
             return;
         }
 
