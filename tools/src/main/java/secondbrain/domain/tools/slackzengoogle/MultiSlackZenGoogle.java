@@ -581,13 +581,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // Add any specific keywords
         final List<String> keywords = new ArrayList<>(Arrays.stream(parsedArgs.getKeywords().split(",")).toList());
 
-        // Also search for the salesforce and planhat ids
-        keywords.addAll(positionalEntity.entity.salesforce);
-        keywords.addAll(positionalEntity.entity.planhat);
-
-        // Add any aliases for the entity
-        keywords.addAll(getAliases(positionalEntity.entity.name));
-
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
