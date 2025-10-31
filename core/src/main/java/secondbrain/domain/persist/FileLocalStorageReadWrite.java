@@ -9,6 +9,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Objects;
@@ -103,6 +104,11 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                     }
                 })
                 .peek(files -> files.forEach(file -> Try.run(() -> Files.delete(file))
-                        .onFailure(ex -> logger.warning("Failed to delete expired cache file " + file + ": " + exceptionHandler.getExceptionMessage(ex)))));
+                        .onFailure(ex -> {
+                            // Ignore race conditions when deleting files
+                            if (!(ex instanceof NoSuchFileException)) {
+                                logger.warning("Failed to delete expired cache file " + file + ": " + exceptionHandler.getExceptionMessage(ex));
+                            }
+                        })));
     }
 }
