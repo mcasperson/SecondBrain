@@ -118,7 +118,11 @@ public class CosmosMutex implements Mutex {
         Try.of(() -> cosmosClient.getDatabase(databaseName))
                 .map(database -> database.getContainer(containerName))
                 .map(container -> deleteFiles(container, container.queryItems(query, new CosmosQueryRequestOptions(), LockDocument.class)))
-                .onFailure(ex -> logger.warning("Failed to clear locks on startup: " + exceptionHandler.getExceptionMessage(ex)));
+                .onFailure(ex -> {
+                    if (!(ex instanceof NotFoundException)) {
+                        logger.warning("Failed to clear locks on startup: " + exceptionHandler.getExceptionMessage(ex));
+                    }
+                });
     }
 
     private List<CosmosItemResponse<Object>> deleteFiles(final CosmosContainer container, final CosmosPagedIterable<LockDocument> lockDocuments) {
