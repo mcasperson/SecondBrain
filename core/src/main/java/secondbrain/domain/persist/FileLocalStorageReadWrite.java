@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -84,7 +85,11 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                             w.write(value);
                             return value;
                         }))
-                .onFailure(ex -> logger.warning("Failed to write cache file timestamp: " + exceptionHandler.getExceptionMessage(ex)));
+                .onFailure(ex -> {
+                    if (!(ex instanceof NoSuchElementException)) {
+                        logger.warning("Failed to write cache file timestamp: " + exceptionHandler.getExceptionMessage(ex));
+                    }
+                });
         return value;
     }
 
