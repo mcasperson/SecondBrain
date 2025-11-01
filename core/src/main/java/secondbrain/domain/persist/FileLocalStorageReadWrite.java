@@ -22,6 +22,10 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * A lot of time can be spent reading and writing local cache files.
+ * This implementation uses an optional in-memory cache to speed up reads.
+ */
 @ApplicationScoped
 public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
@@ -58,7 +62,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
         logger.info("Initializing memory cache from local cache directory");
 
         final String cacheDir = localCache.orElse(LOCAL_CACHE_DIR);
-        new Thread(() ->
+        final Thread thread = new Thread(() ->
                 Try.of(() -> Path.of(cacheDir))
                         .mapTry(Files::list)
                         .map(files -> files.sorted((f1, f2) ->
@@ -67,10 +71,10 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                                 )
                                 .limit(MAX_LOCAL_CACHE_ENTRIES)
                                 .toList())
-                        .peek(files -> files.forEach(f -> MEMORY_CACHE.put(
-                                f,
-                                readFileSilentFail(f))))
-        ).start();
+                        .peek(files -> files.forEach(f -> MEMORY_CACHE.put(f, readFileSilentFail(f))))
+        );
+        thread.setDaemon(true);
+        thread.start();
     }
 
     @Override
