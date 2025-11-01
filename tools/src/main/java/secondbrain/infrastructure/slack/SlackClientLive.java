@@ -24,6 +24,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.domain.tools.slack.ChannelDetails;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.slack.api.SlackChannelResource;
@@ -45,6 +46,7 @@ public class SlackClientLive implements SlackClient {
     private static final int RETRY_JITTER = 10000;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
+    private static final int API_TIMEOUT_SECONDS = 60;
 
     @Inject
     @ConfigProperty(name = "sb.slack.lock", defaultValue = "sb_slack.lock")
@@ -63,6 +65,9 @@ public class SlackClientLive implements SlackClient {
     @Inject
     @Preferred
     private Mutex mutex;
+
+    @Inject
+    private TimeoutService timeoutService;
 
     @Override
     public String conversationHistory(
@@ -222,6 +227,22 @@ public class SlackClientLive implements SlackClient {
             final String accessToken,
             final String channelId,
             final int apiDelay) {
+        return timeoutService.executeWithTimeout(() -> channelTimrout(
+                        client,
+                        accessToken,
+                        channelId,
+                        apiDelay),
+                () -> {
+                    throw new ExternalFailure("Slack channel timed out");
+                },
+                API_TIMEOUT_SECONDS);
+    }
+
+    private SlackConversationResource channelTimrout(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channelId,
+            final int apiDelay) {
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
@@ -296,6 +317,24 @@ public class SlackClientLive implements SlackClient {
 
     @Override
     public List<SlackSearchResultResource> search(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final Set<String> keywords,
+            final int ttlSeconds,
+            final int apiDelay) {
+        return timeoutService.executeWithTimeout(() -> searchTimeout(
+                        client,
+                        accessToken,
+                        keywords,
+                        ttlSeconds,
+                        apiDelay),
+                () -> {
+                    throw new ExternalFailure("Slack search timed out");
+                },
+                API_TIMEOUT_SECONDS);
+    }
+
+    private List<SlackSearchResultResource> searchTimeout(
             final AsyncMethodsClient client,
             final String accessToken,
             final Set<String> keywords,
