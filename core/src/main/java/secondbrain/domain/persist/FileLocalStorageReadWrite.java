@@ -1,6 +1,7 @@
 package secondbrain.domain.persist;
 
 import io.vavr.control.Try;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.io.output.LockableFileWriter;
@@ -12,9 +13,11 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,6 +26,9 @@ import java.util.regex.Pattern;
 public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
     private static final String LOCAL_CACHE_DIR = "localcache";
+    private static final int MAX_LOCAL_CACHE_ENTRIES = 1000;
+
+    private static final Map<Path, String> MEMORY_CACHE = new ConcurrentHashMap<>();
 
     @Inject
     private Logger logger;
@@ -33,6 +39,39 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     @Inject
     @ConfigProperty(name = "sb.cache.localdir", defaultValue = LOCAL_CACHE_DIR)
     private Optional<String> localCache;
+
+    @Inject
+    @ConfigProperty(name = "sb.cache.memorycacheenabled", defaultValue = "true")
+    private boolean memoryCacheEnabled;
+
+    /**
+     * When we start this service, preload the most recent cache entries into memory for faster access.
+     * We do this in a thread to avoid blocking startup.
+     * The idea is that by the time the cache is needed, it will be loaded.
+     */
+    @PostConstruct
+    private void init() {
+        if (!memoryCacheEnabled) {
+            return;
+        }
+
+        logger.info("Initializing memory cache from local cache directory");
+
+        final String cacheDir = localCache.orElse(LOCAL_CACHE_DIR);
+        new Thread(() ->
+                Try.of(() -> Path.of(cacheDir))
+                        .mapTry(Files::list)
+                        .map(files -> files.sorted((f1, f2) ->
+                                        Try.of(() -> Long.compare(Files.getLastModifiedTime(f2).toMillis(), Files.getLastModifiedTime(f1).toMillis()))
+                                                .getOrElse(0)
+                                )
+                                .limit(MAX_LOCAL_CACHE_ENTRIES)
+                                .toList())
+                        .peek(files -> files.forEach(f -> MEMORY_CACHE.put(
+                                f.getFileName(),
+                                readFileSilentFail(f))))
+        ).start();
+    }
 
     @Override
     public Optional<String> getString(final String tool, final String source, final String promptHash) {
@@ -65,8 +104,20 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                         .findFirst())
                 // Get the cached result, failing if the Optional is empty
                 .map(Optional::get)
-                .mapTry(Files::readString)
+                .mapTry(this::readFile)
                 .getOrNull();
+    }
+
+    private String readFile(final Path path) {
+        if (memoryCacheEnabled) {
+            return MEMORY_CACHE.computeIfAbsent(path, this::readFileSilentFail);
+        }
+        return readFileSilentFail(path);
+    }
+
+    private String readFileSilentFail(final Path path) {
+        return Try.of(() -> Files.readString(path))
+                .getOrElse(() -> null);
     }
 
     @Override

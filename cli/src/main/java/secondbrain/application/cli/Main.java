@@ -13,6 +13,7 @@ import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.json.JsonDeserializer;
+import secondbrain.domain.persist.LocalStorageReadWrite;
 
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
@@ -62,6 +63,12 @@ public class Main {
     @Inject
     private PathBuilder pathBuilder;
 
+    /**
+     * This is included here to force the service to initialise as early as possible.
+     */
+    @Inject
+    private LocalStorageReadWrite localStorageReadWrite;
+
     public static void main(final String[] args) {
         final Weld weld = new Weld();
         /*
@@ -86,6 +93,9 @@ public class Main {
     public void entry(final String[] args) {
         final String format = args.length > 1 ? args[1] : "no-op";
         final StringConverter converter = stringConverterSelector.getStringConverter(format);
+
+        // Force initialization of local storage
+        localStorageReadWrite.toString();
 
         Try.of(() -> promptHandler.handlePrompt(Map.of(), getPrompt(args)))
                 .map(response -> response.updateResponseText(converter))
