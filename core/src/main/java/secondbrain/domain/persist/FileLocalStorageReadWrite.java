@@ -13,10 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -30,7 +27,8 @@ import java.util.regex.Pattern;
 public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
     private static final String LOCAL_CACHE_DIR = "localcache";
-    private static final int MAX_LOCAL_CACHE_ENTRIES = 1000;
+    private static final int MAX_LOCAL_CACHE_ENTRIES = 10000;
+    private static final List<String> IGNORED_FILES = List.of("localstoragev2.mv.db", "localstoragev2.trace.db");
 
     private static final Map<Path, String> MEMORY_CACHE = new ConcurrentHashMap<>();
 
@@ -65,7 +63,9 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
         final Thread thread = new Thread(() ->
                 Try.of(() -> Path.of(cacheDir))
                         .mapTry(Files::list)
-                        .map(files -> files.sorted((f1, f2) ->
+                        .map(files -> files
+                                .filter(f -> !IGNORED_FILES.contains(f.getFileName().toString()))
+                                .sorted((f1, f2) ->
                                         Try.of(() -> Long.compare(Files.getLastModifiedTime(f2).toMillis(), Files.getLastModifiedTime(f1).toMillis()))
                                                 .getOrElse(0)
                                 )
