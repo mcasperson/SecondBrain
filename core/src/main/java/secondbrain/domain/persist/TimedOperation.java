@@ -13,6 +13,6 @@ public class TimedOperation implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
-        logger.fine("Operation " + name + " took " + (System.currentTimeMillis() - startTime) + " ms");
+        logger.info("Operation " + name + " took " + (System.currentTimeMillis() - startTime) + " ms");
     }
 }

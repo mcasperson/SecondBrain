@@ -23,6 +23,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.concurrency.SemaphoreLender;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.*;
 import secondbrain.domain.encryption.Encryptor;
@@ -30,11 +31,11 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
+import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.googledocs.model.GoogleDoc;
 import secondbrain.domain.tools.rating.RatingTool;
-import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.io.ByteArrayInputStream;
@@ -83,9 +84,6 @@ public class GoogleDocs implements Tool<Void> {
     private GoogleDocsConfig config;
 
     @Inject
-    private DocumentTrimmer documentTrimmer;
-
-    @Inject
     private Encryptor textEncryptor;
 
     @Inject
@@ -99,9 +97,6 @@ public class GoogleDocs implements Tool<Void> {
     private SentenceVectorizer sentenceVectorizer;
 
     @Inject
-    private ValidateString validateString;
-
-    @Inject
     private RatingTool ratingTool;
 
     @Inject
@@ -109,6 +104,9 @@ public class GoogleDocs implements Tool<Void> {
 
     @Inject
     private HooksContainer hooksContainer;
+
+    @Inject
+    private DataToRagDoc dataToRagDoc;
 
     @Override
     public String getName() {
@@ -182,10 +180,8 @@ public class GoogleDocs implements Tool<Void> {
                                 .build())
                         .mapTry(service -> service.documents().get(parsedArgs.getDocumentId()).execute())
                         .map(this::getDocumentText)
-                        .map(document -> documentTrimmer.trimDocumentToKeywords(
-                                document, parsedArgs.getKeywords(), parsedArgs.getKeywordWindow()))
-                        .map(trimResult -> validateString.throwIfBlank(trimResult, TrimResult::document))
-                        .map(trimResult -> getDocumentContext(trimResult, parsedArgs))
+                        .map(docText -> new GoogleDoc(parsedArgs.getDocumentId(), "Google Doc " + parsedArgs.getDocumentId(), "https://docs.google.com/document/d/" + parsedArgs.getDocumentId(), docText))
+                        .map(docText -> dataToRagDoc.getDocumentContext(docText, getName(), getContextLabel(), parsedArgs))
                         // Get the metadata, which includes a rating against the filter question if present
                         .map(ragDoc -> ragDoc.updateMetadata(getMetadata(environmentSettings, ragDoc, parsedArgs)))
                         // Filter out any documents that don't meet the rating criteria
@@ -193,6 +189,7 @@ public class GoogleDocs implements Tool<Void> {
                         .map(doc -> parsedArgs.getSummarizeDocument()
                                 ? doc.updateDocument(getDocumentSummary(doc.document(), environmentSettings, parsedArgs))
                                 : doc)
+                        .map(RagDocumentContext::getRagDocumentContextVoid)
                         .map(List::of)
                         // This catches the case where the document does not meet the context filter criteria
                         .recover(NoSuchElementException.class, ex -> List.of()))
@@ -352,7 +349,7 @@ public class GoogleDocs implements Tool<Void> {
 
     private MetaObjectResults getMetadata(
             final Map<String, String> environmentSettings,
-            final RagDocumentContext<Void> document,
+            final RagDocumentContext<GoogleDoc> document,
             final GoogleDocsConfig.LocalArguments parsedArgs) {
 
         final List<MetaObjectResult> metadata = new ArrayList<>();
@@ -379,7 +376,7 @@ public class GoogleDocs implements Tool<Void> {
     }
 
     private boolean contextMeetsRating(
-            final RagDocumentContext<Void> document,
+            final RagDocumentContext<GoogleDoc> document,
             final GoogleDocsConfig.LocalArguments parsedArgs) {
         // If there was no filter question, then return the whole list
         if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
@@ -489,7 +486,7 @@ class GoogleDocsConfig {
         return configPostInferenceHooks;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
