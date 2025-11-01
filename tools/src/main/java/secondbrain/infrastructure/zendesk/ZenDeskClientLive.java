@@ -48,6 +48,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
     private static final int MAX_PAGES = 10;
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final Map<String, ZenDeskUserItemResponse> LOCAL_CACHE = new HashMap<>();
+    private static final Map<String, ZenDeskOrganizationItemResponse> LOCAL_ORG_CACHE = new HashMap<>();
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.lock", defaultValue = "sb_zendesk.lock")
@@ -365,12 +366,26 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Organization ID is required");
         }
 
-        return localStorage.getOrPutObject(
+        final String cacheKey = DigestUtils.sha256Hex(orgId + url);
+
+        /*
+            This method is called frequently when processing multiple tickets,
+            so we add a simple in-memory cache to avoid repeated local storage lookups.
+         */
+        if (LOCAL_ORG_CACHE.containsKey(cacheKey)) {
+            return LOCAL_ORG_CACHE.get(cacheKey);
+        }
+
+        final ZenDeskOrganizationItemResponse org = localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskAPIOrganizations",
                 DigestUtils.sha256Hex(orgId + url),
                 ZenDeskOrganizationResponse.class,
                 () -> getOrganizationFromApi(authorization, url, orgId)).result().organization();
+
+        LOCAL_ORG_CACHE.put(cacheKey, org);
+
+        return org;
     }
 
     private ZenDeskUserResponse getUserFromApi(
