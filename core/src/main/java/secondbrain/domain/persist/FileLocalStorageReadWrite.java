@@ -6,12 +6,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.io.output.LockableFileWriter;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -66,7 +68,8 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                         .map(files -> files
                                 .filter(f -> !IGNORED_FILES.contains(f.getFileName().toString()))
                                 .sorted((f1, f2) ->
-                                        Try.of(() -> Long.compare(Files.getLastModifiedTime(f2).toMillis(), Files.getLastModifiedTime(f1).toMillis()))
+                                        Try.of(() -> Pair.of(Files.readAttributes(f1, BasicFileAttributes.class), Files.readAttributes(f2, BasicFileAttributes.class)))
+                                                .map(pair -> pair.getRight().lastAccessTime().compareTo(pair.getLeft().lastAccessTime()))
                                                 .getOrElse(0)
                                 )
                                 .limit(MAX_LOCAL_CACHE_ENTRIES)
