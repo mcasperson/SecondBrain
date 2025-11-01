@@ -19,7 +19,9 @@ import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.zendesk.api.*;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -45,6 +47,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
      */
     private static final int MAX_PAGES = 10;
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
+    private static final Map<String, ZenDeskUserItemResponse> LOCAL_CACHE = new HashMap<>();
 
     @Inject
     @ConfigProperty(name = "sb.zendesk.lock", defaultValue = "sb_zendesk.lock")
@@ -426,11 +429,25 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("User ID is required");
         }
 
-        return localStorage.getOrPutObject(
+        final String cacheKey = DigestUtils.sha256Hex(userId + url);
+
+        /*
+            This method is called frequently when processing multiple tickets,
+            so we add a simple in-memory cache to avoid repeated local storage lookups.
+         */
+        if (LOCAL_CACHE.containsKey(cacheKey)) {
+            return LOCAL_CACHE.get(cacheKey);
+        }
+
+        final ZenDeskUserItemResponse user = localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 "ZenDeskAPIUsersV2",
                 DigestUtils.sha256Hex(userId + url),
                 ZenDeskUserResponse.class,
                 () -> getUserFromApi(authorization, url, userId)).result().user();
+
+        LOCAL_CACHE.put(cacheKey, user);
+
+        return user;
     }
 }
