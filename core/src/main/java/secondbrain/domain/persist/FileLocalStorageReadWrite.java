@@ -68,7 +68,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                                 .limit(MAX_LOCAL_CACHE_ENTRIES)
                                 .toList())
                         .peek(files -> files.forEach(f -> MEMORY_CACHE.put(
-                                f.getFileName(),
+                                f,
                                 readFileSilentFail(f))))
         ).start();
     }
