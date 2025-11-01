@@ -15,7 +15,6 @@ import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
@@ -31,7 +30,6 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.googledocs.model.GoogleDoc;
@@ -228,26 +226,6 @@ public class GoogleDocs implements Tool<Void> {
                 prompt,
                 instructions,
                 context);
-    }
-
-
-    private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final GoogleDocsConfig.LocalArguments parsedArgs) {
-        return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
-                .map(sentences -> new RagDocumentContext<Void>(
-                        getName(),
-                        getContextLabel(),
-                        trimResult.document(),
-                        sentenceVectorizer.vectorize(sentences),
-                        parsedArgs.getDocumentId(),
-                        null,
-                        idToLink(parsedArgs.getDocumentId()),
-                        trimResult.keywordMatches()))
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                .get();
-    }
-
-    private String idToLink(final String documentId) {
-        return "[Document " + documentId + "](https://docs.google.com/document/d/" + documentId + ")";
     }
 
     @SuppressWarnings("JavaUtilDate")
