@@ -24,7 +24,10 @@ import secondbrain.domain.args.Argument;
 import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.context.*;
+import secondbrain.domain.context.EnvironmentSettings;
+import secondbrain.domain.context.HashMapEnvironmentSettings;
+import secondbrain.domain.context.RagDocumentContext;
+import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
@@ -87,12 +90,6 @@ public class GoogleDocs implements Tool<Void> {
     @Inject
     @Preferred
     private LlmClient llmClient;
-
-    @Inject
-    private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SentenceVectorizer sentenceVectorizer;
 
     @Inject
     private RatingTool ratingTool;

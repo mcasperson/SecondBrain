@@ -2,6 +2,9 @@ package secondbrain.infrastructure.salesforce.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import secondbrain.domain.data.IdData;
+import secondbrain.domain.data.TextData;
+import secondbrain.domain.data.UrlData;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record SalesforceTaskRecord(@JsonProperty("Id") String id,
@@ -9,7 +12,7 @@ public record SalesforceTaskRecord(@JsonProperty("Id") String id,
                                    @JsonProperty("Type") String type,
                                    @JsonProperty("Subject") String subject,
                                    @JsonProperty("CreatedDate") String createdDate,
-                                   String domain) {
+                                   String domain) implements TextData, IdData, UrlData {
 
     public String getDescription() {
         return description == null ? "" : description;
@@ -31,7 +34,23 @@ public record SalesforceTaskRecord(@JsonProperty("Id") String id,
         return new SalesforceTaskRecord(id, description, type, subject, createdDate, domain);
     }
 
+    @Override
     public String getId() {
         return id;
+    }
+
+    @Override
+    public String getText() {
+        return getSubject() + " " + getCreatedDate() + "\n" + getDescription();
+    }
+
+    @Override
+    public String getLinkText() {
+        return "Salesforce Task " + getId();
+    }
+
+    @Override
+    public String getUrl() {
+        return "https://" + (domain == null ? "fixme" : domain) + ".lightning.force.com/lightning/r/Task/" + getId() + "/view";
     }
 }

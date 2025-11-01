@@ -5,6 +5,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.tooldefs.IntermediateResult;
+import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.MetaObjectResults;
 
 import java.util.ArrayList;
@@ -107,6 +108,12 @@ public record RagDocumentContext<T>(String tool,
     public RagDocumentContext<T> addMetadata(final MetaObjectResults metadata) {
         final MetaObjectResults metaObjectResults = getMetadata();
         metaObjectResults.addAll(metadata.stream().filter(Objects::nonNull).toList());
+        return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metaObjectResults, intermediateResults, link, keywordMatches);
+    }
+
+    public RagDocumentContext<T> addMetadata(final MetaObjectResult metadata) {
+        final MetaObjectResults metaObjectResults = getMetadata();
+        metaObjectResults.add(metadata);
         return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metaObjectResults, intermediateResults, link, keywordMatches);
     }
 
