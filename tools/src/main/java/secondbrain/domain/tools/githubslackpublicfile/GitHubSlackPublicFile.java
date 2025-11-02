@@ -180,6 +180,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
+                .map(RagDocumentContext::getRagDocumentContextVoid)
                 .toList();
     }
 

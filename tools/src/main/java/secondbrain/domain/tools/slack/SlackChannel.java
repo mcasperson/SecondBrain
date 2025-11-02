@@ -3,7 +3,6 @@ package secondbrain.domain.tools.slack;
 import com.slack.api.Slack;
 import com.slack.api.methods.AsyncMethodsClient;
 import io.smallrye.common.annotation.Identifier;
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -18,6 +17,7 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
 import secondbrain.domain.config.LocalConfigFilteredParent;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -25,15 +25,13 @@ import secondbrain.domain.context.SentenceSplitter;
 import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
-import secondbrain.domain.exceptions.EmptyString;
-import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.sanitize.SanitizeDocument;
@@ -41,7 +39,6 @@ import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
 import secondbrain.infrastructure.slack.api.SlackChannelResource;
@@ -56,10 +53,8 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static com.google.common.base.Predicates.instanceOf;
-
 @ApplicationScoped
-public class SlackChannel implements Tool<Void> {
+public class SlackChannel implements Tool<SlackChannelResource> {
     public static final String SLACK_CHANNEL_FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
     public static final String SLACK_ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
@@ -114,12 +109,6 @@ public class SlackChannel implements Tool<Void> {
     private SlackClient slackClient;
 
     @Inject
-    private ValidateString validateString;
-
-    @Inject
-    private DocumentTrimmer documentTrimmer;
-
-    @Inject
     private Logger logger;
 
     @Inject
@@ -131,6 +120,9 @@ public class SlackChannel implements Tool<Void> {
     @Inject
     @Preferred
     private LocalStorage localStorage;
+
+    @Inject
+    private DataToRagDoc dataToRagDoc;
 
     @Override
     public String getName() {
@@ -158,7 +150,7 @@ public class SlackChannel implements Tool<Void> {
     }
 
     @Override
-    public List<RagDocumentContext<Void>> getContext(
+    public List<RagDocumentContext<SlackChannelResource>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -176,7 +168,7 @@ public class SlackChannel implements Tool<Void> {
                 .result();
     }
 
-    private List<RagDocumentContext<Void>> getContextPrivate(
+    private List<RagDocumentContext<SlackChannelResource>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -186,7 +178,7 @@ public class SlackChannel implements Tool<Void> {
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         // Get preinitialization hooks before ragdocs
-        final List<RagDocumentContext<Void>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+        final List<RagDocumentContext<SlackChannelResource>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         /*
@@ -205,49 +197,33 @@ public class SlackChannel implements Tool<Void> {
         // you can get this instance via ctx.client() in a Bolt app
         final AsyncMethodsClient client = Slack.getInstance().methodsAsync();
 
-        final SlackChannelResource channel = Try.of(() -> slackClient.findChannelId(
+        final Try<SlackChannelResource> result = Try.of(() -> slackClient.findChannelId(
                         client,
                         parsedArgs.getSecretAccessToken(),
                         parsedArgs.getChannel(),
                         parsedArgs.getApiDelay()))
-                .getOrElseThrow(() -> new InternalFailure("Channel not found"));
-
-        final Try<TrimResult> messagesTry = Try.of(() -> slackClient.conversationHistory(
+                .map(c -> c.updateConversation(slackClient.conversationHistory(
                         client,
                         parsedArgs.getSecretAccessToken(),
-                        channel.channelId(),
+                        c.channelId(),
                         oldest,
                         parsedArgs.getSearchTTL(),
-                        parsedArgs.getApiDelay()))
-                .map(document -> documentTrimmer.trimDocumentToKeywords(
-                        document,
-                        parsedArgs.getKeywords(),
-                        parsedArgs.getKeywordWindow()))
-                .map(trimResult -> validateString.throwIfBlank(trimResult, TrimResult::document));
+                        parsedArgs.getApiDelay())))
+                .map(c -> c.updateConversation(replaceUserIds(client, parsedArgs.getSecretAccessToken(), c.getText(), parsedArgs)))
+                .map(c -> c.updateConversation(replaceChannelIds(client, parsedArgs.getSecretAccessToken(), c.getText(), parsedArgs)));
 
-        final TrimResult messages = messagesTry
-                .mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Slack channel had no matching messages")),
-                        API.Case(API.$(instanceOf(ExternalFailure.class)), ex -> ex),
-                        API.Case(API.$(), ex -> new InternalFailure("Failed to get messages", ex))
-                )
-                .get();
+        final SlackChannelResource channel = exceptionMapping.map(result).get();
 
-        if (StringUtils.length(messages.document()) < MINIMUM_MESSAGE_LENGTH) {
+        if (StringUtils.length(channel.getText()) < MINIMUM_MESSAGE_LENGTH) {
             throw new InternalFailure("Not enough messages found in channel " + parsedArgs.getChannel()
                     + System.lineSeparator() + System.lineSeparator()
                     + "* [Slack Channel](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")");
         }
 
-        final TrimResult messagesWithUsersReplaced = replaceUserIds(client, parsedArgs.getSecretAccessToken(), messages.document(), parsedArgs)
-                .flatMap(message -> replaceChannelIds(client, parsedArgs.getSecretAccessToken(), message, parsedArgs))
-                .map(messages::replaceDocument)
-                .getOrElseThrow(() -> new InternalFailure("The user and channel IDs could not be replaced"));
-
-        final List<RagDocumentContext<Void>> ragDocs = List.of(getDocumentContext(messagesWithUsersReplaced, channel, environmentSettings, parsedArgs));
+        final List<RagDocumentContext<SlackChannelResource>> ragDocs = List.of(dataToRagDoc.getDocumentContext(channel, getName(), getContextLabel(), parsedArgs));
 
         // Combine preinitialization hooks with ragDocs
-        final List<RagDocumentContext<Void>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+        final List<RagDocumentContext<SlackChannelResource>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
         // Apply preprocessing hooks
         return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
@@ -261,7 +237,7 @@ public class SlackChannel implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(
+    public RagMultiDocumentContext<SlackChannelResource> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -269,14 +245,14 @@ public class SlackChannel implements Tool<Void> {
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+        final Try<RagMultiDocumentContext<SlackChannelResource>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
 
-        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<SlackChannelResource> mappedResult = exceptionMapping.map(result).get();
 
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
@@ -304,7 +280,7 @@ public class SlackChannel implements Tool<Void> {
                 .get();
     }
 
-    private Try<String> replaceUserIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
+    private String replaceUserIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
         final Pattern userPattern = Pattern.compile("<@(?<username>\\w+)>");
 
         /*
@@ -326,10 +302,10 @@ public class SlackChannel implements Tool<Void> {
                 /*
                  If any of the previous steps failed, we return the original messages.
                  */
-                .recover(error -> messages);
+                .getOrElse(messages);
     }
 
-    private Try<String> replaceChannelIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
+    private String replaceChannelIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
         final Pattern channelPattern = Pattern.compile("<#(?<channelname>\\w+)\\|?>");
 
         /*
@@ -351,7 +327,7 @@ public class SlackChannel implements Tool<Void> {
                 /*
                  If any of the previous steps failed, we return the original messages.
                  */
-                .recover(error -> messages);
+                .getOrElse(messages);
     }
 
     private RagDocumentContext<Void> getDocumentSummary(final RagDocumentContext<Void> ragDoc, final Map<String, String> environmentSettings, final SlackChannelConfig.LocalArguments parsedArgs) {
@@ -546,7 +522,7 @@ class SlackChannelConfig {
         return configTtlSeconds;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent {
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
         private final String prompt;

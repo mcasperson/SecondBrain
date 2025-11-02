@@ -1,10 +1,12 @@
 package secondbrain.infrastructure.slack.api;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.apache.commons.lang3.StringUtils;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record SlackSearchResultResource(String id, String timestamp, String channelName, String text,
                                         String permalink) implements TextData, IdData, UrlData {
     @Override
