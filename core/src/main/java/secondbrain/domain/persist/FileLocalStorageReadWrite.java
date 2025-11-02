@@ -17,6 +17,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,6 +31,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
     private static final String LOCAL_CACHE_DIR = "localcache";
     private static final int MAX_LOCAL_CACHE_ENTRIES = 10000;
+    private static final long MAX_LOCAL_CACHE_SIZE_BYTES = 1000L * 1024L * 1024L; // 1000 MB
     private static final List<String> IGNORED_FILES = List.of("localstoragev2.mv.db", "localstoragev2.trace.db");
 
     private static final Map<Path, String> MEMORY_CACHE = new ConcurrentHashMap<>();
@@ -62,19 +64,32 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
         logger.info("Initializing memory cache from local cache directory");
 
         final String cacheDir = localCache.orElse(LOCAL_CACHE_DIR);
+        final AtomicLong currentCacheSize = new AtomicLong(0L);
         final Thread thread = new Thread(() ->
                 Try.of(() -> Path.of(cacheDir))
                         .mapTry(Files::list)
                         .map(files -> files
                                 .filter(f -> !IGNORED_FILES.contains(f.getFileName().toString()))
-                                .sorted((f1, f2) ->
-                                        Try.of(() -> Pair.of(Files.readAttributes(f1, BasicFileAttributes.class), Files.readAttributes(f2, BasicFileAttributes.class)))
-                                                .map(pair -> pair.getRight().lastAccessTime().compareTo(pair.getLeft().lastAccessTime()))
-                                                .getOrElse(0)
-                                )
+                                // Get the file attributes
+                                .map(f -> Pair.of(f, Try.of(() -> Files.readAttributes(f, BasicFileAttributes.class)).getOrNull()))
+                                // filter out any file we couldn't get attributes for
+                                .filter(pair -> pair.getRight() != null)
+                                // Sort by last access time, descending
+                                .sorted((f1, f2) -> f2.getRight().lastAccessTime().compareTo(f1.getRight().lastAccessTime()))
+                                // Limit by number of files
                                 .limit(MAX_LOCAL_CACHE_ENTRIES)
+                                // Take while we have not exceeded the max cache size
+                                .takeWhile(f -> currentCacheSize.addAndGet(f.getRight().size()) <= MAX_LOCAL_CACHE_SIZE_BYTES)
                                 .toList())
-                        .peek(files -> files.forEach(f -> MEMORY_CACHE.computeIfAbsent(f, this::readFileSilentFail)))
+                        // Load the files into memory
+                        .peek(files -> files.forEach(f -> {
+                            // If we didn't finish loading before shutdown, stop loading
+                            if (Thread.interrupted()) {
+                                throw new RuntimeException("interrupted");
+                            }
+
+                            MEMORY_CACHE.computeIfAbsent(f.getLeft(), this::readFileSilentFail);
+                        }))
         );
         thread.setDaemon(true);
         thread.start();
