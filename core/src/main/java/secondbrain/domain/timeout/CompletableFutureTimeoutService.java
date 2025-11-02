@@ -31,6 +31,19 @@ public class CompletableFutureTimeoutService implements TimeoutService {
     }
 
     @Override
+    public <T> T executeWithTimeout(final CompletableFuture<T> callback, final TimeoutFunctionCallback<T> onTimeout, final long timeoutSeconds) {
+        checkNotNull(callback, "callback must not be null");
+        checkNotNull(onTimeout, "onTimeout must not be null");
+
+        return Try.of(() -> callback
+                        .orTimeout(timeoutSeconds, TimeUnit.SECONDS)
+                        .get())
+                .onFailure(TimeoutException.class, e -> logger.warning("Operation timed out after " + timeoutSeconds + " seconds"))
+                .recover(TimeoutException.class, e -> onTimeout.apply())
+                .get();
+    }
+
+    @Override
     public <T> T executeWithTimeoutAndRetry(
             final TimeoutFunctionCallback<T> callback,
             final TimeoutFunctionCallback<T> onTimeout,
