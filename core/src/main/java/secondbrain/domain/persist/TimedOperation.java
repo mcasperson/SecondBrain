@@ -25,7 +25,7 @@ public class TimedOperation implements AutoCloseable {
         if (duration > warningThresholdMs) {
             logger.warning("Operation " + name + " took " + (System.currentTimeMillis() - startTime) + " ms");
         } else {
-            logger.info("Operation " + name + " took " + (System.currentTimeMillis() - startTime) + " ms");
+            logger.fine("Operation " + name + " took " + (System.currentTimeMillis() - startTime) + " ms");
         }
     }
 }
