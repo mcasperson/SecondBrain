@@ -15,6 +15,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
+import secondbrain.domain.exceptions.DeserializationFailed;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.exceptions.SerializationFailed;
 import secondbrain.domain.json.JsonDeserializer;
@@ -352,6 +353,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .filter(result -> StringUtils.isNotBlank(result.result()))
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> new CacheResult<T>(deserializer.deserialize(r.result()), true))
+                .onFailure(DeserializationFailed.class, ex -> logger.warning("Failed to deserialize cached object: " + exceptionHandler.getExceptionMessage(ex)))
                 .recoverWith(ex -> Try.of(() -> {
                             logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                             logger.fine("Exception: " + exceptionHandler.getExceptionMessage(ex));
