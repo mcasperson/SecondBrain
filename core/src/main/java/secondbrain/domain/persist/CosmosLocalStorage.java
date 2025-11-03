@@ -222,7 +222,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     }
 
                     // If we are loading this from the remote cache, save it locally too
-                    localStorageReadWrite.putString(tool, source, promptHash, getTimestamp(response.getItem().timestamp), response.getItem().response());
+                    localStorageReadWrite.putString(tool, source, promptHash, response.getItem().timestamp, response.getItem().response());
 
                     return new CacheResult<String>(response.getItem().response(), true);
                 })
