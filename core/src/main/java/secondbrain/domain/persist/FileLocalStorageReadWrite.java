@@ -2,6 +2,7 @@ package secondbrain.domain.persist;
 
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.io.output.LockableFileWriter;
@@ -20,6 +21,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -35,6 +37,9 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final List<String> IGNORED_FILES = List.of("localstoragev2.mv.db", "localstoragev2.trace.db");
 
     private static final Map<Path, String> MEMORY_CACHE = new ConcurrentHashMap<>();
+    private static final AtomicInteger totalReads = new AtomicInteger();
+    private static final AtomicInteger fileReads = new AtomicInteger();
+    private static final AtomicInteger memoryReads = new AtomicInteger();
 
     @Inject
     private Logger logger;
@@ -53,6 +58,17 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     @Inject
     private LocalStorageMemoryCacheFileLimit localStorageMemoryCacheFileLimit;
+
+    @PreDestroy
+    private void shutdown() {
+        if (totalReads.get() > 0) {
+            logger.info("Local storage cache read stats: total reads=" + totalReads.get()
+                    + ", file reads=" + fileReads.get()
+                    + ", memory reads=" + memoryReads.get()
+                    + ", file read hit rate=" + String.format("%.2f", (fileReads.get() * 100.0) / totalReads.get()) + "%"
+                    + ", memory read hit rate=" + String.format("%.2f", (memoryReads.get() * 100.0) / totalReads.get()) + "%");
+        }
+    }
 
     /**
      * When we start this service, preload the most recent cache entries into memory for faster access.
@@ -101,6 +117,8 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     @Override
     public Optional<String> getString(final String tool, final String source, final String promptHash) {
+        totalReads.incrementAndGet();
+
         final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
 
         clearExpiredEntries(cacheDir);
@@ -136,6 +154,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     private String readFile(final Path path) {
         if (localStorageMemoryCacheEnabled.isMemoryCacheEnabled()) {
+            memoryReads.incrementAndGet();
             return MEMORY_CACHE.computeIfAbsent(path, this::readFileSilentFail);
         }
         return readFileSilentFail(path);
@@ -143,6 +162,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     private String readFileSilentFail(final Path path) {
         return Try.of(() -> Files.readString(path))
+                .peek(c -> fileReads.incrementAndGet())
                 .getOrElse(() -> null);
     }
 
