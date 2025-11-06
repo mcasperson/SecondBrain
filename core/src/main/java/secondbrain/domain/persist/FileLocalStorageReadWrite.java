@@ -7,8 +7,9 @@ import jakarta.inject.Inject;
 import org.apache.commons.io.output.LockableFileWriter;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
+import secondbrain.domain.persist.config.LocalStorageCacheDirectory;
+import secondbrain.domain.persist.config.LocalStorageMemoryCacheEnabled;
 import secondbrain.domain.persist.config.LocalStorageMemoryCacheFileLimit;
 import secondbrain.domain.persist.config.LocalStorageMemoryCacheSizeLimit;
 
@@ -31,7 +32,6 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
-    private static final String LOCAL_CACHE_DIR = "localcache";
     private static final List<String> IGNORED_FILES = List.of("localstoragev2.mv.db", "localstoragev2.trace.db");
 
     private static final Map<Path, String> MEMORY_CACHE = new ConcurrentHashMap<>();
@@ -43,12 +43,10 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private ExceptionHandler exceptionHandler;
 
     @Inject
-    @ConfigProperty(name = "sb.cache.localdir", defaultValue = LOCAL_CACHE_DIR)
-    private Optional<String> localCache;
+    private LocalStorageCacheDirectory localStorageCacheDirectory;
 
     @Inject
-    @ConfigProperty(name = "sb.cache.memorycacheenabled", defaultValue = "true")
-    private boolean memoryCacheEnabled;
+    private LocalStorageMemoryCacheEnabled localStorageMemoryCacheEnabled;
 
     @Inject
     private LocalStorageMemoryCacheSizeLimit localStorageMemoryCacheSizeLimit;
@@ -63,13 +61,13 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
      */
     @PostConstruct
     private void init() {
-        if (!memoryCacheEnabled) {
+        if (!localStorageMemoryCacheEnabled.isMemoryCacheEnabled()) {
             return;
         }
 
         logger.info("Initializing memory cache from local cache directory");
 
-        final String cacheDir = localCache.orElse(LOCAL_CACHE_DIR);
+        final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
         final AtomicLong currentCacheSize = new AtomicLong(0L);
         final Thread thread = new Thread(() ->
                 Try.of(() -> Path.of(cacheDir))
@@ -103,7 +101,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     @Override
     public Optional<String> getString(final String tool, final String source, final String promptHash) {
-        final String cacheDir = localCache.orElse(LOCAL_CACHE_DIR);
+        final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
 
         clearExpiredEntries(cacheDir);
         return Optional.ofNullable(getString(cacheDir, tool, source, promptHash));
@@ -137,7 +135,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     }
 
     private String readFile(final Path path) {
-        if (memoryCacheEnabled) {
+        if (localStorageMemoryCacheEnabled.isMemoryCacheEnabled()) {
             return MEMORY_CACHE.computeIfAbsent(path, this::readFileSilentFail);
         }
         return readFileSilentFail(path);
@@ -150,7 +148,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     @Override
     public String putString(final String tool, final String source, final String promptHash, final Long timestamp, final String value) {
-        final String cacheDir = localCache.orElse(LOCAL_CACHE_DIR);
+        final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
 
         Try.of(() -> Path.of(cacheDir))
                 .mapTry(Files::createDirectories)
