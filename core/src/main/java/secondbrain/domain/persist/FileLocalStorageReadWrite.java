@@ -37,9 +37,9 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final List<String> IGNORED_FILES = List.of("localstoragev2.mv.db", "localstoragev2.trace.db");
 
     private static final Map<Path, String> MEMORY_CACHE = new ConcurrentHashMap<>();
-    private static final AtomicInteger totalReads = new AtomicInteger();
-    private static final AtomicInteger fileReads = new AtomicInteger();
-    private static final AtomicInteger memoryReads = new AtomicInteger();
+    private static final AtomicInteger TOTAL_READS = new AtomicInteger();
+    private static final AtomicInteger FILE_READS = new AtomicInteger();
+    private static final AtomicInteger MEMORY_READS = new AtomicInteger();
 
     @Inject
     private Logger logger;
@@ -61,12 +61,12 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     @PreDestroy
     private void shutdown() {
-        if (totalReads.get() > 0) {
-            logger.info("Local storage cache read stats: total reads=" + totalReads.get()
-                    + ", file reads=" + fileReads.get()
-                    + ", memory reads=" + memoryReads.get()
-                    + ", file read hit rate=" + String.format("%.2f", (fileReads.get() * 100.0) / totalReads.get()) + "%"
-                    + ", memory read hit rate=" + String.format("%.2f", (memoryReads.get() * 100.0) / totalReads.get()) + "%");
+        if (TOTAL_READS.get() > 0) {
+            logger.info("Local storage cache read stats: total reads=" + TOTAL_READS.get()
+                    + ", file reads=" + FILE_READS.get()
+                    + ", memory reads=" + MEMORY_READS.get()
+                    + ", file read hit rate=" + String.format("%.2f", (FILE_READS.get() * 100.0) / TOTAL_READS.get()) + "%"
+                    + ", memory read hit rate=" + String.format("%.2f", (MEMORY_READS.get() * 100.0) / TOTAL_READS.get()) + "%");
         }
     }
 
@@ -117,7 +117,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     @Override
     public Optional<String> getString(final String tool, final String source, final String promptHash) {
-        totalReads.incrementAndGet();
+        TOTAL_READS.incrementAndGet();
 
         final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
 
@@ -154,15 +154,19 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     private String readFile(final Path path) {
         if (localStorageMemoryCacheEnabled.isMemoryCacheEnabled()) {
-            memoryReads.incrementAndGet();
+            MEMORY_READS.incrementAndGet();
             return MEMORY_CACHE.computeIfAbsent(path, this::readFileSilentFail);
         }
-        return readFileSilentFail(path);
+        final String result = readFileSilentFail(path);
+
+        if (result != null) {
+            FILE_READS.incrementAndGet();
+        }
+        return result;
     }
 
     private String readFileSilentFail(final Path path) {
         return Try.of(() -> Files.readString(path))
-                .peek(c -> fileReads.incrementAndGet())
                 .getOrElse(() -> null);
     }
 
