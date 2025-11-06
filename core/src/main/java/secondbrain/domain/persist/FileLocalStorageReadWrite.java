@@ -9,6 +9,8 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
+import secondbrain.domain.persist.config.LocalStorageMemoryCacheFileLimit;
+import secondbrain.domain.persist.config.LocalStorageMemoryCacheSizeLimit;
 
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -30,8 +32,6 @@ import java.util.regex.Pattern;
 public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
     private static final String LOCAL_CACHE_DIR = "localcache";
-    private static final int MAX_LOCAL_CACHE_ENTRIES = 10000;
-    private static final long MAX_LOCAL_CACHE_SIZE_BYTES = 1000L * 1024L * 1024L; // 1000 MB
     private static final List<String> IGNORED_FILES = List.of("localstoragev2.mv.db", "localstoragev2.trace.db");
 
     private static final Map<Path, String> MEMORY_CACHE = new ConcurrentHashMap<>();
@@ -49,6 +49,12 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     @Inject
     @ConfigProperty(name = "sb.cache.memorycacheenabled", defaultValue = "true")
     private boolean memoryCacheEnabled;
+
+    @Inject
+    private LocalStorageMemoryCacheSizeLimit localStorageMemoryCacheSizeLimit;
+
+    @Inject
+    private LocalStorageMemoryCacheFileLimit localStorageMemoryCacheFileLimit;
 
     /**
      * When we start this service, preload the most recent cache entries into memory for faster access.
@@ -77,9 +83,9 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                                 // Sort by last access time, descending
                                 .sorted((f1, f2) -> f2.getRight().lastAccessTime().compareTo(f1.getRight().lastAccessTime()))
                                 // Limit by number of files
-                                .limit(MAX_LOCAL_CACHE_ENTRIES)
+                                .limit(localStorageMemoryCacheFileLimit.getMemoryCacheFileLimit())
                                 // Take while we have not exceeded the max cache size
-                                .takeWhile(f -> currentCacheSize.addAndGet(f.getRight().size()) <= MAX_LOCAL_CACHE_SIZE_BYTES)
+                                .takeWhile(f -> currentCacheSize.addAndGet(f.getRight().size()) <= localStorageMemoryCacheSizeLimit.getMemoryCacheSizeLimit())
                                 .toList())
                         // Load the files into memory
                         .peek(files -> files.forEach(f -> {
