@@ -9,6 +9,7 @@ import org.jasypt.util.text.StrongTextEncryptor;
 import secondbrain.domain.persist.TimedOperation;
 
 import java.util.Optional;
+import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -20,6 +21,9 @@ public class JasyptEncryptor implements Encryptor {
     @ConfigProperty(name = "sb.encryption.password")
     private Optional<String> encryptionPassword;
 
+    @Inject
+    private Logger logger;
+
     @PostConstruct
     public void construct() {
         // throw if the password was not set
@@ -28,18 +32,23 @@ public class JasyptEncryptor implements Encryptor {
 
     @Override
     public String encrypt(final String text) {
-        return textEncryptor.encrypt(text);
+        return Try.of(() -> textEncryptor.encrypt(text))
+                .onFailure(ex -> logger.warning("Failed to encrypt data: " + ex.getMessage()))
+                .get();
     }
 
     @Override
     public String decrypt(final String text) {
         return Try.withResources(() -> new TimedOperation("text decryption"))
                 .of(t -> decryptTimed(text))
+
                 .get();
     }
 
     private String decryptTimed(final String text) {
         checkState(encryptionPassword.isPresent(), "Encryption password is not set");
-        return textEncryptor.decrypt(text);
+        return Try.of(() -> textEncryptor.decrypt(text))
+                .onFailure(ex -> logger.warning("Failed to decrypt data: " + ex.getMessage()))
+                .get();
     }
 }

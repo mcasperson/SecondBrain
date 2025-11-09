@@ -2,6 +2,7 @@ package secondbrain.domain.zip;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipParameters;
@@ -13,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.logging.Logger;
 
 /**
  * A Zipper implementation that uses Apache Commons Compress to perform GZIP compression and decompression.
@@ -22,8 +24,17 @@ import java.util.Base64;
 public class ApacheCompressZipper implements Zipper {
     private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
+    @Inject
+    private Logger logger;
+
     @Override
-    public String compressString(final String data) {
+    public String compressString(final String compressedData) {
+        return Try.withResources(() -> new TimedOperation("text compression"))
+                .of(t -> compressStringTimed(compressedData))
+                .get();
+    }
+
+    private String compressStringTimed(final String data) {
         if (StringUtils.isEmpty(data)) {
             return null;
         }
@@ -37,6 +48,7 @@ public class ApacheCompressZipper implements Zipper {
                         .get())
                 .map(ByteArrayOutputStream::toByteArray)
                 .map(inputBytes -> Base64.getEncoder().encodeToString(inputBytes))
+                .onFailure(ex -> logger.warning("Failed to compress data: " + ex.getMessage()))
                 .get();
     }
 
@@ -59,6 +71,7 @@ public class ApacheCompressZipper implements Zipper {
                         .of(gcis -> copyStream(gcis, bos))
                         .mapTry(ByteArrayOutputStream::toByteArray)
                         .get())
+                .onFailure(ex -> logger.warning("Failed to decompress data: " + ex.getMessage()))
                 .get();
 
         return new String(uncompressed, DEFAULT_CHARSET);
