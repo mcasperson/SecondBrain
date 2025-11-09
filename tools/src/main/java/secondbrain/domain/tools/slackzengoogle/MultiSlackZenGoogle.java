@@ -279,11 +279,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return localStorage.getOrPutObject(
                         getName(),
                         getName(),
-                        Integer.toString(cacheKey.hashCode()),
+                        generateCacheKey(parsedArgs, prompt),
                         parsedArgs.getCacheTtl(),
                         RagMultiDocumentContext.class,
                         () -> callPrivate(environmentSettings, prompt, arguments))
@@ -291,11 +290,17 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .getRagMultiDocumentContextVoid();
     }
 
+    private String generateCacheKey(final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt) {
+        return parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
+    }
+
     private RagMultiDocumentContext<Void> callPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        logger.info("Cache miss for " + getName() + " " + generateCacheKey(parsedArgs, prompt));
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragContext -> mergeContext(
