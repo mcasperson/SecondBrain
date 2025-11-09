@@ -1,13 +1,24 @@
 package secondbrain.domain.zip;
 
+import io.smallrye.config.inject.ConfigExtension;
+import jakarta.inject.Inject;
+import org.jboss.weld.junit5.auto.AddBeanClasses;
+import org.jboss.weld.junit5.auto.AddExtensions;
+import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.Test;
+import secondbrain.domain.logger.Loggers;
 
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@EnableAutoWeld
+@AddExtensions(ConfigExtension.class)
+@AddBeanClasses(ApacheCompressZipper.class)
+@AddBeanClasses(Loggers.class)
 class ApacheCompressZipperTest {
-    private final ApacheCompressZipper zipper = new ApacheCompressZipper();
+    @Inject
+    private ApacheCompressZipper zipper;
 
     @Test
     void compressAndDecompressString_roundTrip() {
