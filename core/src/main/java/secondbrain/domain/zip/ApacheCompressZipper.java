@@ -6,6 +6,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipParameters;
 import org.apache.commons.lang3.StringUtils;
+import secondbrain.domain.persist.TimedOperation;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -41,6 +42,12 @@ public class ApacheCompressZipper implements Zipper {
 
     @Override
     public String decompressString(final String compressedData) {
+        return Try.withResources(() -> new TimedOperation("text decompression"))
+                .of(t -> decompressStringTimed(compressedData))
+                .get();
+    }
+
+    private String decompressStringTimed(final String compressedData) {
         if (StringUtils.isEmpty(compressedData)) {
             return null;
         }

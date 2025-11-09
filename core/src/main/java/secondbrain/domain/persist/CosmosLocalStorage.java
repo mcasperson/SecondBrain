@@ -205,50 +205,14 @@ public class CosmosLocalStorage implements LocalStorage {
                 // Convert to a CacheResult
                 .map(cache -> new CacheResult<String>(cache.get(), true))
                 // If there was no locally cached value, get from Cosmos DB
-                .recover(NoSuchElementException.class, ex -> {
-                    final String id = generateId(tool, source, promptHash);
-                    final PartitionKey partitionKey = new PartitionKey(tool);
-
-                    final CosmosItemResponse<CacheItem> response = container.readItem(
-                            id,
-                            partitionKey,
-                            CacheItem.class
-                    );
-
-                    // Check if item has expired (if timestamp is set)
-                    if (response.getItem().timestamp != null) {
-                        if (response.getItem().timestamp < Instant.now().getEpochSecond()) {
-                            return new CacheResult<String>(null, false);
-                        }
-                    }
-
-                    // If we are loading this from the remote cache, save it locally too
-                    localStorageReadWrite.putString(tool, source, promptHash, response.getItem().timestamp, response.getItem().response());
-
-                    return new CacheResult<String>(response.getItem().response(), true);
-                })
+                .recover(NoSuchElementException.class, ex -> loadFromDatabase(tool, source, promptHash))
                 // Decrypt and decompress the result if it was from cache
-                .map(r -> {
-                    if (!r.fromCache()) {
-                        return r;
-                    }
-
-                    totalCacheHits.incrementAndGet();
-
-                    final String original = Try.of(() -> encryptor.decrypt(r.result()))
-                            .map(decrypted -> zipper.decompressString(decrypted))
-                            .getOrNull();
-
-
-                    return new CacheResult<String>(original, true);
-                })
-                .recover(CosmosException.class, ex -> {
-                    if (ex.getStatusCode() == 404) {
-                        return new CacheResult<String>(null, false);
-                    }
-                    throw ex;
-                })
+                .map(this::unpack)
+                // If the item is not found, return a CacheResult with null
+                .recover(CosmosException.class, this::handleError)
+                // Track failures
                 .onFailure(ex -> totalFailures.incrementAndGet())
+                // Log errors
                 .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
         return result
@@ -256,6 +220,57 @@ public class CosmosLocalStorage implements LocalStorage {
                         API.Case(API.$(), ex -> new LocalStorageFailure("Failed to get record", ex))
                 )
                 .get();
+    }
+
+    private CacheResult<String> handleError(final CosmosException ex) {
+        if (ex.getStatusCode() == 404) {
+            return new CacheResult<String>(null, false);
+        }
+        throw ex;
+    }
+
+    private CacheResult<String> unpack(final CacheResult<String> result) {
+        if (!result.fromCache()) {
+            return result;
+        }
+
+        totalCacheHits.incrementAndGet();
+
+        final String original = Try.of(() -> encryptor.decrypt(result.result()))
+                .map(decrypted -> zipper.decompressString(decrypted))
+                .getOrNull();
+
+
+        return new CacheResult<String>(original, true);
+    }
+
+    private CacheResult<String> loadFromDatabase(final String tool, final String source, final String promptHash) {
+        return Try.withResources(() -> new TimedOperation("load from Cosmos DB for " + tool + " " + source))
+                .of(t -> loadFromDatabaseTimed(tool, source, promptHash))
+                .get();
+    }
+
+    private CacheResult<String> loadFromDatabaseTimed(final String tool, final String source, final String promptHash) {
+        final String id = generateId(tool, source, promptHash);
+        final PartitionKey partitionKey = new PartitionKey(tool);
+
+        final CosmosItemResponse<CacheItem> response = container.readItem(
+                id,
+                partitionKey,
+                CacheItem.class
+        );
+
+        // Check if item has expired (if timestamp is set)
+        if (response.getItem().timestamp != null) {
+            if (response.getItem().timestamp < Instant.now().getEpochSecond()) {
+                return new CacheResult<String>(null, false);
+            }
+        }
+
+        // If we are loading this from the remote cache, save it locally too
+        localStorageReadWrite.putString(tool, source, promptHash, response.getItem().timestamp, response.getItem().response());
+
+        return new CacheResult<String>(response.getItem().response(), true);
     }
 
     @Override
