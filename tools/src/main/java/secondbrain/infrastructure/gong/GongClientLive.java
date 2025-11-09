@@ -193,7 +193,7 @@ public class GongClientLive implements GongClient {
     private GongCallsExtensive callApiLocked(final GongCallExtensiveQuery body,
                                              final String username,
                                              final String password) {
-        Try.withResources(() -> new TimedOperation("Gong API call for calls extensive"))
+        return Try.withResources(() -> new TimedOperation("Gong API call for calls extensive"))
                 .of(t -> callApiTimed(body, username, password))
                 .get();
     }
