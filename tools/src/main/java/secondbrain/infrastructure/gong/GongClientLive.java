@@ -17,6 +17,7 @@ import secondbrain.domain.httpclient.HttpClientCaller;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.persist.TimedOperation;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.gong.api.*;
 
@@ -192,6 +193,14 @@ public class GongClientLive implements GongClient {
     private GongCallsExtensive callApiLocked(final GongCallExtensiveQuery body,
                                              final String username,
                                              final String password) {
+        Try.withResources(() -> new TimedOperation("Gong API call for calls extensive"))
+                .of(t -> callApiTimed(body, username, password))
+                .get();
+    }
+
+    private GongCallsExtensive callApiTimed(final GongCallExtensiveQuery body,
+                                            final String username,
+                                            final String password) {
         RATE_LIMITER.acquire();
 
         final String target = url + "/v2/calls/extensive";
