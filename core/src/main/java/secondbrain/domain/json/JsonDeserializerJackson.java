@@ -12,6 +12,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import secondbrain.domain.exceptions.DeserializationFailed;
 import secondbrain.domain.exceptions.SerializationFailed;
+import secondbrain.domain.persist.TimedOperation;
 
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,12 @@ public class JsonDeserializerJackson implements JsonDeserializer {
 
     @Override
     public <T> T deserialize(final String json, final Class<T> clazz) {
+        return Try.withResources(() -> new TimedOperation("Deserialize string " + clazz.getSimpleName()))
+                .of(t -> deserializeTimed(json, clazz))
+                .get();
+    }
+
+    private <T> T deserializeTimed(final String json, final Class<T> clazz) {
         return Try.of(this::createObjectMapper)
                 .mapTry(objectMapper -> objectMapper.readValue(json, clazz))
                 .getOrElseThrow(ex -> new SerializationFailed(ex));
