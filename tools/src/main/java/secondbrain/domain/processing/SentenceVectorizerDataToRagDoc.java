@@ -49,7 +49,7 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
             final String contextLabel,
             @Nullable final MetaObjectResults meta,
             final LocalConfigKeywordsEntity parsedArgs) {
-        final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(task.getText(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
+        final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(task.generateText(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
 
         // If annotations are disabled, return context without vectors, saving some CPU
         if (disableAnnotations) {
@@ -58,11 +58,11 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
                     contextLabel,
                     trimmedConversationResult.document(),
                     null,
-                    task.getId(),
+                    task.generateId(),
                     task,
                     meta,
                     null,
-                    "[" + task.getLinkText() + "](" + task.getUrl() + ")",
+                    "[" + task.generateLinkText() + "](" + task.generateUrl() + ")",
                     trimmedConversationResult.keywordMatches());
         }
 
@@ -72,11 +72,11 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
                         contextLabel,
                         trimmedConversationResult.document(),
                         disableAnnotations ? null : sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
-                        task.getId(),
+                        task.generateId(),
                         task,
                         meta,
                         null,
-                        "[" + task.getLinkText() + "](" + task.getUrl() + ")",
+                        "[" + task.generateLinkText() + "](" + task.generateUrl() + ")",
                         trimmedConversationResult.keywordMatches()))
                 .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // Proceed without vectors if vectorization fails
@@ -86,18 +86,18 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
                         contextLabel,
                         trimmedConversationResult.document(),
                         null,
-                        task.getId(),
+                        task.generateId(),
                         task,
                         meta,
                         null,
-                        "[" + task.getLinkText() + "](" + task.getUrl() + ")",
+                        "[" + task.generateLinkText() + "](" + task.generateUrl() + ")",
                         trimmedConversationResult.keywordMatches()))
                 .get();
     }
 
     @Override
     public <T extends TextData> RagDocumentContext<T> getUnlinkedDocumentContext(final T task, final String toolName, final String contextLabel, final LocalConfigKeywordsEntity parsedArgs) {
-        final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(task.getText(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
+        final TrimResult trimmedConversationResult = documentTrimmer.trimDocumentToKeywords(task.generateText(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow());
 
         // If annotations are disabled, return context without vectors, saving some CPU
         if (disableAnnotations) {
@@ -117,7 +117,7 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
                 .map(sentences -> new RagDocumentContext<T>(
                         toolName,
                         contextLabel,
-                        task.getText(),
+                        task.generateText(),
                         sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
                         null,
                         null,

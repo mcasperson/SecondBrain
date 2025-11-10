@@ -10,17 +10,17 @@ import secondbrain.domain.data.UrlData;
 public record SlackSearchResultResource(String id, String timestamp, String channelName, String text,
                                         String permalink) implements TextData, IdData, UrlData {
     @Override
-    public String getId() {
+    public String generateId() {
         return id;
     }
 
     @Override
-    public String getText() {
+    public String generateText() {
         return text;
     }
 
     @Override
-    public String getLinkText() {
+    public String generateLinkText() {
         return StringUtils.substring(text()
                         .replaceAll(":.*?:", "")
                         .replaceAll("[^A-Za-z0-9-._ ]", " ")
@@ -29,7 +29,7 @@ public record SlackSearchResultResource(String id, String timestamp, String chan
     }
 
     @Override
-    public String getUrl() {
+    public String generateUrl() {
         return permalink;
     }
 }

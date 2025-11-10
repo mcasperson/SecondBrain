@@ -38,26 +38,26 @@ public record GongCallDetails(String id,
                               @Nullable MetaObjectResult meta10) implements IdData, TextData, UrlData {
 
     @Override
-    public String getId() {
+    public String generateId() {
         return id;
     }
 
     @Override
-    public String getText() {
+    public String generateText() {
         return transcript;
     }
 
     @Override
-    public String getLinkText() {
-        return "Gong Call " + getId();
+    public String generateLinkText() {
+        return "Gong Call " + generateId();
     }
 
     @Override
-    public String getUrl() {
+    public String generateUrl() {
         return url;
     }
 
-    public MetaObjectResults getMetaObjectResults() {
+    public MetaObjectResults generateMetaObjectResults() {
         return new MetaObjectResults(Stream.of(meta1, meta2, meta3, meta4, meta5, meta6, meta7, meta8, meta9, meta10).filter(Objects::nonNull).toList());
     }
 }

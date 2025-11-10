@@ -116,22 +116,22 @@ class SentenceVectorizerDataToRagDocTest {
 
     private record TestTask(String id, String text, String url, String linkText) implements TextData, IdData, UrlData {
         @Override
-        public String getId() {
+        public String generateId() {
             return id;
         }
 
         @Override
-        public String getText() {
+        public String generateText() {
             return text;
         }
 
         @Override
-        public String getLinkText() {
+        public String generateLinkText() {
             return linkText;
         }
 
         @Override
-        public String getUrl() {
+        public String generateUrl() {
             return url;
         }
     }

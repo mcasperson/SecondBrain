@@ -7,22 +7,22 @@ import secondbrain.domain.data.UrlData;
 public record GoogleDoc(String id, String linkText, String url, String text) implements TextData, IdData, UrlData {
 
     @Override
-    public String getId() {
+    public String generateId() {
         return id;
     }
 
     @Override
-    public String getText() {
+    public String generateText() {
         return linkText;
     }
 
     @Override
-    public String getLinkText() {
+    public String generateLinkText() {
         return url;
     }
 
     @Override
-    public String getUrl() {
+    public String generateUrl() {
         return text;
     }
 }

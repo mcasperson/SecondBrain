@@ -160,7 +160,7 @@ class LLMRagDocSummarizerTest {
 
     private record TestTask(String id) implements IdData {
         @Override
-        public String getId() {
+        public String generateId() {
             return id;
         }
     }

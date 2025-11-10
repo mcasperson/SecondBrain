@@ -35,22 +35,22 @@ public record SalesforceTaskRecord(@JsonProperty("Id") String id,
     }
 
     @Override
-    public String getId() {
+    public String generateId() {
         return id;
     }
 
     @Override
-    public String getText() {
+    public String generateText() {
         return getSubject() + " " + getCreatedDate() + "\n" + getDescription();
     }
 
     @Override
-    public String getLinkText() {
-        return "Salesforce Task " + getId();
+    public String generateLinkText() {
+        return "Salesforce Task " + generateId();
     }
 
     @Override
-    public String getUrl() {
-        return "https://" + (domain == null ? "fixme" : domain) + ".lightning.force.com/lightning/r/Task/" + getId() + "/view";
+    public String generateUrl() {
+        return "https://" + (domain == null ? "fixme" : domain) + ".lightning.force.com/lightning/r/Task/" + generateId() + "/view";
     }
 }

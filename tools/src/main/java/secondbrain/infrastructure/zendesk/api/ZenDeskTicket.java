@@ -41,22 +41,22 @@ public record ZenDeskTicket(String id,
     }
 
     @Override
-    public String getId() {
+    public String generateId() {
         return id;
     }
 
     @Override
-    public String getText() {
+    public String generateText() {
         return comments;
     }
 
     @Override
-    public String getLinkText() {
+    public String generateLinkText() {
         return "ZenDesk Ticket " + id;
     }
 
     @Override
-    public String getUrl() {
+    public String generateUrl() {
         return url;
     }
 }

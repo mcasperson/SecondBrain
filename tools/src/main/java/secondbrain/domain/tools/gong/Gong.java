@@ -228,7 +228,7 @@ public class Gong implements Tool<GongCallDetails> {
                 .get();
 
         final List<RagDocumentContext<GongCallDetails>> ragDocs = calls.stream()
-                .map(call -> dataToRagDoc.getDocumentContext(call, getName(), getContextLabelWithDate(call), call.getMetaObjectResults(), parsedArgs))
+                .map(call -> dataToRagDoc.getDocumentContext(call, getName(), getContextLabelWithDate(call), call.generateMetaObjectResults(), parsedArgs))
                 .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                 .toList();
 

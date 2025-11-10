@@ -209,12 +209,12 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                         oldest,
                         parsedArgs.getSearchTTL(),
                         parsedArgs.getApiDelay())))
-                .map(c -> c.updateConversation(replaceUserIds(client, parsedArgs.getSecretAccessToken(), c.getText(), parsedArgs)))
-                .map(c -> c.updateConversation(replaceChannelIds(client, parsedArgs.getSecretAccessToken(), c.getText(), parsedArgs)));
+                .map(c -> c.updateConversation(replaceUserIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)))
+                .map(c -> c.updateConversation(replaceChannelIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)));
 
         final SlackChannelResource channel = exceptionMapping.map(result).get();
 
-        if (StringUtils.length(channel.getText()) < MINIMUM_MESSAGE_LENGTH) {
+        if (StringUtils.length(channel.generateText()) < MINIMUM_MESSAGE_LENGTH) {
             throw new InternalFailure("Not enough messages found in channel " + parsedArgs.getChannel()
                     + System.lineSeparator() + System.lineSeparator()
                     + "* [Slack Channel](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")");

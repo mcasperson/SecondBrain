@@ -15,22 +15,22 @@ public record SlackChannelResource(String teamId, String channelId, String chann
     }
 
     @Override
-    public String getLinkText() {
+    public String generateLinkText() {
         return "Slack " + channelName();
     }
 
     @Override
-    public String getUrl() {
+    public String generateUrl() {
         return "https://app.slack.com/client/" + teamId() + "/" + channelId();
     }
 
     @Override
-    public String getId() {
+    public String generateId() {
         return channelId;
     }
 
     @Override
-    public String getText() {
+    public String generateText() {
         return Objects.requireNonNull(conversation, "");
     }
 

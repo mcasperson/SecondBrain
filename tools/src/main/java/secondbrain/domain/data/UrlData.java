@@ -1,7 +1,7 @@
 package secondbrain.domain.data;
 
 public interface UrlData {
-    String getLinkText();
+    String generateLinkText();
 
-    String getUrl();
+    String generateUrl();
 }

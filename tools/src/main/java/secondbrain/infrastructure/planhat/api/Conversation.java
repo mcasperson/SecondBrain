@@ -28,22 +28,22 @@ public record Conversation(@JsonProperty("_id") String id,
     }
 
     @Override
-    public String getId() {
+    public String generateId() {
         return id;
     }
 
     @Override
-    public String getText() {
+    public String generateText() {
         return StringUtils.isBlank(description) ? getSnippet() : getDescription();
     }
 
     @Override
-    public String getLinkText() {
+    public String generateLinkText() {
         return "Planhat Conversation";
     }
 
     @Override
-    public String getUrl() {
+    public String generateUrl() {
         return url + "/profile/" + companyId() + "?conversationId=" + id();
     }
 

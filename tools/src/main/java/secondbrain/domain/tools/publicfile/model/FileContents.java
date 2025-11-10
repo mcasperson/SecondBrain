@@ -8,22 +8,22 @@ import java.util.Objects;
 
 public record FileContents(String id, String url, String text) implements TextData, IdData, UrlData {
     @Override
-    public String getText() {
+    public String generateText() {
         return Objects.requireNonNullElse(text, "");
     }
 
     @Override
-    public String getId() {
+    public String generateId() {
         return Objects.requireNonNullElse(id, "");
     }
 
     @Override
-    public String getLinkText() {
+    public String generateLinkText() {
         return "File";
     }
 
     @Override
-    public String getUrl() {
+    public String generateUrl() {
         return Objects.requireNonNullElse(url, "");
     }
 }
