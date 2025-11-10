@@ -17,6 +17,7 @@ import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.encryption.JasyptEncryptor;
+import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @AddBeanClasses(MockLLmCLient.class)
 @AddBeanClasses(JasyptEncryptor.class)
 @AddBeanClasses(Loggers.class)
+@AddBeanClasses(LoggingExceptionHandler.class)
 class LLMRagDocSummarizerTest {
     private static final String MOCK_RESPONSE = "Mock Summary Response";
 
