@@ -146,8 +146,8 @@ public class PromptHandlerOllama implements PromptHandler {
                     "",
                     disableLinks ? "" : getLinks(document),
                     debug ? getDebugLinks(document) : "",
-                    document.getMetaObjectResults(),
-                    document.getIntermediateResults());
+                    document.generateMetaObjectResults(),
+                    document.generateIntermediateResults());
         }
 
         final AnnotationResult<? extends RagMultiDocumentContext<?>> result = document.annotateDocumentContext(
@@ -162,12 +162,12 @@ public class PromptHandlerOllama implements PromptHandler {
                 result.annotations(),
                 disableLinks ? "" : getLinks(document),
                 debug ? getDebugLinks(document) : "",
-                document.getMetaObjectResults(),
-                document.getIntermediateResults());
+                document.generateMetaObjectResults(),
+                document.generateIntermediateResults());
     }
 
     private String getLinks(final RagMultiDocumentContext<?> document) {
-        if (document.getLinks().isEmpty()) {
+        if (document.generateLinks().isEmpty()) {
             return "";
         }
 

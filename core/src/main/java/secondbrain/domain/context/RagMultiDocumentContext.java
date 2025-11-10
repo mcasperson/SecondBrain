@@ -63,7 +63,7 @@ public record RagMultiDocumentContext<T>(String prompt,
     }
 
     @JsonIgnore
-    public List<String> getLinks() {
+    public List<String> generateLinks() {
         return individualContexts.stream()
                 .map(RagDocumentContext::link)
                 .filter(Objects::nonNull)
@@ -96,7 +96,7 @@ public record RagMultiDocumentContext<T>(String prompt,
     }
 
     @JsonIgnore
-    public String getDocumentRight(final int length) {
+    public String generateDocumentRight(final int length) {
         if (length <= 0) {
             return "";
         }
@@ -121,8 +121,8 @@ public record RagMultiDocumentContext<T>(String prompt,
                                                                                 final SimilarityCalculator similarityCalculator,
                                                                                 final SentenceVectorizer sentenceVectorizer) {
 
-        final Set<RagSentenceAndOriginal> annotations = getAnnotations(minSimilarity, minWords, sentenceSplitter, similarityCalculator, sentenceVectorizer);
-        final List<RagSentence> lookups = getAnnotationLookup(annotations);
+        final Set<RagSentenceAndOriginal> annotations = generateAnnotations(minSimilarity, minWords, sentenceSplitter, similarityCalculator, sentenceVectorizer);
+        final List<RagSentence> lookups = generateAnnotationLookup(annotations);
         final String result = annotations
                 .stream()
                 // Use each of the annotations to update the document inline with the annotation index and then append the annotation
@@ -137,11 +137,11 @@ public record RagMultiDocumentContext<T>(String prompt,
 
         final int annotationIds = annotations.stream().map(RagSentenceAndOriginal::id).collect(Collectors.toSet()).size();
 
-        return new AnnotationResult<>(result, getReferences(lookups), (float) annotationIds / individualContexts.size(), this);
+        return new AnnotationResult<>(result, generateReferences(lookups), (float) annotationIds / individualContexts.size(), this);
     }
 
     @JsonIgnore
-    private String getReferences(final List<RagSentence> lookups) {
+    private String generateReferences(final List<RagSentence> lookups) {
         if (lookups.isEmpty()) {
             return "";
         }
@@ -164,7 +164,7 @@ public record RagMultiDocumentContext<T>(String prompt,
     }
 
     @JsonIgnore
-    public List<RagSentence> getAnnotationLookup(final Set<RagSentenceAndOriginal> annotations) {
+    public List<RagSentence> generateAnnotationLookup(final Set<RagSentenceAndOriginal> annotations) {
         return annotations
                 .stream()
                 .map(RagSentenceAndOriginal::toRagSentence)
@@ -173,11 +173,11 @@ public record RagMultiDocumentContext<T>(String prompt,
     }
 
     @JsonIgnore
-    public Set<RagSentenceAndOriginal> getAnnotations(final float minSimilarity,
-                                                      final int minWords,
-                                                      final SentenceSplitter sentenceSplitter,
-                                                      final SimilarityCalculator similarityCalculator,
-                                                      final SentenceVectorizer sentenceVectorizer) {
+    public Set<RagSentenceAndOriginal> generateAnnotations(final float minSimilarity,
+                                                           final int minWords,
+                                                           final SentenceSplitter sentenceSplitter,
+                                                           final SimilarityCalculator similarityCalculator,
+                                                           final SentenceVectorizer sentenceVectorizer) {
 
         return sentenceSplitter.splitDocument(getResponse(), minWords)
                 .stream()
@@ -204,7 +204,7 @@ public record RagMultiDocumentContext<T>(String prompt,
     }
 
     @JsonIgnore
-    public List<MetaObjectResults> getMetaObjectResults() {
+    public List<MetaObjectResults> generateMetaObjectResults() {
 
         // get all the individual metadata from the RagDocumentContext objects
         final List<MetaObjectResults> individualMetadata = individualContexts
@@ -219,7 +219,7 @@ public record RagMultiDocumentContext<T>(String prompt,
     }
 
     @JsonIgnore
-    public List<IntermediateResult> getIntermediateResults() {
+    public List<IntermediateResult> generateIntermediateResults() {
         return individualContexts
                 .stream()
                 .flatMap(ragDocumentContext -> ragDocumentContext.getIntermediateResults().stream())
@@ -231,7 +231,7 @@ public record RagMultiDocumentContext<T>(String prompt,
      * Convert this into a RagMultiDocumentContext with a Void source type.
      */
     @JsonIgnore
-    public RagMultiDocumentContext<Void> getRagMultiDocumentContextVoid() {
+    public RagMultiDocumentContext<Void> convertToRagMultiDocumentContextVoid() {
         return new RagMultiDocumentContext<>(
                 prompt,
                 instructions,

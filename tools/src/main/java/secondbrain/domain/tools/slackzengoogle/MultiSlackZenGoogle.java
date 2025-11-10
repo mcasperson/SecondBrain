@@ -291,13 +291,13 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 () -> callPrivate(environmentSettings, prompt, arguments));
 
         if (result.fromCache()) {
-            logger.info("Cache hit for " + getName() + " " + generateCacheKey(parsedArgs, prompt));
+            logger.info("Cache hit for " + getName() + " " + cacheKey);
         } else {
-            logger.info("Cache miss for " + getName() + " " + generateCacheKey(parsedArgs, prompt));
+            logger.info("Cache miss for " + getName() + " " + cacheKey);
         }
 
         return result.result()
-                .getRagMultiDocumentContextVoid();
+                .convertToRagMultiDocumentContextVoid();
     }
 
     private String generateCacheKey(final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt) {

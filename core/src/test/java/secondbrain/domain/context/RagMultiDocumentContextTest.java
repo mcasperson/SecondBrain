@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RagMultiDocumentContextTest {
 
     @Test
-    void testGetAnnotations() {
+    void testGenerateAnnotations() {
         // Create mock objects for dependencies
         SentenceSplitter sentenceSplitter = new MockSentenceSplitter();
         SimilarityCalculator similarityCalculator = new MockSimilarityCalculator();
@@ -36,7 +36,7 @@ class RagMultiDocumentContextTest {
         );
 
         // Get annotations
-        Set<RagSentenceAndOriginal> annotations = multiContext.getAnnotations(
+        Set<RagSentenceAndOriginal> annotations = multiContext.generateAnnotations(
                 0.8f,  // minSimilarity
                 3,     // minWords
                 sentenceSplitter,
@@ -50,7 +50,7 @@ class RagMultiDocumentContextTest {
         assertTrue(annotations.stream().anyMatch(e -> e.originalContext().equals("It contains multiple sentences")));
 
         // Get lookups
-        final List<RagSentence> lookups = multiContext.getAnnotationLookup(annotations);
+        final List<RagSentence> lookups = multiContext.generateAnnotationLookup(annotations);
         assertEquals(2, lookups.size());
 
 
