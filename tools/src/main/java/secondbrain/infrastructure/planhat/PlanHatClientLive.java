@@ -79,7 +79,23 @@ public class PlanHatClientLive implements PlanHatClient {
             final ZonedDateTime startDate,
             final ZonedDateTime endDate,
             final int ttlSeconds) {
-        final Conversation[] conversations = getConversationsApi(client, company, url, token, ttlSeconds, startDate, endDate, 0);
+
+        // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
+        final String end = endDate.format(ISO_OFFSET_DATE_TIME);
+        final String start = startDate.format(ISO_OFFSET_DATE_TIME);
+
+        // This result may be too large to cache remotely, but it can be cached locally.
+        // If we do get a local cache hit, it will save us from making multiple API calls.
+        // If we get a cache miss, we will go to the external cache for each page of results.
+        final Conversation[] conversations = localStorage.getOrPutObjectArray(
+                        PlanHatClientLive.class.getSimpleName(),
+                        "PlanHatAPIConversationParent",
+                        DigestUtils.sha256Hex(company + url + start + end),
+                        ttlSeconds,
+                        Conversation.class,
+                        Conversation[].class,
+                        () -> getConversationsApi(client, company, url, token, ttlSeconds, startDate, endDate, 0))
+                .result();
 
         // Do one last filter to ensure we only return conversations before the end date.
         // We don't do this earlier as we need to work all the way back to the start date,
