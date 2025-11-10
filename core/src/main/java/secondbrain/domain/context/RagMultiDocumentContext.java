@@ -232,7 +232,7 @@ public record RagMultiDocumentContext<T>(String prompt,
                 prompt,
                 instructions,
                 individualContexts.stream()
-                        .map(RagDocumentContext::getRagDocumentContextVoid)
+                        .map(RagDocumentContext::convertToRagDocumentContextVoid)
                         .toList(),
                 response,
                 debug,

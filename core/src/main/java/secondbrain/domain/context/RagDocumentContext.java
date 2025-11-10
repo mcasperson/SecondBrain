@@ -153,7 +153,7 @@ public record RagDocumentContext<T>(String tool,
      * type to work with.
      */
     @JsonIgnore
-    public RagDocumentContext<Void> getRagDocumentContextVoid() {
+    public RagDocumentContext<Void> convertToRagDocumentContextVoid() {
         return new RagDocumentContext<>(
                 tool,
                 contextLabel,

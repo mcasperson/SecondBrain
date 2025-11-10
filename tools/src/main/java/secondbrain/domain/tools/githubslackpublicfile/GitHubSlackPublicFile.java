@@ -180,7 +180,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
-                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 
@@ -206,7 +206,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                         .onFailure(ExternalFailure.class, ex -> logger.warning("GitHub issues failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
-                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 
@@ -230,7 +230,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                         .onFailure(ExternalFailure.class, ex -> logger.warning("GitHub diffs failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
-                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 

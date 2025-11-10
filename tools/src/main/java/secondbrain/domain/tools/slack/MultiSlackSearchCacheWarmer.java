@@ -163,7 +163,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
                 .getOrElse(List::of)
                 // Post-process the rag context
                 .stream()
-                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 

@@ -617,7 +617,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 // Post-process the rag context
                 .stream()
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 
@@ -650,7 +650,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 
@@ -683,7 +683,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 
@@ -716,7 +716,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 
@@ -738,7 +738,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 
@@ -800,7 +800,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 
@@ -831,7 +831,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .stream())
                 // The context label is updated to include the entity name
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
-                .map(RagDocumentContext::getRagDocumentContextVoid)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 
