@@ -27,6 +27,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.sanitize.SanitizeDocument;
@@ -279,14 +280,23 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        return localStorage.getOrPutObject(
-                        getName(),
-                        getName(),
-                        generateCacheKey(parsedArgs, prompt),
-                        parsedArgs.getCacheTtl(),
-                        RagMultiDocumentContext.class,
-                        () -> callPrivate(environmentSettings, prompt, arguments))
-                .result()
+        final String cacheKey = generateCacheKey(parsedArgs, prompt);
+
+        final CacheResult<RagMultiDocumentContext> result = localStorage.getOrPutObject(
+                getName(),
+                getName(),
+                cacheKey,
+                parsedArgs.getCacheTtl(),
+                RagMultiDocumentContext.class,
+                () -> callPrivate(environmentSettings, prompt, arguments));
+
+        if (result.fromCache()) {
+            logger.info("Cache hit for " + getName() + " " + generateCacheKey(parsedArgs, prompt));
+        } else {
+            logger.info("Cache miss for " + getName() + " " + generateCacheKey(parsedArgs, prompt));
+        }
+
+        return result.result()
                 .getRagMultiDocumentContextVoid();
     }
 
@@ -299,8 +309,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-
-        logger.info("Cache miss for " + getName() + " " + generateCacheKey(parsedArgs, prompt));
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragContext -> mergeContext(
