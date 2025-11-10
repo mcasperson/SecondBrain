@@ -92,15 +92,27 @@ public class GongClientLive implements GongClient {
                 : toDateTime;
 
         /*
-         There is no way to filter by salesforce ID. So we instead get all the calls during the period,
-         cache the result, and then filter the calls by the company ID.
+            Cache at the parent level to take advantage of the local cache, even if the remote cache
+            (CosmoDB) has limits on the size of each cached object.
          */
-        final GongCallExtensive[] calls = getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0);
+        final GongCallExtensive[] calls = localStorage.getOrPutObjectArray(
+                        GongClientLive.class.getSimpleName(),
+                        "GongAPICallsExtensiveParentV2",
+                        DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
+                        TTL,
+                        GongCallExtensive.class,
+                        GongCallExtensive[].class,
+                        () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0))
+                .result();
 
         if (calls == null) {
             return List.of();
         }
 
+        /*
+         There is no way to filter by salesforce ID. So we instead get all the calls during the period,
+         cache the result, and then filter the calls by the company ID.
+         */
         return Arrays.stream(calls)
                 .filter(call -> Objects.requireNonNullElse(call.context(), List.<GongCallExtensiveContext>of())
                         .stream()
