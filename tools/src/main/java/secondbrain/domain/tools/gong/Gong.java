@@ -26,6 +26,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
@@ -162,16 +163,23 @@ public class Gong implements Tool<GongCallDetails> {
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
-        return localStorage.getOrPutGeneric(
-                        getName(),
-                        getName(),
-                        Integer.toString(cacheKey.hashCode()),
-                        parsedArgs.getCacheTtl(),
-                        List.class,
-                        RagDocumentContext.class,
-                        GongCallDetails.class,
-                        () -> getContextPrivate(environmentSettings, prompt, arguments))
-                .result();
+        final CacheResult<List> result = localStorage.getOrPutGeneric(
+                getName(),
+                getName(),
+                Integer.toString(cacheKey.hashCode()),
+                parsedArgs.getCacheTtl(),
+                List.class,
+                RagDocumentContext.class,
+                GongCallDetails.class,
+                () -> getContextPrivate(environmentSettings, prompt, arguments));
+
+        if (result.fromCache()) {
+            logger.info("Cache hit for " + getName() + " " + cacheKey);
+        } else {
+            logger.info("Cache miss for " + getName() + " " + cacheKey);
+        }
+
+        return result.result();
     }
 
     private List<RagDocumentContext<GongCallDetails>> getContextPrivate(
