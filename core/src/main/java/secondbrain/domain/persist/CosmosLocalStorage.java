@@ -49,6 +49,7 @@ public class CosmosLocalStorage implements LocalStorage {
     private static final String DATABASE_NAME = "secondbrain";
     private static final int DEFAULT_TTL_SECONDS = 86400;
     private static final int MAX_FAILURES = 5;
+    private static final int MAX_ITEM_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
@@ -520,6 +521,11 @@ public class CosmosLocalStorage implements LocalStorage {
 
         if (totalFailures.get() > MAX_FAILURES) {
             resetConnection();
+        }
+
+        if (value.getBytes().length > MAX_ITEM_SIZE_BYTES) {
+            logger.warning("Item size exceeds maximum of " + MAX_ITEM_SIZE_BYTES + " bytes for tool " + tool + " source " + source + " prompt " + promptHash + ". Size: " + value.getBytes().length + " bytes. Skipping cache put.");
+            return;
         }
 
         final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
