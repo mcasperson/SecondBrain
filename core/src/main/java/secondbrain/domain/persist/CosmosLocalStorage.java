@@ -234,6 +234,10 @@ public class CosmosLocalStorage implements LocalStorage {
             return result;
         }
 
+        if (StringUtils.isBlank(result.result())) {
+            return null;
+        }
+
         totalCacheHits.incrementAndGet();
 
         final String original = Try.of(() -> encryptor.decrypt(result.result()))
