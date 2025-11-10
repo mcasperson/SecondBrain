@@ -219,6 +219,16 @@ public class PlanHatClientLive implements PlanHatClient {
             final String company,
             final String url,
             final String token) {
+        return Try.withResources(() -> new TimedOperation("Planhat API call for company"))
+                .of(t -> getCompanyApiTimed(client, company, url, token))
+                .get();
+    }
+
+    private Company getCompanyApiTimed(
+            final Client client,
+            final String company,
+            final String url,
+            final String token) {
         logger.fine("Calling PlanHat Company API for company " + company);
 
         RATE_LIMITER.acquire();
