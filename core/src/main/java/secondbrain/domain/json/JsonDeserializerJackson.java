@@ -16,6 +16,7 @@ import secondbrain.domain.persist.TimedOperation;
 
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * A service for serializing and deserializing JSON.
@@ -26,10 +27,14 @@ public class JsonDeserializerJackson implements JsonDeserializer {
     @Inject
     private Instance<SimpleModule> modules;
 
+    @Inject
+    private Logger logger;
+
     @Override
     public String serialize(final Object object) {
         return Try.of(this::createObjectMapper)
                 .mapTry(objectMapper -> objectMapper.writeValueAsString(object))
+                .onFailure(ex -> logger.warning("Failed to serialize object of type " + object.getClass().getSimpleName() + ": " + ex.getMessage()))
                 .getOrElseThrow(ex -> new SerializationFailed(ex));
     }
 
@@ -52,6 +57,7 @@ public class JsonDeserializerJackson implements JsonDeserializer {
                 .mapTry(objectMapper -> objectMapper.<Map<U, V>>readValue(
                         json,
                         objectMapper.getTypeFactory().constructMapType(Map.class, key, value)))
+                .onFailure(ex -> logger.warning("Failed to deserialize map of type " + key.getSimpleName() + ": " + ex.getMessage()))
                 .getOrElseThrow(ex -> new DeserializationFailed(ex));
     }
 
@@ -70,6 +76,7 @@ public class JsonDeserializerJackson implements JsonDeserializer {
                 .mapTry(objectMapper -> objectMapper.<T>readValue(
                         json,
                         objectMapper.getTypeFactory().constructParametricType(container, contained)))
+                .onFailure(ex -> logger.warning("Failed to deserialize object of type " + container.getSimpleName() + " containing type " + contained.getSimpleName() + ": " + ex.getMessage()))
                 .getOrElseThrow(ex -> new DeserializationFailed(ex));
     }
 
@@ -79,6 +86,7 @@ public class JsonDeserializerJackson implements JsonDeserializer {
                 .mapTry(objectMapper -> objectMapper.<T>readValue(
                         json,
                         constructParametricType(objectMapper, container, contained, contained2)))
+                .onFailure(ex -> logger.warning("Failed to deserialize object of type " + container.getSimpleName() + " containing type " + contained.getSimpleName() + " containing type " + contained2.getSimpleName() + ": " + ex.getMessage()))
                 .getOrElseThrow(ex -> new DeserializationFailed(ex));
     }
 
