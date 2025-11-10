@@ -313,8 +313,6 @@ public class AzureClient implements LlmClient {
         checkState(url.isPresent(), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
-        RATE_LIMITER.acquire();
-
         return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> callLocked(request, 0));
     }
 
@@ -322,6 +320,8 @@ public class AzureClient implements LlmClient {
         if (retry > RATELIMIT_API_RETRIES) {
             throw new RateLimit("Exceeded max retries for rate limited Azure LLM calls");
         }
+
+        RATE_LIMITER.acquire();
 
         return Try.of(() -> httpClientCaller.call(
                         this::getClient,
