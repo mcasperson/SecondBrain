@@ -55,11 +55,7 @@ public record RagMultiDocumentContext<T>(String prompt,
     }
 
     public MetaObjectResults getMetadata() {
-        if (metadata == null) {
-            return new MetaObjectResults();
-        }
-
-        return metadata;
+        return Objects.requireNonNullElse(metadata, new MetaObjectResults());
     }
 
     @JsonIgnore
@@ -87,7 +83,7 @@ public record RagMultiDocumentContext<T>(String prompt,
     }
 
     @JsonIgnore
-    public String getDocumentLeft(final int length) {
+    public String generateDocumentLeft(final int length) {
         if (length <= 0) {
             return "";
         }
