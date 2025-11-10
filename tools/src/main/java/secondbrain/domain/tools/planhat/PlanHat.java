@@ -213,7 +213,7 @@ public class PlanHat implements Tool<Conversation> {
                 .flatMap(pair -> Try.withResources(ClientBuilder::newClient)
                         .of(client -> planHatClient.getConversations(
                                 client,
-                                "",
+                                "", // No entity filtering at this time to improve cache hits
                                 pair.getLeft(),
                                 pair.getRight(),
                                 parsedArgs.getStartDate(),
@@ -227,6 +227,7 @@ public class PlanHat implements Tool<Conversation> {
                 .toList();
 
         final List<RagDocumentContext<Conversation>> ragDocs = conversations.stream()
+                // We filter after the API call to improve cache hits
                 .filter(conversation -> parsedArgs.getCompany().equals(conversation.companyId()))
                 .filter(conversation -> !"ticket".equals(conversation.type()))
                 .map(conversation -> conversation.updateDescriptionAndSnippet(

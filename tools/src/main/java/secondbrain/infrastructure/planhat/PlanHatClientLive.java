@@ -15,6 +15,7 @@ import secondbrain.domain.date.DateParser;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.persist.TimedOperation;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
@@ -85,7 +86,7 @@ public class PlanHatClientLive implements PlanHatClient {
         // and then trim any of the later results that are after the end date.
         return conversations == null
                 ? List.of()
-                : List.of(conversations).stream()
+                : Stream.of(conversations)
                 .filter(c -> dateParser.parseDate(c.date()).isBefore(endDate))
                 .toList();
     }
@@ -163,6 +164,12 @@ public class PlanHatClientLive implements PlanHatClient {
     }
 
     private Conversation[] callApiLocked(final Client client, final String company, final String url, final String token, final int offset) {
+        return Try.withResources(() -> new TimedOperation("Planhat API call for conversations"))
+                .of(t -> callApiTimed(client, company, url, token, offset))
+                .get();
+    }
+
+    private Conversation[] callApiTimed(final Client client, final String company, final String url, final String token, final int offset) {
         logger.fine("Calling PlanHat Conversations API for company " + company + " with offset " + offset);
 
         RATE_LIMITER.acquire();
