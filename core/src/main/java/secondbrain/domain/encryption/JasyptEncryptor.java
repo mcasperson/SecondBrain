@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jasypt.util.text.StrongTextEncryptor;
+import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.persist.TimedOperation;
 
 import java.util.Optional;
@@ -24,6 +25,9 @@ public class JasyptEncryptor implements Encryptor {
     @Inject
     private Logger logger;
 
+    @Inject
+    private ExceptionHandler exceptionHandler;
+
     @PostConstruct
     public void construct() {
         // throw if the password was not set
@@ -33,7 +37,7 @@ public class JasyptEncryptor implements Encryptor {
     @Override
     public String encrypt(final String text) {
         return Try.of(() -> textEncryptor.encrypt(text))
-                .onFailure(ex -> logger.warning("Failed to encrypt data: " + ex.getMessage()))
+                .onFailure(ex -> logger.warning("Failed to encrypt data: " + exceptionHandler.getExceptionMessage(ex)))
                 .get();
     }
 
@@ -41,14 +45,13 @@ public class JasyptEncryptor implements Encryptor {
     public String decrypt(final String text) {
         return Try.withResources(() -> new TimedOperation("text decryption"))
                 .of(t -> decryptTimed(text))
-
                 .get();
     }
 
     private String decryptTimed(final String text) {
         checkState(encryptionPassword.isPresent(), "Encryption password is not set");
         return Try.of(() -> textEncryptor.decrypt(text))
-                .onFailure(ex -> logger.warning("Failed to decrypt data: " + ex.getMessage()))
+                .onFailure(ex -> logger.warning("Failed to decrypt data: " + exceptionHandler.getExceptionMessage(ex)))
                 .get();
     }
 }

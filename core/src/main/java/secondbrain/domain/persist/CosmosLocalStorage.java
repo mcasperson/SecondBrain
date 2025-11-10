@@ -207,7 +207,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 // If there was no locally cached value, get from Cosmos DB
                 .recover(NoSuchElementException.class, ex -> loadFromDatabase(tool, source, promptHash))
                 // Decrypt and decompress the result if it was from cache
-                .map(this::unpack)
+                .map(value -> unpack(value, tool, source))
                 // If the item is not found, return a CacheResult with null
                 .recover(CosmosException.class, this::handleError)
                 // Track failures
@@ -229,7 +229,7 @@ public class CosmosLocalStorage implements LocalStorage {
         throw ex;
     }
 
-    private CacheResult<String> unpack(final CacheResult<String> result) {
+    private CacheResult<String> unpack(final CacheResult<String> result, final String tool, final String source) {
         if (!result.fromCache()) {
             return result;
         }
@@ -242,6 +242,8 @@ public class CosmosLocalStorage implements LocalStorage {
 
         final String original = Try.of(() -> encryptor.decrypt(result.result()))
                 .map(decrypted -> zipper.decompressString(decrypted))
+                .onFailure(ex -> logger.warning("Failed to unpack cached string for tool " + tool
+                        + " and source " + source + ": " + exceptionHandler.getExceptionMessage(ex)))
                 .getOrNull();
 
 
