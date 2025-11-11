@@ -178,8 +178,6 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                 .mapTry(Files::createDirectories)
                 .onFailure(ex -> logger.warning("Failed to create cache directory: " + exceptionHandler.getExceptionMessage(ex)))
                 .map(path -> path.resolve(tool + "_" + source + "_" + promptHash + ".cache." + Objects.requireNonNullElse(timestamp, 0L)))
-                // Don't overwrite existing cache files
-                .filter(path -> !Files.exists(path))
                 // LockableFileWriter deals with multiple threads trying to write to the same file
                 .flatMap(path -> Try.withResources(() -> new LockableFileWriter.Builder().setFile(path.toFile()).setAppend(false).get())
                         .of(w -> {
