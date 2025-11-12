@@ -280,6 +280,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        logger.info(parsedArgs.toString());
+
         final String cacheKey = generateCacheKey(parsedArgs, prompt);
 
         final CacheResult<RagMultiDocumentContext> result = localStorage.getOrPutObject(
