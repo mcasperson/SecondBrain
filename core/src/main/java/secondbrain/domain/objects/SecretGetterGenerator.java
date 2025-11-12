@@ -17,11 +17,17 @@ import java.util.Objects;
 public class SecretGetterGenerator implements ToStringGenerator {
     @Override
     public String generateGetterConfig(final Object obj) {
+        return generateGetterConfig(obj, List.of());
+    }
+
+    @Override
+    public String generateGetterConfig(final Object obj, final List<String> excludeFields) {
         if (obj == null) {
             return "";
         }
 
         final List<String> values = Arrays.stream(obj.getClass().getMethods())
+                .filter(method -> !excludeFields.contains(method.getName()))
                 .sorted(Comparator.comparing(Method::getName))
                 .filter(method -> method.getName().startsWith("get") &&
                         !method.getName().equals("getClass") &&

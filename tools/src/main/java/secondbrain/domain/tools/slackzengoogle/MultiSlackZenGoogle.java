@@ -71,6 +71,7 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
  */
 @ApplicationScoped
 public class MultiSlackZenGoogle implements Tool<Void> {
+    public static final String MULTI_SLACK_ZEN_EXCLUDE_CACHE_GETTER_ARG = "excludedGettersFromCacheKey";
     public static final String MULTI_SLACK_ZEN_TTL_SECONDS_ARG = "ttlSeconds";
     public static final String MULTI_SLACK_ZEN_KEYWORD_ARG = "keywords";
     public static final String MULTI_SLACK_ZEN_WINDOW_ARG = "keywordWindow";
@@ -136,6 +137,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             You are given the contents of a multiple Slack channels, Google Documents, PlanHat activities, Gong calls, Salesforce emails, and the help desk tickets from ZenDesk.
             You must answer the prompt based on the information provided.
             """;
+
+    @Inject
+    private ToStringGenerator toStringGenerator;
 
     @Inject
     private SlackChannel slackChannel;
@@ -303,7 +307,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     private String generateCacheKey(final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt) {
-        return parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
+        // We need to exclude some static values that do not affect the output from the string that generates the cache key
+        return toStringGenerator.generateGetterConfig(parsedArgs, parsedArgs.getExcludeCacheGetters()).hashCode() + "_" + prompt.hashCode();
     }
 
     private RagMultiDocumentContext<Void> callPrivate(
@@ -961,6 +966,10 @@ class MultiSlackZenGoogleConfig {
     private Optional<String> configEntity;
 
     @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.excludecachegetters")
+    private Optional<String> configExcludeConfigCacheGetters;
+
+    @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.maxentities")
     private Optional<String> configMaxEntities;
 
@@ -1417,6 +1426,10 @@ class MultiSlackZenGoogleConfig {
         return configTtlSeconds;
     }
 
+    public Optional<String> getConfigExcludeConfigCacheGetters() {
+        return configExcludeConfigCacheGetters;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -1476,6 +1489,20 @@ class MultiSlackZenGoogleConfig {
                             context,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .map(String::toLowerCase)
+                    .toList();
+        }
+
+        public List<String> getExcludeCacheGetters() {
+            return getArgsAccessor().getArgumentList(
+                            getConfigExcludeConfigCacheGetters()::get,
+                            arguments,
+                            context,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_EXCLUDE_CACHE_GETTER_ARG,
+                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_EXCLUDE_CACHE_GETTER_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
