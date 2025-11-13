@@ -31,7 +31,7 @@ public class SecretGetterGenerator implements ToStringGenerator {
                 .toList();
 
         final List<String> values = Arrays.stream(obj.getClass().getMethods())
-                .filter(method -> !processedExclusions.contains(method.getName()))
+                .filter(method -> !processedExclusions.contains(method.getName().toLowerCase()))
                 .sorted(Comparator.comparing(Method::getName))
                 .filter(method -> method.getName().startsWith("get") &&
                         !method.getName().equals("getClass") &&
