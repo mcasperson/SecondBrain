@@ -26,8 +26,12 @@ public class SecretGetterGenerator implements ToStringGenerator {
             return "";
         }
 
+        final List<String> processedExclusions = Objects.requireNonNullElse(excludeFields, List.<String>of()).stream()
+                .map(String::toLowerCase)
+                .toList();
+
         final List<String> values = Arrays.stream(obj.getClass().getMethods())
-                .filter(method -> !excludeFields.contains(method.getName()))
+                .filter(method -> !processedExclusions.contains(method.getName()))
                 .sorted(Comparator.comparing(Method::getName))
                 .filter(method -> method.getName().startsWith("get") &&
                         !method.getName().equals("getClass") &&
