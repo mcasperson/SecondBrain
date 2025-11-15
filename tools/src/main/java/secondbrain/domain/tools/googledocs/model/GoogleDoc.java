@@ -13,16 +13,16 @@ public record GoogleDoc(String id, String linkText, String url, String text) imp
 
     @Override
     public String generateText() {
-        return linkText;
+        return text;
     }
 
     @Override
     public String generateLinkText() {
-        return url;
+        return linkText;
     }
 
     @Override
     public String generateUrl() {
-        return text;
+        return url;
     }
 }
