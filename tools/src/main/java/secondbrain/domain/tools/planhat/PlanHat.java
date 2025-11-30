@@ -88,6 +88,10 @@ public class PlanHat implements Tool<Conversation> {
     private String url;
 
     @Inject
+    @ConfigProperty(name = "sb.planhat.publicappurl", defaultValue = "https://app.planhat.com")
+    private String publicUrl;
+
+    @Inject
     private RatingMetadata ratingMetadata;
 
     @Inject
@@ -234,7 +238,7 @@ public class PlanHat implements Tool<Conversation> {
                         htmlToText.getText(conversation.description()),
                         htmlToText.getText(conversation.snippet()))
                 )
-                .map(conversation -> dataToRagDoc.getDocumentContext(conversation.updateUrl(url), getName(), getContextLabelWithDate(conversation), parsedArgs))
+                .map(conversation -> dataToRagDoc.getDocumentContext(conversation.updateUrl(publicUrl), getName(), getContextLabelWithDate(conversation), parsedArgs))
                 .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                 .toList();
 
