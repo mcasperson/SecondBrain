@@ -33,3 +33,15 @@ java \
     -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
     "What percentage of AI deployments use Kubernetes or K8s for orchestration?"
 ```
+
+## Project Structure
+
+The project is split into modules:
+
+* `secondbrain-core` which contains shared utilities and interfaces used by all other modules.
+* `secondbrain-service` which orchestrates the function calling with the LLM.
+* `secondbrain-tools` which contains the tools that interact with external data sources.
+* `secondbrain-web` which is a web interface for interacting with the service.
+* `secondbrain-cli` which is a CLI tool for interacting with the service.
+
+![Architecture](architecture.png)
