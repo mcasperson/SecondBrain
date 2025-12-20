@@ -172,6 +172,7 @@ public class DirectoryScan implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> ragDocs = Try
                 .of(() -> getFiles(parsedArgs))
+                .peek(files -> logger.info("DirectoryScan found the following files " + String.join(", ", files)))
                 .map(files -> convertFilesToSummaries(files, parsedArgs, environmentSettings))
                 .get();
 
@@ -270,6 +271,7 @@ public class DirectoryScan implements Tool<Void> {
                 parsedArgs.getKeywordWindow());
 
         if (validateString.isBlank(trimResult.document())) {
+            logger.info("DirectoryScan skipping file with no content after trimming to keywords: " + file);
             return null;
         }
 
