@@ -248,10 +248,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 getName(),
                 getContextLabel(),
                 summary,
-                sentenceSplitter.splitDocument(summary, 10)
-                        .stream()
-                        .map(sentenceVectorizer::vectorize)
-                        .toList(),
+                sentenceVectorizer.vectorize(sentenceSplitter.splitDocument(summary, 10)),
                 commit.commit().sha(),
                 commit,
                 "[" + parsedArgs.getOwner() + "/" + parsedArgs.getRepo() + " " + GitHubUrlParser.urlToCommitHash(commit.commit().html_url()) + "](" + commit.commit().html_url() + ")");

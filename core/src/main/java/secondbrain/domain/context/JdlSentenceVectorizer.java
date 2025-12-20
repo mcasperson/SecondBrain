@@ -58,7 +58,9 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
     }
 
     public RagStringContext vectorize(final String text) {
-        return vectorize(text, null);
+        return Try.of(() -> vectorize(text, null))
+                .onFailure(ex -> logger.warning("Error while vectorizing sentences, annotations are not available: " + ExceptionUtils.getRootCause(ex)))
+                .getOrNull();
     }
 
     @Override
@@ -99,9 +101,15 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
             return List.of();
         }
 
-        return text.stream()
-                .map(t -> vectorize(t, hiddenText))
-                .toList();
+        return Try.of(() -> text.stream()
+                        .map(t -> vectorize(t, hiddenText))
+                        .toList())
+                /*
+                    Older macOS versions are not supported by DJL/PyTorch,
+                    so we degrade gracefully if vectorization fails.
+                 */
+                .onFailure(ex -> logger.warning("Error while vectorizing sentences, annotations are not available: " + ExceptionUtils.getRootCause(ex)))
+                .getOrElse(List.of());
     }
 
     private double[] floatToDouble(final float[] values) {

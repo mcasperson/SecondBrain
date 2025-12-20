@@ -3,6 +3,7 @@ package secondbrain.domain.context;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -128,6 +129,7 @@ class RagMultiDocumentContextTest {
 
             return text.stream()
                     .map(this::vectorize)
+                    .filter(Objects::nonNull)
                     .toList();
         }
     }

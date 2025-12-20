@@ -172,7 +172,7 @@ public class DirectoryScan implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> ragDocs = Try
                 .of(() -> getFiles(parsedArgs))
-                .peek(files -> logger.info("DirectoryScan found the following files " + String.join(", ", files)))
+                .peek(files -> logger.info("DirectoryScan found the following files: " + String.join(", ", files)))
                 .map(files -> convertFilesToSummaries(files, parsedArgs, environmentSettings))
                 .get();
 
@@ -318,10 +318,7 @@ public class DirectoryScan implements Tool<Void> {
                 getName(),
                 getContextLabel() + " " + Paths.get(file).getFileName(),
                 summary,
-                sentenceSplitter.splitDocument(summary, 10)
-                        .stream()
-                        .map(sentenceVectorizer::vectorize)
-                        .toList(),
+                sentenceVectorizer.vectorize(sentenceSplitter.splitDocument(summary, 10)),
                 file,
                 null,
                 "[" + file + "](file://" + file + ")",

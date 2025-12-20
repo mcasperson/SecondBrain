@@ -154,10 +154,7 @@ public class GitHubIssues implements Tool<GitHubIssue> {
                         getName(),
                         getContextLabel(),
                         issue.body(),
-                        sentenceSplitter.splitDocument(issue.body(), 10)
-                                .stream()
-                                .map(sentenceVectorizer::vectorize)
-                                .toList(),
+                        sentenceVectorizer.vectorize(sentenceSplitter.splitDocument(issue.body(), 10)),
                         issue.getNumber().toString(),
                         issue,
                         "[" + parsedArgs.getGitHubOrganization() + "/" + parsedArgs.getGitHubRepo() + " " + issue.getNumber() + "](" + issue.htmlUrl() + ")"))
