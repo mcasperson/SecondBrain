@@ -114,6 +114,10 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
 
     @Override
     public void close() {
+        if (predictor == null) {
+            return;
+        }
+
         Try.run(() -> predictor.close())
                 .onFailure(ex -> logger.warning("Failed to close predictor: " + ExceptionUtils.getRootCause(ex)));
     }

@@ -8,7 +8,6 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
-import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
@@ -221,8 +220,8 @@ public class DirectoryScan implements Tool<Void> {
     private Try<List<String>> getFiles(final String pathname, final DirectoryScanConfig.LocalArguments parsedArgs) {
         return Try.withResources(() -> Files.walk(Paths.get(pathname)))
                 .of(paths -> paths.filter(Files::isRegularFile)
-                        .filter(path -> parsedArgs.getExcluded() == null || !parsedArgs.getExcluded().contains(path.getFileName().toString()))
-                        .filter(path -> parsedArgs.getPathSpec() == null || parsedArgs.getPathSpec().stream()
+                        .filter(path -> parsedArgs.getExcluded().isEmpty() || !parsedArgs.getExcluded().contains(path.getFileName().toString()))
+                        .filter(path -> parsedArgs.getPathSpec().isEmpty() || parsedArgs.getPathSpec().stream()
                                 .anyMatch(spec -> pathSpec.matches(spec, path.getFileName().toString())))
                         .map(Path::toString)
                         .collect(Collectors.toList()));
@@ -520,7 +519,6 @@ class DirectoryScanConfig {
                     prompt).value();
         }
 
-        @Nullable
         public List<String> getExcluded() {
             return getArgsAccessor().getArgumentList(
                             getConfigExclude()::get,
@@ -534,7 +532,6 @@ class DirectoryScanConfig {
                     .toList();
         }
 
-        @Nullable
         public List<String> getPathSpec() {
             return getArgsAccessor().getArgumentList(
                             getConfigPathSpec()::get,

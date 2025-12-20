@@ -12,11 +12,11 @@ public class OkResponseValidation implements ResponseValidation {
     @Override
     public Response validate(final Response response, final String uri) {
         if (response.getStatus() == 404) {
-            throw new MissingResponse("Expected status code 200, but got 404");
+            throw new MissingResponse("Expected status code 200, but got 404. This likely indicates the requested resource was not found.");
         }
 
         if (response.getStatus() == 401) {
-            throw new UnauthorizedResponse("Expected status code 200, but got 401");
+            throw new UnauthorizedResponse("Expected status code 200, but got 401. This likely indicates an authentication issue.");
         }
 
         if (response.getStatus() != 200 && response.getStatus() != 201) {
