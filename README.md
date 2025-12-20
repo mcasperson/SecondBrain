@@ -2,7 +2,7 @@ SecondBrain is a CLI tool to access and filter data from external data sources s
 
 This is useful for generating reports, summaries, and insights from multiple and otherwise disconnected data sources.
 
-## Example
+## Building
 
 Clone the git repository:
 
@@ -15,6 +15,10 @@ Build the project using Maven:
 ```bash
 ./mvnw clean package -DskipTests
 ```
+
+## Directory Scan Example
+
+The directory scan tools allows you to scan a directory of files for keywords, extract relevant text, and then ask questions about the data found. This is useful when you need to analyze a collection of documents, such as PDFs, Word documents, or text files.
 
 Run the `DirectoryScan` tool against the PDF files in the `samples` directory, looking for keywords "AI", "Kubernetes", and "K8s", and then ask a question about the data found. Replace the `replaceme` values with your Azure AI Foundry API key and endpoint URL:
 
