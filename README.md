@@ -101,6 +101,21 @@ java \
     "Write a 3 paragraph summary of the AI related news from the YouTube videos."
 ```
 
+This is the same command using Ollama:
+
+```bash
+ollama pull nemotron-3-nano:30b
+java \
+    "-Dsb.llm.client=ollama" \
+    "-Dsb.ollama.model=nemotron-3-nano:30b" \
+    "-Dsb.tools.force=YoutubePlaylist" \
+    "-Dsb.youtube.playlistId=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj" \
+    "-Dsb.youtube.maxvideos=10" \
+    "-Dsb.youtube.keywords=AI,LLM,MCP,Agent" \
+    -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
+    "Write a 3 paragraph summary of the AI related news from the YouTube videos."
+ ```
+
 ## Project Structure
 
 The project is split into modules:
