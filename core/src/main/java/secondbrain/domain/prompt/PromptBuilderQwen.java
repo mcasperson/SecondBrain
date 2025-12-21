@@ -54,9 +54,9 @@ public class PromptBuilderQwen implements PromptBuilder {
         }
 
         return "<|im_start|>system\n"
-                + StringUtils.trim(instructions)
-                + "\n"
                 + StringUtils.trim(context)
+                + "\n"
+                + StringUtils.trim(instructions)
                 + "\n<|im_end|>\n"
                 + "\n<|im_start|>user\n"
                 + prompt

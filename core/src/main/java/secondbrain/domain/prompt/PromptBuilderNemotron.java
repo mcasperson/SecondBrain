@@ -31,10 +31,10 @@ public class PromptBuilderNemotron implements PromptBuilder {
 
     @Override
     public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
-        return "<|im_start|>system\n"
+        return context
+                + "<|im_start|>system\n"
                 + instructions
                 + "\n<|im_end|>\n"
-                + context
                 + "\n<|im_start|>user\n"
                 + prompt
                 + "\n<|im_end|>\n"
