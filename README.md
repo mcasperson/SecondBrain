@@ -34,6 +34,20 @@ java \
     "What percentage of AI deployments use Kubernetes or K8s for orchestration?"
 ```
 
+This command runs the example with Ollama:
+
+```bash
+ollama pull nemotron-3-nano:30b
+java \
+    "-Dsb.llm.client=ollama" \
+    "-Dsb.ollama.model=nemotron-3-nano:30b" \
+    "-Dsb.tools.force=DirectoryScan" \
+    "-Dsb.directoryscan.directory=samples" \
+    "-Dsb.directoryscan.keywords=AI,Kubernetes,K8s" \
+    -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
+    "What percentage of AI deployments use Kubernetes or K8s for orchestration?"
+```
+
 ## Project Structure
 
 The project is split into modules:
