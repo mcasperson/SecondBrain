@@ -78,6 +78,25 @@ java \
     "Write a 3 paragraph summary of the changes made to the SecondBrain project in the last 30 days."
 ```
 
+## YouTube Transcript Example
+
+This example downloads the transcripts from videos from a 
+[YouTube playlist](https://www.youtube.com/watch?v=ceV3RsG946s&list=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj) 
+trims the transcripts to the keywords, and then generates a summary of the AI related news from those videos:
+
+```bash
+java \
+    "-Dsb.llm.client=azure" \
+    "-Dsb.azurellm.apikey=replaceme" \
+    "-Dsb.azurellm.url=https://replaceme.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview" \
+    "-Dsb.azurellm.model=Phi-4" \
+    "-Dsb.tools.force=YoutubePlaylist" \
+    "-Dsb.youtube.playlistId=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj" \
+    "-Dsb.youtube.keywords=AI,LLM,MCP,Agent" \
+    -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
+    "Write a 3 paragraph summary of the AI related news from the YouTube videos."
+```
+
 ## Project Structure
 
 The project is split into modules:
