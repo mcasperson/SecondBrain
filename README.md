@@ -116,6 +116,41 @@ java \
     "Write a 3 paragraph summary of the AI related news from the YouTube videos."
  ```
 
+## Meta Tool Example
+
+The `Meta` tool combines the results of multiple tools into a single report. 
+This is useful when you need to aggregate data from multiple sources and then ask questions about the 
+combined data.
+
+In this example we combine the `YoutubePlaylist` and `DirectoryScan` tools to generate a 
+summary of AI related news from both YouTube videos and PDF reports in the `samples` directory.
+
+Note the use of the `contextMetaField` and `contextMetaPrompt` parameters to add additional context to the report.
+The results of the prompts are captured in the file called `meta.json` which can be reviewed after the command completes.
+This is useful when the results of this operation are consumed by another process. For example, you could build
+a report that indicated which documents mentioned Python or Kubernetes based on the results of the context meta prompts:
+
+```bash
+ollama pull nemotron-3-nano:30bs
+java \
+     "-Dsb.llm.client=ollama" \
+     "-Dsb.ollama.model=nemotron-3-nano:30b" \
+     "-Dsb.tools.force=Meta" \
+     "-Dsb.meta.toolNames=YoutubePlaylist,DirectoryScan" \
+     "-Dsb.meta.metareport=meta.json" \
+     "-Dsb.meta.contextMetaField1=Python" \
+     "-Dsb.meta.contextMetaPrompt1=Does the content describe anything related to the Python programming language?" \
+     "-Dsb.meta.contextMetaField2=Kubernetes" \
+     "-Dsb.meta.contextMetaPrompt2=Does the content describe anything related to Kubernetes?" \
+     "-Dsb.youtube.playlistId=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj" \
+     "-Dsb.youtube.maxvideos=10" \
+     "-Dsb.youtube.keywords=AI,LLM,MCP,Agent" \
+     "-Dsb.directoryscan.directory=samples" \
+     "-Dsb.directoryscan.keywords=AI,Kubernetes,K8s" \
+     -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
+     "Write a 3 paragraph summary of the AI related news from the YouTube videos and PDF reports."
+```
+
 ## Project Structure
 
 The project is split into modules:
