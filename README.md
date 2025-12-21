@@ -135,6 +135,7 @@ ollama pull nemotron-3-nano:30bs
 java \
      "-Dsb.llm.client=ollama" \
      "-Dsb.ollama.model=nemotron-3-nano:30b" \
+     "-Dsb.ollama.contextwindow=100000" \
      "-Dsb.tools.force=Meta" \
      "-Dsb.meta.toolNames=YoutubePlaylist,DirectoryScan" \
      "-Dsb.meta.metareport=meta.json" \
