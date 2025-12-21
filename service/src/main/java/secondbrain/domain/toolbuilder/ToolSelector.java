@@ -63,6 +63,10 @@ public class ToolSelector {
     @Inject
     private Logger logger;
 
+    public List<Tool<?>> getAvailableTools() {
+        return tools.stream().toList();
+    }
+
     public ToolCall getTool(final String prompt, final Map<String, String> context) {
         /*
             When forcing the selection of a tool, all arguments must be supplied

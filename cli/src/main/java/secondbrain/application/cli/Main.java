@@ -14,6 +14,8 @@ import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.LocalStorageReadWrite;
+import secondbrain.domain.toolbuilder.ToolSelector;
+import secondbrain.domain.tooldefs.Tool;
 
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
@@ -63,6 +65,9 @@ public class Main {
     @Inject
     private PathBuilder pathBuilder;
 
+    @Inject
+    private ToolSelector toolSelector;
+
     /**
      * This is included here to force the service to initialise as early as possible.
      */
@@ -91,6 +96,13 @@ public class Main {
     }
 
     public void entry(final String[] args) {
+        final String command = args.length > 0 ? args[0] : "";
+        if ("--help".equals(command)) {
+            printHelp();
+            return;
+        }
+
+
         final String format = args.length > 1 ? args[1] : "no-op";
         final StringConverter converter = stringConverterSelector.getStringConverter(format);
 
@@ -107,6 +119,14 @@ public class Main {
                 .onSuccess(this::saveMetadata)
                 .onSuccess(this::saveIntermediateResults)
                 .onFailure(e -> System.err.println("Failed to process prompt: " + e.getMessage()));
+    }
+
+    private void printHelp() {
+        System.out.println("Force the use of a specific tool with the environment variable SB_TOOLS_FORCE, e.g. 'SB_TOOLS_FORCE=MyTool java -jar sb.jar \"My prompt\"'");
+        System.out.println("Available tools:");
+        toolSelector.getAvailableTools().stream()
+                .map(tool -> tool.getName() + ": " + tool.getDescription())
+                .forEach(tool -> System.out.println(" - " + tool));
     }
 
     private void printOutput(final PromptHandlerResponse content) {
