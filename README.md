@@ -20,12 +20,14 @@ Build the project using Maven:
 
 The directory scan tools allows you to scan a directory of files for keywords, extract relevant text, and then ask questions about the data found. This is useful when you need to analyze a collection of documents, such as PDFs, Word documents, or text files.
 
-Run the `DirectoryScan` tool against the PDF files in the `samples` directory, looking for keywords "AI", "Kubernetes", and "K8s", and then ask a question about the data found. Replace the `replaceme` values with your Azure AI Foundry API key and endpoint URL:
+Run the `DirectoryScan` tool against the PDF files in the `samples` directory, looking for keywords "AI", "Kubernetes", and "K8s", and then ask a question about the data found. 
+Replace the `replaceme` values with your Azure AI Foundry API key and endpoint URL, and also replace `Phi-4` with the model you wish to use:
 
 ```bash
 java \
     "-Dsb.llm.client=azure" \
     "-Dsb.azurellm.apikey=replaceme" \
+    "-Dsb.azurellm.model=Phi-4" \
     "-Dsb.azurellm.url=https://replaceme.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview" \
     "-Dsb.tools.force=DirectoryScan" \
     "-Dsb.directoryscan.directory=samples" \
