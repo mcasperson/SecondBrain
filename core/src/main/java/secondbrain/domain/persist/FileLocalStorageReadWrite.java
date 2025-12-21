@@ -81,9 +81,10 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
             return;
         }
 
-        logger.info("Initializing memory cache from local cache directory");
-
         final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
+
+        logger.fine("Initializing memory cache from local cache directory " + cacheDir);
+
         final AtomicLong currentCacheSize = new AtomicLong(0L);
         final Thread thread = new Thread(() ->
                 Try.of(() -> Path.of(cacheDir))

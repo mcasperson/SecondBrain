@@ -75,6 +75,9 @@ public class Main {
     private LocalStorageReadWrite localStorageReadWrite;
 
     public static void main(final String[] args) {
+        // Remove some of the initial SLF4J logging noise
+        System.setProperty("slf4j.internal.verbosity", "WARN");
+
         final Weld weld = new Weld();
         /*
         For the life of me I could not get Weld to find beans in the service module without manually adding a class in
