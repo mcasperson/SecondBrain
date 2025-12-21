@@ -17,10 +17,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
-import secondbrain.domain.tooldefs.MetaObjectResult;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -80,6 +77,7 @@ public class Meta implements Tool<Void> {
     public static final String META_CONTEXT_META_PROMPT_19_ARG = "contextMetaPrompt19";
     public static final String META_CONTEXT_META_FIELD_20_ARG = "contextMetaField20";
     public static final String META_CONTEXT_META_PROMPT_20_ARG = "contextMetaPrompt20";
+    public static final String META_META_REPORT_ARG = "metaReport";
 
     @Inject
     private Instance<Tool<?>> tools;
@@ -158,7 +156,8 @@ public class Meta implements Tool<Void> {
                 new ToolArguments(META_CONTEXT_META_FIELD_19_ARG, "The field name for context meta 19", ""),
                 new ToolArguments(META_CONTEXT_META_PROMPT_19_ARG, "The prompt for context meta 19", ""),
                 new ToolArguments(META_CONTEXT_META_FIELD_20_ARG, "The field name for context meta 20", ""),
-                new ToolArguments(META_CONTEXT_META_PROMPT_20_ARG, "The prompt for context meta 20", "")
+                new ToolArguments(META_CONTEXT_META_PROMPT_20_ARG, "The prompt for context meta 20", ""),
+                new ToolArguments(META_META_REPORT_ARG, "The meta report", "")
         );
     }
 
@@ -228,7 +227,7 @@ public class Meta implements Tool<Void> {
                         null,
                         null,
                         "",
-                        null))
+                        new MetaObjectResults(getMetaResults(context, parsedArgs), parsedArgs.getMetaReport(), "")))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
         return exceptionMapping.map(result).get();
@@ -464,6 +463,10 @@ class MetaConfig {
     @ConfigProperty(name = "sb.meta.contextMetaPrompt20")
     private Optional<String> configContextMetaPrompt20;
 
+    @Inject
+    @ConfigProperty(name = "sb.meta.metareport")
+    private Optional<String> configMetaReport;
+
     public Optional<String> getConfigToolNames() {
         return configToolNames;
     }
@@ -630,6 +633,10 @@ class MetaConfig {
 
     public Optional<String> getConfigContextMetaPrompt20() {
         return configContextMetaPrompt20;
+    }
+
+    public Optional<String> getConfigMetaReport() {
+        return configMetaReport;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -1077,6 +1084,16 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_20_ARG,
                     Meta.META_CONTEXT_META_PROMPT_20_ARG,
+                    "").value();
+        }
+
+        public String getMetaReport() {
+            return getArgsAccessor().getArgument(
+                    getConfigMetaReport()::get,
+                    arguments,
+                    context,
+                    Meta.META_META_REPORT_ARG,
+                    Meta.META_META_REPORT_ARG,
                     "").value();
         }
     }
