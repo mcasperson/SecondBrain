@@ -177,6 +177,16 @@
                                 <phase>package</phase>
                             </execution>
                         </executions>
+                        <configuration>
+                            <buildArgs>
+                                <arg>--initialize-at-build-time=org.slf4j.helpers.NOP_FallbackServiceProvider</arg>
+                                <arg>--initialize-at-build-time=org.slf4j.helpers.SubstituteServiceProvider</arg>
+                                <arg>--initialize-at-build-time=org.slf4j.LoggerFactory</arg>
+                                <arg>--initialize-at-build-time=org.slf4j.helpers.NOPLoggerFactory</arg>
+                                <arg>--initialize-at-build-time=org.slf4j.helpers.SubstituteLoggerFactory</arg>
+                                <arg>--initialize-at-build-time=ch.qos.logback</arg>
+                            </buildArgs>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
