@@ -48,12 +48,12 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     public static final String YOUTUBE_FILTER_MINIMUM_RATING_ARG = "filterMinimumRating";
     public static final String YOUTUBE_FILTER_QUESTION_ARG = "filterQuestion";
     public static final String YOUTUBE_DEFAULT_RATING_ARG = "defaultRating";
-    public static final String YOUTUBE_RATING_META = "Rating";
     public static final String YOUTUBE_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
     public static final String YOUTUBE_SUMMARIZE_TRANSCRIPT_PROMPT_ARG = "summarizeTranscriptPrompt";
     public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
     public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
     public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
+    public static final String YOUTUBE_MAX_VIDEOS_ARG = "maxVideos";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -123,8 +123,9 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
     @Override
     public List<ToolArguments> getArguments() {
-        // Define argument list if needed
-        return List.of();
+        return List.of(
+                new ToolArguments(YOUTUBE_MAX_VIDEOS_ARG, "The maximum number of videos to process", "10")
+        );
     }
 
     @Override
@@ -152,6 +153,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                         .toList());
 
         final List<Pair<YoutubeVideo, String>> calls = videos
+                .map(list -> list.stream().limit(parsedArgs.getMaxVideos()).toList())
                 .map(c -> c.stream()
                         .map(video -> Pair.of(
                                 video,
@@ -410,6 +412,10 @@ class YoutubeConfig {
     @ConfigProperty(name = "sb.youtube.postinferenceHooks", defaultValue = "")
     private Optional<String> configPostInferenceHooks;
 
+    @Inject
+    @ConfigProperty(name = "sb.youtube.maxvideos")
+    private Optional<String> configMaxVideos;
+
     public Optional<String> getConfigPlaylistId() {
         return playlistId;
     }
@@ -452,6 +458,10 @@ class YoutubeConfig {
 
     public Optional<String> getConfigPostInferenceHooks() {
         return configPostInferenceHooks;
+    }
+
+    public Optional<String> getConfigMaxVideos() {
+        return configMaxVideos;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -652,6 +662,18 @@ class YoutubeConfig {
                     YoutubePlaylist.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     YoutubePlaylist.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     "").value();
+        }
+
+        public int getMaxVideos() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigMaxVideos()::get,
+                    arguments,
+                    context,
+                    YoutubePlaylist.YOUTUBE_MAX_VIDEOS_ARG,
+                    YoutubePlaylist.YOUTUBE_MAX_VIDEOS_ARG,
+                    Integer.MAX_VALUE + "");
+
+            return Math.max(1, NumberUtils.toInt(argument.value(), Integer.MAX_VALUE));
         }
     }
 }

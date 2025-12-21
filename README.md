@@ -82,7 +82,10 @@ java \
 
 This example downloads the transcripts from videos from a 
 [YouTube playlist](https://www.youtube.com/watch?v=ceV3RsG946s&list=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj) 
-trims the transcripts to the keywords, and then generates a summary of the AI related news from those videos:
+trims the transcripts to the keywords, and then generates a summary of the AI related news from those videos.
+
+Note that this is a fairly slow process as the YouTube API is heavily rate limited. We process 2 videos a minute, 
+so this command may take up to 5 minutes to complete:
 
 ```bash
 java \
@@ -92,6 +95,7 @@ java \
     "-Dsb.azurellm.model=Phi-4" \
     "-Dsb.tools.force=YoutubePlaylist" \
     "-Dsb.youtube.playlistId=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj" \
+    "-Dsb.youtube.maxvideos=10" \
     "-Dsb.youtube.keywords=AI,LLM,MCP,Agent" \
     -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
     "Write a 3 paragraph summary of the AI related news from the YouTube videos."
