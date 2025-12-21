@@ -21,7 +21,6 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <resteasy.version>6.2.11.Final</resteasy.version>
-        <native.maven.plugin.version>0.11.3</native.maven.plugin.version>
     </properties>
 
     <dependencies>
@@ -157,41 +156,4 @@
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>native</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.graalvm.buildtools</groupId>
-                        <artifactId>native-maven-plugin</artifactId>
-                        <version>${native.maven.plugin.version}</version>
-                        <extensions>true</extensions>
-                        <executions>
-                            <execution>
-                                <id>build-native</id>
-                                <goals>
-                                    <goal>compile-no-fork</goal>
-                                </goals>
-                                <phase>package</phase>
-                            </execution>
-                        </executions>
-                        <configuration>
-                            <buildArgs>
-                                <arg>--initialize-at-build-time=org.slf4j.helpers.NOP_FallbackServiceProvider</arg>
-                                <arg>--initialize-at-build-time=org.slf4j.helpers.SubstituteServiceProvider</arg>
-                                <arg>--initialize-at-build-time=org.slf4j.LoggerFactory</arg>
-                                <arg>--initialize-at-build-time=org.slf4j.helpers.NOPLoggerFactory</arg>
-                                <arg>--initialize-at-build-time=org.slf4j.helpers.SubstituteLoggerFactory</arg>
-                                <arg>--initialize-at-build-time=ch.qos.logback</arg>
-                            </buildArgs>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
-
-
 </project>
