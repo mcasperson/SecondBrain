@@ -20,4 +20,6 @@
     <logger name="com.slack.api.methods.impl.AsyncRateLimitExecutor" level="error"/>
     <logger name="com.azure.cosmos.CosmosClientBuilder" level="error"/>
     <logger name="com.azure.cosmos.implementation.RxDocumentClientImpl" level="error"/>
+    <logger name="ai.djl.huggingface.tokenizers.jni" level="error"/>
+    <logger name="ai.djl.pytorch.jni" level="error"/>
 </configuration>

@@ -50,6 +50,34 @@ java \
     "What percentage of AI deployments use Kubernetes or K8s for orchestration?"
 ```
 
+## GitHub Diff Example
+
+```bash
+java \
+    "-Dsb.llm.client=azure" \
+    "-Dsb.azurellm.apikey=replaceme" \
+    "-Dsb.azurellm.url=https://replaceme.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview" \
+    "-Dsb.azurellm.model=Phi-4" \
+    "-Dsb.tools.force=GitHubDiffs" \
+    "-Dsb.github.owner=mcasperson" \
+    "-Dsb.github.repo=SecondBrain" \
+    "-Dsb.github.days=30" \
+    -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
+    "Write a 3 paragraph summary of the changes made to the SecondBrain project in the last 30 days."
+```
+
+```bash
+java \
+    "-Dsb.llm.client=ollama" \
+    "-Dsb.ollama.model=nemotron-3-nano:30b" \
+    "-Dsb.tools.force=GitHubDiffs" \
+    "-Dsb.github.owner=mcasperson" \
+    "-Dsb.github.repo=SecondBrain" \
+    "-Dsb.github.days=30" \
+    -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
+    "Write a 3 paragraph summary of the changes made to the SecondBrain project in the last 30 days."
+```
+
 ## Project Structure
 
 The project is split into modules:
