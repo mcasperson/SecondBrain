@@ -92,19 +92,22 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
             final Optional<Section> smallestStart = overlaps.stream()
                     .min(Comparator.comparingInt(Section::start));
 
-            // The results need to be sorted, so use a TreeSet
-            // Get all the keywords from the overlapping sections
-            final Set<String> keywords = new TreeSet<>(overlaps
-                    .stream()
-                    .flatMap(section -> section.keyword().stream())
-                    .toList());
-            // Add keywords from the current section
-            keywords.addAll(currentSection.keyword());
+
 
             if (!overlaps.isEmpty()) {
+                // The results need to be sorted, so use a TreeSet
+                // Get all the keywords from the overlapping sections
+                final Set<String> keywords = new TreeSet<>(overlaps
+                        .stream()
+                        .flatMap(section -> section.keyword().stream())
+                        .toList());
+                // Add keywords from the current section
+                keywords.addAll(currentSection.keyword());
+
                 // If we detected any overlapping sections, add one merged section
-                // with the smallest start and largest end of all the overlapping sections
-                mergedSections.add(
+                // with the smallest start and largest end of all the overlapping sections.
+                // We place this back into sectionsCopy to check for any further overlaps.
+                sectionsCopy.add(
                         new Section(
                                 Math.min(currentSection.start(), smallestStart.get().start()),
                                 Math.max(currentSection.end(), largestEnd.get().end()),
@@ -113,6 +116,7 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
                 // by the single merged section
                 sectionsCopy.removeAll(overlaps);
             } else {
+                // This section has no overlaps, so add it to the merged sections
                 mergedSections.add(currentSection);
             }
         }
