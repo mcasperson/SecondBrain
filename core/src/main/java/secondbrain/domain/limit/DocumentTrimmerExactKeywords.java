@@ -24,7 +24,7 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
 
     @Override
     public TrimResult trimDocumentToKeywords(final String document, final List<String> keywords, final int sectionLength) {
-        if (document == null || document.isEmpty()) {
+        if (StringUtils.isBlank(document)) {
             return new TrimResult();
         }
 
@@ -82,7 +82,8 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
                                     // The current section overlaps the end of the next section
                                     || (currentSection.end() >= nextSection.end() && currentSection.start() <= nextSection.end())
                                     // The current section is contained within the next section
-                                    || (currentSection.start() >= nextSection.start() && currentSection.end() <= nextSection.end()))
+                                    || (currentSection.start() >= nextSection.start() && currentSection.end() <= nextSection.end())
+                    )
                     .toList();
 
             final Optional<Section> largestEnd = overlaps.stream()
@@ -92,18 +93,24 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
                     .min(Comparator.comparingInt(Section::start));
 
             // The results need to be sorted, so use a TreeSet
+            // Get all the keywords from the overlapping sections
             final Set<String> keywords = new TreeSet<>(overlaps
                     .stream()
                     .flatMap(section -> section.keyword().stream())
                     .toList());
+            // Add keywords from the current section
             keywords.addAll(currentSection.keyword());
 
             if (!overlaps.isEmpty()) {
+                // If we detected any overlapping sections, add one merged section
+                // with the smallest start and largest end of all the overlapping sections
                 mergedSections.add(
                         new Section(
                                 Math.min(currentSection.start(), smallestStart.get().start()),
                                 Math.max(currentSection.end(), largestEnd.get().end()),
                                 keywords));
+                // Any merged sections are no longer considered, as they have been consumed
+                // by the single merged section
                 sectionsCopy.removeAll(overlaps);
             } else {
                 mergedSections.add(currentSection);
@@ -119,20 +126,25 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
 
     private List<KeywordPositions> getAllKeywordPositions(final String document, final List<String> keywords) {
         final List<String> filteredKeywords = keywords.stream()
-                .filter(keyword -> !StringUtils.isBlank(keyword))
+                .filter(StringUtils::isNotBlank)
+                .map(String::toLowerCase)
                 .toList();
         final String lowerCaseDocument = document.toLowerCase();
         final List<KeywordPositions> keywordPositions = new ArrayList<>();
 
         for (String keyword : filteredKeywords) {
             final List<Integer> positions = new ArrayList<>();
-            int position = lowerCaseDocument.indexOf(keyword.toLowerCase());
+
+            // Find the first position of the keyword
+            int position = lowerCaseDocument.indexOf(keyword);
             while (position != -1) {
                 // Keywords must be whole words. Otherwise keywords like "eks" match things like "weeks".
                 if (isWholeWord(document, keyword, position)) {
                     positions.add(position);
                 }
-                position = lowerCaseDocument.indexOf(keyword.toLowerCase(), position + 1);
+
+                // Find the next position of the keyword
+                position = lowerCaseDocument.indexOf(keyword, position + keyword.length());
             }
 
             if (!positions.isEmpty()) {
