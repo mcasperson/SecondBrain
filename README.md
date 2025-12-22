@@ -235,6 +235,37 @@ java \
      "Write a 3 paragraph summary of the AI related news from the YouTube videos and PDF reports."
 ```
 
+## Extra logging
+
+To enable more verbose logging, you must create a file like the following:
+
+```properties
+# Edd the console handler
+handlers = java.util.logging.ConsoleHandler
+# Enabling FINE level logging
+java.util.logging.ConsoleHandler.level=FINE
+# Infrastructure classes interact with external systems
+secondbrain.infrastructure.level=FINE
+# Tools are responsible for integrating the external systems with the LLM
+secondbrain.domain.tools.level=FINE
+```
+
+Then reference that file using the `java.util.logging.config.file` system property:
+
+```bash
+java \
+    "-Djava.util.logging.config.file=logging.properties" \
+    "-Dsb.llm.client=azure" \
+    "-Dsb.azurellm.apikey=replaceme" \
+    "-Dsb.azurellm.model=Phi-4" \
+    "-Dsb.azurellm.url=https://replaceme.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview" \
+    "-Dsb.tools.force=DirectoryScan" \
+    "-Dsb.directoryscan.directory=samples" \
+    "-Dsb.directoryscan.keywords=AI,Kubernetes,K8s" \
+    -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
+    "What percentage of AI deployments use Kubernetes or K8s for orchestration?"
+```
+
 ## Project Structure
 
 The project is split into modules:
