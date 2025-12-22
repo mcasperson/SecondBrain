@@ -37,7 +37,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
- * A tool that downloads a public file from HTTP and uses it as the context for a query.
+ * A tool that accepts an uploaded document and allows querying against its contents.
  */
 @ApplicationScoped
 public class UploadedDoc implements Tool<Void> {
