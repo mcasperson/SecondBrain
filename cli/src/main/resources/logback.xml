@@ -13,9 +13,6 @@
         <appender-ref ref="STDOUT"/>
     </root>
 
-    <logger name="secondbrain.infrastructure" level="${INFRASTRUCTURE_LOG_LEVEL:-WARN}"/>
-    <logger name="secondbrain.tools" level="${TOOLS_LOG_LEVEL:-WARN}"/>
-
     <logger name="org.jboss.logging" level="warn"/>
     <logger name="io.vavr.control.Try.filter" level="error"/>
     <logger name="org.apache.pdfbox.pdmodel" level="error"/>
