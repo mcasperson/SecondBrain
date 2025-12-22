@@ -155,6 +155,43 @@ java \
     "Summarize the top customer support issues from the last 30 days."
 ```
 
+## Gong Example
+
+The `Gong` tool connects to a Gong instance, retrieves sales calls from the specified
+number of days, and passes the relevant data to the LLM for analysis.
+
+Here is the command using Azure AI Foundry. Replace the `replaceme` values with your Azure AI Foundry API
+key and endpoint URL, and also replace `Phi-4` with the model you wish to use:
+
+```bash
+java \
+    "-Dsb.llm.client=azure" \
+    "-Dsb.azurellm.apikey=replaceme" \
+    "-Dsb.azurellm.url=https://replaceme.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview" \
+    "-Dsb.azurellm.model=Phi-4" \
+    "-Dsb.tools.force=Gong" \
+    "-Dsb.gong.url=https://api.gong.io" \
+    "-Dsb.gong.accessKey=replaceme" \
+    "-Dsb.gong.accessSecretKey=replaceme" \
+    "-Dsb.gong.days=30" \
+    -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
+    "Summarize the common topics discussed in the last 30 days."
+```
+
+```bash
+ollama pull nemotron-3-nano:30b
+java \
+    "-Dsb.llm.client=ollama" \
+    "-Dsb.ollama.model=nemotron-3-nano:30b" \
+    "-Dsb.tools.force=Gong" \
+    "-Dsb.gong.url=https://api.gong.io" \
+    "-Dsb.gong.accessKey=replaceme" \
+    "-Dsb.gong.accessSecretKey=replaceme" \
+    "-Dsb.gong.days=30" \
+    -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
+    "Summarize the common topics discussed in the last 30 days."
+```
+    
 ## Meta Tool Example
 
 The `Meta` tool combines the results of multiple tools into a single report. 
