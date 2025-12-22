@@ -1,6 +1,11 @@
-SecondBrain is a CLI tool to access and filter data from external data sources such as Salesforce, ZenDesk, Slack, Gong and others, and then query that data using an LLM.
+SecondBrain is a CLI tool to access and filter data from external data sources such as Salesforce, 
+ZenDesk, Slack, Gong and others, and then query that data using an LLM.
 
-This is useful for generating reports, summaries, and insights from multiple and otherwise disconnected data sources.
+This tool uses Retrieval Augmented Generation (RAG) techniques to pull in relevant data from external sources, 
+filter it based on keywords, and then pass that data to a Large Language Model (LLM) for analysis.
+
+This is useful for generating reports, summaries, and insights from multiple and otherwise disconnected 
+data sources.
 
 ## Building
 
