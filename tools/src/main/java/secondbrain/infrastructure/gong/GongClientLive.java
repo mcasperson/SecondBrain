@@ -156,7 +156,7 @@ public class GongClientLive implements GongClient {
             final String cursor,
             final int page) {
         if (page >= MAX_PAGES) {
-            logger.log(Level.WARNING, "Reached maximum pages of " + MAX_PAGES + " when fetching Gong calls extensive");
+            logger.warning("Reached maximum pages of " + MAX_PAGES + " when fetching Gong calls extensive");
             return new GongCallExtensive[]{};
         }
 

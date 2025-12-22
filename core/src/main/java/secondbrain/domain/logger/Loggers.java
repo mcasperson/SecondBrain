@@ -29,7 +29,7 @@ public class Loggers {
     @Produces
     public Logger getLogger(final InjectionPoint injectionPoint) {
         final Logger logger = Logger.getLogger(
-                injectionPoint.getMember().getDeclaringClass().getSimpleName());
+                injectionPoint.getMember().getDeclaringClass().getName());
 
         if (fileHandler != null) {
             logger.addHandler(fileHandler);
