@@ -179,6 +179,7 @@ java \
     "-Dsb.gong.accessKey=replaceme" \
     "-Dsb.gong.accessSecretKey=replaceme" \
     "-Dsb.gong.days=30" \
+    "-Dsb.gong.company=replaceme" \
     -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
     "Summarize the common topics discussed in the last 30 days."
 ```
@@ -193,6 +194,7 @@ java \
     "-Dsb.gong.accessKey=replaceme" \
     "-Dsb.gong.accessSecretKey=replaceme" \
     "-Dsb.gong.days=30" \
+    "-Dsb.gong.company=replaceme" \
     -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
     "Summarize the common topics discussed in the last 30 days."
 ```
