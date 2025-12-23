@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("NullAway")
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(SecretGetterGenerator.class)

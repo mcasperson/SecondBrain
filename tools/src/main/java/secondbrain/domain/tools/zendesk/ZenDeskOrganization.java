@@ -287,7 +287,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         zenDeskClient.getTickets(
                                 creds.auth(),
                                 creds.url(),
-                                String.join(" ", query),
+                                query,
                                 parsedArgs.getSearchTTL()))
                 // Filter out any tickets based on the submitter and assignee
                 .map(response -> filterResponse(

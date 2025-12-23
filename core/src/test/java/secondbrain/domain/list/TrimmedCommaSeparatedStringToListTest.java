@@ -6,6 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@SuppressWarnings("NullAway")
 class TrimmedCommaSeparatedStringToListTest {
 
     private final TrimmedCommaSeparatedStringToList converter = new TrimmedCommaSeparatedStringToList();

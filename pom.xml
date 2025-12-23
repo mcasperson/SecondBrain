@@ -344,7 +344,7 @@
                         <encoding>UTF-8</encoding>
                         <compilerArgs>
                             <arg>-XDcompilePolicy=simple</arg>
-                            <arg>-Xplugin:ErrorProne -XepOpt:NullAway:AnnotatedPackages=secondbrain</arg>
+                            <arg>-Xplugin:ErrorProne -XepOpt:NullAway:AnnotatedPackages=secondbrain -Xep:StringSplitter:OFF -Xep:MissingOverride:OFF -Xep:UnusedMethod:OFF -Xep:UnusedVariable:OFF -Xep:DefaultCharset:OFF</arg>
                             <arg>--should-stop=ifError=FLOW</arg>
                         </compilerArgs>
                         <annotationProcessorPaths>

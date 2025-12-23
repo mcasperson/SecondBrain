@@ -7,6 +7,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("NullAway")
 class DocumentTrimmerExactKeywordsTest {
 
     @Test

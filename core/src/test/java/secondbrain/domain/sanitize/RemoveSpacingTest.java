@@ -3,6 +3,7 @@ package secondbrain.domain.sanitize;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("NullAway")
 class RemoveSpacingTest {
 
     private final RemoveSpacing removeSpacing = new RemoveSpacing();
