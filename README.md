@@ -307,3 +307,9 @@ The project is split into modules:
 * `secondbrain-cli` which is a CLI tool for interacting with the service.
 
 ![Architecture](architecture.png)
+
+## Awards
+
+SecondBrain was awarded second place in the [Payara Hackathon - Generative AI on Jakarta EE](https://www.linkedin.com/posts/payara_the-power-up-your-jakarta-ee-with-ai-hackathon-activity-7275895257563607040-lOnn?utm_source=share&utm_medium=member_desktop)!
+
+![](award.png)
