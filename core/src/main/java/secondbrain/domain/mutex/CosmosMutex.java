@@ -113,6 +113,11 @@ public class CosmosMutex implements Mutex {
             return;
         }
 
+        if (cosmosClient == null) {
+            logger.warning("Cosmos client is not initialized, cannot clear locks on startup");
+            return;
+        }
+
         final String query = "SELECT * FROM c";
         final String databaseName = this.databaseName.orElse(DATABASE_NAME);
         final String containerName = this.containerName.orElse(CONTAINER_NAME);
@@ -197,7 +202,10 @@ public class CosmosMutex implements Mutex {
     }
 
     private <T> Try<T> tryAcquireAndExecute(@Nullable final CosmosContainer container, final String lockName, final MutexCallback<T> callback) {
-        // We either
+        if (container == null) {
+            return Try.failure(new LocalStorageFailure("Cosmos DB client is not initialized"));
+        }
+
         final Try<String> etag = Try.of(() -> container.readItem(lockName, new PartitionKey(LOCK_PARTITION_VALUE), LockDocument.class).getItem())
                 // If there are any cosmosdb errors, we want to log them
                 .onFailure(ex -> logReadItemFailure(lockName, ex))
@@ -237,6 +245,11 @@ public class CosmosMutex implements Mutex {
     }
 
     private void releaseLock(final String etag, final String lockName) {
+        if (container == null) {
+            logger.warning("Cosmos DB client is not initialized, cannot release lock: " + lockName);
+            return;
+        }
+
         Try.of(() -> new CosmosItemRequestOptions().setIfMatchETag(etag))
                 .map(options -> container.deleteItem(lockName, new PartitionKey(LOCK_PARTITION_VALUE), options))
                 /*
@@ -268,6 +281,7 @@ public class CosmosMutex implements Mutex {
             this(id, lock, acquiredAt, null, ttl);
         }
 
+        @Nullable
         private String getFixedEtag() {
             if (StringUtils.isBlank(eTag)) {
                 return null;

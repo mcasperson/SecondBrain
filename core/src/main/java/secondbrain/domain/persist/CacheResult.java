@@ -1,5 +1,7 @@
 package secondbrain.domain.persist;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Represents the result of a cache operation.
  *
@@ -7,5 +9,5 @@ package secondbrain.domain.persist;
  * @param fromCache True if the value was retrieved from cache, false if it was computed
  * @param <T>       The result type
  */
-public record CacheResult<T>(T result, boolean fromCache) {
+public record CacheResult<T>(@Nullable T result, boolean fromCache) {
 }

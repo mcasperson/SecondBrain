@@ -236,6 +236,7 @@ public class CosmosLocalStorage implements LocalStorage {
         throw ex;
     }
 
+    @Nullable
     private CacheResult<String> unpack(final CacheResult<String> result, final String tool, final String source) {
         if (!result.fromCache()) {
             return result;
@@ -267,6 +268,10 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     private CacheResult<String> loadFromDatabaseTimed(final String tool, final String source, final String promptHash) {
+        if (container == null) {
+            throw new LocalStorageFailure("Cosmos DB container is not initialized");
+        }
+
         final String id = generateId(tool, source, promptHash);
         final PartitionKey partitionKey = new PartitionKey(tool);
 
@@ -305,12 +310,14 @@ public class CosmosLocalStorage implements LocalStorage {
 
         return Try
                 .of(() -> getString(tool, source, promptHash))
-                .filter(result -> StringUtils.isNotBlank(result.result()))
+                .filter(result -> result != null && StringUtils.isNotBlank(result.result()))
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .recover(result -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                     final String value = generateValue.generate();
-                    putString(tool, source, promptHash, ttlSeconds, value);
+                    if (StringUtils.isNotBlank(value)) {
+                        putString(tool, source, promptHash, ttlSeconds, value);
+                    }
                     return new CacheResult<String>(value, false);
                 })
                 .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
@@ -381,7 +388,7 @@ public class CosmosLocalStorage implements LocalStorage {
         logger.fine("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
 
         return Try.of(() -> getString(tool, source, promptHash))
-                .filter(result -> StringUtils.isNotBlank(result.result()))
+                .filter(result -> result != null && StringUtils.isNotBlank(result.result()))
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> new CacheResult<T>(deserializer.deserialize(r.result()), true))
                 .onFailure(DeserializationFailed.class, ex -> logger.warning("Failed to deserialize cached object: " + exceptionHandler.getExceptionMessage(ex)))
