@@ -44,7 +44,7 @@ public class HelloWorld implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return ImmutableList.of(new ToolArguments(
-                "greeting",
+                MESSAGE_ARG,
                 "The greeting to display",
                 "World"));
     }
