@@ -477,6 +477,7 @@ class PlanHatConfig {
             this.context = context;
         }
 
+        @Override
         public String toString() {
             return getToStringGenerator().generateGetterConfig(this);
         }
@@ -649,6 +650,7 @@ class PlanHatConfig {
                     .value();
         }
 
+        @Override
         public Integer getContextFilterMinimumRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterMinimumRating()::get,

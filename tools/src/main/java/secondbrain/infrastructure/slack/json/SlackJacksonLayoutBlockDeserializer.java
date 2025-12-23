@@ -12,6 +12,7 @@ public class SlackJacksonLayoutBlockDeserializer extends StdDeserializer<LayoutB
         super(LayoutBlock.class);
     }
 
+    @Override
     public LayoutBlock deserialize(final JsonParser jsonParser, final DeserializationContext context) throws IOException {
         return jsonParser.readValueAs(PlaceholderLayoutBlock.class);
     }

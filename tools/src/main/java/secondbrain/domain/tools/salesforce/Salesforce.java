@@ -493,6 +493,7 @@ class SalesforceConfig {
             this.context = context;
         }
 
+        @Override
         public String toString() {
             return getToStringGenerator().generateGetterConfig(this);
         }

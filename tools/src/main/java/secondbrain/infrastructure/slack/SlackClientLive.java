@@ -222,6 +222,7 @@ public class SlackClientLive implements SlackClient {
                 .get();
     }
 
+    @Override
     public SlackConversationResource channel(
             final AsyncMethodsClient client,
             final String accessToken,

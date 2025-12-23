@@ -9,6 +9,7 @@ public class DefaultFileSanitizer implements FileSanitizer {
         return fileName.replaceAll("[:*?\"<>|]", "_");
     }
 
+    @Override
     public String sanitizeFileName(final String fileName) {
         return fileName.replaceAll("[\\\\/:*?\"<>|]", "_");
     }

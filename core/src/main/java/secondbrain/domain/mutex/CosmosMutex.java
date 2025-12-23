@@ -82,7 +82,7 @@ public class CosmosMutex implements Mutex {
     @PostConstruct
     public void postConstruct() {
         logger.fine("Initializing Cosmos DB local storage");
-        synchronized (CosmosLocalStorage.class) {
+        synchronized (CosmosMutex.class) {
             if (cosmosClient == null) {
                 Try.run(this::initializeCosmosClient)
                         .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
@@ -95,7 +95,7 @@ public class CosmosMutex implements Mutex {
 
     @PreDestroy
     public void preDestroy() {
-        synchronized (CosmosLocalStorage.class) {
+        synchronized (CosmosMutex.class) {
             if (cosmosClient != null) {
                 Try.run(cosmosClient::close)
                         .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
@@ -261,11 +261,11 @@ public class CosmosMutex implements Mutex {
     private record LockDocument(String id, String lock, Instant acquiredAt,
                                 @JsonProperty("_etag") String eTag, Integer ttl) {
 
-        public LockDocument(String id, String lock, Instant acquiredAt, Integer ttl) {
+        private LockDocument(String id, String lock, Instant acquiredAt, Integer ttl) {
             this(id, lock, acquiredAt, null, ttl);
         }
 
-        public String getFixedEtag() {
+        private String getFixedEtag() {
             if (StringUtils.isBlank(eTag)) {
                 return null;
             }
@@ -273,7 +273,7 @@ public class CosmosMutex implements Mutex {
             return eTag;
         }
 
-        public boolean isLockStale(int ttlSeconds) {
+        private boolean isLockStale(int ttlSeconds) {
             final Instant lockTime = acquiredAt();
             final Instant now = Instant.now();
             return lockTime.plusSeconds(ttlSeconds).isBefore(now);

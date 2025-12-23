@@ -53,6 +53,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * We have a couple of challenges to deal with when testing LLMs.
@@ -157,6 +158,7 @@ public class ToolSelectionTest {
     void testToolSelection() {
         try {
             final ToolCall tool = toolSelector.getTool("Perform a smoke test", Map.of());
+            assertNotNull(tool);
             assertEquals("SmokeTest", tool.toolDefinition().toolName());
         } catch (Exception e) {
             // Allow up o one failure, or an 20% failure rate
@@ -170,6 +172,7 @@ public class ToolSelectionTest {
     void testZendDeskTool() {
         try {
             final ToolCall tool = toolSelector.getTool("Given 8 hours worth of ZenDesk tickets, with up to 10 comments, provide a summary of the questions and problems in the style of a news article with up to 3 paragraphs.", Map.of());
+            assertNotNull(tool);
             assertEquals("ZenDeskOrganization", tool.toolDefinition().toolName());
             assertEquals("10", tool.toolDefinition().toolArgs().stream().filter(arg -> arg.argName().equals("numComments")).findFirst().get().argValue());
             assertEquals("8", tool.toolDefinition().toolArgs().stream().filter(arg -> arg.argName().equals("hours")).findFirst().get().argValue());
