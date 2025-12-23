@@ -235,6 +235,7 @@ public class H2LocalStorage implements LocalStorage {
         return localStorageCacheWriteOnly.isWriteOnly();
     }
 
+    @SuppressWarnings("NullAway")
     private boolean deleteExpired() {
         synchronized (H2LocalStorage.class) {
             if (isDisabled() || connection == null) {
@@ -265,6 +266,7 @@ public class H2LocalStorage implements LocalStorage {
      * A best effort to get a cached string from the database. This method will silently fail or immediately return
      * if the cache is disabled or if there was an exception attempting to get the value.
      */
+    @SuppressWarnings("NullAway")
     @Override
     @Nullable
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
@@ -358,6 +360,7 @@ public class H2LocalStorage implements LocalStorage {
         return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserialize(json, clazz));
     }
 
+    @SuppressWarnings("NullAway")
     private <T> CacheResult<T> getOrPutPrivate(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
         if (isDisabled(tool) || connection == null) {
             return new CacheResult<T>(generateValue.generate(), false);
@@ -437,6 +440,7 @@ public class H2LocalStorage implements LocalStorage {
         return getOrPutGeneric(tool, source, promptHash, 0, container, contained, contained2, generateValue);
     }
 
+    @SuppressWarnings("NullAway")
     @Override
     public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
         if (isDisabled(tool) || connection == null) {
@@ -500,6 +504,7 @@ public class H2LocalStorage implements LocalStorage {
         return new CacheResult<T[]>(value, false);
     }
 
+    @SuppressWarnings("NullAway")
     @Override
     public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
         synchronized (H2LocalStorage.class) {
