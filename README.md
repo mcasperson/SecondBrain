@@ -21,6 +21,17 @@ Build the project using Maven:
 ./mvnw clean package -DskipTests
 ```
 
+## LLM Backend
+
+The easiest way to get started is to use Ollama as the LLM backend. Install Ollama from https://ollama.com and then pull the 
+`nemotron-3-nano:30b` model:
+
+```bash
+ollama pull nemotron-3-nano:30b
+```
+
+You are free to use a variety of models, but I have found the nemotron and qwen3 models to be some of the best.
+
 ## Directory Scan Example
 
 The directory scan tools allows you to scan a directory of files for keywords, extract relevant text, and then ask questions about the data found. This is useful when you need to analyze a collection of documents, such as PDFs, Word documents, or text files.
@@ -264,6 +275,24 @@ java \
     "-Dsb.directoryscan.keywords=AI,Kubernetes,K8s" \
     -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
     "What percentage of AI deployments use Kubernetes or K8s for orchestration?"
+```
+
+## Building your own tools
+
+You can build your own tools by implementing the `Tool` interface found in the 
+`secondbrain-core` module.
+
+See the [HelloWorld](src/main/java/secondbrain/domain/tools/helloworld/HelloWorld.java) tool 
+for an example of how to build your own tool.
+
+```bash
+java \
+    "-Dsb.llm.client=ollama" \
+    "-Dsb.ollama.model=nemotron-3-nano:30b" \
+    "-Dsb.tools.force=HelloWorld" \
+    "-Dsb.helloworld.message=AI Fans" \
+    -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
+    "The prompt is not used with the HelloWorld tool." 
 ```
 
 ## Project Structure
