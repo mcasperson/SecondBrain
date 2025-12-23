@@ -10,8 +10,8 @@ import org.jspecify.annotations.Nullable;
  *                are trusted. LLM generated arguments are not trusted. Untrusted values are subject to sanitization
  *                and validation.
  */
-public record Argument(String value, boolean trusted) {
-    public Argument replaceValue(final String value) {
+public record Argument(@Nullable String value, boolean trusted) {
+    public Argument replaceValue(@Nullable final String value) {
         return new Argument(value, trusted);
     }
 }

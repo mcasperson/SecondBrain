@@ -88,7 +88,11 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
                 () -> vectorizeApi(text, hiddenText)).result();
     }
 
-    private RagStringContext vectorizeApi(final String text, final @Nullable String hiddenText) {
+    private RagStringContext vectorizeApi(final String text, @Nullable final String hiddenText) {
+        if (predictor == null) {
+            throw new InternalFailure("Predictor is not initialized");
+        }
+
         final String prefix = hiddenText == null ? "" : hiddenText + " ";
         return Try.of(() -> predictor.predict(prefix + text))
                 .map(embeddings -> new Vector(floatToDouble(embeddings)))

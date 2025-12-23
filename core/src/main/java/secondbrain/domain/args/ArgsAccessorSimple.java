@@ -43,11 +43,15 @@ public class ArgsAccessorSimple implements ArgsAccessor {
                                 @Nullable final String argName,
                                 @Nullable final String contextName,
                                 final String defaultValue) {
+        final ArgsAccessorSystemProperty fixedSystemProperty = Objects.requireNonNullElse(systemProperty, new DefaultArgsAccessorSystemProperty());
+        final Map<String, String> fixedContext = Objects.requireNonNullElse(context, Map.<String, String>of());
+        final String fixedContextName = Objects.requireNonNullElse(contextName, "");
+
         // start with system properties
-        return Try.of(() -> new Argument(systemProperty.getValue(), true))
+        return Try.of(() -> new Argument(fixedSystemProperty.getValue(), true))
                 .mapTry(v -> validateString.throwIfBlank(v, Argument::value))
                 // then try the context
-                .recover(e -> validateString.isNotBlank(contextName) ? new Argument(context.get(contextName), true) : null)
+                .recover(e -> validateString.isNotBlank(fixedContextName) ? new Argument(fixedContext.get(fixedContextName), true) : null)
                 .mapTry(v -> validateString.throwIfBlank(v, Argument::value))
                 // then get the user supplied argument
                 .recover(e -> getArgument(arguments, argName, defaultValue))

@@ -1,5 +1,7 @@
 package secondbrain.domain.args;
 
+import org.jspecify.annotations.Nullable;
+
 public interface ArgsAccessorSystemProperty {
-    String getValue();
+    @Nullable String getValue();
 }
