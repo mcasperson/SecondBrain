@@ -6,7 +6,7 @@ package secondbrain.domain.context;
  * @param annotatedContent   The annotated document
  * @param annotationCoverage The ratio of annotations to the source context
  * @param context            The original context
- * @param <T>
+ * @param <T>                The type of the context
  */
 public record AnnotationResult<T>(String annotatedContent, String annotations, double annotationCoverage, T context) {
 }

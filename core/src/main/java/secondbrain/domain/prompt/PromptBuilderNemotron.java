@@ -2,6 +2,7 @@ package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 
 @ApplicationScoped
 public class PromptBuilderNemotron implements PromptBuilder {
@@ -30,7 +31,15 @@ public class PromptBuilderNemotron implements PromptBuilder {
     }
 
     @Override
-    public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
+    public String buildFinalPrompt(@Nullable final String instructions, final String context, final String prompt) {
+        if (StringUtils.isBlank(instructions)) {
+            return context
+                    + "\n<|im_start|>user\n"
+                    + prompt
+                    + "\n<|im_end|>\n"
+                    + "<|im_start|>assistant\n";
+        }
+
         return context
                 + "<|im_start|>system\n"
                 + instructions

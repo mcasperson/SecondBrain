@@ -1,5 +1,6 @@
 package secondbrain.domain.args;
 
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.sanitize.SanitizeArgument;
 import secondbrain.domain.tooldefs.ToolArgs;
 
@@ -19,8 +20,8 @@ public interface ArgsAccessor {
      * @return The argument, or the default value if the argument was not found
      */
     Argument getArgument(
-            List<ToolArgs> arguments,
-            String argName,
+            @Nullable List<ToolArgs> arguments,
+            @Nullable String argName,
             String defaultValue);
 
     /**
@@ -32,11 +33,11 @@ public interface ArgsAccessor {
      * @return The argument, or the default value if the argument was not found
      */
     Argument getArgument(
-            ArgsAccessorSystemProperty systemProperty,
-            List<ToolArgs> arguments,
-            Map<String, String> context,
-            String argName,
-            String contextName,
+            @Nullable ArgsAccessorSystemProperty systemProperty,
+            @Nullable List<ToolArgs> arguments,
+            @Nullable Map<String, String> context,
+            @Nullable String argName,
+            @Nullable String contextName,
             String defaultValue);
 
     /**
@@ -48,11 +49,11 @@ public interface ArgsAccessor {
      * @return The argument, or the default value if the argument was not found
      */
     List<Argument> getArgumentList(
-            ArgsAccessorSystemProperty systemProperty,
-            List<ToolArgs> arguments,
-            Map<String, String> context,
-            String argName,
-            String contextName,
+            @Nullable ArgsAccessorSystemProperty systemProperty,
+            @Nullable List<ToolArgs> arguments,
+            @Nullable Map<String, String> context,
+            @Nullable String argName,
+            @Nullable String contextName,
             String defaultValue);
 
     /**
@@ -66,9 +67,9 @@ public interface ArgsAccessor {
      * @return The argument, or the default value if the argument was not found
      */
     Argument getArgument(
-            List<ToolArgs> arguments,
-            List<SanitizeArgument> sanitizers,
-            String prompt,
-            String argName,
+            @Nullable List<ToolArgs> arguments,
+            @Nullable List<SanitizeArgument> sanitizers,
+            @Nullable String prompt,
+            @Nullable String argName,
             String defaultValue);
 }

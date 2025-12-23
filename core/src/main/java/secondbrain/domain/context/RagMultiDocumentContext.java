@@ -78,7 +78,7 @@ public record RagMultiDocumentContext<T>(String prompt,
      * @param response The new document
      * @return A new copy of this object with the new document
      */
-    public RagMultiDocumentContext<T> updateResponse(final String response) {
+    public RagMultiDocumentContext<T> updateResponse(@Nullable final String response) {
         return new RagMultiDocumentContext<T>(prompt, instructions, individualContexts, response, debug, annotationPrefix, metadata);
     }
 

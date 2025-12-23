@@ -35,6 +35,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@SuppressWarnings("NullAway")
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(SentenceVectorizerDataToRagDoc.class)

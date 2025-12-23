@@ -11,11 +11,13 @@ public class GitHubIssuesClientProducer {
     @Inject
     private MockConfig mockConfig;
 
+    @SuppressWarnings("NullAway")
     @Produces
     @Preferred
     @ApplicationScoped
     public GitHubIssuesClient produceSlackClient(final GitHubIssuesClientLive liveClient) {
         if (mockConfig.isMock()) {
+            // Todo: implement and return GitHubIssuesClientMock when needed
             return null;
         }
 

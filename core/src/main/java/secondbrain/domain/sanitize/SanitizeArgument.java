@@ -1,5 +1,7 @@
 package secondbrain.domain.sanitize;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Defines a service for sanitizing an argument passed in a prompt.
  */
@@ -12,5 +14,5 @@ public interface SanitizeArgument {
      * @param document The source document
      * @return The sanitized argument
      */
-    String sanitize(String argument, String document);
+    String sanitize(@Nullable String argument, String document);
 }

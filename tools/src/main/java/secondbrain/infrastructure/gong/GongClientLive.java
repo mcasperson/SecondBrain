@@ -120,10 +120,10 @@ public class GongClientLive implements GongClient {
                                 // The company can be blank
                                 StringUtils.isBlank(company) ||
                                         // Or one of the call context object must be for Salesforce
-                                        "Salesforce".equals(c.system()) &&
+                                        ("Salesforce".equals(c.system()) &&
                                                 // And one of the objects must be an account that matches the company id
                                                 c.objects().stream().anyMatch(o ->
-                                                        company.equals(o.objectId()) && "Account".equals(o.objectType()))))
+                                                        company.equals(o.objectId()) && "Account".equals(o.objectType())))))
                 .toList();
 
     }
@@ -187,7 +187,7 @@ public class GongClientLive implements GongClient {
                 .result();
 
         return ArrayUtils.addAll(
-                calls.calls(),
+                calls.getCallsArray(),
                 StringUtils.isNotBlank(calls.records().cursor())
                         ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, calls.records().cursor(), page + 1)
                         : new GongCallExtensive[]{});

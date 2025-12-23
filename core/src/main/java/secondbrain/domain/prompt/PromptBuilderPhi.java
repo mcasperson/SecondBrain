@@ -2,6 +2,7 @@ package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 
 /**
  * See <a href="https://github.com/microsoft/Phi-3CookBook/blob/main/md/02.QuickStart/Huggingface_QuickStart.md">phi3</a>
@@ -34,7 +35,15 @@ public class PromptBuilderPhi implements PromptBuilder {
     }
 
     @Override
-    public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
+    public String buildFinalPrompt(@Nullable final String instructions, final String context, final String prompt) {
+        if (StringUtils.isBlank(instructions)) {
+            return context
+                    + "<|user|>\n"
+                    + prompt
+                    + "\n<|end|>\n"
+                    + "<|assistant|>";
+        }
+
         return "<|system|>\n"
                 + instructions
                 + "\n<|end|>\n"

@@ -4,10 +4,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * An implementation of ToStringGenerator that generates a string representation
@@ -27,11 +24,11 @@ public class SecretGetterGenerator implements ToStringGenerator {
         }
 
         final List<String> processedExclusions = Objects.requireNonNullElse(excludeFields, List.<String>of()).stream()
-                .map(String::toLowerCase)
+                .map(e -> e.toLowerCase(Locale.ROOT))
                 .toList();
 
         final List<String> values = Arrays.stream(obj.getClass().getMethods())
-                .filter(method -> !processedExclusions.contains(method.getName().toLowerCase()))
+                .filter(method -> !processedExclusions.contains(method.getName().toLowerCase(Locale.ROOT)))
                 .sorted(Comparator.comparing(Method::getName))
                 .filter(method -> method.getName().startsWith("get") &&
                         !method.getName().equals("getClass") &&

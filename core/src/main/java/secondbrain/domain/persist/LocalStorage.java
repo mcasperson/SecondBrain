@@ -1,5 +1,7 @@
 package secondbrain.domain.persist;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 
 /**
@@ -14,7 +16,7 @@ public interface LocalStorage {
      * @param promptHash A way to identify the prompt
      * @return The value, if one was saved
      */
-    CacheResult<String> getString(String tool, String source, String promptHash);
+    @Nullable CacheResult<String> getString(String tool, String source, String promptHash);
 
     /**
      * Get the value associated with a tool, source, and prompt hash, or save a new value if one is not found.

@@ -5,7 +5,7 @@ package secondbrain.domain.persist;
  *
  * @param result    The value returned from the get operation
  * @param fromCache True if the value was retrieved from cache, false if it was computed
- * @param <T>
+ * @param <T>       The result type
  */
 public record CacheResult<T>(T result, boolean fromCache) {
 }

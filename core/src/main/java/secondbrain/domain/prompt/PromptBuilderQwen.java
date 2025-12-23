@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.constants.ModelRegex;
 
 import java.util.Optional;
@@ -43,7 +44,7 @@ public class PromptBuilderQwen implements PromptBuilder {
     }
 
     @Override
-    public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
+    public String buildFinalPrompt(@Nullable final String instructions, final String context, final String prompt) {
         if (StringUtils.isBlank(instructions)) {
             return StringUtils.trim(context)
                     + "\n<|im_end|>\n"

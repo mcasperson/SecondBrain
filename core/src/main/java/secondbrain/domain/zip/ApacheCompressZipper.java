@@ -7,6 +7,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.apache.commons.compress.compressors.gzip.GzipParameters;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.persist.TimedOperation;
 
 import java.io.ByteArrayInputStream;
@@ -34,6 +35,7 @@ public class ApacheCompressZipper implements Zipper {
                 .get();
     }
 
+    @Nullable
     private String compressStringTimed(final String data) {
         if (StringUtils.isEmpty(data)) {
             return null;
@@ -59,6 +61,7 @@ public class ApacheCompressZipper implements Zipper {
                 .get();
     }
 
+    @Nullable
     private String decompressStringTimed(final String compressedData) {
         if (StringUtils.isEmpty(compressedData)) {
             return null;

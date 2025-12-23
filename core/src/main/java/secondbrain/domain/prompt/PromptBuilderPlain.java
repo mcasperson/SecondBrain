@@ -1,7 +1,9 @@
 package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.validation.constraints.Null;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A plain prompt builder that is not specific to any model
@@ -29,7 +31,13 @@ public class PromptBuilderPlain implements PromptBuilder {
     }
 
     @Override
-    public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
+    public String buildFinalPrompt(@Nullable final String instructions, final String context, final String prompt) {
+        if (StringUtils.isBlank(instructions)) {
+            return context
+                    + "\n"
+                    + prompt;
+        }
+
         return instructions
                 + "\n"
                 + context

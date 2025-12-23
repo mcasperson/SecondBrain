@@ -29,6 +29,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
     private static final String DJL_MODEL = "sentence-transformers/all-MiniLM-L12-v2";
     private static final String DJL_PATH = "djl://ai.djl.huggingface.pytorch/" + DJL_MODEL;
 
+    @Nullable
     private Predictor<String, float[]> predictor;
 
     @Inject

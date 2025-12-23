@@ -243,7 +243,7 @@ public class SalesforceClientLive implements SalesforceClient {
                                 .get(),
                         response -> Try.of(() -> responseValidation.validate(response, url))
                                 .map(r -> r.readEntity(SalesforceTaskQuery.class))
-                                .map(SalesforceTaskQuery::records)
+                                .map(SalesforceTaskQuery::getRecordsArray)
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
                         e -> new ExternalFailure("Failed to call the Salesforce API", e),

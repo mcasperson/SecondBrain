@@ -1,5 +1,7 @@
 package secondbrain.domain.prompt;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Prompt builders provide a way to build up a prompt to be sent to the LLM.
  * Each LLM has its own template style that must be accommodated, but the tools
@@ -25,5 +27,5 @@ public interface PromptBuilder {
      * @param prompt       The main prompt text to be sent to the LLM. This is typically the user prompt.
      * @return A string with the final prompt formatted according to the LLM's template style.
      */
-    String buildFinalPrompt(String instructions, String context, String prompt);
+    String buildFinalPrompt(@Nullable String instructions, String context, String prompt);
 }

@@ -9,10 +9,12 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.validation.constraints.Null;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.DeserializationFailed;
@@ -101,7 +103,10 @@ public class CosmosLocalStorage implements LocalStorage {
     @Inject
     private LocalStorageReadWrite localStorageReadWrite;
 
+    @Nullable
     private CosmosClient cosmosClient;
+
+    @Nullable
     private CosmosContainer container;
 
     @PostConstruct
@@ -187,6 +192,7 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     @Override
+    @Nullable
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
         if (localStorageCacheDisable.isDisabled() || localStorageDisableTool.isToolDisabled(tool) || localStorageCacheWriteOnly.isWriteOnly() || container == null) {
             return null;

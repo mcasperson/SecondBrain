@@ -1,5 +1,7 @@
 package secondbrain.domain.sanitize;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Defines a service for sanitizing a document.
  */
@@ -10,5 +12,5 @@ public interface SanitizeDocument {
      * @param document The source document
      * @return The sanitized document
      */
-    String sanitize(String document);
+    @Nullable String sanitize(String document);
 }

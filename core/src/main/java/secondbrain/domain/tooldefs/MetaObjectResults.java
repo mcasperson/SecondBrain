@@ -8,21 +8,23 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class MetaObjectResults extends ArrayList<MetaObjectResult> {
-    private String filename;
-    private String id;
+    private final String filename;
+    private final String id;
 
     public MetaObjectResults() {
         super();
+        this.filename = "";
+        this.id = "";
     }
 
     public MetaObjectResults(final Iterable<MetaObjectResult> results, final String filename, final String id) {
         this(results);
-        this.filename = filename;
-        this.id = id;
     }
 
     public MetaObjectResults(final Iterable<MetaObjectResult> results) {
         super();
+        this.filename = "";
+        this.id = "";
         if (results != null) {
             results.forEach(this::add);
         }
@@ -30,6 +32,8 @@ public class MetaObjectResults extends ArrayList<MetaObjectResult> {
 
     public MetaObjectResults(final MetaObjectResult result) {
         super();
+        this.filename = "";
+        this.id = "";
         if (result != null) {
             this.add(result);
         }

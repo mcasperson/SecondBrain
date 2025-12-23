@@ -18,6 +18,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
@@ -444,7 +445,7 @@ public class SlackClientLive implements SlackClient {
             final AsyncMethodsClient client,
             final String accessToken,
             final String channel,
-            final String cursor,
+            @Nullable final String cursor,
             final int apiDelay) {
         return mutex.acquire(
                 MUTEX_TIMEOUT_MS,
@@ -456,7 +457,7 @@ public class SlackClientLive implements SlackClient {
             final AsyncMethodsClient client,
             final String accessToken,
             final String channel,
-            final String cursor,
+            @Nullable final String cursor,
             final int apiDelay) {
 
         final ConversationsListResponse response = findConversationListFromApi(client, accessToken, cursor, 0, apiDelay);
@@ -486,7 +487,7 @@ public class SlackClientLive implements SlackClient {
     private ConversationsListResponse findConversationListFromApi(
             final AsyncMethodsClient client,
             final String accessToken,
-            final String cursor,
+            @Nullable final String cursor,
             final int retryCount,
             final int apiDelay) {
         return mutex.acquire(
@@ -498,7 +499,7 @@ public class SlackClientLive implements SlackClient {
     private ConversationsListResponse findConversationListFromApiLocked(
             final AsyncMethodsClient client,
             final String accessToken,
-            final String cursor,
+            @Nullable final String cursor,
             final int retryCount,
             final int apiDelay) {
 

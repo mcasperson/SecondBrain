@@ -105,7 +105,7 @@ public class OllamaClient implements LlmClient {
                                 .buildFinalPrompt("", "", prompt)),
                 model,
                 2048)
-                .response();
+                .getResponse();
     }
 
     public <T> RagMultiDocumentContext<T> callWithCache(
@@ -130,7 +130,7 @@ public class OllamaClient implements LlmClient {
                 NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
                 () -> {
                     final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
-                    final String responseText = response.response();
+                    final String responseText = response.getResponse();
 
                     // Don't cache errors
                     return resultOrDefaultOnError(responseText, null);
@@ -224,7 +224,8 @@ public class OllamaClient implements LlmClient {
         return resultIsError(result) ? defaultValue : value;
     }
 
-    private String resultOrDefaultOnError(final String result, final String defaultValue) {
+    @Nullable
+    private String resultOrDefaultOnError(final String result, @Nullable final String defaultValue) {
         return resultIsError(result) ? defaultValue : result;
     }
 

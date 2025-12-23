@@ -1,5 +1,7 @@
 package secondbrain.domain.args;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Represents an argument passed to a tool.
  *
@@ -9,7 +11,7 @@ package secondbrain.domain.args;
  *                and validation.
  */
 public record Argument(String value, boolean trusted) {
-    public Argument replaceValue(String value) {
+    public Argument replaceValue(final String value) {
         return new Argument(value, trusted);
     }
 }

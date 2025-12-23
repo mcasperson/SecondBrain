@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@SuppressWarnings("NullAway")
 class SanitizeOrganizationTest {
 
     private final SanitizeOrganization sanitizeOrganization = new SanitizeOrganization();

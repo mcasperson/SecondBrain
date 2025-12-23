@@ -4,6 +4,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+import java.util.Locale;
+
 @ApplicationScoped
 public class MockConfig {
     @Inject
@@ -11,6 +13,6 @@ public class MockConfig {
     private String mock;
 
     public boolean isMock() {
-        return Boolean.parseBoolean(mock.toLowerCase());
+        return Boolean.parseBoolean(mock.toLowerCase(Locale.ROOT));
     }
 }

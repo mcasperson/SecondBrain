@@ -13,10 +13,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.exceptions.LockFail;
-import secondbrain.domain.persist.CosmosLocalStorage;
 
 import java.time.Instant;
 import java.util.List;
@@ -72,7 +72,10 @@ public class CosmosMutex implements Mutex {
     @Inject
     private Logger logger;
 
+    @Nullable
     private CosmosClient cosmosClient;
+
+    @Nullable
     private CosmosContainer container;
 
     private int getLockTtlSeconds() {
@@ -193,7 +196,7 @@ public class CosmosMutex implements Mutex {
         }
     }
 
-    private <T> Try<T> tryAcquireAndExecute(final CosmosContainer container, final String lockName, final MutexCallback<T> callback) {
+    private <T> Try<T> tryAcquireAndExecute(@Nullable final CosmosContainer container, final String lockName, final MutexCallback<T> callback) {
         // We either
         final Try<String> etag = Try.of(() -> container.readItem(lockName, new PartitionKey(LOCK_PARTITION_VALUE), LockDocument.class).getItem())
                 // If there are any cosmosdb errors, we want to log them
@@ -259,7 +262,7 @@ public class CosmosMutex implements Mutex {
      * Represents a lock document stored in Cosmos DB
      */
     private record LockDocument(String id, String lock, Instant acquiredAt,
-                                @JsonProperty("_etag") String eTag, Integer ttl) {
+                                @Nullable @JsonProperty("_etag") String eTag, Integer ttl) {
 
         private LockDocument(String id, String lock, Instant acquiredAt, Integer ttl) {
             this(id, lock, acquiredAt, null, ttl);

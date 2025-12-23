@@ -2,6 +2,7 @@ package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 
 @ApplicationScoped
 public class PromptBuilderLlama3 implements PromptBuilder {
@@ -35,7 +36,7 @@ public class PromptBuilderLlama3 implements PromptBuilder {
     }
 
     @Override
-    public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
+    public String buildFinalPrompt(@Nullable final String instructions, final String context, final String prompt) {
         if (StringUtils.isBlank(instructions)) {
             return "<|begin_of_text|>\n"
                     + context
@@ -44,7 +45,6 @@ public class PromptBuilderLlama3 implements PromptBuilder {
                     + "\n<|eot_id|>\n"
                     + "<|start_header_id|>assistant<|end_header_id|>";
         }
-
 
         return "<|begin_of_text|>\n"
                 + "<|start_header_id|>system<|end_header_id|>\n"

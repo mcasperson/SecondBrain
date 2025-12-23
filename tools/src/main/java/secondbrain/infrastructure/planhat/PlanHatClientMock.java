@@ -8,6 +8,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
 
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -22,7 +23,7 @@ public class PlanHatClientMock implements PlanHatClient {
     private LlmClient llmClient;
 
     @Override
-    public List<Conversation> getConversations(Client client, String company, String url, String token, ZonedDateTime startDate, ZonedDateTime endDate, int ttlSeconds) {
+    public List<Conversation> getConversations(final Client client, final String company, final String url, final String token, final ZonedDateTime startDate, final ZonedDateTime endDate, final int ttlSeconds) {
         // Create a list of mock conversations
         return List.of(
                 createMockConversation(),
@@ -32,7 +33,7 @@ public class PlanHatClientMock implements PlanHatClient {
     }
 
     @Override
-    public Company getCompany(Client client, String company, String url, String token, int ttlSeconds) {
+    public Company getCompany(final Client client, final String company, final String url, final String token, final int ttlSeconds) {
         // Generate a mock company
         String companyId = UUID.randomUUID().toString();
         String companyName = llmClient.call("Generate a company name. Return only the name, nothing else.");
@@ -55,7 +56,7 @@ public class PlanHatClientMock implements PlanHatClient {
         String id = UUID.randomUUID().toString();
         String description = llmClient.call("Generate a paragraph describing a customer conversation. Make it concise and professional.");
         String snippet = llmClient.call("Generate a brief one-sentence summary of a customer conversation.");
-        String date = ZonedDateTime.now().minusDays((long) (Math.random() * 30))
+        String date = ZonedDateTime.now(ZoneOffset.UTC).minusDays((long) (Math.random() * 30))
                 .format(DateTimeFormatter.ISO_INSTANT);
         String companyId = UUID.randomUUID().toString();
         String companyName = llmClient.call("Generate a company name. Return only the name, nothing else.");

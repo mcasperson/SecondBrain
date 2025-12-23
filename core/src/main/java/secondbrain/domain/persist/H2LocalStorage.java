@@ -10,6 +10,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.exceptions.SerializationFailed;
@@ -81,6 +82,7 @@ public class H2LocalStorage implements LocalStorage {
     @Inject
     private Logger logger;
 
+    @Nullable
     private Connection connection;
 
     @PostConstruct
@@ -264,6 +266,7 @@ public class H2LocalStorage implements LocalStorage {
      * if the cache is disabled or if there was an exception attempting to get the value.
      */
     @Override
+    @Nullable
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
         synchronized (H2LocalStorage.class) {
             if (isDisabled(tool) || isWriteOnly() || this.connection == null) {

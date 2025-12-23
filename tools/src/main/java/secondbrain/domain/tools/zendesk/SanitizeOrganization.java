@@ -3,6 +3,7 @@ package secondbrain.domain.tools.zendesk;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.sanitize.SanitizeArgument;
 
 import java.util.Arrays;
@@ -14,7 +15,7 @@ import java.util.Arrays;
 @Identifier("sanitizeOrganization")
 public class SanitizeOrganization implements SanitizeArgument {
     @Override
-    public String sanitize(final String argument, final String document) {
+    public String sanitize(@Nullable final String argument, final String document) {
         if (StringUtils.isBlank(argument)) {
             return "";
         }

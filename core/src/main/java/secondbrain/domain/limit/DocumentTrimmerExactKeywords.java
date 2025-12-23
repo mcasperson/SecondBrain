@@ -133,7 +133,7 @@ public class DocumentTrimmerExactKeywords implements DocumentTrimmer {
                 .filter(StringUtils::isNotBlank)
                 .map(String::toLowerCase)
                 .toList();
-        final String lowerCaseDocument = document.toLowerCase();
+        final String lowerCaseDocument = document.toLowerCase(Locale.ROOT);
         final List<KeywordPositions> keywordPositions = new ArrayList<>();
 
         for (String keyword : filteredKeywords) {

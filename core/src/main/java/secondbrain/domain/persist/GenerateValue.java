@@ -1,5 +1,7 @@
 package secondbrain.domain.persist;
 
+import org.jspecify.annotations.Nullable;
+
 public interface GenerateValue<T> {
-    T generate();
+    @Nullable T generate();
 }

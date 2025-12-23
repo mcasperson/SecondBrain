@@ -16,6 +16,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("NullAway")
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(RatingToolRatingFilter.class)

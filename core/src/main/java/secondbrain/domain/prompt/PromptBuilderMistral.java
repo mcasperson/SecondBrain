@@ -2,6 +2,7 @@ package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 
 /**
  * See <a href="https://ollama.com/library/mistral">mistral</a> for
@@ -36,7 +37,15 @@ public class PromptBuilderMistral implements PromptBuilder {
     }
 
     @Override
-    public String buildFinalPrompt(final String instructions, final String context, final String prompt) {
+    public String buildFinalPrompt(@Nullable final String instructions, final String context, final String prompt) {
+        if (StringUtils.isBlank(instructions)) {
+            return "[INST]"
+                    + StringUtils.trim(context)
+                    + "\n"
+                    + StringUtils.trim(prompt)
+                    + "[/INST]";
+        }
+
         return "[INST]"
                 + StringUtils.trim(instructions)
                 + "\n"

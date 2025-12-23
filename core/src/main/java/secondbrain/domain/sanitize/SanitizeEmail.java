@@ -4,6 +4,7 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Arrays;
 
@@ -14,7 +15,7 @@ import java.util.Arrays;
 @Identifier("sanitizeEmail")
 public class SanitizeEmail implements SanitizeArgument {
     @Override
-    public String sanitize(final String argument, final String document) {
+    public String sanitize(@Nullable final String argument, final String document) {
         if (StringUtils.isBlank(argument)) {
             return "";
         }
