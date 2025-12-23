@@ -48,3 +48,4 @@ Gong*
 *.lock
 
 localcache
+SecondBrain.log.*
