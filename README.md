@@ -86,6 +86,7 @@ java \
 java \
     "-Dsb.llm.client=ollama" \
     "-Dsb.ollama.model=nemotron-3-nano:30b" \
+    "-Dsb.ollama.contextwindow=100000" \
     "-Dsb.tools.force=GitHubDiffs" \
     "-Dsb.github.owner=mcasperson" \
     "-Dsb.github.repo=SecondBrain" \
