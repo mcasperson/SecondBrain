@@ -67,6 +67,7 @@ public class ToolSelector {
         return tools.stream().toList();
     }
 
+    @Nullable
     public ToolCall getTool(final String prompt, final Map<String, String> context) {
         /*
             When forcing the selection of a tool, all arguments must be supplied

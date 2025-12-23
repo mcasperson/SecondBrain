@@ -1157,6 +1157,7 @@ class ZenDeskConfig {
                     .get();
         }
 
+        @Override
         public String getDocumentSummaryPrompt() {
             return getArgsAccessor()
                     .getArgument(
@@ -1195,6 +1196,7 @@ class ZenDeskConfig {
             return NumberUtils.min(NumberUtils.toInt(value, MAX_TICKETS), MAX_TICKETS);
         }
 
+        @Override
         public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigTicketFilterDefaultRating()::get,
@@ -1207,6 +1209,7 @@ class ZenDeskConfig {
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
 
+        @Override
         public boolean isContextFilterUpperLimit() {
             final String value = getArgsAccessor().getArgument(
                     getConfigContextFilterGreaterThan()::get,

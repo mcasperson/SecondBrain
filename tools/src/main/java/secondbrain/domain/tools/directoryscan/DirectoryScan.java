@@ -10,6 +10,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -470,7 +471,7 @@ class DirectoryScanConfig {
         return validateString;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -544,6 +545,7 @@ class DirectoryScanConfig {
                     .toList();
         }
 
+        @Override
         public List<String> getKeywords() {
             return getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
@@ -557,6 +559,7 @@ class DirectoryScanConfig {
                     .toList();
         }
 
+        @Override
         public int getKeywordWindow() {
 
             final String stringValue = getArgsAccessor().getArgument(
@@ -582,6 +585,7 @@ class DirectoryScanConfig {
             return BooleanUtils.toBoolean(stringValue);
         }
 
+        @Override
         public String getEntity() {
             return getArgsAccessor().getArgument(
                     null,

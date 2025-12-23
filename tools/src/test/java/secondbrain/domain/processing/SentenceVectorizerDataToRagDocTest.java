@@ -86,18 +86,18 @@ class SentenceVectorizerDataToRagDocTest {
                 "https://example.com",
                 "Example");
         final LocalConfigKeywordsEntity parsedArgs = new LocalConfigKeywordsEntity() {
-            @Override
-            public List<String> getKeywords() {
+        @Override
+        public List<String> getKeywords() {
                 return List.of("keyword");
             }
 
-            @Override
-            public int getKeywordWindow() {
+        @Override
+        public int getKeywordWindow() {
                 return 50;
             }
 
-            @Override
-            public String getEntity() {
+        @Override
+        public String getEntity() {
                 return "test-entity";
             }
         };

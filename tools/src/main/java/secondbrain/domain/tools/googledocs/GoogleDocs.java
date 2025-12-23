@@ -22,7 +22,9 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.concurrency.SemaphoreLender;
+import secondbrain.domain.config.LocalConfigFilteredItem;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
+import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.EnvironmentSettings;
 import secondbrain.domain.context.HashMapEnvironmentSettings;
@@ -57,6 +59,7 @@ public class GoogleDocs implements Tool<Void> {
     public static final String GOOGLE_DOC_FILTER_RATING_META = "FilterRating";
     public static final String GOOGLE_DOC_FILTER_QUESTION_ARG = "contentRatingQuestion";
     public static final String GOOGLE_DOC_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
+    public static final String GOOGLE_DOC_DEFAULT_RATING_ARG = "documentDefaultRating";
     public static final String GOOGLE_DOC_ID_ARG = "googleDocumentId";
     public static final String GOOGLE_KEYWORD_ARG = "keywords";
     public static final String GOOGLE_KEYWORD_WINDOW_ARG = "keywordWindow";
@@ -338,7 +341,7 @@ public class GoogleDocs implements Tool<Void> {
             final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(ex -> 10)
+                    .recover(ex -> parsedArgs.getDefaultRating())
                     .get();
 
             metadata.add(new MetaObjectResult(GOOGLE_DOC_FILTER_RATING_META, filterRating, document.id(), getName()));
@@ -366,6 +369,8 @@ public class GoogleDocs implements Tool<Void> {
 
 @ApplicationScoped
 class GoogleDocsConfig {
+    private static final int DEFAULT_RATING = 10;
+
     @Inject
     @ConfigProperty(name = "sb.google.serviceaccountjson")
     private Optional<String> configGoogleServiceAccountJson;
@@ -397,6 +402,10 @@ class GoogleDocsConfig {
     @Inject
     @ConfigProperty(name = "sb.google.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.google.contextFilterDefaultRating")
+    private Optional<String> configContextFilterDefaultRating;
 
     @Inject
     @ConfigProperty(name = "sb.google.preprocessorHooks", defaultValue = "")
@@ -437,6 +446,10 @@ class GoogleDocsConfig {
         return configSummarizeDocument;
     }
 
+    public Optional<String> getConfigContextFilterDefaultRating() {
+        return configContextFilterDefaultRating;
+    }
+
     public Optional<String> getConfigSummarizeDocumentPrompt() {
         return configSummarizeDocumentPrompt;
     }
@@ -461,7 +474,7 @@ class GoogleDocsConfig {
         return configPostInferenceHooks;
     }
 
-    public class LocalArguments implements LocalConfigKeywordsEntity {
+    public class LocalArguments implements LocalConfigKeywordsEntity, LocalConfigSummarizer, LocalConfigFilteredItem {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -490,6 +503,7 @@ class GoogleDocsConfig {
             return documentId;
         }
 
+        @Override
         public List<String> getKeywords() {
             return getArgsAccessor().getArgumentList(
                             getConfigGoogleKeywords()::get,
@@ -507,6 +521,7 @@ class GoogleDocsConfig {
             return getConfigGoogleServiceAccountJson().get();
         }
 
+        @Override
         public String getEntity() {
             return getArgsAccessor().getArgument(
                     null,
@@ -517,6 +532,7 @@ class GoogleDocsConfig {
                     "").value();
         }
 
+        @Override
         public int getKeywordWindow() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigKeywordWindow()::get,
@@ -541,6 +557,20 @@ class GoogleDocsConfig {
             return BooleanUtils.toBoolean(value);
         }
 
+        @Override
+        public Integer getDefaultRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterDefaultRating()::get,
+                    arguments,
+                    context,
+                    GoogleDocs.GOOGLE_DOC_DEFAULT_RATING_ARG,
+                    GoogleDocs.GOOGLE_DOC_DEFAULT_RATING_ARG,
+                    DEFAULT_RATING + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        @Override
         public String getDocumentSummaryPrompt() {
             return getArgsAccessor()
                     .getArgument(
@@ -553,6 +583,7 @@ class GoogleDocsConfig {
                     .value();
         }
 
+        @Override
         public String getContextFilterQuestion() {
             return getArgsAccessor().getArgument(
                             getConfigContextFilterQuestion()::get,

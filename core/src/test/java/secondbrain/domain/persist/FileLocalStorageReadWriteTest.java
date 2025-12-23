@@ -3,6 +3,7 @@ package secondbrain.domain.persist;
 import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
+import io.vavr.control.Try;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
@@ -96,10 +97,9 @@ public class FileLocalStorageReadWriteTest {
                 "testttl",
                 randomValue
         ));
-        try {
-            Thread.sleep(2500);
-        } catch (InterruptedException ignored) {
-        }
+
+        Try.run(() -> Thread.sleep(2500));
+
         Assertions.assertTrue(fileLocalStorage.getString(
                 FileLocalStorageReadWriteTest.class.getSimpleName(),
                 "testttl",

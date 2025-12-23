@@ -601,6 +601,7 @@ class SlackChannelConfig {
                     .get();
         }
 
+        @Override
         public List<String> getKeywords() {
             return getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
@@ -614,6 +615,7 @@ class SlackChannelConfig {
                     .toList();
         }
 
+        @Override
         public int getKeywordWindow() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigKeywordWindow()::get,
@@ -626,6 +628,7 @@ class SlackChannelConfig {
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
+        @Override
         public String getEntity() {
             return getArgsAccessor().getArgument(
                     null,
@@ -660,6 +663,7 @@ class SlackChannelConfig {
                     .value();
         }
 
+        @Override
         public String getContextFilterQuestion() {
             return getArgsAccessor().getArgument(
                             getConfigContextFilterQuestion()::get,
@@ -683,6 +687,7 @@ class SlackChannelConfig {
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
 
+        @Override
         public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterDefaultRating()::get,
@@ -695,6 +700,7 @@ class SlackChannelConfig {
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
 
+        @Override
         public boolean isContextFilterUpperLimit() {
             final String value = getArgsAccessor().getArgument(
                     getConfigContextFilterGreaterThan()::get,

@@ -574,6 +574,7 @@ class PlanHatConfig {
                     .get();
         }
 
+        @Override
         public List<String> getKeywords() {
             return getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
@@ -587,6 +588,7 @@ class PlanHatConfig {
                     .toList();
         }
 
+        @Override
         public int getKeywordWindow() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigKeywordWindow()::get,
@@ -599,6 +601,7 @@ class PlanHatConfig {
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
+        @Override
         public String getEntity() {
             return getArgsAccessor().getArgument(
                     null,
@@ -621,6 +624,7 @@ class PlanHatConfig {
             return BooleanUtils.toBoolean(value);
         }
 
+        @Override
         public String getDocumentSummaryPrompt() {
             return getArgsAccessor()
                     .getArgument(
@@ -633,6 +637,7 @@ class PlanHatConfig {
                     .value();
         }
 
+        @Override
         public String getContextFilterQuestion() {
             return getArgsAccessor().getArgument(
                             getConfigContextFilterQuestion()::get,
@@ -656,6 +661,7 @@ class PlanHatConfig {
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
 
+        @Override
         public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterDefaultRating()::get,
@@ -668,6 +674,7 @@ class PlanHatConfig {
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
 
+        @Override
         public boolean isContextFilterUpperLimit() {
             final String value = getArgsAccessor().getArgument(
                     getConfigContextFilterGreaterThan()::get,

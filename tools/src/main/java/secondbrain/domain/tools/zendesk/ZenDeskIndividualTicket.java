@@ -649,6 +649,7 @@ class ZenDeskTicketConfig {
                     .get();
         }
 
+        @Override
         public String getContextFilterQuestion() {
             return getArgsAccessor().getArgument(
                             getConfigContextFilterQuestion()::get,
@@ -660,6 +661,7 @@ class ZenDeskTicketConfig {
                     .value();
         }
 
+        @Override
         public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterDefaultRating()::get,
@@ -672,6 +674,7 @@ class ZenDeskTicketConfig {
             return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
 
+        @Override
         public List<String> getKeywords() {
             return getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
@@ -685,6 +688,7 @@ class ZenDeskTicketConfig {
                     .toList();
         }
 
+        @Override
         public int getKeywordWindow() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigKeywordWindow()::get,
@@ -697,6 +701,7 @@ class ZenDeskTicketConfig {
             return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
+        @Override
         public String getEntity() {
             return getArgsAccessor().getArgument(
                     null,

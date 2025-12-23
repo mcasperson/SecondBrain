@@ -642,6 +642,7 @@ class SalesforceConfig {
             return a;
         }
 
+        @Override
         public String getContextFilterQuestion() {
             return getArgsAccessor().getArgument(
                             getConfigContextFilterQuestion()::get,
@@ -665,6 +666,7 @@ class SalesforceConfig {
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
         }
 
+        @Override
         public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigContextFilterDefaultRating()::get,
@@ -677,6 +679,7 @@ class SalesforceConfig {
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
         }
 
+        @Override
         public boolean isContextFilterUpperLimit() {
             final String value = getArgsAccessor().getArgument(
                     getConfigContextFilterGreaterThan()::get,
@@ -701,6 +704,7 @@ class SalesforceConfig {
             return BooleanUtils.toBoolean(value);
         }
 
+        @Override
         public String getDocumentSummaryPrompt() {
             return getArgsAccessor()
                     .getArgument(
@@ -713,6 +717,7 @@ class SalesforceConfig {
                     .value();
         }
 
+        @Override
         public String getEntity() {
             return getArgsAccessor().getArgument(
                     null,
@@ -735,6 +740,7 @@ class SalesforceConfig {
                     .value();
         }
 
+        @Override
         public List<String> getKeywords() {
             return getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
@@ -748,6 +754,7 @@ class SalesforceConfig {
                     .toList();
         }
 
+        @Override
         public int getKeywordWindow() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigKeywordWindow()::get,

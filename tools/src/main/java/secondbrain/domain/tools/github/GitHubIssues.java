@@ -10,6 +10,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.config.LocalConfigFilteredItem;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
@@ -43,6 +44,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 public class GitHubIssues implements Tool<GitHubIssue> {
     public static final String GITHUB_ISSUE_FILTER_RATING_META = "FilterRating";
     public static final String GITHUB_ISSUE_FILTER_QUESTION_ARG = "issueRatingQuestion";
+    public static final String GITHUB_ISSUES_DEFAULT_RATING_ARG = "diffDefaultRating";
     public static final String GITHUB_ISSUE_FILTER_MINIMUM_RATING_ARG = "issueFilterMinimumRating";
     public static final String GITHUB_ORGANIZATION_ARG = "githubOrganization";
     public static final String GITHUB_REPO_ARG = "githubRepo";
@@ -213,7 +215,7 @@ public class GitHubIssues implements Tool<GitHubIssue> {
                             .getResponse())
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(ex -> 10)
+                    .recover(ex -> parsedArgs.getDefaultRating())
                     .get();
 
             metadata.add(new MetaObjectResult(GITHUB_ISSUE_FILTER_RATING_META, filterRating, issue.id(), getName()));
@@ -260,6 +262,8 @@ public class GitHubIssues implements Tool<GitHubIssue> {
 
 @ApplicationScoped
 class GitHubIssueConfig {
+    private static final int DEFAULT_RATING = 10;
+
     @Inject
     @ConfigProperty(name = "sb.githubissue.accessToken")
     private Optional<String> configAccessToken;
@@ -287,6 +291,10 @@ class GitHubIssueConfig {
     @Inject
     @ConfigProperty(name = "sb.githubissue.contextFilterMinimumRating")
     private Optional<String> configContextFilterMinimumRating;
+
+    @Inject
+    @ConfigProperty(name = "sb.githubissue.contextFilterDefaultRating")
+    private Optional<String> configContextFilterDefaultRating;
 
     @Inject
     @ConfigProperty(name = "sb.githubissue.issueSummaryPrompt")
@@ -357,6 +365,10 @@ class GitHubIssueConfig {
         return configContextFilterMinimumRating;
     }
 
+    public Optional<String> getConfigContextFilterDefaultRating() {
+        return configContextFilterDefaultRating;
+    }
+
     public Optional<String> getConfigIssueSummaryPrompt() {
         return configIssueSummaryPrompt;
     }
@@ -401,7 +413,7 @@ class GitHubIssueConfig {
         return validateString;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalConfigFilteredItem {
         private final List<ToolArgs> arguments;
         private final String prompt;
         private final Map<String, String> context;
@@ -469,6 +481,20 @@ class GitHubIssueConfig {
                     .value();
         }
 
+        @Override
+        public Integer getDefaultRating() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigContextFilterDefaultRating()::get,
+                    arguments,
+                    context,
+                    GitHubIssues.GITHUB_ISSUES_DEFAULT_RATING_ARG,
+                    GitHubIssues.GITHUB_ISSUES_DEFAULT_RATING_ARG,
+                    DEFAULT_RATING + "");
+
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+        }
+
+        @Override
         public String getContextFilterQuestion() {
             return getArgsAccessor().getArgument(
                             getConfigContextFilterQuestion()::get,
