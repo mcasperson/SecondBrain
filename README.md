@@ -282,7 +282,7 @@ java \
 You can build your own tools by implementing the `Tool` interface found in the 
 `secondbrain-core` module.
 
-See the [HelloWorld](src/main/java/secondbrain/domain/tools/helloworld/HelloWorld.java) tool 
+See the [HelloWorld](tools/src/main/java/secondbrain/domain/tools/helloworld/HelloWorld.java) tool 
 for an example of how to build your own tool.
 
 ```bash
