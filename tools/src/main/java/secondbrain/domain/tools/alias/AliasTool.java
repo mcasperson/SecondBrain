@@ -174,7 +174,7 @@ class AliasConfig {
                     environmentSettings,
                     AliasTool.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     AliasTool.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -184,7 +184,7 @@ class AliasConfig {
                     environmentSettings,
                     AliasTool.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     AliasTool.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -194,7 +194,7 @@ class AliasConfig {
                     environmentSettings,
                     AliasTool.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     AliasTool.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
     }
 }

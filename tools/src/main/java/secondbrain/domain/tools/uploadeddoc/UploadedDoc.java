@@ -294,7 +294,7 @@ class UploadDocConfig {
                     UploadedDoc.UPLOADED_DOC_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         public String getEntity() {
@@ -304,7 +304,7 @@ class UploadDocConfig {
                     context,
                     null,
                     UploadedDoc.UPLOADED_DOC_ENTITY_NAME_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreprocessingHooks() {
@@ -314,7 +314,7 @@ class UploadDocConfig {
                     context,
                     UploadedDoc.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     UploadedDoc.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -324,7 +324,7 @@ class UploadDocConfig {
                     context,
                     UploadedDoc.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     UploadedDoc.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -334,7 +334,7 @@ class UploadDocConfig {
                     context,
                     UploadedDoc.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     UploadedDoc.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
     }
 }

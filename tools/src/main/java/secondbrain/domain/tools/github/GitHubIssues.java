@@ -444,7 +444,7 @@ class GitHubIssueConfig {
                     context,
                     GitHubIssues.GITHUB_ORGANIZATION_ARG,
                     GitHubIssues.GITHUB_ORGANIZATION_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getGitHubRepo() {
@@ -454,7 +454,7 @@ class GitHubIssueConfig {
                     context,
                     GitHubIssues.GITHUB_REPO_ARG,
                     GitHubIssues.GITHUB_REPO_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public List<String> getIssueLabels() {
@@ -478,7 +478,7 @@ class GitHubIssueConfig {
                             GitHubIssues.GITHUB_ISSUE_STATE_ARG,
                             GitHubIssues.GITHUB_ISSUE_STATE_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         @Override
@@ -491,7 +491,7 @@ class GitHubIssueConfig {
                     GitHubIssues.GITHUB_ISSUES_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
 
         @Override
@@ -503,7 +503,7 @@ class GitHubIssueConfig {
                             GitHubIssues.GITHUB_ISSUE_FILTER_QUESTION_ARG,
                             GitHubIssues.GITHUB_ISSUE_FILTER_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Integer getContextFilterMinimumRating() {
@@ -515,7 +515,7 @@ class GitHubIssueConfig {
                     GitHubIssues.GITHUB_ISSUE_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         public String getIssueSummaryPrompt() {
@@ -527,7 +527,7 @@ class GitHubIssueConfig {
                             GitHubIssues.GITHUB_ISSUE_SUMMARY_PROMPT_ARG,
                             GitHubIssues.GITHUB_ISSUE_SUMMARY_PROMPT_ARG,
                             "Summarise the GitHub issue in three paragraphs")
-                    .value();
+                    .getSafeValue();
         }
 
         public boolean getSummarizeIssue() {
@@ -537,7 +537,7 @@ class GitHubIssueConfig {
                     context,
                     GitHubIssues.GITHUB_SUMMARIZE_ISSUE_ARG,
                     GitHubIssues.GITHUB_SUMMARIZE_ISSUE_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -549,7 +549,7 @@ class GitHubIssueConfig {
                     context,
                     GitHubIssues.GITHUB_START_DATE_ARG,
                     GitHubIssues.GITHUB_START_DATE_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             if (StringUtils.isNotBlank(configuredDate)) {
                 return configuredDate;
@@ -572,7 +572,7 @@ class GitHubIssueConfig {
                     context,
                     GitHubIssues.GITHUB_END_DATE_ARG,
                     GitHubIssues.GITHUB_END_DATE_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             if (StringUtils.isNotBlank(configuredDate)) {
                 return configuredDate;
@@ -595,7 +595,7 @@ class GitHubIssueConfig {
                     context,
                     GitHubIssues.GITHUB_DAYS_ARG,
                     GitHubIssues.GITHUB_DAYS_ARG,
-                    "0").value();
+                    "0").getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
@@ -610,7 +610,7 @@ class GitHubIssueConfig {
                     context,
                     GitHubIssues.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     GitHubIssues.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -620,7 +620,7 @@ class GitHubIssueConfig {
                     context,
                     GitHubIssues.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     GitHubIssues.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -630,7 +630,7 @@ class GitHubIssueConfig {
                     context,
                     GitHubIssues.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     GitHubIssues.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
     }
 }

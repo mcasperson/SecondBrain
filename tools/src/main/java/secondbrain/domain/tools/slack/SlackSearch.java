@@ -476,7 +476,7 @@ class SlackSearchConfig {
                     context,
                     SlackSearch.SLACK_GENERATE_KEYWORDS_ARG,
                     SlackSearch.SLACK_GENERATE_KEYWORDS_ARG,
-                    "false").value();
+                    "false").getSafeValue();
 
             return BooleanUtils.toBoolean(stringValue);
         }
@@ -496,7 +496,7 @@ class SlackSearchConfig {
                     context,
                     SlackSearch.SLACK_SEARCH_DAYS_ARG,
                     SlackSearch.SLACK_SEARCH_DAYS_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return Try.of(() -> stringValue)
                     .map(i -> Math.max(0, Integer.parseInt(i)))
@@ -514,7 +514,7 @@ class SlackSearchConfig {
                     context,
                     SlackSearch.SEARCH_TTL_ARG,
                     SlackSearch.SEARCH_TTL_ARG,
-                    DEFAULT_TTL).value();
+                    DEFAULT_TTL).getSafeValue();
 
             return Try.of(() -> stringValue)
                     .map(i -> Math.max(0, Integer.parseInt(i)))
@@ -528,7 +528,7 @@ class SlackSearchConfig {
                     context,
                     SlackSearch.API_DELAY_ARG,
                     SlackSearch.API_DELAY_ARG,
-                    DEFAULT_API_DELAY + "").value();
+                    DEFAULT_API_DELAY + "").getSafeValue();
 
             return Try.of(() -> stringValue)
                     .map(i -> Math.max(0, NumberUtils.toInt(i, DEFAULT_API_DELAY)))
@@ -542,7 +542,7 @@ class SlackSearchConfig {
                     context,
                     SlackSearch.SLACK_IGNORE_CHANNELS_ARG,
                     SlackSearch.SLACK_IGNORE_CHANNELS_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return Arrays.stream(stringValue.split(","))
                     .filter(StringUtils::isNotBlank)
@@ -561,7 +561,7 @@ class SlackSearchConfig {
                     SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         @Override
@@ -572,7 +572,7 @@ class SlackSearchConfig {
                     context,
                     null,
                     SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         @Override
@@ -584,7 +584,7 @@ class SlackSearchConfig {
                             SlackSearch.SLACK_FILTER_QUESTION_ARG,
                             SlackSearch.SLACK_FILTER_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         @Override
@@ -597,7 +597,7 @@ class SlackSearchConfig {
                     SlackSearch.SLACK_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         @Override
@@ -610,7 +610,7 @@ class SlackSearchConfig {
                     SlackSearch.SLACK_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
 
         @Override
@@ -621,7 +621,7 @@ class SlackSearchConfig {
                     context,
                     SlackSearch.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
                     SlackSearch.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -633,7 +633,7 @@ class SlackSearchConfig {
                     context,
                     SlackSearch.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     SlackSearch.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -643,7 +643,7 @@ class SlackSearchConfig {
                     context,
                     SlackSearch.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     SlackSearch.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -653,7 +653,7 @@ class SlackSearchConfig {
                     context,
                     SlackSearch.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     SlackSearch.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public int getCacheTtl() {
@@ -665,7 +665,7 @@ class SlackSearchConfig {
                     SlackSearch.TTL_SECONDS_ARG,
                     DEFAULT_TTL_SECONDS + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_TTL_SECONDS));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_TTL_SECONDS));
         }
     }
 }

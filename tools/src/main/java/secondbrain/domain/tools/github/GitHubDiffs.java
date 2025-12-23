@@ -469,7 +469,7 @@ class GitHubDiffConfig {
                     context,
                     GitHubDiffs.GITHUB_DIFF_DAYS_ARG,
                     GitHubDiffs.GITHUB_DIFF_DAYS_ARG,
-                    DEFAULT_DURATION).value();
+                    DEFAULT_DURATION).getSafeValue();
 
             return Try.of(() -> stringValue)
                     .map(i -> Math.max(0, Integer.parseInt(i)))
@@ -484,7 +484,7 @@ class GitHubDiffConfig {
                     context,
                     GitHubDiffs.GITHUB_DIFF_MAX_DIFFS_ARG,
                     GitHubDiffs.GITHUB_DIFF_MAX_DIFFS_ARG,
-                    "0").value();
+                    "0").getSafeValue();
 
             return Try.of(() -> stringValue)
                     .map(Integer::parseInt)
@@ -503,7 +503,7 @@ class GitHubDiffConfig {
                     ZonedDateTime.now(ZoneOffset.UTC)
                             .truncatedTo(ChronoUnit.DAYS)
                             .minusDays(getDays())
-                            .format(FORMATTER)).value();
+                            .format(FORMATTER)).getSafeValue();
         }
 
         public String getEndDate() {
@@ -516,7 +516,7 @@ class GitHubDiffConfig {
                     ZonedDateTime.now(ZoneOffset.UTC)
                             .plusDays(1)
                             .truncatedTo(ChronoUnit.DAYS)
-                            .format(FORMATTER)).value();
+                            .format(FORMATTER)).getSafeValue();
         }
 
         public String getOwner() {
@@ -526,7 +526,7 @@ class GitHubDiffConfig {
                     context,
                     GitHubDiffs.GITHUB_DIFF_OWNER_ARG,
                     GitHubDiffs.GITHUB_DIFF_OWNER_ARG,
-                    DEFAULT_OWNER).value();
+                    DEFAULT_OWNER).getSafeValue();
         }
 
         public String getRepo() {
@@ -536,7 +536,7 @@ class GitHubDiffConfig {
                     context,
                     GitHubDiffs.GITHUB_DIFF_REPO_ARG,
                     GitHubDiffs.GITHUB_DIFF_REPO_ARG,
-                    DEFAULT_REPO).value();
+                    DEFAULT_REPO).getSafeValue();
         }
 
         public String getSha() {
@@ -546,7 +546,7 @@ class GitHubDiffConfig {
                     context,
                     GitHubDiffs.GITHUB_DIFF_SHA_ARG,
                     GitHubDiffs.GITHUB_DIFF_SHA_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getBranch() {
@@ -556,7 +556,7 @@ class GitHubDiffConfig {
                     context,
                     GitHubDiffs.GITHUB_DIFF_BRANCH_ARG,
                     GitHubDiffs.GITHUB_DIFF_BRANCH_ARG,
-                    DEFAULT_BRANCH).value();
+                    DEFAULT_BRANCH).getSafeValue();
         }
 
         public String getDecretToken() {
@@ -576,7 +576,7 @@ class GitHubDiffConfig {
                             GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG,
                             GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG,
                             "Summarise the GitHub issue in three paragraphs")
-                    .value();
+                    .getSafeValue();
         }
 
         public boolean getSummarizeDiff() {
@@ -586,7 +586,7 @@ class GitHubDiffConfig {
                     context,
                     GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG,
                     GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -598,7 +598,7 @@ class GitHubDiffConfig {
                     context,
                     GitHubDiffs.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     GitHubDiffs.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -608,7 +608,7 @@ class GitHubDiffConfig {
                     context,
                     GitHubDiffs.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     GitHubDiffs.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -618,7 +618,7 @@ class GitHubDiffConfig {
                     context,
                     GitHubDiffs.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     GitHubDiffs.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
     }
 }

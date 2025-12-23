@@ -492,7 +492,7 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ID_ARG,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ID_ARG,
-                    "").value();
+                    "").getSafeValue();
 
         }
 
@@ -503,7 +503,7 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
         }
 
@@ -514,7 +514,7 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG,
-                    "").value();
+                    "").getSafeValue();
 
         }
 
@@ -525,7 +525,7 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG,
-                    "").value();
+                    "").getSafeValue();
 
         }
 
@@ -536,7 +536,7 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_CREATED_AT_ARG,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_CREATED_AT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
         }
 
@@ -547,7 +547,7 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ASSIGNEE_ARG,
                     ZenDeskIndividualTicket.ZENDESK_TICKET_ASSIGNEE_ARG,
-                    "").value();
+                    "").getSafeValue();
 
         }
 
@@ -563,7 +563,7 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG,
                     "",
-                    "").value();
+                    "").getSafeValue();
 
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
@@ -586,7 +586,7 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_URL_ARG,
                     "",
-                    "").value();
+                    "").getSafeValue();
 
             final Try<String> url = getContext("zendesk_url", context, getTextEncryptor())
                     .recoverWith(e -> Try.of(() -> argument));
@@ -605,7 +605,7 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskIndividualTicket.ZENDESK_EMAIL_ARG,
                     "",
-                    "").value();
+                    "").getSafeValue();
 
             final Try<String> user = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_user")))
                     .recover(e -> context.get("zendesk_user"))
@@ -640,7 +640,7 @@ class ZenDeskTicketConfig {
                     context,
                     ZenDeskOrganization.NUM_COMMENTS_ARG,
                     ZenDeskOrganization.NUM_COMMENTS_ARG,
-                    MAX_TICKETS + "").value();
+                    MAX_TICKETS + "").getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> MAX_TICKETS)
@@ -658,7 +658,7 @@ class ZenDeskTicketConfig {
                             ZenDeskIndividualTicket.ZENDESK_RATING_QUESTION_ARG,
                             ZenDeskIndividualTicket.ZENDESK_RATING_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         @Override
@@ -671,7 +671,7 @@ class ZenDeskTicketConfig {
                     ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
-            return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
 
         @Override
@@ -698,7 +698,7 @@ class ZenDeskTicketConfig {
                     ZenDeskIndividualTicket.ZENDESK_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         @Override
@@ -709,7 +709,7 @@ class ZenDeskTicketConfig {
                     context,
                     null,
                     ZenDeskIndividualTicket.ZENDESK_ENTITY_NAME_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
     }
 }

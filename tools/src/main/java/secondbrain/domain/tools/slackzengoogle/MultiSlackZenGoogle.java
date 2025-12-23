@@ -1454,7 +1454,7 @@ class MultiSlackZenGoogleConfig {
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_URL_ARG,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_URL_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getAnnotationPrefix() {
@@ -1464,7 +1464,7 @@ class MultiSlackZenGoogleConfig {
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_MAX_ANNOTATION_PREFIX_ARG,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_MAX_ANNOTATION_PREFIX_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public int getDays() {
@@ -1474,7 +1474,7 @@ class MultiSlackZenGoogleConfig {
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
-                    "0").value();
+                    "0").getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
@@ -1517,7 +1517,7 @@ class MultiSlackZenGoogleConfig {
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
-                    "0").value();
+                    "0").getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
@@ -1532,7 +1532,7 @@ class MultiSlackZenGoogleConfig {
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_MIN_TIME_BASED_CONTENT_ARG,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_MIN_TIME_BASED_CONTENT_ARG,
-                    "1").value();
+                    "1").getSafeValue();
 
             return NumberUtils.toInt(stringValue, 1);
         }
@@ -1545,7 +1545,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_KEYWORD_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_KEYWORD_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Integer getKeywordWindow() {
@@ -1557,7 +1557,7 @@ class MultiSlackZenGoogleConfig {
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         public String getIndividualContextSummaryPrompt() {
@@ -1568,7 +1568,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_SUMMARY_PROMPT_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_SUMMARY_PROMPT_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getIndividualContextFilterQuestion() {
@@ -1579,7 +1579,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Integer getIndividualContextFilterMinimumRating() {
@@ -1591,7 +1591,7 @@ class MultiSlackZenGoogleConfig {
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         public String getContextFilterQuestion() {
@@ -1602,7 +1602,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Integer getContextFilterMinimumRating() {
@@ -1614,7 +1614,7 @@ class MultiSlackZenGoogleConfig {
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         public String getMetaReport() {
@@ -1625,7 +1625,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_REPORT_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_REPORT_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField1() {
@@ -1636,7 +1636,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_1_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_1_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt1() {
@@ -1647,7 +1647,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_1_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_1_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField2() {
@@ -1658,7 +1658,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_2_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_2_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt2() {
@@ -1669,7 +1669,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_2_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_2_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField3() {
@@ -1680,7 +1680,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_3_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_3_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt3() {
@@ -1691,7 +1691,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_3_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_3_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField4() {
@@ -1702,7 +1702,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_4_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_4_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt4() {
@@ -1713,7 +1713,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_4_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_4_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField5() {
@@ -1724,7 +1724,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_5_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_5_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt5() {
@@ -1735,7 +1735,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_5_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_5_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField6() {
@@ -1746,7 +1746,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_6_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_6_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt6() {
@@ -1757,7 +1757,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_6_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_6_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField7() {
@@ -1768,7 +1768,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_7_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_7_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt7() {
@@ -1779,7 +1779,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_7_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_7_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField8() {
@@ -1790,7 +1790,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_8_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_8_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt8() {
@@ -1801,7 +1801,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_8_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_8_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField9() {
@@ -1812,7 +1812,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_9_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_9_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt9() {
@@ -1823,7 +1823,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_9_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_9_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField10() {
@@ -1834,7 +1834,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_10_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_10_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt10() {
@@ -1845,7 +1845,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_10_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_10_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField11() {
@@ -1856,7 +1856,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_11_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_13_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt11() {
@@ -1867,7 +1867,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_11_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_11_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField12() {
@@ -1878,7 +1878,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_12_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_12_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt12() {
@@ -1889,7 +1889,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_12_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_12_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField13() {
@@ -1900,7 +1900,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_13_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_13_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt13() {
@@ -1911,7 +1911,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_13_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_13_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField14() {
@@ -1922,7 +1922,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_14_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_14_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt14() {
@@ -1933,7 +1933,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_14_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_14_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField15() {
@@ -1944,7 +1944,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_15_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_15_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt15() {
@@ -1955,7 +1955,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_15_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_15_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField16() {
@@ -1966,7 +1966,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_16_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_16_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt16() {
@@ -1977,7 +1977,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_16_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_16_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField17() {
@@ -1988,7 +1988,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_17_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_17_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt17() {
@@ -1999,7 +1999,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_17_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_17_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField18() {
@@ -2010,7 +2010,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_18_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_18_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt18() {
@@ -2021,7 +2021,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_18_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_18_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField19() {
@@ -2032,7 +2032,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_19_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_19_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt19() {
@@ -2043,7 +2043,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_19_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_19_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaField20() {
@@ -2054,7 +2054,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_20_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_FIELD_20_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaPrompt20() {
@@ -2065,7 +2065,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_20_ARG,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_META_PROMPT_20_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getAdditionalSystemPrompt() {
@@ -2076,7 +2076,7 @@ class MultiSlackZenGoogleConfig {
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_ADDITIONAL_SYSTEM_PROMPT,
                             MultiSlackZenGoogle.MULTI_SLACK_ZEN_ADDITIONAL_SYSTEM_PROMPT,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Boolean getStripMarkdownCodeBlock() {
@@ -2088,7 +2088,7 @@ class MultiSlackZenGoogleConfig {
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_STRIP_MARKDOWN_CODE_BLOCK,
                     "false");
 
-            return BooleanUtils.toBoolean(argument.value());
+            return BooleanUtils.toBoolean(argument.getSafeValue());
         }
 
         public int getDefaultRating() {
@@ -2100,7 +2100,7 @@ class MultiSlackZenGoogleConfig {
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
 
         public int getCacheTtl() {
@@ -2112,7 +2112,7 @@ class MultiSlackZenGoogleConfig {
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_TTL_SECONDS_ARG,
                     DEFAULT_TTL_SECONDS + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
     }
 }

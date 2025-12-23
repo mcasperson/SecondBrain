@@ -330,7 +330,7 @@ class RatingConfig {
                     environmentSettings,
                     null,
                     RatingTool.RATING_DOCUMENT_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getSecondModel() {
@@ -340,7 +340,7 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.RATING_SECOND_MODEL_ARG,
                     RatingTool.RATING_SECOND_MODEL_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getSecondContextWindow() {
@@ -350,7 +350,7 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.RATING_SECOND_CONTEXT_WINDOW_ARG,
                     RatingTool.RATING_SECOND_CONTEXT_WINDOW_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getThirdModel() {
@@ -360,7 +360,7 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.RATING_THIRD_MODEL_ARG,
                     RatingTool.RATING_THIRD_MODEL_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getThirdContextWindow() {
@@ -370,7 +370,7 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.RATING_THIRD_CONTEXT_WINDOW_ARG,
                     RatingTool.RATING_THIRD_CONTEXT_WINDOW_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public boolean ignoreInvalidResponses() {
@@ -380,7 +380,7 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.IGNORE_INVALID_RESPONSES_ARG,
                     RatingTool.IGNORE_INVALID_RESPONSES_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -392,7 +392,7 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     RatingTool.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -402,7 +402,7 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     RatingTool.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -412,7 +412,7 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     RatingTool.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
     }
 }

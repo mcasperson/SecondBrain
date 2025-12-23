@@ -548,7 +548,7 @@ class YoutubeConfig {
                     YoutubePlaylist.YOUTUBE_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         public boolean getSummarizeTranscript() {
@@ -558,7 +558,7 @@ class YoutubeConfig {
                     context,
                     YoutubePlaylist.YOUTUBE_SUMMARIZE_TRANSCRIPT_ARG,
                     YoutubePlaylist.YOUTUBE_SUMMARIZE_TRANSCRIPT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -572,7 +572,7 @@ class YoutubeConfig {
                             YoutubePlaylist.YOUTUBE_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
                             YoutubePlaylist.YOUTUBE_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
                             "Summarise the Youtube video transcript in three paragraphs")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getContextFilterQuestion() {
@@ -583,7 +583,7 @@ class YoutubeConfig {
                             YoutubePlaylist.YOUTUBE_FILTER_QUESTION_ARG,
                             YoutubePlaylist.YOUTUBE_FILTER_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Integer getContextFilterMinimumRating() {
@@ -595,7 +595,7 @@ class YoutubeConfig {
                     YoutubePlaylist.YOUTUBE_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         public int getDefaultRating() {
@@ -607,7 +607,7 @@ class YoutubeConfig {
                     YoutubePlaylist.YOUTUBE_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
-            return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
 
         public String getChannelId() {
@@ -619,7 +619,7 @@ class YoutubeConfig {
                             YoutubePlaylist.YOUTUBE_CHANNEL_ID_ARG,
                             YoutubePlaylist.YOUTUBE_CHANNEL_ID_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getQuery() {
@@ -631,7 +631,7 @@ class YoutubeConfig {
                             YoutubePlaylist.YOUTUBE_QUERY_ARG,
                             YoutubePlaylist.YOUTUBE_QUERY_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getPreprocessingHooks() {
@@ -641,7 +641,7 @@ class YoutubeConfig {
                     context,
                     YoutubePlaylist.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     YoutubePlaylist.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -651,7 +651,7 @@ class YoutubeConfig {
                     context,
                     YoutubePlaylist.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     YoutubePlaylist.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -661,7 +661,7 @@ class YoutubeConfig {
                     context,
                     YoutubePlaylist.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     YoutubePlaylist.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public int getMaxVideos() {
@@ -673,7 +673,7 @@ class YoutubeConfig {
                     YoutubePlaylist.YOUTUBE_MAX_VIDEOS_ARG,
                     Integer.MAX_VALUE + "");
 
-            return Math.max(1, NumberUtils.toInt(argument.value(), Integer.MAX_VALUE));
+            return Math.max(1, NumberUtils.toInt(argument.getSafeValue(), Integer.MAX_VALUE));
         }
     }
 }

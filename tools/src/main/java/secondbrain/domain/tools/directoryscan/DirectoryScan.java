@@ -8,6 +8,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
@@ -251,6 +252,7 @@ public class DirectoryScan implements Tool<Void> {
                 .toList();
     }
 
+    @Nullable
     private RagDocumentContext<Void> getFileContext(final String file, final DirectoryScanConfig.LocalArguments parsedArgs, final Map<String, String> environmentSettings) {
         if (parsedArgs.getSummarizeIndividualFiles()) {
             return getFileSummary(file, parsedArgs, environmentSettings);
@@ -259,6 +261,7 @@ public class DirectoryScan implements Tool<Void> {
         return getRawFile(file, parsedArgs);
     }
 
+    @Nullable
     private RagDocumentContext<Void> getRawFile(final String file, final DirectoryScanConfig.LocalArguments parsedArgs) {
         logger.fine("DirectoryScan processing file: " + file);
 
@@ -292,6 +295,7 @@ public class DirectoryScan implements Tool<Void> {
      * or hallucinate a bunch of random release notes. Instead, each diff is summarised individually and then combined
      * into a single document to be summarised again.
      */
+    @Nullable
     private RagDocumentContext<Void> getFileSummary(final String file, final DirectoryScanConfig.LocalArguments parsedArgs, final Map<String, String> environmentSettings) {
         logger.fine("DirectoryScan processing file: " + file);
 
@@ -315,11 +319,13 @@ public class DirectoryScan implements Tool<Void> {
                         () -> getFileSummaryLlm(trimResult.document(), parsedArgs, environmentSettings))
                 .result();
 
+        final String fixedSummary = Objects.requireNonNullElse(summary, "");
+
         return new RagDocumentContext<>(
                 getName(),
                 getContextLabel() + " " + Paths.get(file).getFileName(),
-                summary,
-                sentenceVectorizer.vectorize(sentenceSplitter.splitDocument(summary, 10)),
+                fixedSummary,
+                sentenceVectorizer.vectorize(sentenceSplitter.splitDocument(fixedSummary, 10)),
                 file,
                 null,
                 "[" + file + "](file://" + file + ")",
@@ -504,7 +510,7 @@ class DirectoryScanConfig {
                     context,
                     DirectoryScan.DIRECTORYSCAN_MAX_FILES,
                     DirectoryScan.DIRECTORYSCAN_MAX_FILES,
-                    "-1").value();
+                    "-1").getSafeValue();
 
             return NumberUtils.toInt(stringValue, -1);
         }
@@ -516,7 +522,7 @@ class DirectoryScanConfig {
                     context,
                     DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
                     DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
-                    prompt).value();
+                    prompt).getSafeValue();
         }
 
         public List<String> getExcluded() {
@@ -568,7 +574,7 @@ class DirectoryScanConfig {
                     context,
                     DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW,
                     DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW,
-                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "").value();
+                    Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "").getSafeValue();
 
             return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
@@ -580,7 +586,7 @@ class DirectoryScanConfig {
                     context,
                     DirectoryScan.DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG,
                     DirectoryScan.DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG,
-                    "true").value();
+                    "true").getSafeValue();
 
             return BooleanUtils.toBoolean(stringValue);
         }
@@ -593,7 +599,7 @@ class DirectoryScanConfig {
                     context,
                     null,
                     DirectoryScan.DIRECTORYSCAN_ENTITY_NAME_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreprocessingHooks() {
@@ -603,7 +609,7 @@ class DirectoryScanConfig {
                     context,
                     DirectoryScan.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     DirectoryScan.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -613,7 +619,7 @@ class DirectoryScanConfig {
                     context,
                     DirectoryScan.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     DirectoryScan.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -623,7 +629,7 @@ class DirectoryScanConfig {
                     context,
                     DirectoryScan.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     DirectoryScan.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
     }
 }

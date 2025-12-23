@@ -782,7 +782,7 @@ class ZenDeskConfig {
                             ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
                             ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Integer getContextFilterMinimumRating() {
@@ -794,7 +794,7 @@ class ZenDeskConfig {
                     ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         public String getZenDeskUrl() {
@@ -811,12 +811,12 @@ class ZenDeskConfig {
                     "");
 
             if (argument.trusted()) {
-                return argument.value();
+                return argument.getSafeValue();
             }
 
             return getValidateInputs().getCommaSeparatedList(
                     prompt,
-                    argument.value());
+                    argument.getSafeValue());
         }
 
         public String getOrganization() {
@@ -838,8 +838,8 @@ class ZenDeskConfig {
                     "");
 
             final String stringValue = argument.trusted()
-                    ? argument.value()
-                    : getValidateInputs().getCommaSeparatedList(prompt, argument.value());
+                    ? argument.getSafeValue()
+                    : getValidateInputs().getCommaSeparatedList(prompt, argument.getSafeValue());
 
             final List<String> excludedOrganization = Arrays.stream(stringValue.split(","))
                     .map(String::trim)
@@ -858,7 +858,7 @@ class ZenDeskConfig {
                     context,
                     ZenDeskOrganization.RECIPIENT_ARG,
                     ZenDeskOrganization.RECIPIENT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getRecipient() {
@@ -877,7 +877,7 @@ class ZenDeskConfig {
                     context,
                     ZenDeskOrganization.EXCLUDE_SUBMITTERS_ARG,
                     ZenDeskOrganization.EXCLUDE_SUBMITTERS_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return Arrays.stream(stringValue.split(","))
                     .map(String::trim)
@@ -896,7 +896,7 @@ class ZenDeskConfig {
         }
 
         public int getRawHours() {
-            final String stringValue = getHoursArgument().value();
+            final String stringValue = getHoursArgument().getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
@@ -915,7 +915,7 @@ class ZenDeskConfig {
         }
 
         public int getRawDays() {
-            final String stringValue = getDaysArgument().value();
+            final String stringValue = getDaysArgument().getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
@@ -947,7 +947,7 @@ class ZenDeskConfig {
                             ZenDeskOrganization.START_PERIOD_ARG,
                             ZenDeskOrganization.START_PERIOD_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getEndPeriod() {
@@ -958,7 +958,7 @@ class ZenDeskConfig {
                             ZenDeskOrganization.END_PERIOD_ARG,
                             ZenDeskOrganization.END_PERIOD_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public boolean getZenDeskFilterByOrganization() {
@@ -968,7 +968,7 @@ class ZenDeskConfig {
                     context,
                     ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG,
                     ZenDeskOrganization.ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG,
-                    "false").value();
+                    "false").getSafeValue();
 
             return Try.of(() -> BooleanUtils.toBoolean(stringValue))
                     .recover(throwable -> false)
@@ -1050,7 +1050,7 @@ class ZenDeskConfig {
                     context,
                     ZenDeskOrganization.ZENDESK_URL2_ARG,
                     ZenDeskOrganization.ZENDESK_URL2_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUser2() {
@@ -1060,7 +1060,7 @@ class ZenDeskConfig {
                     context,
                     ZenDeskOrganization.ZENDESK_USER2_ARG,
                     ZenDeskOrganization.ZENDESK_USER2_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getStartDate() {
@@ -1130,7 +1130,7 @@ class ZenDeskConfig {
                     ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         public String getEntity() {
@@ -1140,7 +1140,7 @@ class ZenDeskConfig {
                     context,
                     null,
                     ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public int getSearchTTL() {
@@ -1169,7 +1169,7 @@ class ZenDeskConfig {
                             """
                                     Summarise the ticket in one paragraph.
                                     You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.""".stripLeading())
-                    .value();
+                    .getSafeValue();
         }
 
         public boolean getSummarizeTicket() {
@@ -1179,7 +1179,7 @@ class ZenDeskConfig {
                     context,
                     ZenDeskOrganization.ZENDESK_SUMMARIZE_TICKET_ARG,
                     ZenDeskOrganization.ZENDESK_SUMMARIZE_TICKET_ARG,
-                    "true").value();
+                    "true").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -1191,7 +1191,7 @@ class ZenDeskConfig {
                     context,
                     ZenDeskOrganization.ZENDESK_MAX_TICKETS_ARG,
                     ZenDeskOrganization.ZENDESK_MAX_TICKETS_ARG,
-                    MAX_TICKETS + "").value();
+                    MAX_TICKETS + "").getSafeValue();
 
             return NumberUtils.min(NumberUtils.toInt(value, MAX_TICKETS), MAX_TICKETS);
         }
@@ -1206,7 +1206,7 @@ class ZenDeskConfig {
                     ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
-            return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
 
         @Override
@@ -1217,7 +1217,7 @@ class ZenDeskConfig {
                     context,
                     ZenDeskOrganization.ZENDESK_ENSURE_GREATER_THAN_PROMPT_ARG,
                     ZenDeskOrganization.ZENDESK_ENSURE_GREATER_THAN_PROMPT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -1229,7 +1229,7 @@ class ZenDeskConfig {
                     context,
                     PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -1239,7 +1239,7 @@ class ZenDeskConfig {
                     context,
                     PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -1249,7 +1249,7 @@ class ZenDeskConfig {
                     context,
                     PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public int getCacheTtl() {
@@ -1261,7 +1261,7 @@ class ZenDeskConfig {
                     Gong.TTL_SECONDS_ARG,
                     DEFAULT_TOOL_TTL_SECONDS + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
     }
 }
