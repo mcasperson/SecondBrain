@@ -395,7 +395,7 @@ class GitHubSlackPublicFileConfig {
                     context,
                     GitHubSlackPublicFile.GITHUB_SLACK_PUBLICFILE_URL_ARG,
                     "multislackzengoogle_url",
-                    "").value();
+                    "").getSafeValue();
         }
 
         public int getDays() {
@@ -405,7 +405,7 @@ class GitHubSlackPublicFileConfig {
                     context,
                     GitHubSlackPublicFile.GITHUB_SLACK_PUBLICFILE_DAYS_ARG,
                     "githubslackpublicfile_days",
-                    "0").value();
+                    "0").getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
@@ -421,7 +421,7 @@ class GitHubSlackPublicFileConfig {
                             GitHubSlackPublicFile.GITHUB_SLACK_PUBLICFILE_CONTEXT_FILTER_QUESTION_ARG,
                             "githubslackpublicfile_context_filter_question",
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Integer getIndividualContextFilterMinimumRating() {
@@ -433,7 +433,7 @@ class GitHubSlackPublicFileConfig {
                     "githubslackpublicfile_context_filter_minimum_rating",
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         public String getIndividualContextSummaryPrompt() {
@@ -444,7 +444,7 @@ class GitHubSlackPublicFileConfig {
                             GitHubSlackPublicFile.GITHUB_SLACK_PUBLICFILE_CONTEXT_SUMMARY_PROMPT_ARG,
                             "githubslackpublicfile_context_summary_prompt",
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getAdditionalSystemPrompt() {
@@ -455,7 +455,7 @@ class GitHubSlackPublicFileConfig {
                             GitHubSlackPublicFile.GITHUB_SLACK_PUBLICFILE_ADDITIONAL_SYSTEM_PROMPT,
                             "githubslackpublicfile_additional_system_prompt",
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Boolean getStripMarkdownCodeBlock() {
@@ -467,7 +467,7 @@ class GitHubSlackPublicFileConfig {
                     "githubslackpublicfile_strip_markdown_code_block",
                     "false");
 
-            return BooleanUtils.toBoolean(argument.value());
+            return BooleanUtils.toBoolean(argument.getSafeValue());
         }
 
         public String getAnnotationPrefix() {
@@ -478,7 +478,7 @@ class GitHubSlackPublicFileConfig {
                             GitHubSlackPublicFile.GITHUB_SLACK_PUBLICFILE_ANNOTATION_PREFIX_ARG,
                             "githubslackpublicfile_annotation_prefix",
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getMetaReport() {
@@ -489,7 +489,7 @@ class GitHubSlackPublicFileConfig {
                             GitHubSlackPublicFile.GITHUB_SLACK_PUBLICFILE_META_REPORT_ARG,
                             "githubslackpublicfile_meta_report",
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public List<String> getEntityName() {

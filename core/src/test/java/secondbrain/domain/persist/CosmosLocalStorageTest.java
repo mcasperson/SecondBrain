@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 
+@SuppressWarnings("NullAway")
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(CosmosLocalStorage.class)

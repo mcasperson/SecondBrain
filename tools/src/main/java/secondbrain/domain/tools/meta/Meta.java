@@ -683,7 +683,7 @@ class MetaConfig {
                     Meta.META_TTL_SECONDS_ARG,
                     "604800");
 
-            return Math.max(0, Integer.parseInt(argument.value()));
+            return Math.max(0, Integer.parseInt(argument.getSafeValue()));
         }
 
         public String getContextMetaField1() {
@@ -693,7 +693,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_1_ARG,
                     Meta.META_CONTEXT_META_FIELD_1_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt1() {
@@ -703,7 +703,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_1_ARG,
                     Meta.META_CONTEXT_META_PROMPT_1_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField2() {
@@ -713,7 +713,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_2_ARG,
                     Meta.META_CONTEXT_META_FIELD_2_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt2() {
@@ -723,7 +723,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_2_ARG,
                     Meta.META_CONTEXT_META_PROMPT_2_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField3() {
@@ -733,7 +733,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_3_ARG,
                     Meta.META_CONTEXT_META_FIELD_3_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt3() {
@@ -743,7 +743,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_3_ARG,
                     Meta.META_CONTEXT_META_PROMPT_3_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField4() {
@@ -753,7 +753,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_4_ARG,
                     Meta.META_CONTEXT_META_FIELD_4_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt4() {
@@ -763,7 +763,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_4_ARG,
                     Meta.META_CONTEXT_META_PROMPT_4_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField5() {
@@ -773,7 +773,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_5_ARG,
                     Meta.META_CONTEXT_META_FIELD_5_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt5() {
@@ -783,7 +783,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_5_ARG,
                     Meta.META_CONTEXT_META_PROMPT_5_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField6() {
@@ -793,7 +793,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_6_ARG,
                     Meta.META_CONTEXT_META_FIELD_6_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt6() {
@@ -803,7 +803,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_6_ARG,
                     Meta.META_CONTEXT_META_PROMPT_6_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField7() {
@@ -813,7 +813,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_7_ARG,
                     Meta.META_CONTEXT_META_FIELD_7_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt7() {
@@ -823,7 +823,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_7_ARG,
                     Meta.META_CONTEXT_META_PROMPT_7_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField8() {
@@ -833,7 +833,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_8_ARG,
                     Meta.META_CONTEXT_META_FIELD_8_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt8() {
@@ -843,7 +843,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_8_ARG,
                     Meta.META_CONTEXT_META_PROMPT_8_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField9() {
@@ -853,7 +853,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_9_ARG,
                     Meta.META_CONTEXT_META_FIELD_9_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt9() {
@@ -863,7 +863,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_9_ARG,
                     Meta.META_CONTEXT_META_PROMPT_9_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField10() {
@@ -873,7 +873,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_10_ARG,
                     Meta.META_CONTEXT_META_FIELD_10_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt10() {
@@ -883,7 +883,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_10_ARG,
                     Meta.META_CONTEXT_META_PROMPT_10_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField11() {
@@ -893,7 +893,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_11_ARG,
                     Meta.META_CONTEXT_META_FIELD_11_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt11() {
@@ -903,7 +903,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_11_ARG,
                     Meta.META_CONTEXT_META_PROMPT_11_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField12() {
@@ -913,7 +913,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_12_ARG,
                     Meta.META_CONTEXT_META_FIELD_12_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt12() {
@@ -923,7 +923,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_12_ARG,
                     Meta.META_CONTEXT_META_PROMPT_12_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField13() {
@@ -933,7 +933,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_13_ARG,
                     Meta.META_CONTEXT_META_FIELD_13_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt13() {
@@ -943,7 +943,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_13_ARG,
                     Meta.META_CONTEXT_META_PROMPT_13_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField14() {
@@ -953,7 +953,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_14_ARG,
                     Meta.META_CONTEXT_META_FIELD_14_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt14() {
@@ -963,7 +963,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_14_ARG,
                     Meta.META_CONTEXT_META_PROMPT_14_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField15() {
@@ -973,7 +973,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_15_ARG,
                     Meta.META_CONTEXT_META_FIELD_15_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt15() {
@@ -983,7 +983,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_15_ARG,
                     Meta.META_CONTEXT_META_PROMPT_15_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField16() {
@@ -993,7 +993,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_16_ARG,
                     Meta.META_CONTEXT_META_FIELD_16_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt16() {
@@ -1003,7 +1003,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_16_ARG,
                     Meta.META_CONTEXT_META_PROMPT_16_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField17() {
@@ -1013,7 +1013,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_17_ARG,
                     Meta.META_CONTEXT_META_FIELD_17_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt17() {
@@ -1023,7 +1023,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_17_ARG,
                     Meta.META_CONTEXT_META_PROMPT_17_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField18() {
@@ -1033,7 +1033,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_18_ARG,
                     Meta.META_CONTEXT_META_FIELD_18_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt18() {
@@ -1043,7 +1043,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_18_ARG,
                     Meta.META_CONTEXT_META_PROMPT_18_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField19() {
@@ -1053,7 +1053,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_19_ARG,
                     Meta.META_CONTEXT_META_FIELD_19_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt19() {
@@ -1063,7 +1063,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_19_ARG,
                     Meta.META_CONTEXT_META_PROMPT_19_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaField20() {
@@ -1073,7 +1073,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_FIELD_20_ARG,
                     Meta.META_CONTEXT_META_FIELD_20_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getContextMetaPrompt20() {
@@ -1083,7 +1083,7 @@ class MetaConfig {
                     context,
                     Meta.META_CONTEXT_META_PROMPT_20_ARG,
                     Meta.META_CONTEXT_META_PROMPT_20_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getMetaReport() {
@@ -1093,7 +1093,7 @@ class MetaConfig {
                     context,
                     Meta.META_META_REPORT_ARG,
                     Meta.META_META_REPORT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
     }
 }

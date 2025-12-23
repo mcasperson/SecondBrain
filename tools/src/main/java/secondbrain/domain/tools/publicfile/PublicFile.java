@@ -250,7 +250,7 @@ class PublicWebConfig {
                     context,
                     PublicFile.PUBLICWEB_URL_ARG,
                     PublicFile.PUBLICWEB_URL_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         @Override
@@ -277,7 +277,7 @@ class PublicWebConfig {
                     PublicFile.PUBLICWEB_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         @Override
@@ -288,7 +288,7 @@ class PublicWebConfig {
                     context,
                     null,
                     PublicFile.PUBLICWEB_ENTITY_NAME_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreprocessingHooks() {
@@ -298,7 +298,7 @@ class PublicWebConfig {
                     context,
                     PublicFile.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     PublicFile.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -308,7 +308,7 @@ class PublicWebConfig {
                     context,
                     PublicFile.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     PublicFile.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -318,7 +318,7 @@ class PublicWebConfig {
                     context,
                     PublicFile.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     PublicFile.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
     }
 }

@@ -149,7 +149,7 @@ class HelloWorldConfig {
                     context,
                     HelloWorld.MESSAGE_ARG,
                     HelloWorld.MESSAGE_ARG,
-                    "World").value();
+                    "World").getSafeValue();
         }
     }
 }

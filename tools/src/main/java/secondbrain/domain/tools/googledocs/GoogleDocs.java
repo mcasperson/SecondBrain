@@ -494,7 +494,7 @@ class GoogleDocsConfig {
                     context,
                     GoogleDocs.GOOGLE_DOC_ID_ARG,
                     GoogleDocs.GOOGLE_DOC_ID_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             if (StringUtils.isBlank(documentId)) {
                 throw new InternalFailure("Google document ID is required");
@@ -529,7 +529,7 @@ class GoogleDocsConfig {
                     context,
                     null,
                     GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         @Override
@@ -542,7 +542,7 @@ class GoogleDocsConfig {
                     GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         public boolean getSummarizeDocument() {
@@ -552,7 +552,7 @@ class GoogleDocsConfig {
                     context,
                     GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_ARG,
                     GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -567,7 +567,7 @@ class GoogleDocsConfig {
                     GoogleDocs.GOOGLE_DOC_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
 
         @Override
@@ -580,7 +580,7 @@ class GoogleDocsConfig {
                             GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
-                    .value();
+                    .getSafeValue();
         }
 
         @Override
@@ -592,7 +592,7 @@ class GoogleDocsConfig {
                             GoogleDocs.GOOGLE_DOC_FILTER_QUESTION_ARG,
                             GoogleDocs.GOOGLE_DOC_FILTER_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Integer getContextFilterMinimumRating() {
@@ -604,7 +604,7 @@ class GoogleDocsConfig {
                     GoogleDocs.GOOGLE_DOC_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         public String getPreprocessingHooks() {
@@ -614,7 +614,7 @@ class GoogleDocsConfig {
                     context,
                     GoogleDocs.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     GoogleDocs.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -624,7 +624,7 @@ class GoogleDocsConfig {
                     context,
                     GoogleDocs.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     GoogleDocs.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -634,7 +634,7 @@ class GoogleDocsConfig {
                     context,
                     GoogleDocs.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     GoogleDocs.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
     }
 }

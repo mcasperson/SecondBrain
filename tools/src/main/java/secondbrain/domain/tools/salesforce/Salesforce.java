@@ -505,7 +505,7 @@ class SalesforceConfig {
                     context,
                     Salesforce.ACCOUNT_ID,
                     Salesforce.ACCOUNT_ID,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getClientId() {
@@ -515,7 +515,7 @@ class SalesforceConfig {
                     context,
                     Salesforce.CLIENT_ID,
                     Salesforce.CLIENT_ID,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getSecretClientSecret() {
@@ -525,7 +525,7 @@ class SalesforceConfig {
                     context,
                     Salesforce.CLIENT_SECRET,
                     Salesforce.CLIENT_SECRET,
-                    "").value();
+                    "").getSafeValue();
         }
 
         private Argument getHoursArgument() {
@@ -549,7 +549,7 @@ class SalesforceConfig {
         }
 
         public int getRawHours() {
-            final String stringValue = getHoursArgument().value();
+            final String stringValue = getHoursArgument().getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
@@ -558,7 +558,7 @@ class SalesforceConfig {
         }
 
         public int getRawDays() {
-            final String stringValue = getDaysArgument().value();
+            final String stringValue = getDaysArgument().getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
@@ -590,7 +590,7 @@ class SalesforceConfig {
                             Salesforce.START_PERIOD_ARG,
                             Salesforce.START_PERIOD_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getEndPeriod() {
@@ -601,7 +601,7 @@ class SalesforceConfig {
                             Salesforce.END_PERIOD_ARG,
                             Salesforce.END_PERIOD_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public String getStartDate() {
@@ -652,7 +652,7 @@ class SalesforceConfig {
                             Salesforce.FILTER_QUESTION_ARG,
                             Salesforce.FILTER_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Integer getContextFilterMinimumRating() {
@@ -664,7 +664,7 @@ class SalesforceConfig {
                     Salesforce.FILTER_MINIMUM_RATING_ARG,
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         @Override
@@ -677,7 +677,7 @@ class SalesforceConfig {
                     Salesforce.DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
 
         @Override
@@ -688,7 +688,7 @@ class SalesforceConfig {
                     context,
                     Salesforce.ENSURE_GREATER_THAN_PROMPT_ARG,
                     Salesforce.ENSURE_GREATER_THAN_PROMPT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -700,7 +700,7 @@ class SalesforceConfig {
                     context,
                     Salesforce.SUMMARIZE_DOCUMENT_ARG,
                     Salesforce.SUMMARIZE_DOCUMENT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -715,7 +715,7 @@ class SalesforceConfig {
                             Salesforce.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             Salesforce.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
-                    .value();
+                    .getSafeValue();
         }
 
         @Override
@@ -726,7 +726,7 @@ class SalesforceConfig {
                     context,
                     null,
                     Salesforce.ENTITY_NAME_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getDomain() {
@@ -738,7 +738,7 @@ class SalesforceConfig {
                             Salesforce.DOMAIN,
                             Salesforce.DOMAIN,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         @Override
@@ -765,7 +765,7 @@ class SalesforceConfig {
                     Salesforce.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         public String getPreprocessingHooks() {
@@ -775,7 +775,7 @@ class SalesforceConfig {
                     context,
                     Salesforce.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     Salesforce.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -785,7 +785,7 @@ class SalesforceConfig {
                     context,
                     Salesforce.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     Salesforce.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -795,7 +795,7 @@ class SalesforceConfig {
                     context,
                     Salesforce.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     Salesforce.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getOpportunity1Name() {
@@ -805,7 +805,7 @@ class SalesforceConfig {
                     context,
                     Salesforce.OPPORTUNITY_ATTRIBUTE_1_NAME_ARG,
                     Salesforce.OPPORTUNITY_ATTRIBUTE_1_NAME_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getOpportunity1() {
@@ -815,7 +815,7 @@ class SalesforceConfig {
                     context,
                     Salesforce.OPPORTUNITY_ATTRIBUTE_1_ARG,
                     Salesforce.OPPORTUNITY_ATTRIBUTE_1_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public int getCacheTtl() {
@@ -827,7 +827,7 @@ class SalesforceConfig {
                     Salesforce.TTL_SECONDS_ARG,
                     DEFAULT_TTL_SECONDS + "");
 
-            return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_TTL_SECONDS));
+            return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), DEFAULT_TTL_SECONDS));
         }
     }
 }

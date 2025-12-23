@@ -547,7 +547,7 @@ class SlackChannelConfig {
                             SlackChannel.SLACK_CHANEL_ARG,
                             SlackChannel.SLACK_CHANEL_ARG,
                             "")
-                    .value()
+                    .getSafeValue()
                     .replaceFirst("^#", "");
         }
 
@@ -594,7 +594,7 @@ class SlackChannelConfig {
                     context,
                     SlackChannel.API_DELAY_ARG,
                     SlackChannel.API_DELAY_ARG,
-                    DEFAULT_API_DELAY + "").value();
+                    DEFAULT_API_DELAY + "").getSafeValue();
 
             return Try.of(() -> stringValue)
                     .map(i -> Math.max(0, NumberUtils.toInt(i, DEFAULT_API_DELAY)))
@@ -625,7 +625,7 @@ class SlackChannelConfig {
                     SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         @Override
@@ -636,7 +636,7 @@ class SlackChannelConfig {
                     context,
                     null,
                     SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public boolean getSummarizeDocument() {
@@ -646,7 +646,7 @@ class SlackChannelConfig {
                     context,
                     SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG,
                     SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -660,7 +660,7 @@ class SlackChannelConfig {
                             SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
-                    .value();
+                    .getSafeValue();
         }
 
         @Override
@@ -672,7 +672,7 @@ class SlackChannelConfig {
                             SlackChannel.SLACK_CHANNEL_FILTER_QUESTION_ARG,
                             SlackChannel.SLACK_CHANNEL_FILTER_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         public Integer getContextFilterMinimumRating() {
@@ -684,7 +684,7 @@ class SlackChannelConfig {
                     SlackChannel.SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         @Override
@@ -697,7 +697,7 @@ class SlackChannelConfig {
                     SlackChannel.SLACK_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
 
         @Override
@@ -708,7 +708,7 @@ class SlackChannelConfig {
                     context,
                     SlackChannel.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
                     SlackChannel.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -720,7 +720,7 @@ class SlackChannelConfig {
                     context,
                     SlackChannel.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     SlackChannel.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -730,7 +730,7 @@ class SlackChannelConfig {
                     context,
                     SlackChannel.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     SlackChannel.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -740,7 +740,7 @@ class SlackChannelConfig {
                     context,
                     SlackChannel.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     SlackChannel.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public int getCacheTtl() {
@@ -752,7 +752,7 @@ class SlackChannelConfig {
                     SlackChannel.TTL_SECONDS_ARG,
                     DEFAULT_TTL_SECONDS + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_TTL_SECONDS));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_TTL_SECONDS));
         }
     }
 }

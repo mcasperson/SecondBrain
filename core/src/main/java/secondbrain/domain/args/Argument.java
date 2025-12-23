@@ -14,4 +14,7 @@ public record Argument(@Nullable String value, boolean trusted) {
     public Argument replaceValue(@Nullable final String value) {
         return new Argument(value, trusted);
     }
+    public String getSafeValue() {
+        return value != null ? value : "";
+    }
 }

@@ -726,7 +726,7 @@ class GongConfig {
                     context,
                     Gong.COMPANY_ARG,
                     Gong.COMPANY_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getCallId() {
@@ -736,7 +736,7 @@ class GongConfig {
                     context,
                     Gong.CALLID_ARG,
                     Gong.CALLID_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public int getDays() {
@@ -746,7 +746,7 @@ class GongConfig {
                     context,
                     Gong.DAYS_ARG,
                     Gong.DAYS_ARG,
-                    "0").value();
+                    "0").getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)
@@ -802,7 +802,7 @@ class GongConfig {
                     Gong.GONG_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         @Override
@@ -813,7 +813,7 @@ class GongConfig {
                     context,
                     null,
                     Gong.GONG_ENTITY_NAME_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public boolean getSummarizeTranscript() {
@@ -823,7 +823,7 @@ class GongConfig {
                     context,
                     Gong.GONG_SUMMARIZE_TRANSCRIPT_ARG,
                     Gong.GONG_SUMMARIZE_TRANSCRIPT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -838,7 +838,7 @@ class GongConfig {
                             Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
                             Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
                             "Summarise the Gong call transcript in three paragraphs")
-                    .value();
+                    .getSafeValue();
         }
 
         @Override
@@ -850,7 +850,7 @@ class GongConfig {
                             Gong.GONG_FILTER_QUESTION_ARG,
                             Gong.GONG_FILTER_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         @Override
@@ -863,7 +863,7 @@ class GongConfig {
                     Gong.GONG_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         @Override
@@ -876,7 +876,7 @@ class GongConfig {
                     Gong.GONG_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
-            return Math.max(0, NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
 
         @Override
@@ -887,7 +887,7 @@ class GongConfig {
                     context,
                     Gong.GONG_ENSURE_GREATER_THAN_PROMPT_ARG,
                     Gong.GONG_ENSURE_GREATER_THAN_PROMPT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -899,7 +899,7 @@ class GongConfig {
                     context,
                     Gong.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     Gong.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -909,7 +909,7 @@ class GongConfig {
                     context,
                     Gong.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     Gong.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -919,7 +919,7 @@ class GongConfig {
                     context,
                     Gong.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     Gong.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject1Name() {
@@ -929,7 +929,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_1_NAME_ARG,
                     Gong.GONG_OBJECT_1_NAME_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject1() {
@@ -939,7 +939,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_1_ARG,
                     Gong.GONG_OBJECT_1_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject1System() {
@@ -973,7 +973,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_2_NAME_ARG,
                     Gong.GONG_OBJECT_2_NAME_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject2() {
@@ -983,7 +983,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_2_ARG,
                     Gong.GONG_OBJECT_2_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject2System() {
@@ -1017,7 +1017,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_3_NAME_ARG,
                     Gong.GONG_OBJECT_3_NAME_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject3() {
@@ -1027,7 +1027,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_3_ARG,
                     Gong.GONG_OBJECT_3_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject3System() {
@@ -1061,7 +1061,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_4_NAME_ARG,
                     Gong.GONG_OBJECT_4_NAME_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject4() {
@@ -1071,7 +1071,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_4_ARG,
                     Gong.GONG_OBJECT_4_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject4System() {
@@ -1105,7 +1105,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_5_NAME_ARG,
                     Gong.GONG_OBJECT_5_NAME_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject5() {
@@ -1115,7 +1115,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_5_ARG,
                     Gong.GONG_OBJECT_5_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject5System() {
@@ -1149,7 +1149,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_6_NAME_ARG,
                     Gong.GONG_OBJECT_6_NAME_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject6() {
@@ -1159,7 +1159,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_6_ARG,
                     Gong.GONG_OBJECT_6_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject6System() {
@@ -1193,7 +1193,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_7_NAME_ARG,
                     Gong.GONG_OBJECT_7_NAME_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject7() {
@@ -1203,7 +1203,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_7_ARG,
                     Gong.GONG_OBJECT_7_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject7System() {
@@ -1237,7 +1237,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_8_NAME_ARG,
                     Gong.GONG_OBJECT_8_NAME_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject8() {
@@ -1247,7 +1247,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_8_ARG,
                     Gong.GONG_OBJECT_8_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject8System() {
@@ -1281,7 +1281,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_9_NAME_ARG,
                     Gong.GONG_OBJECT_9_NAME_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject9() {
@@ -1291,7 +1291,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_9_ARG,
                     Gong.GONG_OBJECT_9_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject9System() {
@@ -1325,7 +1325,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_10_NAME_ARG,
                     Gong.GONG_OBJECT_10_NAME_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject10() {
@@ -1335,7 +1335,7 @@ class GongConfig {
                     context,
                     Gong.GONG_OBJECT_10_ARG,
                     Gong.GONG_OBJECT_10_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getObject10System() {
@@ -1371,7 +1371,7 @@ class GongConfig {
                     Gong.TTL_SECONDS_ARG,
                     DEFAULT_TTL_SECONDS + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
     }
 }

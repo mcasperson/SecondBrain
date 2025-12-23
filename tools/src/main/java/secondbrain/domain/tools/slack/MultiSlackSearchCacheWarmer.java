@@ -264,7 +264,7 @@ class MultiSlackSearchCacheWarmerConfig {
                     context,
                     MultiSlackSearchCacheWarmer.MULTI_SLACK_SEARCH_CACHE_WARMER_URL_ARG,
                     "multislacksearchcachewarmer_url",
-                    "").value();
+                    "").getSafeValue();
         }
 
 
@@ -275,7 +275,7 @@ class MultiSlackSearchCacheWarmerConfig {
                     context,
                     MultiSlackSearchCacheWarmer.MULTI_SLACK_SEARCH_CACHE_WARMER_MAX_ENTITIES_ARG,
                     "multislacksearchcachewarmer_max_entities",
-                    "0").value();
+                    "0").getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
                     .recover(throwable -> 0)

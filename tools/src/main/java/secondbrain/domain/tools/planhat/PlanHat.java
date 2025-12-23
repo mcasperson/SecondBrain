@@ -489,7 +489,7 @@ class PlanHatConfig {
                     context,
                     PlanHat.COMPANY_ID_ARGS,
                     PlanHat.COMPANY_ID_ARGS,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public int getDays() {
@@ -501,7 +501,7 @@ class PlanHatConfig {
                     PlanHat.DAYS_ARG,
                     "");
 
-            return NumberUtils.toInt(argument.value(), 1);
+            return NumberUtils.toInt(argument.getSafeValue(), 1);
         }
 
         public ZonedDateTime getStartDate() {
@@ -599,7 +599,7 @@ class PlanHatConfig {
                     PlanHat.PLANHAT_KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
-            return NumberUtils.toInt(argument.value(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
+            return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
         @Override
@@ -610,7 +610,7 @@ class PlanHatConfig {
                     context,
                     null,
                     PlanHat.PLANHAT_ENTITY_NAME_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public boolean getSummarizeDocument() {
@@ -620,7 +620,7 @@ class PlanHatConfig {
                     context,
                     PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_ARG,
                     PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -635,7 +635,7 @@ class PlanHatConfig {
                             PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
-                    .value();
+                    .getSafeValue();
         }
 
         @Override
@@ -647,7 +647,7 @@ class PlanHatConfig {
                             PlanHat.PLANHAT_FILTER_QUESTION_ARG,
                             PlanHat.PLANHAT_FILTER_QUESTION_ARG,
                             "")
-                    .value();
+                    .getSafeValue();
         }
 
         @Override
@@ -660,7 +660,7 @@ class PlanHatConfig {
                     PlanHat.PLANHAT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
-            return org.apache.commons.lang.math.NumberUtils.toInt(argument.value(), 0);
+            return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
         @Override
@@ -673,7 +673,7 @@ class PlanHatConfig {
                     PlanHat.PLANHAT_DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
 
         @Override
@@ -684,7 +684,7 @@ class PlanHatConfig {
                     context,
                     PlanHat.PLANHAT_ENSURE_GREATER_THAN_PROMPT_ARG,
                     PlanHat.PLANHAT_ENSURE_GREATER_THAN_PROMPT_ARG,
-                    "").value();
+                    "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
@@ -696,7 +696,7 @@ class PlanHatConfig {
                     context,
                     PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
                     PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPreinitializationHooks() {
@@ -706,7 +706,7 @@ class PlanHatConfig {
                     context,
                     PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
                     PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getPostInferenceHooks() {
@@ -716,7 +716,7 @@ class PlanHatConfig {
                     context,
                     PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
                     PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public int getCacheTtl() {
@@ -728,7 +728,7 @@ class PlanHatConfig {
                     PlanHat.PLANHAT_TTL_SECONDS_ARG,
                     DEFAULT_TTL_SECONDS + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.value(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
         }
     }
 }

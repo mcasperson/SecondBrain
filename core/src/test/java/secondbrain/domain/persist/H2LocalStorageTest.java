@@ -20,6 +20,7 @@ import secondbrain.domain.logger.Loggers;
 import java.util.Map;
 import java.util.UUID;
 
+@SuppressWarnings("NullAway")
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(H2LocalStorage.class)

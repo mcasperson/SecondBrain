@@ -329,7 +329,9 @@ public class H2LocalStorage implements LocalStorage {
                 .recover(result -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                     final String value = generateValue.generate();
-                    putString(tool, source, promptHash, ttlSeconds, value);
+                    if (StringUtils.isNotBlank(value)) {
+                        putString(tool, source, promptHash, ttlSeconds, value);
+                    }
                     return new CacheResult<String>(value, false);
                 })
                 /*
@@ -365,7 +367,7 @@ public class H2LocalStorage implements LocalStorage {
 
         return Try.of(() -> getString(tool, source, promptHash))
                 // a cache miss means the string is empty, so we throw an exception
-                .filter(result -> StringUtils.isNotBlank(result.result()))
+                .filter(result -> result != null && StringUtils.isNotBlank(result.result()))
                 // a cache hit means we deserialize the result
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> new CacheResult<T>(deserializer.deserialize(r.result()), true))
@@ -374,12 +376,14 @@ public class H2LocalStorage implements LocalStorage {
                             logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                             logger.fine("Exception: " + exceptionHandler.getExceptionMessage(ex));
                             final T value = generateValue.generate();
-                            putString(
-                                    tool,
-                                    source,
-                                    promptHash,
-                                    ttlSeconds,
-                                    jsonDeserializer.serialize(value));
+                            if (value != null) {
+                                putString(
+                                        tool,
+                                        source,
+                                        promptHash,
+                                        ttlSeconds,
+                                        jsonDeserializer.serialize(value));
+                            }
                             return new CacheResult<T>(value, false);
                         })
                 )
@@ -442,7 +446,7 @@ public class H2LocalStorage implements LocalStorage {
         logger.fine("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
 
         return Try.of(() -> getString(tool, source, promptHash))
-                .filter(result -> StringUtils.isNotBlank(result.result()))
+                .filter(result -> result != null && StringUtils.isNotBlank(result.result()))
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> NumberUtils.toInt(r.result(), 0))
                 // The cached result is the number of items in the array.
@@ -474,21 +478,23 @@ public class H2LocalStorage implements LocalStorage {
         final T[] value = generateValue.generate();
 
         // The result associated with the original hash is the count of items
-        putString(
-                tool,
-                source,
-                promptHash,
-                ttlSeconds,
-                value.length + "");
-
-        // each item is persisted with an index suffix
-        for (int i = 0; i < value.length; i++) {
+        if (value != null) {
             putString(
                     tool,
                     source,
-                    promptHash + "_" + i,
+                    promptHash,
                     ttlSeconds,
-                    jsonDeserializer.serialize(value[i]));
+                    value.length + "");
+
+            // each item is persisted with an index suffix
+            for (int i = 0; i < value.length; i++) {
+                putString(
+                        tool,
+                        source,
+                        promptHash + "_" + i,
+                        ttlSeconds,
+                        jsonDeserializer.serialize(value[i]));
+            }
         }
 
         return new CacheResult<T[]>(value, false);

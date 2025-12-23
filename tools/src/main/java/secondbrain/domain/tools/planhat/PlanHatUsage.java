@@ -408,7 +408,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.COMPANY_ID_ARGS,
                     PlanHatUsage.COMPANY_ID_ARGS,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUrl() {
@@ -468,7 +468,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_CUSTOM_1_ARG,
                     PlanHatUsage.PLANHAT_CUSTOM_1_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getCustom2() {
@@ -478,7 +478,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_CUSTOM_2_ARG,
                     PlanHatUsage.PLANHAT_CUSTOM_2_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getCustom3() {
@@ -488,7 +488,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_CUSTOM_3_ARG,
                     PlanHatUsage.PLANHAT_CUSTOM_3_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getCustom4() {
@@ -498,7 +498,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_CUSTOM_4_ARG,
                     PlanHatUsage.PLANHAT_CUSTOM_4_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getCustom5() {
@@ -508,7 +508,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_CUSTOM_5_ARG,
                     PlanHatUsage.PLANHAT_CUSTOM_5_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUsageId1() {
@@ -518,7 +518,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_USAGE_ID_1_ARG,
                     PlanHatUsage.PLANHAT_USAGE_ID_1_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUsageId2() {
@@ -528,7 +528,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_USAGE_ID_2_ARG,
                     PlanHatUsage.PLANHAT_USAGE_ID_2_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUsageId3() {
@@ -538,7 +538,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_USAGE_ID_3_ARG,
                     PlanHatUsage.PLANHAT_USAGE_ID_3_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUsageId4() {
@@ -548,7 +548,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_USAGE_ID_4_ARG,
                     PlanHatUsage.PLANHAT_USAGE_ID_4_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUsageId5() {
@@ -558,7 +558,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_USAGE_ID_5_ARG,
                     PlanHatUsage.PLANHAT_USAGE_ID_5_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUsageName1() {
@@ -568,7 +568,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_USAGE_NAME_1_ARG,
                     PlanHatUsage.PLANHAT_USAGE_NAME_1_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUsageName2() {
@@ -578,7 +578,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_USAGE_NAME_2_ARG,
                     PlanHatUsage.PLANHAT_USAGE_NAME_2_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUsageName3() {
@@ -588,7 +588,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_USAGE_NAME_3_ARG,
                     PlanHatUsage.PLANHAT_USAGE_NAME_3_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUsageName4() {
@@ -598,7 +598,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_USAGE_NAME_4_ARG,
                     PlanHatUsage.PLANHAT_USAGE_NAME_4_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
 
         public String getUsageName5() {
@@ -608,7 +608,7 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_USAGE_NAME_5_ARG,
                     PlanHatUsage.PLANHAT_USAGE_NAME_5_ARG,
-                    "").value();
+                    "").getSafeValue();
         }
     }
 }
