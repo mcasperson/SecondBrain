@@ -481,6 +481,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .onFailure(ex -> logger.warning("Failed to persist full array result to local storage: " + exceptionHandler.getExceptionMessage(ex)));
     }
 
+    @SuppressWarnings("ReturnValueIgnored")
     private <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T[]> generateValue) {
         final T[] value = generateValue.generate();
 

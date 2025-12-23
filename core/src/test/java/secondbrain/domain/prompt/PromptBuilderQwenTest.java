@@ -47,27 +47,29 @@ public class PromptBuilderQwenTest {
                 "Test Instructions",
                 "Test Context",
                 "Test Prompt");
-        assertEquals("<|im_start|>system\n" +
-                "Test Context\n" +
-                "Test Instructions\n" +
-                "<|im_end|>\n" +
-                "\n" +
-                "<|im_start|>user\n" +
-                "Test Prompt\n" +
-                "<|im_end|>\n" +
-                "<|im_start|>assistant", result);
+        assertEquals("""
+                <|im_start|>system
+                Test Context
+                Test Instructions
+                <|im_end|>
+                
+                <|im_start|>user
+                Test Prompt
+                <|im_end|>
+                <|im_start|>assistant""", result);
 
         // Test without instructions
         result = promptBuilder.buildFinalPrompt(
                 "",
                 "Test Context",
                 "Test Prompt");
-        assertEquals("Test Context\n" +
-                "<|im_end|>\n" +
-                "\n" +
-                "<|im_start|>user\n" +
-                "Test Prompt\n" +
-                "<|im_end|>\n" +
-                "<|im_start|>assistant", result);
+        assertEquals("""
+                Test Context
+                <|im_end|>
+                
+                <|im_start|>user
+                Test Prompt
+                <|im_end|>
+                <|im_start|>assistant""", result);
     }
 }

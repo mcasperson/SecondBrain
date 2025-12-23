@@ -102,6 +102,7 @@ public class Main {
         throw new RuntimeException("No prompt specified");
     }
 
+    @SuppressWarnings("ReturnValueIgnored")
     public void entry(final String[] args) {
         final String command = args.length > 0 ? args[0] : "";
         if ("--help".equals(command)) {
