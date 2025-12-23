@@ -15,7 +15,7 @@ import java.util.Arrays;
 @Identifier("sanitizeEmail")
 public class SanitizeEmail implements SanitizeArgument {
     @Override
-    public String sanitize(@Nullable final String argument, final String document) {
+    public String sanitize(@Nullable final String argument, @Nullable final String document) {
         if (StringUtils.isBlank(argument)) {
             return "";
         }

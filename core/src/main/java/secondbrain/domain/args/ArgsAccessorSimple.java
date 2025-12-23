@@ -64,7 +64,7 @@ public class ArgsAccessorSimple implements ArgsAccessor {
             @Nullable final Map<String, String> context,
             @Nullable final String argName,
             @Nullable final String contextName,
-            @Nullable final String defaultValue) {
+            final String defaultValue) {
         final Argument argument = getArgument(systemProperty, arguments, context, argName, contextName, defaultValue);
         final String fixedValue = Objects.requireNonNullElse(argument.value(), "");
         return Arrays.stream(fixedValue.split(","))
@@ -80,7 +80,7 @@ public class ArgsAccessorSimple implements ArgsAccessor {
             @Nullable final List<SanitizeArgument> sanitizers,
             @Nullable final String prompt,
             @Nullable final String argName,
-            @Nullable final String defaultValue) {
+            final String defaultValue) {
         final Argument arg = getArgument(arguments, argName, defaultValue);
 
         final Argument sanitized = Seq.seq(Objects.requireNonNullElse(sanitizers, List.<SanitizeArgument>of()).stream())

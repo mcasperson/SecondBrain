@@ -14,5 +14,5 @@ public interface SanitizeArgument {
      * @param document The source document
      * @return The sanitized argument
      */
-    String sanitize(@Nullable String argument, String document);
+    String sanitize(@Nullable String argument, @Nullable String document);
 }
