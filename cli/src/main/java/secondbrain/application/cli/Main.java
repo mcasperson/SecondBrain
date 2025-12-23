@@ -78,6 +78,10 @@ public class Main {
         // Remove some of the initial SLF4J logging noise
         System.setProperty("slf4j.internal.verbosity", "WARN");
 
+        // Disable Netty unsafe operations for better compatibility
+        // See https://netty.io/wiki/java-24-and-sun.misc.unsafe.html
+        System.setProperty("io.netty.noUnsafe", "true");
+
         final Weld weld = new Weld();
         /*
         For the life of me I could not get Weld to find beans in the service module without manually adding a class in
