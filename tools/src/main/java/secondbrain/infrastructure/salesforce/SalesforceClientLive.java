@@ -217,7 +217,7 @@ public class SalesforceClientLive implements SalesforceClient {
 
         final String url = getUrl() + "/services/data/" + version + "/query";
 
-        final StringBuffer soql = new StringBuffer();
+        final StringBuilder soql = new StringBuilder();
         soql.append("SELECT Id,Description,Subject,Type,CreatedDate FROM Task WHERE AccountId='")
                 .append(accountId)
                 .append("' AND Type='")

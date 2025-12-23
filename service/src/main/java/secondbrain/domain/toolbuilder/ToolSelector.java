@@ -40,10 +40,6 @@ public class ToolSelector {
     private Optional<String> force;
 
     @Inject
-    @ConfigProperty(name = "sb.ollama.timeout", defaultValue = "10")
-    private Optional<String> timeout;
-
-    @Inject
     @Any
     private Instance<Tool<?>> tools;
 

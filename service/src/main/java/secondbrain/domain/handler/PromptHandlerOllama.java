@@ -61,7 +61,7 @@ public class PromptHandlerOllama implements PromptHandler {
     @Inject
     private ExceptionHandler exceptionHandler;
 
-
+    @Override
     public PromptHandlerResponse handlePrompt(final Map<String, String> context, final String prompt) {
         return handlePromptWithRetry(context, prompt, 1);
     }
@@ -133,13 +133,12 @@ public class PromptHandlerOllama implements PromptHandler {
                 .map(document -> generateAnnotatedResponse(
                         document,
                         parsedMinSimilarity,
-                        parsedMinWords,
-                        argumentDebugging))
+                        parsedMinWords))
                 .recover(InternalFailure.class, ex -> new PromptResponseSimple(exceptionHandler.getExceptionMessage(ex)))
                 .get();
     }
 
-    private PromptHandlerResponse generateAnnotatedResponse(final RagMultiDocumentContext<?> document, final float parsedMinSimilarity, final int parsedMinWords, final boolean argumentDebugging) {
+    private PromptHandlerResponse generateAnnotatedResponse(final RagMultiDocumentContext<?> document, final float parsedMinSimilarity, final int parsedMinWords) {
         if (disableAnnotations) {
             return new PromptResponseSimple(
                     document.getResponse(),
