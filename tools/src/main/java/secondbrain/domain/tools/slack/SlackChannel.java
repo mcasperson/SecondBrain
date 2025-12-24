@@ -156,7 +156,7 @@ public class SlackChannel implements Tool<SlackChannelResource> {
             final List<ToolArgs> arguments) {
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
-        return localStorage.getOrPutGeneric(
+        return Try.of(() -> localStorage.getOrPutGeneric(
                         getName(),
                         getName(),
                         Integer.toString(cacheKey.hashCode()),
@@ -165,7 +165,10 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                         RagDocumentContext.class,
                         Void.class,
                         () -> getContextPrivate(environmentSettings, prompt, arguments))
-                .result();
+                .result())
+                .filter(Objects::nonNull)
+                .onFailure(ex -> logger.warning("Error while getting Slack channel context: " + ExceptionUtils.getRootCauseMessage(ex)))
+                .get();
     }
 
     private List<RagDocumentContext<SlackChannelResource>> getContextPrivate(
@@ -560,7 +563,7 @@ class SlackChannelConfig {
                     SlackChannel.DAYS_ARG,
                     "30");
 
-            return Try.of(argument::value)
+            return Try.of(argument::getSafeValue)
                     .map(i -> Math.max(0, Integer.parseInt(i)))
                     .get();
         }

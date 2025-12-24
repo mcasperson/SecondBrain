@@ -5,7 +5,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.BooleanUtils;
-import org.apache.tika.utils.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
@@ -212,8 +212,8 @@ public class RatingTool implements Tool<Void> {
                  thinking response removed.
                  */
                 .map(ragDoc -> ragDoc.updateResponse(
-                        getFirstDigits.sanitize(
-                                findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim())))
+                        StringUtils.trim(getFirstDigits.sanitize(
+                                findFirstMarkdownBlock.sanitize(ragDoc.getResponse())))))
                 .onFailure(ex -> logger.warning("Failed to get rating for document: " + ex.getMessage()));
 
         return exceptionMapping.map(result);

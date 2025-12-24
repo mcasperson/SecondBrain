@@ -112,7 +112,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> ragContext = entityDirectory.getEntities()
                 .stream()
-                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.getName().toLowerCase()))
+                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.getName().toLowerCase(Locale.ROOT)))
                 // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
                 // We batch here to interleave API requests to the various external data sources
                 .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))

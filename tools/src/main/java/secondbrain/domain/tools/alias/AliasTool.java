@@ -4,6 +4,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
@@ -106,7 +107,7 @@ public class AliasTool implements Tool<Void> {
                 /*
                  We expect a JSON array, but some LLMs return markdown blocks, which we
                  */
-                .map(ragDoc -> ragDoc.updateResponse(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim()));
+                .map(ragDoc -> ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))));
 
         final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 

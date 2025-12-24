@@ -220,6 +220,7 @@ public class DirectoryScan implements Tool<Void> {
                 .toList();
     }
 
+    @SuppressWarnings("StreamResourceLeak")
     private Try<List<String>> getFiles(final String pathname, final DirectoryScanConfig.LocalArguments parsedArgs) {
         return Try.withResources(() -> Files.walk(Paths.get(pathname)))
                 .of(paths -> paths.filter(Files::isRegularFile)

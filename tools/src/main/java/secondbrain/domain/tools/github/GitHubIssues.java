@@ -8,6 +8,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
@@ -424,6 +425,7 @@ class GitHubIssueConfig {
             this.context = context;
         }
 
+        @SuppressWarnings("NullAway")
         public String getSecretGitHubAccessToken() {
             final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("github_access_token")))
                     .recover(e -> context.get("github_access_token"))
@@ -542,6 +544,7 @@ class GitHubIssueConfig {
             return BooleanUtils.toBoolean(value);
         }
 
+        @Nullable
         public String getStartDate() {
             final String configuredDate = getArgsAccessor().getArgument(
                     getConfigStartDate()::get,
@@ -565,6 +568,7 @@ class GitHubIssueConfig {
                     .format(ISO_OFFSET_DATE_TIME);
         }
 
+        @Nullable
         public String getEndDate() {
             final String configuredDate = getArgsAccessor().getArgument(
                     getConfigEndDate()::get,
