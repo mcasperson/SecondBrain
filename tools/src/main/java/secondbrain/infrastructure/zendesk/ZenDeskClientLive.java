@@ -104,7 +104,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                         ZenDeskTicket.class,
                         () -> getTicketApi(authorization, url, ticketId).ticket()).result())
                 .filter(Objects::nonNull)
-                .onFailure(ex -> logger.warning("Error while getting ZenDesk ticket from API: " + ex.getMessage()))
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Error while getting ZenDesk ticket from API: " + ex.getMessage()))
                 .get();
     }
 
@@ -265,7 +265,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                         ZenDeskCommentsResponse.class,
                         () -> getCommentsFromApi(authorization, url, ticketId)).result())
                 .filter(Objects::nonNull)
-                .onFailure(ex -> logger.warning("Error while getting ZenDesk comments from API: " + ex.getMessage()))
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Error while getting ZenDesk comments from API: " + ex.getMessage()))
                 .get();
     }
 
@@ -386,7 +386,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                         ZenDeskOrganizationResponse.class,
                         () -> getOrganizationFromApi(authorization, url, orgId)).result())
                 .filter(Objects::nonNull)
-                .onFailure(ex -> logger.warning("Error while getting ZenDesk organization from API: " + ex.getMessage()))
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Error while getting ZenDesk organization from API: " + ex.getMessage()))
                 .get()
                 .organization();
 
@@ -468,7 +468,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                         ZenDeskUserResponse.class,
                         () -> getUserFromApi(authorization, url, userId)).result())
                 .filter(Objects::nonNull)
-                .onFailure(ex -> logger.warning("Error while getting ZenDesk user from API: " + ex.getMessage()))
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Error while getting ZenDesk user from API: " + ex.getMessage()))
                 .get()
                 .user();
 
