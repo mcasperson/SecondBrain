@@ -18,10 +18,7 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.zendesk.api.*;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -99,13 +96,16 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
     @Override
     public ZenDeskTicket getTicket(final String authorization, final String url, final String ticketId, final int ttlSeconds) {
-        return localStorage.getOrPutObject(
-                ZenDeskClientLive.class.getSimpleName(),
-                "ZenDeskApiTicket",
-                DigestUtils.sha256Hex(url + ticketId),
-                ttlSeconds,
-                ZenDeskTicket.class,
-                () -> getTicketApi(authorization, url, ticketId).ticket()).result();
+        return Try.of(() -> localStorage.getOrPutObject(
+                        ZenDeskClientLive.class.getSimpleName(),
+                        "ZenDeskApiTicket",
+                        DigestUtils.sha256Hex(url + ticketId),
+                        ttlSeconds,
+                        ZenDeskTicket.class,
+                        () -> getTicketApi(authorization, url, ticketId).ticket()).result())
+                .filter(Objects::nonNull)
+                .onFailure(ex -> logger.warning("Error while getting ZenDesk ticket from API: " + ex.getMessage()))
+                .get();
     }
 
     /**
@@ -257,13 +257,16 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Ticket ID is required");
         }
 
-        return localStorage.getOrPutObject(
-                ZenDeskClientLive.class.getSimpleName(),
-                "ZenDeskApiCommentsV2",
-                DigestUtils.sha256Hex(ticketId + url),
-                0,
-                ZenDeskCommentsResponse.class,
-                () -> getCommentsFromApi(authorization, url, ticketId)).result();
+        return Try.of(() -> localStorage.getOrPutObject(
+                        ZenDeskClientLive.class.getSimpleName(),
+                        "ZenDeskApiCommentsV2",
+                        DigestUtils.sha256Hex(ticketId + url),
+                        0,
+                        ZenDeskCommentsResponse.class,
+                        () -> getCommentsFromApi(authorization, url, ticketId)).result())
+                .filter(Objects::nonNull)
+                .onFailure(ex -> logger.warning("Error while getting ZenDesk comments from API: " + ex.getMessage()))
+                .get();
     }
 
     private ZenDeskCommentsResponse getCommentsFromApi(
@@ -376,12 +379,16 @@ public class ZenDeskClientLive implements ZenDeskClient {
             return LOCAL_ORG_CACHE.get(cacheKey);
         }
 
-        final ZenDeskOrganizationItemResponse org = localStorage.getOrPutObject(
-                ZenDeskClientLive.class.getSimpleName(),
-                "ZenDeskAPIOrganizations",
-                DigestUtils.sha256Hex(orgId + url),
-                ZenDeskOrganizationResponse.class,
-                () -> getOrganizationFromApi(authorization, url, orgId)).result().organization();
+        final ZenDeskOrganizationItemResponse org = Try.of(() -> localStorage.getOrPutObject(
+                        ZenDeskClientLive.class.getSimpleName(),
+                        "ZenDeskAPIOrganizations",
+                        DigestUtils.sha256Hex(orgId + url),
+                        ZenDeskOrganizationResponse.class,
+                        () -> getOrganizationFromApi(authorization, url, orgId)).result())
+                .filter(Objects::nonNull)
+                .onFailure(ex -> logger.warning("Error while getting ZenDesk organization from API: " + ex.getMessage()))
+                .get()
+                .organization();
 
         LOCAL_ORG_CACHE.put(cacheKey, org);
 
@@ -454,12 +461,16 @@ public class ZenDeskClientLive implements ZenDeskClient {
             return LOCAL_CACHE.get(cacheKey);
         }
 
-        final ZenDeskUserItemResponse user = localStorage.getOrPutObject(
-                ZenDeskClientLive.class.getSimpleName(),
-                "ZenDeskAPIUsersV2",
-                DigestUtils.sha256Hex(userId + url),
-                ZenDeskUserResponse.class,
-                () -> getUserFromApi(authorization, url, userId)).result().user();
+        final ZenDeskUserItemResponse user = Try.of(() -> localStorage.getOrPutObject(
+                        ZenDeskClientLive.class.getSimpleName(),
+                        "ZenDeskAPIUsersV2",
+                        DigestUtils.sha256Hex(userId + url),
+                        ZenDeskUserResponse.class,
+                        () -> getUserFromApi(authorization, url, userId)).result())
+                .filter(Objects::nonNull)
+                .onFailure(ex -> logger.warning("Error while getting ZenDesk user from API: " + ex.getMessage()))
+                .get()
+                .user();
 
         LOCAL_CACHE.put(cacheKey, user);
 

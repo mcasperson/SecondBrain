@@ -2,6 +2,7 @@ package secondbrain.infrastructure.zendesk.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
@@ -11,14 +12,14 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ZenDeskTicket(String id,
-                            @JsonProperty("submitter_id") String submitterId,
-                            @JsonProperty("assignee_id") String assigneeId,
+                            @Nullable @JsonProperty("submitter_id") String submitterId,
+                            @Nullable @JsonProperty("assignee_id") String assigneeId,
                             String subject,
-                            @JsonProperty("organization_id") String organizationId,
-                            String recipient,
-                            String comments,
-                            String url,
-                            @JsonProperty("created_at") String createdAt) implements TextData, IdData, UrlData {
+                            @Nullable @JsonProperty("organization_id") String organizationId,
+                            @Nullable String recipient,
+                            @Nullable String comments,
+                            @Nullable String url,
+                            @Nullable @JsonProperty("created_at") String createdAt) implements TextData, IdData, UrlData {
     public ZenDeskTicket(final String id, final String subject) {
         this(id, null, null, subject, null, null, null, null, null);
     }
