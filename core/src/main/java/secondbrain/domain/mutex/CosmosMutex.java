@@ -108,6 +108,7 @@ public class CosmosMutex implements Mutex {
         }
     }
 
+    @SuppressWarnings("NullAway")
     private void clearLocksOnStartup() {
         if (!clearOnStartup.orElse(false)) {
             return;
@@ -244,6 +245,7 @@ public class CosmosMutex implements Mutex {
         }
     }
 
+    @SuppressWarnings("NullAway")
     private void releaseLock(final String etag, final String lockName) {
         if (container == null) {
             logger.warning("Cosmos DB client is not initialized, cannot release lock: " + lockName);

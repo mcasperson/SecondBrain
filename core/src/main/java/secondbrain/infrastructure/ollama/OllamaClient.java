@@ -34,13 +34,13 @@ import secondbrain.infrastructure.ollama.api.OllamaResponse;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static io.vavr.control.Try.of;
 
 @ApplicationScoped
 public class OllamaClient implements LlmClient {
@@ -123,7 +123,7 @@ public class OllamaClient implements LlmClient {
 
         final String promptHash = DigestUtils.sha256Hex(prompt + model + contextWindow);
 
-        final String result = localStorage.getOrPutString(
+        final String result = Try.of(() -> localStorage.getOrPutString(
                 tool,
                 "LLM",
                 promptHash,
@@ -134,7 +134,10 @@ public class OllamaClient implements LlmClient {
 
                     // Don't cache errors
                     return resultOrDefaultOnError(responseText, null);
-                }).result();
+                }).result())
+                .filter(Objects::nonNull)
+                .onFailure(ex -> logger.warning("Ollama cache failure: " + ex.getMessage()))
+                .get();
 
         // Don't return cached errors
         return valueOrDefaultOnError(result,
@@ -162,7 +165,7 @@ public class OllamaClient implements LlmClient {
                         .header("Content-Type", "application/json")
                         .header("Accept", "application/json")
                         .post(Entity.entity(body.sanitizedCopy(), MediaType.APPLICATION_JSON))))
-                .of(response -> of(() -> responseValidation.validate(response.getWrapped(), target))
+                .of(response -> Try.of(() -> responseValidation.validate(response.getWrapped(), target))
                         .recover(InvalidResponse.class, e -> {
                             throw new FailedOllama("OllamaClient failed to call Ollama:\n"
                                     + e.getCode() + "\n"

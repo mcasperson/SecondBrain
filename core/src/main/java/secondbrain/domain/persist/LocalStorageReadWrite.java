@@ -1,5 +1,7 @@
 package secondbrain.domain.persist;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.Optional;
 
 /**
@@ -8,5 +10,5 @@ import java.util.Optional;
 public interface LocalStorageReadWrite {
     Optional<String> getString(String tool, String source, String promptHash);
 
-    String putString(String tool, String source, String promptHash, Long timestamp, String value);
+    String putString(String tool, String source, String promptHash, @Nullable Long timestamp, String value);
 }

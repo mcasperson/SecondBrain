@@ -17,6 +17,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.persist.LocalStorage;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 /**
@@ -80,14 +81,18 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
             throw new InternalFailure("Predictor is not initialized");
         }
 
-        return localStorage.getOrPutObject(JdlSentenceVectorizer.class.getSimpleName(),
+        return Try.of(() -> localStorage.getOrPutObject(JdlSentenceVectorizer.class.getSimpleName(),
                 "vectorize",
                 DigestUtils.sha256Hex(text + hiddenText + DJL_PATH),
                 TTL_SECONDS,
                 RagStringContext.class,
-                () -> vectorizeApi(text, hiddenText)).result();
+                () -> vectorizeApi(text, hiddenText)).result())
+                .filter(Objects::nonNull)
+                .onFailure(ex -> logger.warning("Error while vectorizing sentences, annotations are not available: " + ExceptionUtils.getRootCause(ex)))
+                .get();
     }
 
+    @SuppressWarnings("NullAway")
     private RagStringContext vectorizeApi(final String text, @Nullable final String hiddenText) {
         if (predictor == null) {
             throw new InternalFailure("Predictor is not initialized");
@@ -125,6 +130,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
         return doubleArray;
     }
 
+    @SuppressWarnings("NullAway")
     @Override
     public void close() {
         if (predictor == null) {

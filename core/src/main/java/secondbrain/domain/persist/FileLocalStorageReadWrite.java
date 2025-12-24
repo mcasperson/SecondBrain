@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import org.apache.commons.io.output.LockableFileWriter;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.persist.config.LocalStorageCacheDirectory;
 import secondbrain.domain.persist.config.LocalStorageMemoryCacheEnabled;
@@ -172,7 +173,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     }
 
     @Override
-    public String putString(final String tool, final String source, final String promptHash, final Long timestamp, final String value) {
+    public String putString(final String tool, final String source, final String promptHash, @Nullable final Long timestamp, final String value) {
         final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
 
         Try.of(() -> Path.of(cacheDir))

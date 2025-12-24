@@ -9,7 +9,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.validation.constraints.Null;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -236,6 +235,7 @@ public class CosmosLocalStorage implements LocalStorage {
         throw ex;
     }
 
+    @SuppressWarnings("NullAway")
     @Nullable
     private CacheResult<String> unpack(final CacheResult<String> result, final String tool, final String source) {
         if (!result.fromCache()) {
@@ -380,6 +380,7 @@ public class CosmosLocalStorage implements LocalStorage {
     /**
      * A generic method to get or put an object or list of objects in the cache.
      */
+    @SuppressWarnings("NullAway")
     private <T> CacheResult<T> getOrPutTimed(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
         if (localStorageCacheDisable.isDisabled() || container == null) {
             return new CacheResult<T>(generateValue.generate(), false);
@@ -428,6 +429,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .get();
     }
 
+    @SuppressWarnings("NullAway")
     private <T> CacheResult<T[]> getOrPutObjectArrayTimed(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
         if (localStorageCacheDisable.isDisabled() || container == null) {
             return new CacheResult<T[]>(generateValue.generate(), false);
@@ -453,9 +455,8 @@ public class CosmosLocalStorage implements LocalStorage {
             return localCacheTry.get();
         }
 
-
         return Try.of(() -> getString(tool, source, promptHash))
-                .filter(result -> StringUtils.isNotBlank(result.result()))
+                .filter(result -> result != null && StringUtils.isNotBlank(result.result()))
                 .onSuccess(v -> logger.fine("Remote cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .mapTry(r -> NumberUtils.toInt(r.result(), 0))
                 // The cached result is the number of items in the array.
@@ -498,38 +499,41 @@ public class CosmosLocalStorage implements LocalStorage {
     private <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T[]> generateValue) {
         final T[] value = generateValue.generate();
 
-        // Persist the full array as a single compressed and encrypted item in local storage
-        persistArrayResultLocal(tool, source, promptHash, ttlSeconds, value);
+        if (value != null) {
+            // Persist the full array as a single compressed and encrypted item in local storage
+            persistArrayResultLocal(tool, source, promptHash, ttlSeconds, value);
 
-        // The result associated with the original hash is the count of items
-        putString(
-                tool,
-                source,
-                promptHash,
-                ttlSeconds,
-                value.length + "");
+            // The result associated with the original hash is the count of items
+            putString(
+                    tool,
+                    source,
+                    promptHash,
+                    ttlSeconds,
+                    value.length + "");
 
-        // each item is persisted with an index suffix
-        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
-        IntStream.range(0, value.length)
-                .boxed()
-                .collect(parallelToStream(index -> {
-                                    putString(
-                                            tool,
-                                            source,
-                                            promptHash + "_" + index,
-                                            ttlSeconds,
-                                            jsonDeserializer.serialize(value[index]));
+            // each item is persisted with an index suffix
+            final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
+            IntStream.range(0, value.length)
+                    .boxed()
+                    .collect(parallelToStream(index -> {
+                                        putString(
+                                                tool,
+                                                source,
+                                                promptHash + "_" + index,
+                                                ttlSeconds,
+                                                jsonDeserializer.serialize(value[index]));
 
-                                    return index;
-                                },
-                                executor,
-                                BATCH_SIZE)
-                );
+                                        return index;
+                                    },
+                                    executor,
+                                    BATCH_SIZE)
+                    );
+        }
 
         return new CacheResult<T[]>(value, false);
     }
 
+    @SuppressWarnings("NullAway")
     @Override
     public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String value) {
         if (localStorageCacheDisable.isDisabled() || localStorageCacheReadOnly.isReadOnly() || container == null) {
@@ -574,6 +578,7 @@ public class CosmosLocalStorage implements LocalStorage {
         return -1;
     }
 
+    @Nullable
     private Long getTimestamp(final Long ttlSeconds) {
         if (ttlSeconds != null && ttlSeconds > 0) {
             return Instant.now().getEpochSecond() + ttlSeconds;
