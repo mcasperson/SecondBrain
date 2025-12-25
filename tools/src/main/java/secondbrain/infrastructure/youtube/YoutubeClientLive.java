@@ -26,6 +26,8 @@ import secondbrain.infrastructure.youtube.api.YoutubeSearchItem;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -130,13 +132,16 @@ public class YoutubeClientLive implements YoutubeClient {
     @Override
     public String getTranscript(final String videoId, final String lang) {
         final String cacheKey = videoId + "-" + lang;
-        return localStorage.getOrPutObject(
-                        YoutubeClientLive.class.getSimpleName(),
-                        "YoutubeAPITranscript",
-                        cacheKey,
-                        String.class,
-                        () -> getTranscriptApi(videoId, lang))
-                .result();
+        return Try.of(() -> localStorage.getOrPutObject(
+                                YoutubeClientLive.class.getSimpleName(),
+                                "YoutubeAPITranscript",
+                                cacheKey,
+                                String.class,
+                                () -> getTranscriptApi(videoId, lang))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Transcript not found for video " + videoId + " in lang " + lang))
+                .get();
     }
 
     private String getTranscriptApi(final String videoId, final String lang) {

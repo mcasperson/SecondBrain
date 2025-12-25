@@ -26,6 +26,8 @@ import secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -90,14 +92,17 @@ public class SalesforceClientLive implements SalesforceClient {
     public SalesforceOauthTokenResponse getToken(final String clientId, final String clientSecret) {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
 
-        return localStorage.getOrPutObject(
-                        SalesforceClientLive.class.getSimpleName(),
-                        "SalesforceAPIToken",
-                        DigestUtils.sha256Hex(domain.get()),
-                        60, // There is little harm in getting new tokens, but we'll cache for 1 minute to avoid spamming the API
-                        SalesforceOauthTokenResponse.class,
-                        () -> getTokenApi(clientId, clientSecret, 0))
-                .result();
+        return Try.of(() -> localStorage.getOrPutObject(
+                                SalesforceClientLive.class.getSimpleName(),
+                                "SalesforceAPIToken",
+                                DigestUtils.sha256Hex(domain.get()),
+                                60, // There is little harm in getting new tokens, but we'll cache for 1 minute to avoid spamming the API
+                                SalesforceOauthTokenResponse.class,
+                                () -> getTokenApi(clientId, clientSecret, 0))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("OAuth token not found for salesforce domain " + domain.get()))
+                .get();
     }
 
     public SalesforceOauthTokenResponse getTokenApi(final String clientId, final String clientSecret, final int retryCount) {
@@ -133,14 +138,17 @@ public class SalesforceClientLive implements SalesforceClient {
     public SalesforceTaskRecord[] getTasks(final String token, final String accountId, final String type, final String startDate, final String endDate) {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
 
-        return localStorage.getOrPutObject(
-                        SalesforceClientLive.class.getSimpleName(),
-                        "SalesforceAPITasks",
-                        DigestUtils.sha256Hex(domain.get() + accountId + type + startDate + endDate),
-                        DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
-                        SalesforceTaskRecord[].class,
-                        () -> getTasksApi(token, accountId, type, startDate, endDate))
-                .result();
+        return Try.of(() -> localStorage.getOrPutObject(
+                                SalesforceClientLive.class.getSimpleName(),
+                                "SalesforceAPITasks",
+                                DigestUtils.sha256Hex(domain.get() + accountId + type + startDate + endDate),
+                                DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
+                                SalesforceTaskRecord[].class,
+                                () -> getTasksApi(token, accountId, type, startDate, endDate))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Tasks not found for salesforce account " + accountId))
+                .get();
     }
 
     @Override
@@ -149,14 +157,17 @@ public class SalesforceClientLive implements SalesforceClient {
 
         final String key = DigestUtils.sha256Hex(domain.get() + accountId);
 
-        return localStorage.getOrPutObject(
-                        SalesforceClientLive.class.getSimpleName(),
-                        "SalesforceOpportunityByAccountId",
-                        DigestUtils.sha256Hex(key),
-                        DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
-                        SalesforceOpportunityQuery.class,
-                        () -> getOpportunityByAccountIdApi(token, accountId))
-                .result();
+        return Try.of(() -> localStorage.getOrPutObject(
+                                SalesforceClientLive.class.getSimpleName(),
+                                "SalesforceOpportunityByAccountId",
+                                DigestUtils.sha256Hex(key),
+                                DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
+                                SalesforceOpportunityQuery.class,
+                                () -> getOpportunityByAccountIdApi(token, accountId))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Opportunity not found for salesforce account " + accountId))
+                .get();
     }
 
     private SalesforceOpportunityQuery getOpportunityByAccountIdApi(final String token, final String accountId) {

@@ -24,12 +24,8 @@ import secondbrain.infrastructure.gong.api.*;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
@@ -134,13 +130,16 @@ public class GongClientLive implements GongClient {
             final String password,
             final GongCallExtensive call) {
 
-        return localStorage.getOrPutObject(
-                        GongClientLive.class.getSimpleName(),
-                        "GongAPICallTranscript",
-                        call.metaData().id(),
-                        GongCallTranscript.class,
-                        () -> getCallTranscriptApi(call.metaData().id(), username, password))
-                .result()
+        return Try.of(() -> localStorage.getOrPutObject(
+                                GongClientLive.class.getSimpleName(),
+                                "GongAPICallTranscript",
+                                call.metaData().id(),
+                                GongCallTranscript.class,
+                                () -> getCallTranscriptApi(call.metaData().id(), username, password))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Transcript not found for Gong call " + call.metaData().id()))
+                .get()
                 .getTranscript(call);
     }
 
@@ -186,11 +185,12 @@ public class GongClientLive implements GongClient {
                         () -> callApi(body, username, password))
                 .result();
 
-        return ArrayUtils.addAll(
-                calls.getCallsArray(),
-                StringUtils.isNotBlank(calls.records().cursor())
-                        ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, calls.records().cursor(), page + 1)
-                        : new GongCallExtensive[]{});
+        final GongCallExtensive[] callsArray = calls != null ? calls.getCallsArray() : new GongCallExtensive[]{};
+        final GongCallExtensive[] nextCallsArray = calls != null && StringUtils.isNotBlank(calls.records().cursor())
+                ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, calls.records().cursor(), page + 1)
+                : new GongCallExtensive[]{};
+
+        return ArrayUtils.addAll(callsArray, nextCallsArray);
     }
 
     private GongCallsExtensive callApi(final GongCallExtensiveQuery body,

@@ -24,6 +24,8 @@ import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -114,14 +116,17 @@ public class PlanHatClientLive implements PlanHatClient {
             final String url,
             final String token,
             final int ttlSeconds) {
-        return localStorage.getOrPutObject(
-                        PlanHatClientLive.class.getSimpleName(),
-                        "PlanHatAPICompany",
-                        DigestUtils.sha256Hex(company + url),
-                        ttlSeconds,
-                        Company.class,
-                        () -> getCompanyApi(client, company, url, token))
-                .result();
+        return Try.of(() -> localStorage.getOrPutObject(
+                                PlanHatClientLive.class.getSimpleName(),
+                                "PlanHatAPICompany",
+                                DigestUtils.sha256Hex(company + url),
+                                ttlSeconds,
+                                Company.class,
+                                () -> getCompanyApi(client, company, url, token))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Company not found for company " + company))
+                .get();
     }
 
     private Conversation[] getConversationsApi(

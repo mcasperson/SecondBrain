@@ -45,10 +45,7 @@ import secondbrain.infrastructure.slack.api.SlackChannelResource;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -157,17 +154,17 @@ public class SlackChannel implements Tool<SlackChannelResource> {
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return Try.of(() -> localStorage.getOrPutGeneric(
-                        getName(),
-                        getName(),
-                        Integer.toString(cacheKey.hashCode()),
-                        parsedArgs.getCacheTtl(),
-                        List.class,
-                        RagDocumentContext.class,
-                        Void.class,
-                        () -> getContextPrivate(environmentSettings, prompt, arguments))
-                .result())
+                                getName(),
+                                getName(),
+                                Integer.toString(cacheKey.hashCode()),
+                                parsedArgs.getCacheTtl(),
+                                List.class,
+                                RagDocumentContext.class,
+                                Void.class,
+                                () -> getContextPrivate(environmentSettings, prompt, arguments))
+                        .result())
                 .filter(Objects::nonNull)
-                .onFailure(ex -> logger.warning("Error while getting Slack channel context: " + ExceptionUtils.getRootCauseMessage(ex)))
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Error while getting Slack channel context: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
     }
 
