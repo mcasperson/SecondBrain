@@ -12,5 +12,5 @@ public interface SanitizeDocument {
      * @param document The source document
      * @return The sanitized document
      */
-    @Nullable String sanitize(String document);
+    @Nullable String sanitize(@Nullable String document);
 }

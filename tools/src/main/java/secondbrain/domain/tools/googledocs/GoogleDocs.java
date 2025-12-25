@@ -49,6 +49,7 @@ import java.time.ZoneOffset;
 import java.util.*;
 import java.util.List;
 import java.util.function.Function;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -106,6 +107,9 @@ public class GoogleDocs implements Tool<Void> {
     @Inject
     private DataToRagDoc dataToRagDoc;
 
+    @Inject
+    private Logger logger;
+
     @Override
     public String getName() {
         return GoogleDocs.class.getSimpleName();
@@ -129,6 +133,7 @@ public class GoogleDocs implements Tool<Void> {
         return "Google Document";
     }
 
+    @SuppressWarnings("NullAway")
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
@@ -318,11 +323,14 @@ public class GoogleDocs implements Tool<Void> {
                 List.of(context)
         );
 
-        return llmClient.callWithCache(
-                multiDoc,
-                environmentSettings,
-                getName()
-        ).response();
+        return Try.of(() -> llmClient.callWithCache(
+                        multiDoc,
+                        environmentSettings,
+                        getName()
+                ).response())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Document summary resulted in no content"))
+                .get();
     }
 
     private MetaObjectResults getMetadata(
@@ -344,13 +352,13 @@ public class GoogleDocs implements Tool<Void> {
                     .recover(ex -> parsedArgs.getDefaultRating())
                     .get();
 
-            metadata.add(new MetaObjectResult(GOOGLE_DOC_FILTER_RATING_META, filterRating, document.id(), getName()));
+            metadata.add(new MetaObjectResult(GOOGLE_DOC_FILTER_RATING_META, filterRating, document.getId(), getName()));
         }
 
         return new MetaObjectResults(
                 metadata,
-                "GoogleDoc-" + document.id() + ".json",
-                document.id());
+                "GoogleDoc-" + document.getId() + ".json",
+                document.getId());
     }
 
     private boolean contextMeetsRating(

@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  * @param annotationPrefix   The prefix to use when annotating the document with the source sentence
  * @param metadata           The metadata associated with the individual contexts, such as the source, author
  */
-public record RagMultiDocumentContext<T>(String prompt,
+public record RagMultiDocumentContext<T>(@Nullable String prompt,
                                          @Nullable String instructions,
                                          @Nullable List<RagDocumentContext<T>> individualContexts,
                                          @Nullable String response,

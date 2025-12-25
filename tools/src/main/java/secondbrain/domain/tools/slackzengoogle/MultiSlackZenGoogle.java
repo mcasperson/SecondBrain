@@ -12,6 +12,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.constants.Constants;
@@ -367,7 +368,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     /**
      * If there is no google doc to include in the prompt, make a note in the system prompt to ignore any reference to google docs.
      */
-    private String getAdditionalGoogleDocsInstructions(final List<RagDocumentContext<Void>> ragContext) {
+    private String getAdditionalGoogleDocsInstructions(@Nullable final List<RagDocumentContext<Void>> ragContext) {
         if (googleDocsContextCount(ragContext) == 0) {
             return "No " + googleDocs.getContextLabel() + " are available. You will be penalized for referencing any " + googleDocs.getContextLabel() + " in the response.";
         }
@@ -382,7 +383,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     /**
      * If there is no zen desk tickets to include in the prompt, make a note in the system prompt to ignore any reference to zen desk.
      */
-    private String getAdditionalZenDeskInstructions(final List<RagDocumentContext<Void>> ragContext) {
+    private String getAdditionalZenDeskInstructions(@Nullable final List<RagDocumentContext<Void>> ragContext) {
         if (zenDeskContextCount(ragContext) == 0) {
             return "No " + zenDeskOrganization.getContextLabel() + " are available. You will be penalized for referencing any " + zenDeskOrganization.getContextLabel() + " in the response.";
         }
@@ -390,14 +391,18 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return "";
     }
 
-    private long zenDeskContextCount(final List<RagDocumentContext<Void>> ragContext) {
+    private long zenDeskContextCount(@Nullable final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext == null) {
+            return 0;
+        }
+
         return ragContext.stream().filter(ragDoc -> ragDoc.contextLabel().contains(zenDeskOrganization.getContextLabel())).count();
     }
 
     /**
      * If there are no slack messages to include in the prompt, make a note in the system prompt to ignore any reference to slack messages.
      */
-    private String getAdditionalSlackInstructions(final List<RagDocumentContext<Void>> ragContext) {
+    private String getAdditionalSlackInstructions(@Nullable final List<RagDocumentContext<Void>> ragContext) {
         if (slackContextCount(ragContext) == 0) {
             return "No " + slackChannel.getContextLabel() + " are available. You will be penalized for referencing any " + slackChannel.getContextLabel() + " in the response.";
         }
@@ -405,14 +410,18 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return "";
     }
 
-    private long slackContextCount(final List<RagDocumentContext<Void>> ragContext) {
+    private long slackContextCount(@Nullable final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext == null) {
+            return 0;
+        }
+
         return ragContext.stream().filter(ragDoc -> ragDoc.contextLabel().contains(slackChannel.getContextLabel())).count();
     }
 
     /**
      * If there are no planhat activities to include in the prompt, make a note in the system prompt to ignore any reference to planhat activities.
      */
-    private String getAdditionalPlanHatInstructions(final List<RagDocumentContext<Void>> ragContext) {
+    private String getAdditionalPlanHatInstructions(@Nullable final List<RagDocumentContext<Void>> ragContext) {
         if (planhatContextCount(ragContext) == 0) {
             return "No " + planHat.getContextLabel() + " are available. You will be penalized for referencing any " + planHat.getContextLabel() + " in the response.";
         }
@@ -423,7 +432,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     /**
      * If there are no gong calls to include in the prompt, make a note in the system prompt to ignore any reference to gong calls.
      */
-    private String getAdditionalGongInstructions(final List<RagDocumentContext<Void>> ragContext) {
+    private String getAdditionalGongInstructions(@Nullable final List<RagDocumentContext<Void>> ragContext) {
         if (gongContextCount(ragContext) == 0) {
             return "No " + gong.getContextLabel() + " are available. You will be penalized for referencing any " + gong.getContextLabel() + " in the response.";
         }
@@ -434,7 +443,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     /**
      * If there are no salesforce emails to include in the prompt, make a note in the system prompt to ignore any reference to salesforce activities.
      */
-    private String getAdditionalSalesforceInstructions(final List<RagDocumentContext<Void>> ragContext) {
+    private String getAdditionalSalesforceInstructions(@Nullable final List<RagDocumentContext<Void>> ragContext) {
         if (salesforceContextCount(ragContext) == 0) {
             return "No " + salesforce.getContextLabel() + " are available. You will be penalized for referencing any " + salesforce.getContextLabel() + " in the response.";
         }
@@ -442,15 +451,27 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return "";
     }
 
-    private long planhatContextCount(final List<RagDocumentContext<Void>> ragContext) {
+    private long planhatContextCount(@Nullable final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext == null) {
+            return 0;
+        }
+
         return ragContext.stream().filter(ragDoc -> ragDoc.contextLabel().contains(planHat.getContextLabel())).count();
     }
 
-    private long gongContextCount(final List<RagDocumentContext<Void>> ragContext) {
+    private long gongContextCount(@Nullable final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext == null) {
+            return 0;
+        }
+
         return ragContext.stream().filter(ragDoc -> ragDoc.contextLabel().contains(gong.getContextLabel())).count();
     }
 
-    private long salesforceContextCount(final List<RagDocumentContext<Void>> ragContext) {
+    private long salesforceContextCount(@Nullable final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext == null) {
+            return 0;
+        }
+
         return ragContext.stream().filter(ragDoc -> ragDoc.contextLabel().contains(salesforce.getContextLabel())).count();
     }
 

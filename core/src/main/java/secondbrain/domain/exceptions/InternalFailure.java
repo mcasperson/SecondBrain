@@ -1,5 +1,7 @@
 package secondbrain.domain.exceptions;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Represents a failure from an internal source. This is like a 400 response code in HTTP.
  * It means that if you make the same call with the same data you'll get the same result.
@@ -12,11 +14,11 @@ public class InternalFailure extends RuntimeException implements InternalExcepti
         super();
     }
 
-    public InternalFailure(final String message) {
+    public InternalFailure(@Nullable final String message) {
         super(message);
     }
 
-    public InternalFailure(final String message, final Throwable cause) {
+    public InternalFailure(@Nullable final String message, final Throwable cause) {
         super(message, cause);
     }
 

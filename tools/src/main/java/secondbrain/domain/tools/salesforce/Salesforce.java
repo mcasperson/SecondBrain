@@ -40,10 +40,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -150,16 +147,19 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
             final List<ToolArgs> arguments) {
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
-        return localStorage.getOrPutGeneric(
-                        getName(),
-                        getName() + "V2",
-                        Integer.toString(cacheKey.hashCode()),
-                        parsedArgs.getCacheTtl(),
-                        List.class,
-                        RagDocumentContext.class,
-                        SalesforceTaskRecord.class,
-                        () -> getContextPrivate(environmentSettings, prompt, arguments))
-                .result();
+        return Try.of(() -> localStorage.getOrPutGeneric(
+                                getName(),
+                                getName() + "V2",
+                                Integer.toString(cacheKey.hashCode()),
+                                parsedArgs.getCacheTtl(),
+                                List.class,
+                                RagDocumentContext.class,
+                                SalesforceTaskRecord.class,
+                                () -> getContextPrivate(environmentSettings, prompt, arguments))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get Salesforce context from cache: " + ex.getMessage()))
+                .get();
     }
 
     private List<RagDocumentContext<SalesforceTaskRecord>> getContextPrivate(
@@ -180,7 +180,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         final Try<List<RagDocumentContext<SalesforceTaskRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
                 .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
                 .map(emails -> Stream.of(emails)
-                        .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabelWithDate(email), null, parsedArgs))
+                        .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabelWithDate(email), parsedArgs))
                         .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                         .toList());
 
@@ -262,6 +262,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                 .get();
     }
 
+    @Nullable
     private MetaObjectResult getMeta(final Map<String, Object> opportunity, final String name, final String field) {
         if (StringUtils.isAnyBlank(name, field)) {
             return null;

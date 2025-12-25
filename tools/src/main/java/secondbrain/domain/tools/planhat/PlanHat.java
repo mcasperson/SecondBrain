@@ -29,7 +29,6 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.objects.ToStringGenerator;
-import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
@@ -48,9 +47,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -173,23 +170,19 @@ public class PlanHat implements Tool<Conversation> {
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
-        final CacheResult<List> result = localStorage.getOrPutGeneric(
-                getName(),
-                getName(),
-                Integer.toString(cacheKey.hashCode()),
-                parsedArgs.getCacheTtl(),
-                List.class,
-                RagDocumentContext.class,
-                Conversation.class,
-                () -> getContextPrivate(environmentSettings, prompt, arguments));
-
-        if (result.fromCache()) {
-            logger.info("Cache hit for " + getName() + " " + cacheKey);
-        } else {
-            logger.info("Cache miss for " + getName() + " " + cacheKey);
-        }
-
-        return result.result();
+        return Try.of(() -> localStorage.getOrPutGeneric(
+                                getName(),
+                                getName(),
+                                Integer.toString(cacheKey.hashCode()),
+                                parsedArgs.getCacheTtl(),
+                                List.class,
+                                RagDocumentContext.class,
+                                Conversation.class,
+                                () -> getContextPrivate(environmentSettings, prompt, arguments))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get PlanHat context from cache: " + ExceptionUtils.getRootCauseMessage(ex)))
+                .get();
     }
 
     private List<RagDocumentContext<Conversation>> getContextPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
@@ -504,6 +497,7 @@ class PlanHatConfig {
             return NumberUtils.toInt(argument.getSafeValue(), 1);
         }
 
+        @Nullable
         public ZonedDateTime getStartDate() {
             if (getDays() == 0) {
                 return null;
@@ -514,6 +508,7 @@ class PlanHatConfig {
                     .minusDays(getDays());
         }
 
+        @Nullable
         public ZonedDateTime getEndDate() {
             if (getDays() == 0) {
                 return null;

@@ -14,7 +14,7 @@ public class RemoveStringQuotes implements SanitizeDocument {
 
     @Override
     @Nullable
-    public String sanitize(final String document) {
+    public String sanitize(@Nullable final String document) {
         if (document == null) {
             return null;
         }

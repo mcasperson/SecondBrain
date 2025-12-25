@@ -77,7 +77,7 @@ public class GoogleOauthCallback {
 
         final Map<String, String> stateCookie = new HashMap<>();
         stateCookie.put("google_access_token", accessTokenEncrypted);
-        stateCookie.put("google_access_token_expires", LocalDateTime.now().plusSeconds(expiresIn).toEpochSecond(ZoneOffset.UTC) + "");
+        stateCookie.put("google_access_token_expires", LocalDateTime.now(ZoneOffset.systemDefault()).plusSeconds(expiresIn).toEpochSecond(ZoneOffset.UTC) + "");
 
         final String stateCookieString = jsonDeserializer.serialize(stateCookie);
 

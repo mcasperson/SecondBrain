@@ -565,6 +565,7 @@ class SlackChannelConfig {
                     .get();
         }
 
+        @SuppressWarnings("NullAway")
         public String getSecretAccessToken() {
             return Try.of(() -> getTextEncryptor().decrypt(context.get("slack_access_token")))
                     .recover(e -> context.get("slack_access_token"))

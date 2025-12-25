@@ -8,6 +8,7 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
@@ -20,6 +21,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -57,8 +60,8 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
 
 
     @Override
-    public List<GitHubIssue> getIssues(final String token, final String organisation, final String repo, final String since, final String to, final List<String> labels, final String state) {
-        return Arrays.stream(localStorage.getOrPutObject(
+    public List<GitHubIssue> getIssues(final String token, final String organisation, final String repo, @Nullable final String since, @Nullable final String to, final List<String> labels, final String state) {
+        final GitHubIssue[] issues = Try.of(() -> localStorage.getOrPutObject(
                                 GitHubIssuesClientLive.class.getSimpleName(),
                                 "GitHubIssuesV2",
                                 DigestUtils.sha256Hex(organisation + repo + since + to + labels + state),
@@ -66,7 +69,11 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
                                 GitHubIssue[].class,
                                 () -> getIssuesApi(token, organisation, repo, since, to, labels, state, 1))
                         .result())
-                .toList();
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("No GitHub issues found"))
+                .get();
+
+        return Arrays.stream(issues).toList();
     }
 
     private GitHubIssue[] getIssuesApi(final String token, final String organisation, final String repo, final String since, final String to, final List<String> labels, final String state, final int page) {

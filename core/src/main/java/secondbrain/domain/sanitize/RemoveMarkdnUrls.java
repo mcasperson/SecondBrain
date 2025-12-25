@@ -3,6 +3,7 @@ package secondbrain.domain.sanitize;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.commons.lang.StringUtils;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Remove anything that looks like a MarkDn URL.
@@ -11,7 +12,8 @@ import org.apache.commons.lang.StringUtils;
 @Identifier("removeMarkdnUrls")
 public class RemoveMarkdnUrls implements SanitizeDocument {
     @Override
-    public String sanitize(final String document) {
+    @Nullable
+    public String sanitize(@Nullable final String document) {
         if (StringUtils.isEmpty(document)) {
             return document;
         }

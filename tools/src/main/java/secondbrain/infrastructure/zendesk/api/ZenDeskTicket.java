@@ -25,6 +25,10 @@ public record ZenDeskTicket(String id,
         this(id, null, null, subject, null, null, null, null, null);
     }
 
+    public String getSubject() {
+        return Objects.requireNonNullElse(subject, "");
+    }
+
     public String getOrganizationId() {
         return Objects.requireNonNullElse(organizationId, "");
     }
@@ -52,10 +56,10 @@ public record ZenDeskTicket(String id,
     public List<MetaObjectResult> toMetaObjectResult() {
         return List.of(
                 new MetaObjectResult("ID", id, id, "ZenDesk"),
-                new MetaObjectResult("Subject", subject, id, "ZenDesk"),
-                new MetaObjectResult("OrganizationId", organizationId, id, "ZenDesk"),
-                new MetaObjectResult("SubmittedId", submitterId, id, "ZenDesk"),
-                new MetaObjectResult("AssigneeId", assigneeId, id, "ZenDesk"));
+                new MetaObjectResult("Subject", getSubject(), id, "ZenDesk"),
+                new MetaObjectResult("OrganizationId", getOrganizationId(), id, "ZenDesk"),
+                new MetaObjectResult("SubmittedId", getSubmitterId(), id, "ZenDesk"),
+                new MetaObjectResult("AssigneeId", getAssigneeId(), id, "ZenDesk"));
     }
 
     @Override
@@ -65,7 +69,7 @@ public record ZenDeskTicket(String id,
 
     @Override
     public String generateText() {
-        return comments;
+        return Objects.requireNonNullElse(comments, "");
     }
 
     @Override
@@ -75,6 +79,6 @@ public record ZenDeskTicket(String id,
 
     @Override
     public String generateUrl() {
-        return url;
+        return Objects.requireNonNullElse(url, "");
     }
 }

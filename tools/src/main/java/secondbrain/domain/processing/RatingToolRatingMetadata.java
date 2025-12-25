@@ -54,7 +54,7 @@ public class RatingToolRatingMetadata implements RatingMetadata {
 
         return new MetaObjectResults(
                 metadata,
-                toolName + "-" + activity.id() + ".json",
-                activity.id());
+                toolName + "-" + activity.getId() + ".json",
+                activity.getId());
     }
 }

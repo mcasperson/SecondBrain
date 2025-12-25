@@ -2,12 +2,14 @@ package secondbrain.domain.sanitize;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.jspecify.annotations.Nullable;
 
 @ApplicationScoped
 @Identifier("removeEmailQuotes")
 public class RemoveEmailQuotes implements SanitizeDocument {
     @Override
-    public String sanitize(final String document) {
+    @Nullable
+    public String sanitize(@Nullable final String document) {
         if (document == null || document.isEmpty()) {
             return document;
         }

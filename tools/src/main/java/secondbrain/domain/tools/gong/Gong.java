@@ -26,7 +26,6 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.objects.ToStringGenerator;
-import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
@@ -45,9 +44,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -163,23 +160,18 @@ public class Gong implements Tool<GongCallDetails> {
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
-        final CacheResult<List> result = localStorage.getOrPutGeneric(
-                getName(),
-                getName(),
-                Integer.toString(cacheKey.hashCode()),
-                parsedArgs.getCacheTtl(),
-                List.class,
-                RagDocumentContext.class,
-                GongCallDetails.class,
-                () -> getContextPrivate(environmentSettings, prompt, arguments));
-
-        if (result.fromCache()) {
-            logger.info("Cache hit for " + getName() + " " + cacheKey);
-        } else {
-            logger.info("Cache miss for " + getName() + " " + cacheKey);
-        }
-
-        return result.result();
+        return Try.of(() -> localStorage.getOrPutGeneric(
+                        getName(),
+                        getName(),
+                        Integer.toString(cacheKey.hashCode()),
+                        parsedArgs.getCacheTtl(),
+                        List.class,
+                        RagDocumentContext.class,
+                        GongCallDetails.class,
+                        () -> getContextPrivate(environmentSettings, prompt, arguments)).result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to generate Gong context: " + ExceptionUtils.getRootCauseMessage(ex)))
+                .get();
     }
 
     private List<RagDocumentContext<GongCallDetails>> getContextPrivate(
@@ -689,6 +681,7 @@ class GongConfig {
             return getToStringGenerator().generateGetterConfig(this);
         }
 
+        @SuppressWarnings("NullAway")
         public String getSecretAccessKey() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
@@ -704,6 +697,7 @@ class GongConfig {
             return token.get();
         }
 
+        @SuppressWarnings("NullAway")
         public String getSecretAccessSecretKey() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
@@ -754,6 +748,7 @@ class GongConfig {
                     .get();
         }
 
+        @Nullable
         public String getStartDate() {
             if (getDays() == 0) {
                 return null;
@@ -767,6 +762,7 @@ class GongConfig {
                     .format(ISO_OFFSET_DATE_TIME);
         }
 
+        @Nullable
         public String getEndDate() {
             if (getDays() == 0) {
                 return null;

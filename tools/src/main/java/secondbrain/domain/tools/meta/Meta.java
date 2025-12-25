@@ -15,16 +15,12 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.objects.ToStringGenerator;
-import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.infrastructure.llm.LlmClient;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -190,21 +186,17 @@ public class Meta implements Tool<Void> {
 
         final String cacheKey = generateCacheKey(parsedArgs, prompt);
 
-        final CacheResult<RagMultiDocumentContext> result = localStorage.getOrPutObject(
-                getName(),
-                getName(),
-                cacheKey,
-                parsedArgs.getCacheTtl(),
-                RagMultiDocumentContext.class,
-                () -> callPrivate(environmentSettings, prompt, arguments));
-
-        if (result.fromCache()) {
-            logger.info("Cache hit for " + getName() + " " + cacheKey);
-        } else {
-            logger.info("Cache miss for " + getName() + " " + cacheKey);
-        }
-
-        return result.result()
+        return Try.of(() -> localStorage.getOrPutObject(
+                                getName(),
+                                getName(),
+                                cacheKey,
+                                parsedArgs.getCacheTtl(),
+                                RagMultiDocumentContext.class,
+                                () -> callPrivate(environmentSettings, prompt, arguments))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.info("Failed to generate meta tool result: " + ex.getMessage()))
+                .get()
                 .convertToRagMultiDocumentContextVoid();
     }
 

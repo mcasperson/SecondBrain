@@ -224,8 +224,8 @@ public class GitHubIssues implements Tool<GitHubIssue> {
 
         return new MetaObjectResults(
                 metadata,
-                "GitHubIssue-" + issue.id() + ".json",
-                issue.id());
+                "GitHubIssue-" + issue.getId() + ".json",
+                issue.getId());
     }
 
     private List<RagDocumentContext<GitHubIssue>> getSummary(final List<RagDocumentContext<GitHubIssue>> ragDocs, final Map<String, String> environmentSettings, final GitHubIssueConfig.LocalArguments parsedArgs) {

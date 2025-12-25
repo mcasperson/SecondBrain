@@ -140,16 +140,19 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
             final List<ToolArgs> arguments) {
         final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
-        return localStorage.getOrPutGeneric(
-                        getName(),
-                        getName(),
-                        Integer.toString(cacheKey.hashCode()),
-                        parsedArgs.getCacheTtl(),
-                        List.class,
-                        RagDocumentContext.class,
-                        SlackSearchResultResource.class,
-                        () -> getContextPrivate(environmentSettings, prompt, arguments))
-                .result();
+        return Try.of(() -> localStorage.getOrPutGeneric(
+                                getName(),
+                                getName(),
+                                Integer.toString(cacheKey.hashCode()),
+                                parsedArgs.getCacheTtl(),
+                                List.class,
+                                RagDocumentContext.class,
+                                SlackSearchResultResource.class,
+                                () -> getContextPrivate(environmentSettings, prompt, arguments))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get context from cache: " + ex.getMessage()))
+                .get();
     }
 
     private List<RagDocumentContext<SlackSearchResultResource>> getContextPrivate(
@@ -481,6 +484,7 @@ class SlackSearchConfig {
             return BooleanUtils.toBoolean(stringValue);
         }
 
+        @SuppressWarnings("NullAway")
         public String getSecretAccessToken() {
             return Try.of(() -> getTextEncryptor().decrypt(context.get("slack_access_token")))
                     .recover(e -> context.get("slack_access_token"))
