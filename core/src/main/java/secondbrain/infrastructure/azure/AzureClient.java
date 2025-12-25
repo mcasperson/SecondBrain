@@ -237,7 +237,7 @@ public class AzureClient implements LlmClient {
 
         // No individual context can be longer than the maxChars.
         // This ensures we always have at least some of the context available.
-        final List<RagDocumentContext<T>> trimmedItems = ragDocs.individualContexts().stream()
+        final List<RagDocumentContext<T>> trimmedItems = ragDocs.getIndividualContexts().stream()
                 .map(ragDoc -> ragDoc.updateDocument(ragDoc.document().substring(0, Math.min(maxChars, ragDoc.document().length()))))
                 .toList();
 

@@ -3,6 +3,7 @@ package secondbrain.infrastructure.planhat;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.api.Company;
@@ -23,7 +24,7 @@ public class PlanHatClientMock implements PlanHatClient {
     private LlmClient llmClient;
 
     @Override
-    public List<Conversation> getConversations(final Client client, final String company, final String url, final String token, final ZonedDateTime startDate, final ZonedDateTime endDate, final int ttlSeconds) {
+    public List<Conversation> getConversations(final Client client, final String company, final String url, final String token, @Nullable final ZonedDateTime startDate, @Nullable final ZonedDateTime endDate, final int ttlSeconds) {
         // Create a list of mock conversations
         return List.of(
                 createMockConversation(),

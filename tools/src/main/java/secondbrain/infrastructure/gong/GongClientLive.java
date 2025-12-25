@@ -12,6 +12,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.httpclient.HttpClientCaller;
 import secondbrain.domain.injection.Preferred;
@@ -79,8 +80,8 @@ public class GongClientLive implements GongClient {
             final String callId,
             final String username,
             final String password,
-            final String fromDateTime,
-            final String toDateTime) {
+            @Nullable final String fromDateTime,
+            @Nullable final String toDateTime) {
 
         // Build a "to" date for the cache key
         final String toDateTimeFinal = StringUtils.isBlank(toDateTime)
@@ -147,8 +148,8 @@ public class GongClientLive implements GongClient {
      * https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/extensive
      */
     private GongCallExtensive[] getCallsExtensiveApiLocked(
-            final String fromDateTime,
-            final String toDateTime,
+            @Nullable final String fromDateTime,
+            @Nullable final String toDateTime,
             final String callId,
             final String username,
             final String password,

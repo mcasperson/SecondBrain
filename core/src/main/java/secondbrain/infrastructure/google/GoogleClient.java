@@ -123,7 +123,7 @@ public class GoogleClient implements LlmClient {
         checkNotNull(environmentSettings);
         checkArgument(StringUtils.isNotBlank(tool));
 
-        final List<GoogleRequestContentsParts> parts = ragDocs.individualContexts().stream()
+        final List<GoogleRequestContentsParts> parts = ragDocs.getIndividualContexts().stream()
                 .map(ragDoc -> new GoogleRequestContentsParts(ragDoc.contextLabel() + ": " + ragDoc.document()))
                 .collect(Collectors.toCollection(ArrayList::new));
 

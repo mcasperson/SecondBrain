@@ -124,17 +124,17 @@ public class OllamaClient implements LlmClient {
         final String promptHash = DigestUtils.sha256Hex(prompt + model + contextWindow);
 
         final String result = Try.of(() -> localStorage.getOrPutString(
-                tool,
-                "LLM",
-                promptHash,
-                NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
-                () -> {
-                    final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
-                    final String responseText = response.getResponse();
+                        tool,
+                        "LLM",
+                        promptHash,
+                        NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
+                        () -> {
+                            final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
+                            final String responseText = response.getResponse();
 
-                    // Don't cache errors
-                    return resultOrDefaultOnError(responseText, null);
-                }).result())
+                            // Don't cache errors
+                            return resultOrDefaultOnError(responseText, null);
+                        }).result())
                 .filter(Objects::nonNull)
                 .onFailure(ex -> logger.warning("Ollama cache failure: " + ex.getMessage()))
                 .get();
@@ -235,7 +235,7 @@ public class OllamaClient implements LlmClient {
     private String getPromptFromDocument(final RagMultiDocumentContext<?> ragDoc) {
         final PromptBuilder promptBuilder = promptBuilderSelector.getPromptBuilder(modelConfig.getModel());
 
-        final String promptContent = ragDoc.individualContexts()
+        final String promptContent = ragDoc.getIndividualContexts()
                 .stream()
                 .map(context -> promptBuilder.buildContextPrompt(context.contextLabel(), context.document()))
                 .collect(Collectors.joining("\n"));
@@ -243,6 +243,6 @@ public class OllamaClient implements LlmClient {
         return promptBuilder.buildFinalPrompt(
                 ragDoc.instructions(),
                 promptContent,
-                ragDoc.prompt());
+                ragDoc.getPrompt());
     }
 }

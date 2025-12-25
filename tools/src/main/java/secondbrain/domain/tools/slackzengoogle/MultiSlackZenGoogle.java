@@ -376,7 +376,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return "";
     }
 
-    private long googleDocsContextCount(final List<RagDocumentContext<Void>> ragContext) {
+    private long googleDocsContextCount(@Nullable final List<RagDocumentContext<Void>> ragContext) {
+        if (ragContext == null) {
+            return 0;
+        }
+
         return ragContext.stream().filter(ragDoc -> ragDoc.contextLabel().contains(googleDocs.getContextLabel())).count();
     }
 

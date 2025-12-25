@@ -186,7 +186,7 @@ public record RagDocumentContext<T>(String tool,
             final Vector vector,
             final SimilarityCalculator similarityCalculator,
             final double minSimilarity) {
-        if (sentences.isEmpty()) {
+        if (sentences == null || sentences.isEmpty()) {
             return null;
         }
 
@@ -211,6 +211,6 @@ public record RagDocumentContext<T>(String tool,
             return null;
         }
 
-        return new RagMatchedStringContext(bestSimilarity.getLeft().context(), context, bestSimilarity.getRight(), id);
+        return new RagMatchedStringContext(bestSimilarity.getLeft().context(), context, bestSimilarity.getRight(), getId());
     }
 }

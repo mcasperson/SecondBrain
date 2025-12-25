@@ -11,6 +11,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
@@ -78,13 +79,13 @@ public class PlanHatClientLive implements PlanHatClient {
             final String company,
             final String url,
             final String token,
-            final ZonedDateTime startDate,
-            final ZonedDateTime endDate,
+            @Nullable final ZonedDateTime startDate,
+            @Nullable final ZonedDateTime endDate,
             final int ttlSeconds) {
 
         // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
-        final String end = endDate.format(ISO_OFFSET_DATE_TIME);
-        final String start = startDate.format(ISO_OFFSET_DATE_TIME);
+        final String end = endDate == null ? "" : endDate.format(ISO_OFFSET_DATE_TIME);
+        final String start = startDate == null ? "" : startDate.format(ISO_OFFSET_DATE_TIME);
 
         // This result may be too large to cache remotely, but it can be cached locally.
         // If we do get a local cache hit, it will save us from making multiple API calls.
@@ -135,8 +136,8 @@ public class PlanHatClientLive implements PlanHatClient {
             final String url,
             final String token,
             final int ttlSeconds,
-            final ZonedDateTime startDate,
-            final ZonedDateTime endDate,
+            @Nullable final ZonedDateTime startDate,
+            @Nullable final ZonedDateTime endDate,
             final int offset) {
         if (offset >= getMaxOffset()) {
             logger.warning("Reached maximum offset of " + getMaxOffset() + " when fetching PlanHat conversations for company " + company);
@@ -146,8 +147,8 @@ public class PlanHatClientLive implements PlanHatClient {
         logger.fine("Fetching PlanHat conversations for company " + company + " with offset " + offset);
 
         // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
-        final String end = endDate.format(ISO_OFFSET_DATE_TIME);
-        final String start = startDate.format(ISO_OFFSET_DATE_TIME);
+        final String end = endDate == null ? "" : endDate.format(ISO_OFFSET_DATE_TIME);
+        final String start = startDate == null ? "" : startDate.format(ISO_OFFSET_DATE_TIME);
 
         // Each conversation is cached individually because some local storage implementations
         // have limits on the size of each cached object.
@@ -166,8 +167,9 @@ public class PlanHatClientLive implements PlanHatClient {
          so instead we keep recursing over the API until all the conversations
          are before the start date.
          */
-        final Conversation[] filtered = Stream.of(conversations)
-                .filter(c -> dateParser.parseDate(c.date()).isAfter(startDate))
+        final Conversation[] filtered = Stream.of(Objects.requireNonNullElse(conversations, new Conversation[]{}))
+                .filter(c -> startDate == null || dateParser.parseDate(c.date()).isAfter(startDate))
+                .filter(c -> endDate == null || dateParser.parseDate(c.date()).isBefore(endDate))
                 .toArray(Conversation[]::new);
 
         return ArrayUtils.addAll(

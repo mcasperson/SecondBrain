@@ -2,6 +2,7 @@ package secondbrain.infrastructure.gong;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.gong.api.GongCallExtensive;
 import secondbrain.infrastructure.gong.api.GongCallExtensiveContext;
@@ -21,7 +22,7 @@ public class GongClientMock implements GongClient {
     private LlmClient llmClient;
 
     @Override
-    public List<GongCallExtensive> getCallsExtensive(final String company, final String callId, final String username, final String password, final String fromDateTime, final String toDateTime) {
+    public List<GongCallExtensive> getCallsExtensive(final String company, final String callId, final String username, final String password, @Nullable final String fromDateTime, @Nullable final String toDateTime) {
         return List.of(new GongCallExtensive(
                 new GongCallExtensiveMetadata("12345", "https://gong.io/call/12345", "2023-10-01T10:00:00Z"),
                 List.of(new GongCallExtensiveContext("unused", List.of())),

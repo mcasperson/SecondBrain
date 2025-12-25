@@ -1,5 +1,6 @@
 package secondbrain.infrastructure.gong;
 
+import org.jspecify.annotations.Nullable;
 import secondbrain.infrastructure.gong.api.GongCallExtensive;
 
 import java.util.List;
@@ -10,8 +11,8 @@ public interface GongClient {
             String callId,
             String username,
             String password,
-            String fromDateTime,
-            String toDateTime);
+            @Nullable String fromDateTime,
+            @Nullable String toDateTime);
 
     String getCallTranscript(
             String username,

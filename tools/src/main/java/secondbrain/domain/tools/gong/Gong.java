@@ -248,6 +248,7 @@ public class Gong implements Tool<GongCallDetails> {
                 .toList();
     }
 
+    @Nullable
     private MetaObjectResult getMeta(final GongCallExtensive gong, final String name, final String system, final String type, final String field) {
         if (StringUtils.isAnyBlank(system, type, field)) {
             return null;

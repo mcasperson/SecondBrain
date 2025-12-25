@@ -50,6 +50,14 @@ public record RagMultiDocumentContext<T>(@Nullable String prompt,
         this(prompt, instructions, individualContexts, null, debug, null, null);
     }
 
+    public List<RagDocumentContext<T>> getIndividualContexts() {
+        return Objects.requireNonNullElse(individualContexts, List.of());
+    }
+
+    public String getPrompt() {
+        return Objects.requireNonNullElse(prompt, "");
+    }
+
     public String getResponse() {
         return Objects.requireNonNullElse(response, "");
     }
@@ -60,7 +68,7 @@ public record RagMultiDocumentContext<T>(@Nullable String prompt,
 
     @JsonIgnore
     public List<String> generateLinks() {
-        return individualContexts.stream()
+        return getIndividualContexts().stream()
                 .map(RagDocumentContext::link)
                 .filter(Objects::nonNull)
                 .distinct()
@@ -133,7 +141,7 @@ public record RagMultiDocumentContext<T>(@Nullable String prompt,
 
         final int annotationIds = annotations.stream().map(RagSentenceAndOriginal::id).collect(Collectors.toSet()).size();
 
-        return new AnnotationResult<>(result, generateReferences(lookups), (float) annotationIds / individualContexts.size(), this);
+        return new AnnotationResult<>(result, generateReferences(lookups), (float) annotationIds / getIndividualContexts().size(), this);
     }
 
     @JsonIgnore
@@ -179,7 +187,7 @@ public record RagMultiDocumentContext<T>(@Nullable String prompt,
                 .stream()
                 .filter(sentence -> !StringUtils.isBlank(sentence))
                 // find the best match in each context, or no match at all
-                .flatMap(sentence -> individualContexts.stream()
+                .flatMap(sentence -> getIndividualContexts().stream()
                         .map(rag ->
                                 // Ignore any failures to vectorize the sentence
                                 Try.of(() -> rag.getClosestSentence(
@@ -203,7 +211,7 @@ public record RagMultiDocumentContext<T>(@Nullable String prompt,
     public List<MetaObjectResults> generateMetaObjectResults() {
 
         // get all the individual metadata from the RagDocumentContext objects
-        final List<MetaObjectResults> individualMetadata = individualContexts
+        final List<MetaObjectResults> individualMetadata = getIndividualContexts()
                 .stream()
                 .map(RagDocumentContext::getMetadata)
                 .toList();
@@ -216,7 +224,7 @@ public record RagMultiDocumentContext<T>(@Nullable String prompt,
 
     @JsonIgnore
     public List<IntermediateResult> generateIntermediateResults() {
-        return individualContexts
+        return getIndividualContexts()
                 .stream()
                 .flatMap(ragDocumentContext -> ragDocumentContext.getIntermediateResults().stream())
                 .filter(Objects::nonNull)
@@ -231,7 +239,7 @@ public record RagMultiDocumentContext<T>(@Nullable String prompt,
         return new RagMultiDocumentContext<>(
                 prompt,
                 instructions,
-                individualContexts.stream()
+                getIndividualContexts().stream()
                         .map(RagDocumentContext::convertToRagDocumentContextVoid)
                         .toList(),
                 response,

@@ -133,7 +133,7 @@ public class GoogleDocs implements Tool<Void> {
         return "Google Document";
     }
 
-    @SuppressWarnings("NullAway")
+    @SuppressWarnings({"NullAway", "JavaUtilDate"})
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,

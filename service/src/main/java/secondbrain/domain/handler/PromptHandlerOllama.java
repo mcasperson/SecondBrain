@@ -171,7 +171,7 @@ public class PromptHandlerOllama implements PromptHandler {
         }
 
         return System.lineSeparator() + System.lineSeparator() +
-                document.individualContexts()
+                document.getIndividualContexts()
                         .stream()
                         .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.link()))
                         .map(ragDoc -> ragDoc.link() + getRagDocKeywordsSuffix(ragDoc))

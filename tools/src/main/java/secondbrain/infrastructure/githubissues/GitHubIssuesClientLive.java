@@ -76,7 +76,7 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
         return Arrays.stream(issues).toList();
     }
 
-    private GitHubIssue[] getIssuesApi(final String token, final String organisation, final String repo, final String since, final String to, final List<String> labels, final String state, final int page) {
+    private GitHubIssue[] getIssuesApi(final String token, final String organisation, final String repo, @Nullable final String since, @Nullable final String to, final List<String> labels, final String state, final int page) {
         RATE_LIMITER.acquire();
 
         final String target = "https://api.github.com/repos/"
@@ -84,7 +84,7 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
                 + URLEncoder.encode(repo, StandardCharsets.UTF_8) + "/issues" +
                 "?page=" + page +
                 "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8) +
-                "&since=" + URLEncoder.encode(since, StandardCharsets.UTF_8) +
+                "&since=" + URLEncoder.encode(Objects.requireNonNullElse(since, ""), StandardCharsets.UTF_8) +
                 "&labels=" + URLEncoder.encode(String.join(",", labels), StandardCharsets.UTF_8) +
                 "&per_page=100";
 

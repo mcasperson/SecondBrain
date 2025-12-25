@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.planhat;
 
 import jakarta.ws.rs.client.Client;
+import org.jspecify.annotations.Nullable;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
 
@@ -13,8 +14,8 @@ public interface PlanHatClient {
             String company,
             String url,
             String token,
-            ZonedDateTime startDate,
-            ZonedDateTime endDate,
+            @Nullable ZonedDateTime startDate,
+            @Nullable ZonedDateTime endDate,
             int ttlSeconds);
 
     Company getCompany(
