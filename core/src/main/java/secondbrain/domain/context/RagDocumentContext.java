@@ -56,20 +56,24 @@ public record RagDocumentContext<T>(String tool,
                                     @Nullable String link,
                                     @Nullable List<String> keywordMatches) {
 
-    public RagDocumentContext(final String tool, final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T source, final @Nullable String link, final @Nullable List<String> keywordMatches) {
+    public RagDocumentContext(final String tool, final String contextLabel, final String document, final List<RagStringContext> sentences, @Nullable final String id, @Nullable final T source, final @Nullable String link, final @Nullable List<String> keywordMatches) {
         this(tool, contextLabel, document, sentences, id, source, null, null, link, keywordMatches);
     }
 
-    public RagDocumentContext(final String tool, final String contextLabel, final String document, final List<RagStringContext> sentences, final String id) {
+    public RagDocumentContext(final String tool, final String contextLabel, final String document, final List<RagStringContext> sentences, @Nullable final String id) {
         this(tool, contextLabel, document, sentences, id, null, null, null, null, null);
     }
 
-    public RagDocumentContext(final String tool, final String contextLabel, final String document, final List<RagStringContext> sentences, final String id, final @Nullable T source, final @Nullable String link) {
+    public RagDocumentContext(final String tool, final String contextLabel, final String document, final List<RagStringContext> sentences, @Nullable final String id, final @Nullable T source, final @Nullable String link) {
         this(tool, contextLabel, document, sentences, id, source, null, null, link, null);
     }
 
     public RagDocumentContext(final String tool, final String contextLabel, final String document, final List<RagStringContext> sentences) {
         this(tool, contextLabel, document, sentences, "", null, null, null, null, null);
+    }
+
+    public String getId() {
+        return Objects.requireNonNullElse(id, "");
     }
 
     public String getTool() {

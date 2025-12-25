@@ -310,7 +310,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
                 .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, youtubeVideo.document())
-                .addToolCall(getName() + "[" + youtubeVideo.id() + "]");
+                .addToolCall(getName() + "[" + youtubeVideo.getId() + "]");
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
@@ -320,13 +320,13 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                     .recover(ex -> parsedArgs.getDefaultRating())
                     .get();
 
-            metadata.add(new MetaObjectResult(YOUTUBE_FILTER_RATING_META, filterRating, youtubeVideo.id(), getName()));
+            metadata.add(new MetaObjectResult(YOUTUBE_FILTER_RATING_META, filterRating, youtubeVideo.getId(), getName()));
         }
 
         return new MetaObjectResults(
                 metadata,
-                "Youtube-" + youtubeVideo.id() + ".json",
-                youtubeVideo.id());
+                "Youtube-" + youtubeVideo.getId() + ".json",
+                youtubeVideo.getId());
     }
 
     private boolean contextMeetsRating(
@@ -499,6 +499,7 @@ class YoutubeConfig {
             this.context = context;
         }
 
+        @SuppressWarnings("NullAway")
         public String getSecretApiKey() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.

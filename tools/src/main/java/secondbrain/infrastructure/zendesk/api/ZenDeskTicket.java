@@ -9,6 +9,7 @@ import secondbrain.domain.data.UrlData;
 import secondbrain.domain.tooldefs.MetaObjectResult;
 
 import java.util.List;
+import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ZenDeskTicket(String id,
@@ -22,6 +23,22 @@ public record ZenDeskTicket(String id,
                             @Nullable @JsonProperty("created_at") String createdAt) implements TextData, IdData, UrlData {
     public ZenDeskTicket(final String id, final String subject) {
         this(id, null, null, subject, null, null, null, null, null);
+    }
+
+    public String getOrganizationId() {
+        return Objects.requireNonNullElse(organizationId, "");
+    }
+
+    public String getAssigneeId() {
+        return Objects.requireNonNullElse(assigneeId, "");
+    }
+
+    public String getSubmitterId() {
+        return Objects.requireNonNullElse(submitterId, "");
+    }
+
+    public String getCreatedAt() {
+        return Objects.requireNonNullElse(createdAt, "");
     }
 
     public ZenDeskTicket updateComments(final String comments) {
@@ -43,7 +60,7 @@ public record ZenDeskTicket(String id,
 
     @Override
     public String generateId() {
-        return id;
+        return Objects.requireNonNullElse(id, "");
     }
 
     @Override

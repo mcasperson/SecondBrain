@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  */
 public record RagMultiDocumentContext<T>(String prompt,
                                          @Nullable String instructions,
-                                         List<RagDocumentContext<T>> individualContexts,
+                                         @Nullable List<RagDocumentContext<T>> individualContexts,
                                          @Nullable String response,
                                          @Nullable String debug,
                                          @Nullable String annotationPrefix,

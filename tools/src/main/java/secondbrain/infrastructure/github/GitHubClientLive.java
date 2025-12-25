@@ -19,6 +19,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 @ApplicationScoped
@@ -73,14 +75,17 @@ public class GitHubClientLive implements GitHubClient {
 
     @Override
     public GitHubCommitResponse getCommit(final Client client, final String owner, final String repo, final String sha, final String authorization) {
-        return localStorage.getOrPutObject(
-                        GitHubIssuesClientLive.class.getSimpleName(),
-                        "GitHubIssuesV2",
-                        DigestUtils.sha256Hex(owner + repo + sha),
-                        TTL_SECONDS,
-                        GitHubCommitResponse.class,
-                        () -> getCommitApi(client, owner, repo, sha, authorization))
-                .result();
+        return Try.of(() -> localStorage.getOrPutObject(
+                                GitHubIssuesClientLive.class.getSimpleName(),
+                                "GitHubIssuesV2",
+                                DigestUtils.sha256Hex(owner + repo + sha),
+                                TTL_SECONDS,
+                                GitHubCommitResponse.class,
+                                () -> getCommitApi(client, owner, repo, sha, authorization))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Commit not found for sha " + sha + " in repo " + owner + "/" + repo))
+                .get();
     }
 
     private GitHubCommitResponse getCommitApi(final Client client, final String owner, final String repo, final String sha, final String authorization) {
@@ -114,14 +119,17 @@ public class GitHubClientLive implements GitHubClient {
 
     @Override
     public String getDiff(final Client client, final String owner, final String repo, final String sha, final String authorization) {
-        return localStorage.getOrPutObject(
-                        GitHubIssuesClientLive.class.getSimpleName(),
-                        "GitHubIssuesV2",
-                        DigestUtils.sha256Hex(owner + repo + sha),
-                        TTL_SECONDS,
-                        String.class,
-                        () -> getDiffApi(client, owner, repo, sha, authorization))
-                .result();
+        return Try.of(() -> localStorage.getOrPutObject(
+                                GitHubIssuesClientLive.class.getSimpleName(),
+                                "GitHubIssuesV2",
+                                DigestUtils.sha256Hex(owner + repo + sha),
+                                TTL_SECONDS,
+                                String.class,
+                                () -> getDiffApi(client, owner, repo, sha, authorization))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Diff not found for commit " + sha + " in repo " + owner + "/" + repo))
+                .get();
     }
 
     private String getDiffApi(final Client client, final String owner, final String repo, final String sha, final String authorization) {

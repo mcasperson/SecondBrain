@@ -196,16 +196,19 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
-        return localStorage.getOrPutGeneric(
-                        getName(),
-                        getName(),
-                        Integer.toString(cacheKey.hashCode()),
-                        parsedArgs.getCacheTtl(),
-                        List.class,
-                        RagDocumentContext.class,
-                        ZenDeskTicket.class,
-                        () -> getContextPrivate(environmentSettings, prompt, arguments))
-                .result();
+        return Try.of(() -> localStorage.getOrPutGeneric(
+                                getName(),
+                                getName(),
+                                Integer.toString(cacheKey.hashCode()),
+                                parsedArgs.getCacheTtl(),
+                                List.class,
+                                RagDocumentContext.class,
+                                ZenDeskTicket.class,
+                                () -> getContextPrivate(environmentSettings, prompt, arguments))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("No cached context found for key " + cacheKey))
+                .get();
     }
 
     private List<RagDocumentContext<ZenDeskTicket>> getContextPrivate(
@@ -415,10 +418,10 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         List.of(
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ID_ARG, ticket.id(), true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG, ticket.subject(), true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG, ticket.organizationId(), true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_CREATED_AT_ARG, ticket.createdAt(), true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG, ticket.submitterId(), true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ASSIGNEE_ARG, ticket.assigneeId(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ORGANIZATION_ARG, ticket.getOrganizationId(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_CREATED_AT_ARG, ticket.getCreatedAt(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG, ticket.getSubmitterId(), true),
+                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_ASSIGNEE_ARG, ticket.getAssigneeId(), true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_URL_ARG, url, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_EMAIL_ARG, email, true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TOKEN_ARG, token, true),
@@ -980,6 +983,7 @@ class ZenDeskConfig {
                     (getUser() + "/token:" + getSecretToken()).getBytes(UTF_8))).get(), UTF_8);
         }
 
+        @SuppressWarnings("NullAway")
         public String getSecretToken() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
@@ -1006,6 +1010,7 @@ class ZenDeskConfig {
             return url.get();
         }
 
+        @SuppressWarnings("NullAway")
         public String getUser() {
             final Try<String> user = Try.of(() -> getTextEncryptor().decrypt(context.get("zendesk_user")))
                     .recover(e -> context.get("zendesk_user"))
@@ -1028,6 +1033,7 @@ class ZenDeskConfig {
                     (getUser2() + "/token:" + getSecretToken2()).getBytes(UTF_8))).get(), UTF_8);
         }
 
+        @SuppressWarnings("NullAway")
         public String getSecretToken2() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
@@ -1084,6 +1090,7 @@ class ZenDeskConfig {
                     .format(ISO_OFFSET_DATE_TIME);
         }
 
+        @SuppressWarnings("NullAway")
         private Try<String> getContext(final String name, final Map<String, String> context, Encryptor textEncryptor) {
             return Try.of(() -> textEncryptor.decrypt(context.get(name)))
                     .recover(e -> context.get(name))

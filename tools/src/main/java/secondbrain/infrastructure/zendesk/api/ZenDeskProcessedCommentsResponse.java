@@ -10,8 +10,6 @@ import java.util.stream.Collectors;
 
 /**
  * A collection of comments from Zendesk, with individual comments processed replacing IDs with names.
- *
- * @param comments
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ZenDeskProcessedCommentsResponse(List<ZenDeskProcessedCommentResponse> comments) {

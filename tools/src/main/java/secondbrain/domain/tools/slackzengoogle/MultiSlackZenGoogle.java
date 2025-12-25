@@ -27,7 +27,6 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.ToStringGenerator;
-import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.sanitize.SanitizeDocument;
@@ -253,7 +252,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             of the tool running into API limits for the same entities over and over again.
          */
         final List<PositionalEntity> shuffledList = new ArrayList<>(entityDirectory.getPositionalEntities().stream()
-                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.entity.name().toLowerCase()))
+                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.entity.name().toLowerCase(Locale.ROOT)))
                 .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
                 .toList());
         Collections.shuffle(shuffledList);
@@ -288,22 +287,17 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final String cacheKey = generateCacheKey(parsedArgs, prompt);
 
-        final CacheResult<RagMultiDocumentContext> result = localStorage.getOrPutObject(
-                getName(),
-                getName(),
-                cacheKey,
-                parsedArgs.getCacheTtl(),
-                RagMultiDocumentContext.class,
-                () -> callPrivate(environmentSettings, prompt, arguments));
-
-        if (result.fromCache()) {
-            logger.info("Cache hit for " + getName() + " " + cacheKey);
-        } else {
-            logger.info("Cache miss for " + getName() + " " + cacheKey);
-        }
-
-        return result.result()
-                .convertToRagMultiDocumentContextVoid();
+        return Try.of(() -> localStorage.getOrPutObject(
+                                getName(),
+                                getName(),
+                                cacheKey,
+                                parsedArgs.getCacheTtl(),
+                                RagMultiDocumentContext.class,
+                                () -> callPrivate(environmentSettings, prompt, arguments))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.info("No value found for " + getName() + " " + cacheKey))
+                .get();
     }
 
     private String generateCacheKey(final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt) {
@@ -332,7 +326,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                     See https://community.n8n.io/t/psa-extracting-output-from-gemini-models/83374
                     Se we do this manually if required.
                  */
-                .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()).trim()) : ragDoc)
+                .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))) : ragDoc)
                 /*
                     InsufficientContext is expected when there is not enough information to answer the prompt.
                     It is not passed up though, as it is not a failure, but rather a lack of information.

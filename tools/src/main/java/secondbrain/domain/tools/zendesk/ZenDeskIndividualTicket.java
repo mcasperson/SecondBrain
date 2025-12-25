@@ -204,14 +204,14 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
 
     private String getOrganization(final String authHeader, final String url, final ZenDeskTicket meta) {
         // Best effort to get the organization name, but don't treat this as a failure
-        return Try.of(() -> zenDeskClient.getOrganization(authHeader, url, meta.organizationId()))
+        return Try.of(() -> zenDeskClient.getOrganization(authHeader, url, meta.getOrganizationId()))
                 .map(ZenDeskOrganizationItemResponse::name)
                 .getOrElse("Unknown Organization");
     }
 
     private String getUser(final String authHeader, final String url, final ZenDeskTicket meta) {
         // Best effort to get the username, but don't treat this as a failure
-        return Try.of(() -> zenDeskClient.getUser(authHeader, url, meta.assigneeId()))
+        return Try.of(() -> zenDeskClient.getUser(authHeader, url, meta.getAssigneeId()))
                 .map(ZenDeskUserItemResponse::name)
                 .getOrElse("Unknown User");
     }
@@ -223,7 +223,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     @Nullable
     private String getOrganizationName(final ZenDeskTicket meta, final String authHeader, final String url) {
         return Try
-                .of(() -> zenDeskClient.getOrganization(authHeader, url, meta.organizationId()))
+                .of(() -> zenDeskClient.getOrganization(authHeader, url, meta.getOrganizationId()))
                 .map(ZenDeskOrganizationItemResponse::name)
                 // Do a best effort here - we don't want to fail the whole process because we can't get the organization name
                 .getOrNull();
@@ -479,6 +479,7 @@ class ZenDeskTicketConfig {
             this.context = context;
         }
 
+        @SuppressWarnings("NullAway")
         private Try<String> getContext(final String name, final Map<String, String> context, Encryptor textEncryptor) {
             return Try.of(() -> textEncryptor.decrypt(context.get(name)))
                     .recover(e -> context.get(name))
@@ -556,6 +557,7 @@ class ZenDeskTicketConfig {
                     (getUser() + "/token:" + getSecretToken()).getBytes(UTF_8))).get(), UTF_8);
         }
 
+        @SuppressWarnings("NullAway")
         public String getSecretToken() {
             final String argument = getArgsAccessor().getArgument(
                     getConfigZenDeskAccessToken()::get,
@@ -598,6 +600,7 @@ class ZenDeskTicketConfig {
             return url.get();
         }
 
+        @SuppressWarnings("NullAway")
         public String getUser() {
             final String argument = getArgsAccessor().getArgument(
                     getConfigZenDeskUser()::get,
