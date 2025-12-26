@@ -150,10 +150,6 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         return exceptionMapping.map(result).get();
     }
 
-    private String ticketToMetaFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
-        return "ZenDesk-" + ticket.id() + ".json";
-    }
-
     private String ticketToFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
         return "ZenDesk-" + ticket.id() + ".txt";
     }

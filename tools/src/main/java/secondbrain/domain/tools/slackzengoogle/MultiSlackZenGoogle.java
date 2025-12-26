@@ -32,7 +32,6 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
-import secondbrain.domain.tools.alias.AliasTool;
 import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
@@ -167,9 +166,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private RatingTool ratingTool;
-
-    @Inject
-    private AliasTool aliasTool;
 
     @Inject
     @Preferred
@@ -315,7 +311,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragContext -> mergeContext(
                         prompt,
-                        INSTRUCTIONS + "\n" + parsedArgs.getAdditionalSystemPrompt(),
+                        getInstructions(ragContext)
+                                + "\n" + parsedArgs.getAdditionalSystemPrompt(),
                         ragContext,
                         parsedArgs))
                 .map(ragDoc -> llmClient.callWithCache(
@@ -342,14 +339,14 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return exceptionMapping.map(result).get();
     }
 
-    private String getInstructions(final RagMultiDocumentContext<Void> multiRagDoc) {
+    private String getInstructions(final List<RagDocumentContext<Void>> individualContexts) {
         return INSTRUCTIONS
-                + getAdditionalSlackInstructions(multiRagDoc.individualContexts())
-                + getAdditionalPlanHatInstructions(multiRagDoc.individualContexts())
-                + getAdditionalGoogleDocsInstructions(multiRagDoc.individualContexts())
-                + getAdditionalGongInstructions(multiRagDoc.individualContexts())
-                + getAdditionalSalesforceInstructions(multiRagDoc.individualContexts())
-                + getAdditionalZenDeskInstructions(multiRagDoc.individualContexts());
+                + getAdditionalSlackInstructions(individualContexts)
+                + getAdditionalPlanHatInstructions(individualContexts)
+                + getAdditionalGoogleDocsInstructions(individualContexts)
+                + getAdditionalGongInstructions(individualContexts)
+                + getAdditionalSalesforceInstructions(individualContexts)
+                + getAdditionalZenDeskInstructions(individualContexts);
     }
 
     private List<RagDocumentContext<Void>> validateSufficientContext(final List<RagDocumentContext<Void>> ragContext, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
@@ -859,17 +856,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
                 .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
-    }
-
-    private List<String> getAliases(final String name) {
-        return Try.of(() -> aliasTool.call(Map.of(), name, List.of()))
-                .map(doc -> jsonDeserializer.deserialize(doc.getResponse(), String[].class))
-                .map(array -> Arrays.stream(array)
-                        .filter(StringUtils::isNotBlank)
-                        .toList())
-                .onFailure(InternalFailure.class, ex -> logger.warning("Getting aliases failed: " + ex.getMessage()))
-                .getOrElse(List::of);
-
     }
 
     private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {

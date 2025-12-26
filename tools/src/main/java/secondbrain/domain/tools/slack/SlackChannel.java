@@ -6,7 +6,6 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -28,14 +27,12 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -259,27 +256,6 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                 .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
-    private RagDocumentContext<Void> getDocumentContext(final TrimResult trimResult, final SlackChannelResource channelDetails, final Map<String, String> environmentSettings, final SlackChannelConfig.LocalArguments parsedArgs) {
-        return Try.of(() -> sentenceSplitter.splitDocument(trimResult.document(), 10))
-                // Strip out any URLs from the sentences
-                .map(sentences -> sentences.stream().map(sentence -> removeMarkdnUrls.sanitize(sentence)).toList())
-                .map(sentences -> new RagDocumentContext<Void>(
-                        getName(),
-                        getContextLabel(),
-                        trimResult.document(),
-                        sentenceVectorizer.vectorize(sentences, parsedArgs.getEntity()),
-                        channelDetails.channelName(),
-                        null,
-                        matchToUrl(channelDetails),
-                        trimResult.keywordMatches()))
-                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Slack" + ragDoc.id() + ".txt")))
-                .map(doc -> parsedArgs.getSummarizeDocument()
-                        ? getDocumentSummary(doc, environmentSettings, parsedArgs)
-                        : doc)
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
-                .get();
-    }
-
     private String replaceUserIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
         final Pattern userPattern = Pattern.compile("<@(?<username>\\w+)>");
 
@@ -328,33 +304,6 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                  If any of the previous steps failed, we return the original messages.
                  */
                 .getOrElse(messages);
-    }
-
-    private RagDocumentContext<Void> getDocumentSummary(final RagDocumentContext<Void> ragDoc, final Map<String, String> environmentSettings, final SlackChannelConfig.LocalArguments parsedArgs) {
-        final RagDocumentContext<String> context = new RagDocumentContext<>(
-                getName(),
-                getContextLabel(),
-                ragDoc.document(),
-                List.of()
-        );
-
-        final String response = llmClient.callWithCache(
-                new RagMultiDocumentContext<>(parsedArgs.getDocumentSummaryPrompt(),
-                        "You are a helpful agent",
-                        List.of(context)),
-                environmentSettings,
-                getName()
-        ).getResponse();
-
-        return ragDoc.updateDocument(response)
-                .addIntermediateResult(new IntermediateResult(
-                        "Prompt: " + parsedArgs.getDocumentSummaryPrompt() + "\n\n" + response,
-                        "Slack" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getDocumentSummaryPrompt()) + ".txt"
-                ));
-    }
-
-    private String matchToUrl(final SlackChannelResource channel) {
-        return "[Slack " + channel.channelName() + "](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")";
     }
 }
 

@@ -41,16 +41,6 @@ public class ZenDeskClientMock implements ZenDeskClient {
         );
     }
 
-    private List<ZenDeskTicket> getTickets(
-            final String authorization,
-            final String url,
-            final String query,
-            final int page,
-            final int maxPage,
-            final int ttlSeconds) {
-        return generateMockTickets(page < maxPage ? 5 : 2);
-    }
-
     @Override
     public ZenDeskCommentsResponse getComments(
             final String authorization,

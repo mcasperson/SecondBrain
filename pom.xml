@@ -345,7 +345,7 @@
                         <compilerArgs>
                             <arg>-XDcompilePolicy=simple</arg>
                             <arg>-Xplugin:ErrorProne -XepOpt:NullAway:AnnotatedPackages=secondbrain -Xep:NullAway:ERROR
-                                -Xep:StringSplitter:OFF -Xep:MissingOverride:OFF -Xep:UnusedMethod:OFF
+                                -Xep:StringSplitter:OFF -Xep:MissingOverride:OFF
                                 -Xep:UnusedVariable:OFF -Xep:DefaultCharset:OFF
                             </arg>
                             <arg>--should-stop=ifError=FLOW</arg>
