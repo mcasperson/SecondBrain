@@ -1,10 +1,10 @@
-SecondBrain is a CLI tool to access and filter data from external data sources such as Salesforce, 
+SecondBrain is a CLI tool to access and filter data from external data sources such as Salesforce,
 ZenDesk, Slack, Gong and others, and then query that data using an LLM.
 
-This tool uses Retrieval Augmented Generation (RAG) techniques to pull in relevant data from external sources, 
+This tool uses Retrieval Augmented Generation (RAG) techniques to pull in relevant data from external sources,
 filter it based on keywords, and then pass that data to a Large Language Model (LLM) for analysis.
 
-This is useful for generating reports, summaries, and insights from multiple and otherwise disconnected 
+This is useful for generating reports, summaries, and insights from multiple and otherwise disconnected
 data sources.
 
 ## Building
@@ -23,7 +23,8 @@ Build the project using Maven:
 
 ## LLM Backend
 
-The easiest way to get started is to use Ollama as the LLM backend. Install Ollama from https://ollama.com and then pull the 
+The easiest way to get started is to use Ollama as the LLM backend. Install Ollama from https://ollama.com and then pull
+the
 `nemotron-3-nano:30b` model:
 
 ```bash
@@ -34,10 +35,14 @@ You are free to use a variety of models, but I have found the nemotron and qwen3
 
 ## Directory Scan Example
 
-The directory scan tools allows you to scan a directory of files for keywords, extract relevant text, and then ask questions about the data found. This is useful when you need to analyze a collection of documents, such as PDFs, Word documents, or text files.
+The directory scan tools allows you to scan a directory of files for keywords, extract relevant text, and then ask
+questions about the data found. This is useful when you need to analyze a collection of documents, such as PDFs, Word
+documents, or text files.
 
-Run the `DirectoryScan` tool against the PDF files in the `samples` directory, looking for keywords "AI", "Kubernetes", and "K8s", and then ask a question about the data found. 
-Replace the `replaceme` values with your Azure AI Foundry API key and endpoint URL, and also replace `Phi-4` with the model you wish to use:
+Run the `DirectoryScan` tool against the PDF files in the `samples` directory, looking for keywords "AI", "Kubernetes",
+and "K8s", and then ask a question about the data found.
+Replace the `replaceme` values with your Azure AI Foundry API key and endpoint URL, and also replace `Phi-4` with the
+model you wish to use:
 
 ```bash
 java \
@@ -49,7 +54,7 @@ java \
     "-Dsb.directoryscan.directory=samples" \
     "-Dsb.directoryscan.keywords=AI,Kubernetes,K8s" \
     -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
-    "What percentage of AI deployments use Kubernetes or K8s for orchestration?"
+    "What percentage of AI developers are cloud native?"
 ```
 
 This command runs the example with Ollama:
@@ -59,11 +64,12 @@ ollama pull nemotron-3-nano:30b
 java \
     "-Dsb.llm.client=ollama" \
     "-Dsb.ollama.model=nemotron-3-nano:30b" \
+    "-Dsb.ollama.contextwindow=100000" \
     "-Dsb.tools.force=DirectoryScan" \
     "-Dsb.directoryscan.directory=samples" \
     "-Dsb.directoryscan.keywords=AI,Kubernetes,K8s" \
     -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
-    "What percentage of AI deployments use Kubernetes or K8s for orchestration?"
+    "What percentage of AI developers are cloud native?"
 ```
 
 ## GitHub Diff Example
@@ -97,11 +103,11 @@ java \
 
 ## YouTube Transcript Example
 
-This example downloads the transcripts from videos from a 
-[YouTube playlist](https://www.youtube.com/watch?v=ceV3RsG946s&list=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj) 
+This example downloads the transcripts from videos from a
+[YouTube playlist](https://www.youtube.com/watch?v=ceV3RsG946s&list=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj)
 trims the transcripts to the keywords, and then generates a summary of the AI related news from those videos.
 
-Note that this is a fairly slow process as the YouTube API is heavily rate limited. We process 2 videos a minute, 
+Note that this is a fairly slow process as the YouTube API is heavily rate limited. We process 2 videos a minute,
 so this command may take up to 5 minutes to complete:
 
 ```bash
@@ -138,7 +144,7 @@ java \
 The `ZenDeskOrganization` tool connects to a ZenDesk instance, retrieves support tickets from the specified
 number of days, and passes the relevant data to the LLM for analysis.
 
-Here is the command using Azure AI Foundry. Replace the `replaceme` values with your Azure AI Foundry API 
+Here is the command using Azure AI Foundry. Replace the `replaceme` values with your Azure AI Foundry API
 key and endpoint URL, and also replace `Phi-4` with the model you wish to use:
 
 ```bash
@@ -210,18 +216,19 @@ java \
     -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
     "Summarize the common topics discussed in the last 30 days."
 ```
-    
+
 ## Meta Tool Example
 
-The `Meta` tool combines the results of multiple tools into a single report. 
-This is useful when you need to aggregate data from multiple sources and then ask questions about the 
+The `Meta` tool combines the results of multiple tools into a single report.
+This is useful when you need to aggregate data from multiple sources and then ask questions about the
 combined data.
 
-In this example we combine the `YoutubePlaylist` and `DirectoryScan` tools to generate a 
+In this example we combine the `YoutubePlaylist` and `DirectoryScan` tools to generate a
 summary of AI related news from both YouTube videos and PDF reports in the `samples` directory.
 
 Note the use of the `contextMetaField` and `contextMetaPrompt` parameters to add additional context to the report.
-The results of the prompts are captured in the file called `meta.json` which can be reviewed after the command completes.
+The results of the prompts are captured in the file called `meta.json` which can be reviewed after the command
+completes.
 This is useful when the results of this operation are consumed by another process. For example, you could build
 a report that indicated which documents mentioned Python or Kubernetes based on the results of the context meta prompts:
 
@@ -253,7 +260,7 @@ To enable more verbose logging, you must create a file like the following:
 
 ```properties
 # Edd the console handler
-handlers = java.util.logging.ConsoleHandler
+handlers=java.util.logging.ConsoleHandler
 # Enabling FINE level logging
 java.util.logging.ConsoleHandler.level=FINE
 # Infrastructure classes interact with external systems
@@ -280,10 +287,10 @@ java \
 
 ## Building your own tools
 
-You can build your own tools by implementing the `Tool` interface found in the 
+You can build your own tools by implementing the `Tool` interface found in the
 `secondbrain-core` module.
 
-See the [HelloWorld](tools/src/main/java/secondbrain/domain/tools/helloworld/HelloWorld.java) tool 
+See the [HelloWorld](tools/src/main/java/secondbrain/domain/tools/helloworld/HelloWorld.java) tool
 for an example of how to build your own tool.
 
 ```bash
@@ -310,6 +317,7 @@ The project is split into modules:
 
 ## Awards
 
-SecondBrain was awarded second place in the [Payara Hackathon - Generative AI on Jakarta EE](https://www.linkedin.com/posts/payara_the-power-up-your-jakarta-ee-with-ai-hackathon-activity-7275895257563607040-lOnn?utm_source=share&utm_medium=member_desktop)!
+SecondBrain was awarded second place in
+the [Payara Hackathon - Generative AI on Jakarta EE](https://www.linkedin.com/posts/payara_the-power-up-your-jakarta-ee-with-ai-hackathon-activity-7275895257563607040-lOnn?utm_source=share&utm_medium=member_desktop)!
 
 ![](award.png)
