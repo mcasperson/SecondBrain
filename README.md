@@ -60,11 +60,11 @@ java \
 This command runs the example with Ollama:
 
 ```bash
-ollama pull nemotron-3-nano:30b
+ollama pull qwen3:30b-a3b
 java \
     "-Dsb.llm.client=ollama" \
-    "-Dsb.ollama.model=nemotron-3-nano:30b" \
-    "-Dsb.ollama.contextwindow=100000" \
+    "-Dsb.ollama.model=qwen3:30b-a3b" \
+    "-Dsb.ollama.contextwindow=30000" \
     "-Dsb.tools.force=DirectoryScan" \
     "-Dsb.directoryscan.directory=samples" \
     "-Dsb.directoryscan.keywords=AI,Kubernetes,K8s" \
