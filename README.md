@@ -31,7 +31,7 @@ the
 ollama pull qwen3:30b-a3b
 ```
 
-You are free to use a variety of models, but I have found the nemotron and qwen3 models to be some of the best.
+You are free to use a variety of models, but I have found the qwen3 models to be some of the best.
 
 ## Directory Scan Example
 
