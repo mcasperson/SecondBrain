@@ -241,15 +241,14 @@ java \
      "-Dsb.tools.force=Meta" \
      "-Dsb.meta.toolNames=YoutubePlaylist,DirectoryScan" \
      "-Dsb.meta.metareport=meta.json" \
+     "-Dsb.meta.keywords=AI,LLM,MCP,Agent,K8s" \
      "-Dsb.meta.contextMetaField1=Python" \
      "-Dsb.meta.contextMetaPrompt1=Does the content describe anything related to the Python programming language?" \
      "-Dsb.meta.contextMetaField2=Kubernetes" \
      "-Dsb.meta.contextMetaPrompt2=Does the content describe anything related to Kubernetes?" \
      "-Dsb.youtube.playlistId=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj" \
      "-Dsb.youtube.maxvideos=10" \
-     "-Dsb.youtube.keywords=AI,LLM,MCP,Agent" \
      "-Dsb.directoryscan.directory=samples" \
-     "-Dsb.directoryscan.keywords=AI,Kubernetes,K8s" \
      -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
      "Write a 3 paragraph summary of the AI related news from the YouTube videos and PDF reports."
 ```
