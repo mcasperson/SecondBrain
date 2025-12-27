@@ -6,11 +6,11 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.constants.ModelRegex;
 
 @ApplicationScoped
-public class PromptBuilderGranite implements PromptBuilder {
+public class PromptBuilderGpt implements PromptBuilder {
 
     @Override
     public String modelRegex() {
-        return ModelRegex.GRANITE_REGEX;
+        return ModelRegex.OSS_REGEX;
     }
 
     @Override
@@ -20,34 +20,34 @@ public class PromptBuilderGranite implements PromptBuilder {
         }
 
         if (StringUtils.isBlank(title)) {
-            return "<|start_of_role|>system<|end_of_role|>\n"
+            return "<|start|>system<|message|>\n"
                     + prompt
-                    + "\n<|end_of_text|>";
+                    + "\n";
         }
 
-        return "<|start_of_role|>system<|end_of_role|>\n"
+        return "<|start|>system<|message|>\n"
                 + title + ":\n"
                 + prompt
-                + "\n<|end_of_text|>";
+                + "\n";
     }
 
     @Override
     public String buildFinalPrompt(@Nullable final String instructions, final String context, final String prompt) {
         if (StringUtils.isBlank(instructions)) {
             return context
-                    + "\n<|start_of_role|>user<|end_of_role|>\n"
+                    + "\n<|start|>user<|message|>\n"
                     + prompt
-                    + "\n<|end_of_text|>\n"
-                    + "<|start_of_role|>assistant<|end_of_role|>\n";
+                    + "\n"
+                    + "<|start|>assistant\n";
         }
 
         return context
-                + "<|start_of_role|>system<|end_of_role|>\n"
+                + "<|start|>system<|message|>\n"
                 + instructions
-                + "\n<|end_of_text|>\n"
-                + "\n<|start_of_role|>user<|end_of_role|>\n"
+                + "\n"
+                + "\n<|start|>user<|message|>\n"
                 + prompt
-                + "\n<|end_of_text|>\n"
-                + "<|start_of_role|>assistant<|end_of_role|>\n";
+                + "\n"
+                + "<|start|>assistant\n";
     }
 }

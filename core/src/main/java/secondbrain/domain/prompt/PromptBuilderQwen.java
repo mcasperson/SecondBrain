@@ -1,19 +1,28 @@
 package secondbrain.domain.prompt;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.constants.ModelRegex;
+
+import java.util.Optional;
 
 /**
- * See <a href="https://www.ibm.com/granite/docs/use-cases/prompt-engineering">prompt engineering</a>
+ * See <a href="https://ollama.com/library/qwen2/blobs/62fbfd9ed093">qwen2</a>
  * for the template format.
  */
 @ApplicationScoped
 public class PromptBuilderQwen implements PromptBuilder {
 
+    @Inject
+    @ConfigProperty(name = "sb.qwen.thinking", defaultValue = "false")
+    private Optional<String> thinking;
+
     @Override
     public String modelRegex() {
-        return "^granite4.*$";
+        return ModelRegex.QWEN_REGEX;
     }
 
     @Override
@@ -23,34 +32,46 @@ public class PromptBuilderQwen implements PromptBuilder {
         }
 
         if (StringUtils.isBlank(title)) {
-            return "<|start_of_role|>system<|end_of_role|>\n"
-                    + prompt
-                    + "\n<|end_of_text|>";
+            return "---------------------\n"
+                    + prompt + "\n"
+                    + "---------------------";
         }
 
-        return "<|start_of_role|>system<|end_of_role|>\n"
+        return "---------------------\n"
                 + title + ":\n"
-                + prompt
-                + "\n<|end_of_text|>";
+                + prompt + "\n"
+                + "---------------------";
     }
 
     @Override
     public String buildFinalPrompt(@Nullable final String instructions, final String context, final String prompt) {
         if (StringUtils.isBlank(instructions)) {
-            return context
-                    + "\n<|start_of_role|>user<|end_of_role|>\n"
+            return StringUtils.trim(context)
+                    + "\n<|im_end|>\n"
+                    + "\n<|im_start|>user\n"
                     + prompt
-                    + "\n<|end_of_text|>\n"
-                    + "<|start_of_role|>assistant<|end_of_role|>\n";
+                    + "\n<|im_end|>"
+                    + "\n<|im_start|>assistant";
         }
 
-        return context
-                + "<|start_of_role|>system<|end_of_role|>\n"
-                + instructions
-                + "\n<|end_of_text|>\n"
-                + "\n<|start_of_role|>user<|end_of_role|>\n"
+        return "<|im_start|>system\n"
+                + StringUtils.trim(context)
+                + "\n"
+                + StringUtils.trim(instructions)
+                + "\n<|im_end|>\n"
+                + "\n<|im_start|>user\n"
                 + prompt
-                + "\n<|end_of_text|>\n"
-                + "<|start_of_role|>assistant<|end_of_role|>\n";
+                + "\n<|im_end|>"
+                + getThinking()
+                + "\n<|im_start|>assistant";
+    }
+
+    private String getThinking() {
+        return thinking != null && !Boolean.parseBoolean(thinking.orElse("false"))
+                ? """
+                <|im_start|>system
+                \\no_think
+                <|im_end|>""".stripIndent()
+                : "";
     }
 }
