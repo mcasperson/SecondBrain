@@ -31,6 +31,7 @@ import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.salesforce.SalesforceClient;
@@ -51,26 +52,13 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
  */
 @ApplicationScoped
 public class Salesforce implements Tool<SalesforceTaskRecord> {
-    public static final String ENTITY_NAME_CONTEXT_ARG = "entityName";
-    public static final String FILTER_QUESTION_ARG = "contentRatingQuestion";
-    public static final String FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
-    public static final String ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
-    public static final String DEFAULT_RATING_ARG = "ticketDefaultRating";
-    public static final String SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
-    public static final String SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
     public static final String DOMAIN = "domain";
-    public static final String KEYWORD_ARG = "keywords";
-    public static final String KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String ACCOUNT_ID = "accountId";
     public static final String CLIENT_SECRET = "clientSecret";
     public static final String CLIENT_ID = "clientId";
-    public static final String DAYS_ARG = "days";
     public static final String HOURS_ARG = "hours";
     public static final String START_PERIOD_ARG = "start";
     public static final String END_PERIOD_ARG = "end";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     public static final String OPPORTUNITY_ATTRIBUTE_1_ARG = "opportunityAttribute1";
     public static final String OPPORTUNITY_ATTRIBUTE_1_NAME_ARG = "opportunityAttributeName";
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
@@ -544,8 +532,8 @@ class SalesforceConfig {
                     getConfigSalesforceDays()::get,
                     arguments,
                     context,
-                    Salesforce.DAYS_ARG,
-                    Salesforce.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
                     "0");
         }
 
@@ -650,8 +638,8 @@ class SalesforceConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            Salesforce.FILTER_QUESTION_ARG,
-                            Salesforce.FILTER_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }
@@ -661,8 +649,8 @@ class SalesforceConfig {
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    Salesforce.FILTER_MINIMUM_RATING_ARG,
-                    Salesforce.FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
@@ -674,8 +662,8 @@ class SalesforceConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    Salesforce.DEFAULT_RATING_ARG,
-                    Salesforce.DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
@@ -687,8 +675,8 @@ class SalesforceConfig {
                     getConfigContextFilterGreaterThan()::get,
                     arguments,
                     context,
-                    Salesforce.ENSURE_GREATER_THAN_PROMPT_ARG,
-                    Salesforce.ENSURE_GREATER_THAN_PROMPT_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -699,8 +687,8 @@ class SalesforceConfig {
                     getConfigSummarizeDocument()::get,
                     arguments,
                     context,
-                    Salesforce.SUMMARIZE_DOCUMENT_ARG,
-                    Salesforce.SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -713,8 +701,8 @@ class SalesforceConfig {
                             getConfigSummarizeDocumentPrompt()::get,
                             arguments,
                             context,
-                            Salesforce.SUMMARIZE_DOCUMENT_PROMPT_ARG,
-                            Salesforce.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
                     .getSafeValue();
         }
@@ -725,8 +713,8 @@ class SalesforceConfig {
                     null,
                     null,
                     context,
-                    null,
-                    Salesforce.ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     "").getSafeValue();
         }
 
@@ -748,8 +736,8 @@ class SalesforceConfig {
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            Salesforce.KEYWORD_ARG,
-                            Salesforce.KEYWORD_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -762,8 +750,8 @@ class SalesforceConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    Salesforce.KEYWORD_WINDOW_ARG,
-                    Salesforce.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -774,8 +762,8 @@ class SalesforceConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    Salesforce.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    Salesforce.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -784,8 +772,8 @@ class SalesforceConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    Salesforce.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    Salesforce.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -794,8 +782,8 @@ class SalesforceConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    Salesforce.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    Salesforce.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -832,3 +820,4 @@ class SalesforceConfig {
         }
     }
 }
+

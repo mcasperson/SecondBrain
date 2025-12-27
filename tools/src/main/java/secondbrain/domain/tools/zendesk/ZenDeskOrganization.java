@@ -37,8 +37,7 @@ import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.tools.gong.Gong;
-import secondbrain.domain.tools.planhat.PlanHat;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
@@ -66,27 +65,18 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String EXCLUDE_SUBMITTERS_ARG = "excludeSubmitters";
     public static final String RECIPIENT_ARG = "recipient";
     public static final String NUM_COMMENTS_ARG = "numComments";
-    public static final String DAYS_ARG = "days";
     public static final String HOURS_ARG = "hours";
     public static final String START_PERIOD_ARG = "start";
     public static final String END_PERIOD_ARG = "end";
-    public static final String ZENDESK_KEYWORD_ARG = "keywords";
-    public static final String ZENDESK_KEYWORD_WINDOW_ARG = "keywordWindow";
-    public static final String ZENDESK_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String ZENDESK_TICKET_SUMMARY_PROMPT_ARG = "ticketSummaryPrompt";
     public static final String ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG = "ticketFilterQuestion";
     public static final String ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG = "ticketFilterMinimumRating";
-    public static final String ZENDESK_ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
     public static final String ZENDESK_SUMMARIZE_TICKET_ARG = "summarizeTicket";
     public static final String ZENDESK_MAX_TICKETS_ARG = "maxTickets";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
     public static final String ZENDESK_HISTORY_TTL_ARG = "historyTtl";
     public static final String ZENDESK_URL2_ARG = "url2";
     public static final String ZENDESK_USER2_ARG = "user2";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
-
 
     private static final String INSTRUCTIONS = """
             You are an expert in reading help desk tickets.
@@ -170,12 +160,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public List<ToolArguments> getArguments() {
         return List.of(new ToolArguments(ZENDESK_ORGANIZATION_ARG, "An optional name of the organization", ""),
                 new ToolArguments(EXCLUDE_ORGANIZATION_ARG, "An optional comma separated list of organizations to exclude", ""),
-                new ToolArguments(ZENDESK_KEYWORD_ARG, "The keywords to limit the emails to", ""),
-                new ToolArguments(ZENDESK_KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to limit the emails to", ""),
+                new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
                 new ToolArguments(EXCLUDE_SUBMITTERS_ARG, "An optional comma separated list of submitters to exclude", ""),
                 new ToolArguments(RECIPIENT_ARG, "An optional recipient email address that tickets must be sent to", ""),
                 new ToolArguments(NUM_COMMENTS_ARG, "The optional number of comments to include in the context", "1"),
-                new ToolArguments(DAYS_ARG, "The optional number of days worth of tickets to return", "0"),
+                new ToolArguments(CommonArguments.DAYS_ARG, "The optional number of days worth of tickets to return", "0"),
                 new ToolArguments(HOURS_ARG, "The optional number of hours worth of tickets to return", "0"));
     }
 
@@ -912,8 +902,8 @@ class ZenDeskConfig {
                     getConfigZenDeskDays()::get,
                     arguments,
                     context,
-                    ZenDeskOrganization.DAYS_ARG,
-                    ZenDeskOrganization.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
                     "0");
         }
 
@@ -1120,8 +1110,8 @@ class ZenDeskConfig {
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            ZenDeskOrganization.ZENDESK_KEYWORD_ARG,
-                            ZenDeskOrganization.ZENDESK_KEYWORD_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -1133,8 +1123,8 @@ class ZenDeskConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG,
-                    ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -1146,7 +1136,7 @@ class ZenDeskConfig {
                     null,
                     context,
                     null,
-                    ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     "").getSafeValue();
         }
 
@@ -1209,8 +1199,8 @@ class ZenDeskConfig {
                     getConfigTicketFilterDefaultRating()::get,
                     arguments,
                     context,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
-                    ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
@@ -1222,8 +1212,8 @@ class ZenDeskConfig {
                     getConfigContextFilterGreaterThan()::get,
                     arguments,
                     context,
-                    ZenDeskOrganization.ZENDESK_ENSURE_GREATER_THAN_PROMPT_ARG,
-                    ZenDeskOrganization.ZENDESK_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -1234,8 +1224,8 @@ class ZenDeskConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -1244,8 +1234,8 @@ class ZenDeskConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -1254,8 +1244,8 @@ class ZenDeskConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -1264,8 +1254,8 @@ class ZenDeskConfig {
                     getConfigTtlSeconds()::get,
                     arguments,
                     context,
-                    Gong.TTL_SECONDS_ARG,
-                    Gong.TTL_SECONDS_ARG,
+                    ZenDeskOrganization.TTL_SECONDS,
+                    ZenDeskOrganization.TTL_SECONDS,
                     DEFAULT_TOOL_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));

@@ -21,6 +21,7 @@ import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.github.GitHubDiffs;
 import secondbrain.domain.tools.github.GitHubIssues;
 import secondbrain.domain.tools.slack.SlackChannel;
@@ -169,12 +170,12 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(SlackChannel.SLACK_CHANNEL_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
-                        new ToolArgs(SlackChannel.SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
-                        new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
-                        new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
-                        new ToolArgs(SlackChannel.DAYS_ARG, "" + parsedArgs.getDays(), true)))
+                        new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt, args))
                         .onFailure(InternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -193,8 +194,8 @@ public class GitHubSlackPublicFile implements Tool<Void> {
         return entity.getIssues()
                 .stream()
                 .map(id -> List.of(
-                        new ToolArgs(GitHubIssues.GITHUB_ISSUE_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
-                        new ToolArgs(GitHubIssues.GITHUB_ISSUE_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(GitHubIssues.GITHUB_SUMMARIZE_ISSUE_ARG, "" + !id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()).isBlank(), true),
                         new ToolArgs(GitHubIssues.GITHUB_ISSUE_SUMMARY_PROMPT_ARG, id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()), true),
                         new ToolArgs(GitHubIssues.GITHUB_ORGANIZATION_ARG, id.organization(), true),

@@ -20,6 +20,7 @@ import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.yaml.YamlDeserializer;
 
 import java.util.*;
@@ -153,7 +154,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
                 .of(() -> List.of(new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true)))
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(
-                        addItemToMap(context, SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
+                        addItemToMap(context, CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
                         prompt,
                         args))
                 // We continue on even if one tool fails, so log and swallow the exception

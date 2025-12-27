@@ -37,6 +37,7 @@ import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
@@ -52,21 +53,12 @@ import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
 public class SlackSearch implements Tool<SlackSearchResultResource> {
-    public static final String SLACK_FILTER_QUESTION_ARG = "contentRatingQuestion";
-    public static final String SLACK_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
-    public static final String SLACK_ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
-    public static final String SLACK_SEARCH_DAYS_ARG = "days";
     public static final String SLACK_SEARCH_KEYWORDS_ARG = "searchKeywords";
     public static final String SLACK_SEARCH_FILTER_KEYWORDS_ARG = "keywords";
-    public static final String SLACK_ENTITY_NAME_CONTEXT_ARG = "entityName";
     public static final String SLACK_IGNORE_CHANNELS_ARG = "ignoreChannels";
     public static final String API_DELAY_ARG = "apiDelay";
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String SLACK_GENERATE_KEYWORDS_ARG = "generateKeywords";
-    public static final String SLACK_DEFAULT_RATING_ARG = "defaultRating";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
 
     private static final String INSTRUCTIONS = """
@@ -498,8 +490,8 @@ class SlackSearchConfig {
                     getConfigDays()::get,
                     arguments,
                     context,
-                    SlackSearch.SLACK_SEARCH_DAYS_ARG,
-                    SlackSearch.SLACK_SEARCH_DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
                     "").getSafeValue();
 
             return Try.of(() -> stringValue)
@@ -561,8 +553,8 @@ class SlackSearchConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
-                    SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -575,7 +567,7 @@ class SlackSearchConfig {
                     null,
                     context,
                     null,
-                    SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     "").getSafeValue();
         }
 
@@ -585,8 +577,8 @@ class SlackSearchConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            SlackSearch.SLACK_FILTER_QUESTION_ARG,
-                            SlackSearch.SLACK_FILTER_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }
@@ -597,8 +589,8 @@ class SlackSearchConfig {
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    SlackSearch.SLACK_FILTER_MINIMUM_RATING_ARG,
-                    SlackSearch.SLACK_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
@@ -610,8 +602,8 @@ class SlackSearchConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    SlackSearch.SLACK_DEFAULT_RATING_ARG,
-                    SlackSearch.SLACK_DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
@@ -623,8 +615,8 @@ class SlackSearchConfig {
                     getConfigContextFilterGreaterThan()::get,
                     arguments,
                     context,
-                    SlackSearch.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
-                    SlackSearch.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -635,8 +627,8 @@ class SlackSearchConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    SlackSearch.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    SlackSearch.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -645,8 +637,8 @@ class SlackSearchConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    SlackSearch.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    SlackSearch.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -655,8 +647,8 @@ class SlackSearchConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    SlackSearch.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    SlackSearch.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
 

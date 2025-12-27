@@ -2,7 +2,6 @@ package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
 import com.slack.api.methods.AsyncMethodsClient;
-import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -20,8 +19,6 @@ import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.context.SentenceSplitter;
-import secondbrain.domain.context.SentenceVectorizer;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
@@ -32,10 +29,10 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
-import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
 import secondbrain.infrastructure.slack.api.SlackChannelResource;
@@ -49,22 +46,9 @@ import java.util.stream.Stream;
 
 @ApplicationScoped
 public class SlackChannel implements Tool<SlackChannelResource> {
-    public static final String SLACK_CHANNEL_FILTER_QUESTION_ARG = "contentRatingQuestion";
-    public static final String SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
-    public static final String SLACK_ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
     public static final String SLACK_CHANEL_ARG = "slackChannel";
-    public static final String DAYS_ARG = "days";
     public static final String API_DELAY_ARG = "apiDelay";
     public static final String HISTORY_TTL_ARG = "historyTtl";
-    public static final String SLACK_KEYWORD_ARG = "keywords";
-    public static final String SLACK_KEYWORD_WINDOW_ARG = "keywordWindow";
-    public static final String SLACK_ENTITY_NAME_CONTEXT_ARG = "entityName";
-    public static final String SLACK_SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
-    public static final String SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
-    public static final String SLACK_DEFAULT_RATING_ARG = "ticketDefaultRating";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
 
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
@@ -83,16 +67,6 @@ public class SlackChannel implements Tool<SlackChannelResource> {
 
     @Inject
     private SlackChannelConfig config;
-
-    @Inject
-    @Identifier("removeMarkdnUrls")
-    private SanitizeDocument removeMarkdnUrls;
-
-    @Inject
-    private SentenceSplitter sentenceSplitter;
-
-    @Inject
-    private SentenceVectorizer sentenceVectorizer;
 
     @Inject
     @Preferred
@@ -132,9 +106,9 @@ public class SlackChannel implements Tool<SlackChannelResource> {
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments(SLACK_CHANEL_ARG, "The Slack channel to read", "general"),
-                new ToolArguments(SLACK_KEYWORD_ARG, "The keywords to limit the Slack messages to", ""),
-                new ToolArguments(SLACK_KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
-                new ToolArguments(DAYS_ARG, "The number of days worth of messages to return", "7")
+                new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to limit the Slack messages to", ""),
+                new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.DAYS_ARG, "The number of days worth of messages to return", "7")
         );
     }
 
@@ -505,8 +479,8 @@ class SlackChannelConfig {
                     getConfigDays()::get,
                     arguments,
                     context,
-                    SlackChannel.DAYS_ARG,
-                    SlackChannel.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
                     "30");
 
             return Try.of(argument::getSafeValue)
@@ -557,8 +531,8 @@ class SlackChannelConfig {
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            SlackChannel.SLACK_KEYWORD_ARG,
-                            SlackChannel.SLACK_KEYWORD_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -571,8 +545,8 @@ class SlackChannelConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
-                    SlackChannel.SLACK_KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -585,7 +559,7 @@ class SlackChannelConfig {
                     null,
                     context,
                     null,
-                    SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     "").getSafeValue();
         }
 
@@ -594,8 +568,8 @@ class SlackChannelConfig {
                     getConfigSummarizeDocument()::get,
                     arguments,
                     context,
-                    SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG,
-                    SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -607,8 +581,8 @@ class SlackChannelConfig {
                             getConfigSummarizeDocumentPrompt()::get,
                             arguments,
                             context,
-                            SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG,
-                            SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
                     .getSafeValue();
         }
@@ -619,8 +593,8 @@ class SlackChannelConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            SlackChannel.SLACK_CHANNEL_FILTER_QUESTION_ARG,
-                            SlackChannel.SLACK_CHANNEL_FILTER_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }
@@ -630,8 +604,8 @@ class SlackChannelConfig {
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    SlackChannel.SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG,
-                    SlackChannel.SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
@@ -643,8 +617,8 @@ class SlackChannelConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    SlackChannel.SLACK_DEFAULT_RATING_ARG,
-                    SlackChannel.SLACK_DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
@@ -656,8 +630,8 @@ class SlackChannelConfig {
                     getConfigContextFilterGreaterThan()::get,
                     arguments,
                     context,
-                    SlackChannel.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
-                    SlackChannel.SLACK_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -668,8 +642,8 @@ class SlackChannelConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    SlackChannel.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    SlackChannel.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -678,8 +652,8 @@ class SlackChannelConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    SlackChannel.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    SlackChannel.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -688,8 +662,8 @@ class SlackChannelConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    SlackChannel.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    SlackChannel.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
 

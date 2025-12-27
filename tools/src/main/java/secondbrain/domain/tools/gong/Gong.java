@@ -35,6 +35,7 @@ import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.gong.GongClient;
@@ -52,21 +53,8 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class Gong implements Tool<GongCallDetails> {
-    public static final String GONG_FILTER_QUESTION_ARG = "callRatingQuestion";
-    public static final String GONG_FILTER_MINIMUM_RATING_ARG = "callFilterMinimumRating";
-    public static final String GONG_ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
-    public static final String GONG_DEFAULT_RATING_ARG = "defaultRating";
-    public static final String DAYS_ARG = "days";
     public static final String COMPANY_ARG = "company";
     public static final String CALLID_ARG = "callId";
-    public static final String GONG_KEYWORD_ARG = "keywords";
-    public static final String GONG_KEYWORD_WINDOW_ARG = "keywordWindow";
-    public static final String GONG_ENTITY_NAME_CONTEXT_ARG = "entityName";
-    public static final String GONG_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
-    public static final String GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG = "summarizeTranscriptPrompt";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     public static final String GONG_OBJECT_1_ARG = "object1";
     public static final String GONG_OBJECT_1_NAME_ARG = "object1Name";
     public static final String GONG_OBJECT_2_ARG = "object2";
@@ -739,8 +727,8 @@ class GongConfig {
                     getConfigDays()::get,
                     arguments,
                     context,
-                    Gong.DAYS_ARG,
-                    Gong.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
                     "0").getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
@@ -781,8 +769,8 @@ class GongConfig {
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            Gong.GONG_KEYWORD_ARG,
-                            Gong.GONG_KEYWORD_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -795,8 +783,8 @@ class GongConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    Gong.GONG_KEYWORD_WINDOW_ARG,
-                    Gong.GONG_KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -808,8 +796,8 @@ class GongConfig {
                     null,
                     null,
                     context,
-                    null,
-                    Gong.GONG_ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     "").getSafeValue();
         }
 
@@ -818,8 +806,8 @@ class GongConfig {
                     getConfigSummarizeTranscript()::get,
                     arguments,
                     context,
-                    Gong.GONG_SUMMARIZE_TRANSCRIPT_ARG,
-                    Gong.GONG_SUMMARIZE_TRANSCRIPT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -832,8 +820,8 @@ class GongConfig {
                             getConfigSummarizeTranscriptPrompt()::get,
                             arguments,
                             context,
-                            Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
-                            Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the Gong call transcript in three paragraphs")
                     .getSafeValue();
         }
@@ -844,8 +832,8 @@ class GongConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            Gong.GONG_FILTER_QUESTION_ARG,
-                            Gong.GONG_FILTER_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }
@@ -856,8 +844,8 @@ class GongConfig {
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    Gong.GONG_FILTER_MINIMUM_RATING_ARG,
-                    Gong.GONG_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
@@ -869,8 +857,8 @@ class GongConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    Gong.GONG_DEFAULT_RATING_ARG,
-                    Gong.GONG_DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
@@ -882,8 +870,8 @@ class GongConfig {
                     getConfigContextFilterGreaterThan()::get,
                     arguments,
                     context,
-                    Gong.GONG_ENSURE_GREATER_THAN_PROMPT_ARG,
-                    Gong.GONG_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -894,8 +882,8 @@ class GongConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    Gong.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    Gong.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -904,8 +892,8 @@ class GongConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    Gong.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    Gong.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -914,8 +902,8 @@ class GongConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    Gong.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    Gong.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
 

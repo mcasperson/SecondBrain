@@ -37,6 +37,7 @@ import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.googledocs.model.GoogleDoc;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -58,18 +59,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 @ApplicationScoped
 public class GoogleDocs implements Tool<Void> {
     public static final String GOOGLE_DOC_FILTER_RATING_META = "FilterRating";
-    public static final String GOOGLE_DOC_FILTER_QUESTION_ARG = "contentRatingQuestion";
-    public static final String GOOGLE_DOC_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
-    public static final String GOOGLE_DOC_DEFAULT_RATING_ARG = "documentDefaultRating";
     public static final String GOOGLE_DOC_ID_ARG = "googleDocumentId";
-    public static final String GOOGLE_KEYWORD_ARG = "keywords";
-    public static final String GOOGLE_KEYWORD_WINDOW_ARG = "keywordWindow";
-    public static final String GOOGLE_ENTITY_NAME_CONTEXT_ARG = "entityName";
-    public static final String GOOGLE_SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
-    public static final String GOOGLE_SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String APPLICATION_NAME = "SecondBrain";
@@ -124,7 +114,7 @@ public class GoogleDocs implements Tool<Void> {
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments(GOOGLE_DOC_ID_ARG, "The ID of the Google Docs document to use.", ""),
-                new ToolArguments(GOOGLE_KEYWORD_ARG, "An optional list of keywords used to trim the document", "")
+                new ToolArguments(CommonArguments.KEYWORDS_ARG, "An optional list of keywords used to trim the document", "")
         );
     }
 
@@ -517,8 +507,8 @@ class GoogleDocsConfig {
                             getConfigGoogleKeywords()::get,
                             arguments,
                             context,
-                            GoogleDocs.GOOGLE_KEYWORD_ARG,
-                            GoogleDocs.GOOGLE_KEYWORD_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -536,7 +526,7 @@ class GoogleDocsConfig {
                     null,
                     context,
                     null,
-                    GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     "").getSafeValue();
         }
 
@@ -546,8 +536,8 @@ class GoogleDocsConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG,
-                    GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -558,8 +548,8 @@ class GoogleDocsConfig {
                     getConfigSummarizeDocument()::get,
                     arguments,
                     context,
-                    GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_ARG,
-                    GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -571,8 +561,8 @@ class GoogleDocsConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    GoogleDocs.GOOGLE_DOC_DEFAULT_RATING_ARG,
-                    GoogleDocs.GOOGLE_DOC_DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
@@ -585,8 +575,8 @@ class GoogleDocsConfig {
                             getConfigSummarizeDocumentPrompt()::get,
                             arguments,
                             context,
-                            GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_PROMPT_ARG,
-                            GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
                     .getSafeValue();
         }
@@ -597,8 +587,8 @@ class GoogleDocsConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            GoogleDocs.GOOGLE_DOC_FILTER_QUESTION_ARG,
-                            GoogleDocs.GOOGLE_DOC_FILTER_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }
@@ -608,8 +598,8 @@ class GoogleDocsConfig {
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    GoogleDocs.GOOGLE_DOC_FILTER_MINIMUM_RATING_ARG,
-                    GoogleDocs.GOOGLE_DOC_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
@@ -620,8 +610,8 @@ class GoogleDocsConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    GoogleDocs.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    GoogleDocs.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -630,8 +620,8 @@ class GoogleDocsConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    GoogleDocs.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    GoogleDocs.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -640,8 +630,8 @@ class GoogleDocsConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    GoogleDocs.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    GoogleDocs.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
     }

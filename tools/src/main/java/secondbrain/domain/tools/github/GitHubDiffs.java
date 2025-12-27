@@ -23,6 +23,7 @@ import secondbrain.domain.list.ListUtilsEx;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.api.GitHubCommitAndDiff;
@@ -52,13 +53,9 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     public static final String GITHUB_DIFF_SHA_ARG = "sha";
     public static final String GITHUB_DIFF_SINCE_ARG = "since";
     public static final String GITHUB_DIFF_UNTIL_ARG = "until";
-    public static final String GITHUB_DIFF_DAYS_ARG = "days";
     public static final String GITHUB_DIFF_MAX_DIFFS_ARG = "maxDiffs";
     public static final String GITHUB_DIFF_SUMMARY_PROMPT_ARG = "githubIssueSummaryPrompt";
     public static final String GITHUB_DIFF_SUMMARIZE_ARG = "githubSummarizeDiff";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     private static final String INSTRUCTIONS = """
             You are an expert in reading Git diffs.
             You are given a question and a list of summaries of Git Diffs and their associated commit messages.
@@ -128,7 +125,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 new ToolArguments(GITHUB_DIFF_SHA_ARG, "The git sha to check", ""),
                 new ToolArguments(GITHUB_DIFF_SINCE_ARG, "The optional date to start checking from", ""),
                 new ToolArguments(GITHUB_DIFF_UNTIL_ARG, "The optional date to stop checking at", ""),
-                new ToolArguments(GITHUB_DIFF_DAYS_ARG, "The optional number of days worth of diffs to return", "0"),
+                new ToolArguments(CommonArguments.DAYS_ARG, "The optional number of days worth of diffs to return", "0"),
                 new ToolArguments(GITHUB_DIFF_MAX_DIFFS_ARG, "The optional number of diffs to return", "0"),
                 new ToolArguments(GITHUB_DIFF_SUMMARIZE_ARG, "Set to true to first summarize each diff", "true"),
                 new ToolArguments(GITHUB_DIFF_SUMMARY_PROMPT_ARG, "The prompt used to summarize the diff", "true")
@@ -467,8 +464,8 @@ class GitHubDiffConfig {
                     getConfigGithubDays()::get,
                     arguments,
                     context,
-                    GitHubDiffs.GITHUB_DIFF_DAYS_ARG,
-                    GitHubDiffs.GITHUB_DIFF_DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
                     DEFAULT_DURATION).getSafeValue();
 
             return Try.of(() -> stringValue)
@@ -597,8 +594,8 @@ class GitHubDiffConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    GitHubDiffs.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    GitHubDiffs.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -607,8 +604,8 @@ class GitHubDiffConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    GitHubDiffs.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    GitHubDiffs.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -617,8 +614,8 @@ class GitHubDiffConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    GitHubDiffs.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    GitHubDiffs.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
     }

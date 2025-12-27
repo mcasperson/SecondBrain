@@ -38,6 +38,7 @@ import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
@@ -53,21 +54,8 @@ import java.util.stream.Stream;
 
 @ApplicationScoped
 public class PlanHat implements Tool<Conversation> {
-    public static final String PLANHAT_FILTER_QUESTION_ARG = "contentRatingQuestion";
-    public static final String PLANHAT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
-    public static final String PLANHAT_ENSURE_GREATER_THAN_PROMPT_ARG = "filterGreaterThan";
-    public static final String PLANHAT_DEFAULT_RATING_ARG = "ticketDefaultRating";
-    public static final String DAYS_ARG = "days";
-    public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String COMPANY_ID_ARGS = "companyId";
-    public static final String PLANHAT_KEYWORD_ARG = "keywords";
-    public static final String PLANHAT_KEYWORD_WINDOW_ARG = "keywordWindow";
-    public static final String PLANHAT_ENTITY_NAME_CONTEXT_ARG = "entityName";
-    public static final String PLANHAT_SUMMARIZE_DOCUMENT_ARG = "summarizeDocument";
-    public static final String PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG = "summarizeDocumentPrompt";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
+    public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String PLANHAT_TTL_SECONDS_ARG = "ttlSeconds";
 
     private static final String INSTRUCTIONS = """
@@ -160,9 +148,9 @@ public class PlanHat implements Tool<Conversation> {
     public List<ToolArguments> getArguments() {
         return ImmutableList.of(
                 new ToolArguments(COMPANY_ID_ARGS, "The company ID to query", ""),
-                new ToolArguments(PLANHAT_KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
-                new ToolArguments(DAYS_ARG, "The number of days to query", ""),
-                new ToolArguments(PLANHAT_KEYWORD_ARG, "The keywords to restrict the activities to", ""));
+                new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.DAYS_ARG, "The number of days to query", ""),
+                new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to restrict the activities to", ""));
     }
 
     @Override
@@ -490,8 +478,8 @@ class PlanHatConfig {
                     getConfigFrom()::get,
                     arguments,
                     context,
-                    PlanHat.DAYS_ARG,
-                    PlanHat.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
                     "");
 
             return NumberUtils.toInt(argument.getSafeValue(), 1);
@@ -576,8 +564,8 @@ class PlanHatConfig {
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            PlanHat.PLANHAT_KEYWORD_ARG,
-                            PlanHat.PLANHAT_KEYWORD_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -590,8 +578,8 @@ class PlanHatConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    PlanHat.PLANHAT_KEYWORD_WINDOW_ARG,
-                    PlanHat.PLANHAT_KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -604,7 +592,7 @@ class PlanHatConfig {
                     null,
                     context,
                     null,
-                    PlanHat.PLANHAT_ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     "").getSafeValue();
         }
 
@@ -613,8 +601,8 @@ class PlanHatConfig {
                     getConfigSummarizeDocument()::get,
                     arguments,
                     context,
-                    PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_ARG,
-                    PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -627,8 +615,8 @@ class PlanHatConfig {
                             getConfigSummarizeDocumentPrompt()::get,
                             arguments,
                             context,
-                            PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG,
-                            PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the document in three paragraphs")
                     .getSafeValue();
         }
@@ -639,8 +627,8 @@ class PlanHatConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            PlanHat.PLANHAT_FILTER_QUESTION_ARG,
-                            PlanHat.PLANHAT_FILTER_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }
@@ -651,8 +639,8 @@ class PlanHatConfig {
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    PlanHat.PLANHAT_FILTER_MINIMUM_RATING_ARG,
-                    PlanHat.PLANHAT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
@@ -664,8 +652,8 @@ class PlanHatConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    PlanHat.PLANHAT_DEFAULT_RATING_ARG,
-                    PlanHat.PLANHAT_DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
@@ -677,8 +665,8 @@ class PlanHatConfig {
                     getConfigContextFilterGreaterThan()::get,
                     arguments,
                     context,
-                    PlanHat.PLANHAT_ENSURE_GREATER_THAN_PROMPT_ARG,
-                    PlanHat.PLANHAT_ENSURE_GREATER_THAN_PROMPT_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
+                    CommonArguments.FILTER_GREATER_THAN_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -689,8 +677,8 @@ class PlanHatConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    PlanHat.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -699,8 +687,8 @@ class PlanHatConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    PlanHat.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -709,8 +697,8 @@ class PlanHatConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    PlanHat.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
 

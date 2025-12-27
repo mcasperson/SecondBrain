@@ -32,6 +32,7 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
 import secondbrain.domain.tools.planhat.PlanHat;
@@ -72,21 +73,11 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
 public class MultiSlackZenGoogle implements Tool<Void> {
     public static final String MULTI_SLACK_ZEN_EXCLUDE_CACHE_GETTER_ARG = "excludedGettersFromCacheKey";
     public static final String MULTI_SLACK_ZEN_TTL_SECONDS_ARG = "ttlSeconds";
-    public static final String MULTI_SLACK_ZEN_KEYWORD_ARG = "keywords";
-    public static final String MULTI_SLACK_ZEN_WINDOW_ARG = "keywordWindow";
     public static final String MULTI_SLACK_ZEN_URL_ARG = "url";
-    public static final String MULTI_SLACK_ZEN_DAYS_ARG = "days";
     public static final String MULTI_SLACK_ZEN_ADDITIONAL_SYSTEM_PROMPT = "additionalSystemPrompt";
     public static final String MULTI_SLACK_ZEN_STRIP_MARKDOWN_CODE_BLOCK = "stripMarkdownCodeBlock";
-    public static final String MULTI_SLACK_ZEN_ENTITY_NAME_ARG = "entityName";
     public static final String MULTI_SLACK_ZEN_MAX_ENTITIES_ARG = "maxEntities";
     public static final String MULTI_SLACK_ZEN_MAX_ANNOTATION_PREFIX_ARG = "annotationPrefix";
-    public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG = "individualContextFilterQuestion";
-    public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG = "individualContextFilterMinimumRating";
-    public static final String MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_SUMMARY_PROMPT_ARG = "individualContextSummaryPrompt";
-    public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG = "contextFilterQuestion";
-    public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG = "contextFilterMinimumRating";
-    public static final String MULTI_SLACK_ZEN_CONTEXT_FILTER_DEFAULT_RATING_ARG = "contextFilterDefaultRating";
     public static final String MULTI_SLACK_ZEN_META_REPORT_ARG = "metaReport";
     public static final String MULTI_SLACK_ZEN_META_FIELD_1_ARG = "contextMetaField1";
     public static final String MULTI_SLACK_ZEN_META_PROMPT_1_ARG = "contextMetaPrompt1";
@@ -219,11 +210,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     public List<ToolArguments> getArguments() {
         return ImmutableList.of(
                 new ToolArguments(MULTI_SLACK_ZEN_URL_ARG, "The entity directory URL", ""),
-                new ToolArguments(MULTI_SLACK_ZEN_KEYWORD_ARG, "The keywords to limit the child context to", ""),
-                new ToolArguments(MULTI_SLACK_ZEN_KEYWORD_ARG, "The window size around any matching keywords", ""),
-                new ToolArguments(MULTI_SLACK_ZEN_ENTITY_NAME_ARG, "The optional name of the entity to query", ""),
+                new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to limit the child context to", ""),
+                new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.ENTITY_NAME_CONTEXT_ARG, "The optional name of the entity to query", ""),
                 new ToolArguments(MULTI_SLACK_ZEN_MAX_ENTITIES_ARG, "The optional maximum number of entities to process", "0"),
-                new ToolArguments(MULTI_SLACK_ZEN_DAYS_ARG, "The number of days to query", ""));
+                new ToolArguments(CommonArguments.DAYS_ARG, "The number of days to query", ""));
     }
 
     @Override
@@ -618,18 +609,18 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
-                .add(SlackSearch.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
                 .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Try
                 // Combine all the keywords we are going to search for
                 .of(() -> List.of(
-                        new ToolArgs(SlackSearch.SLACK_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
-                        new ToolArgs(SlackSearch.SLACK_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
-                        new ToolArgs(SlackSearch.SLACK_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, String.join(",", keywords), true),
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_DAYS_ARG, "" + parsedArgs.getDays(), true)))
+                        new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(envSettings, prompt, args))
                 // We continue on even if one tool fails, so log and swallow the exception
@@ -649,22 +640,22 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
-                .add(Gong.GONG_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
                 .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().salesforce(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(Gong.GONG_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
-                        new ToolArgs(Gong.GONG_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
-                        new ToolArgs(Gong.GONG_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
-                        new ToolArgs(Gong.GONG_SUMMARIZE_TRANSCRIPT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
-                        new ToolArgs(Gong.GONG_SUMMARIZE_TRANSCRIPT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
-                        new ToolArgs(Gong.GONG_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(Gong.GONG_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Gong.COMPANY_ARG, id, true),
-                        new ToolArgs(Gong.DAYS_ARG, parsedArgs.getDays() + "", true)))
+                        new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> gong.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.severe("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -682,22 +673,22 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
-                .add(Salesforce.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
                 .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().salesforce(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(Salesforce.FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
-                        new ToolArgs(Salesforce.FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
-                        new ToolArgs(Salesforce.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
-                        new ToolArgs(Salesforce.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
-                        new ToolArgs(Salesforce.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
-                        new ToolArgs(Salesforce.KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(Salesforce.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Salesforce.ACCOUNT_ID, id, true),
-                        new ToolArgs(Salesforce.DAYS_ARG, parsedArgs.getDays() + "", true)))
+                        new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> salesforce.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.severe("Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -714,23 +705,22 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         logger.fine("Getting PlanHat activities for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
-                .add(PlanHat.PLANHAT_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
                 .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().getPlanHat(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(PlanHat.PLANHAT_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
-                        new ToolArgs(PlanHat.PLANHAT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
-                        new ToolArgs(PlanHat.PLANHAT_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
-                        new ToolArgs(PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
-                        new ToolArgs(PlanHat.PLANHAT_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
-                        new ToolArgs(PlanHat.PLANHAT_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(PlanHat.PLANHAT_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(PlanHat.PLANHAT_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
-                        new ToolArgs(PlanHat.DAYS_ARG, parsedArgs.getDays() + "", true)))
+                        new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> planHat.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.severe("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -769,20 +759,20 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         logger.fine("Getting Google Docs for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
-                .add(GoogleDocs.GOOGLE_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
                 .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().getGoogleDcos(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(GoogleDocs.GOOGLE_DOC_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
-                        new ToolArgs(GoogleDocs.GOOGLE_DOC_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
-                        new ToolArgs(GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
-                        new ToolArgs(GoogleDocs.GOOGLE_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
-                        new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(GoogleDocs.GOOGLE_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true)))
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.info("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -798,22 +788,22 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         logger.fine("Getting Slack channel for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
-                .add(SlackChannel.SLACK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
                 .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().getSlack(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(SlackChannel.SLACK_CHANNEL_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
-                        new ToolArgs(SlackChannel.SLACK_CHANNEL_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
-                        new ToolArgs(SlackChannel.SLACK_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
-                        new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
-                        new ToolArgs(SlackChannel.SLACK_SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
+                        new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
-                        new ToolArgs(SlackChannel.SLACK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(SlackChannel.SLACK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
-                        new ToolArgs(SlackChannel.DAYS_ARG, "" + parsedArgs.getDays(), true)))
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
@@ -831,21 +821,21 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         logger.fine("Getting ZenDesk tickets for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
-                .add(ZenDeskOrganization.ZENDESK_ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
+                .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
                 .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
 
         return Objects.requireNonNullElse(positionalEntity.entity().getZenDesk(), List.<String>of())
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating().toString(), true),
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating().toString(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_TICKET_SUMMARY_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_SUMMARIZE_TICKET_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_ARG, parsedArgs.getKeywords(), true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
-                        new ToolArgs(ZenDeskOrganization.DAYS_ARG, "" + parsedArgs.getDays(), true)))
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.info("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -1477,8 +1467,8 @@ class MultiSlackZenGoogleConfig {
                     getConfigDays()::get,
                     arguments,
                     context,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
                     "0").getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
@@ -1492,8 +1482,8 @@ class MultiSlackZenGoogleConfig {
                             getConfigEntity()::get,
                             arguments,
                             context,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_ENTITY_NAME_ARG,
+                            CommonArguments.ENTITY_NAME_CONTEXT_ARG,
+                            CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -1520,8 +1510,8 @@ class MultiSlackZenGoogleConfig {
                     getConfigMaxEntities()::get,
                     arguments,
                     context,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
                     "0").getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
@@ -1547,8 +1537,8 @@ class MultiSlackZenGoogleConfig {
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_KEYWORD_ARG,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_KEYWORD_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .getSafeValue();
         }
@@ -1558,8 +1548,8 @@ class MultiSlackZenGoogleConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_WINDOW_ARG,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -1570,8 +1560,8 @@ class MultiSlackZenGoogleConfig {
                             getConfigIndividualContextSummaryPrompt()::get,
                             arguments,
                             context,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_SUMMARY_PROMPT_ARG,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_SUMMARY_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "")
                     .getSafeValue();
         }
@@ -1581,8 +1571,8 @@ class MultiSlackZenGoogleConfig {
                             getConfigIndividualContextFilterQuestion()::get,
                             arguments,
                             context,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }
@@ -1592,8 +1582,8 @@ class MultiSlackZenGoogleConfig {
                     getConfigIndividualContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
@@ -1604,8 +1594,8 @@ class MultiSlackZenGoogleConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG,
-                            MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }
@@ -1615,8 +1605,8 @@ class MultiSlackZenGoogleConfig {
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
@@ -2101,8 +2091,8 @@ class MultiSlackZenGoogleConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_DEFAULT_RATING_ARG,
-                    MultiSlackZenGoogle.MULTI_SLACK_ZEN_CONTEXT_FILTER_DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));

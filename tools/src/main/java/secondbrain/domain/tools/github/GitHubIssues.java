@@ -23,6 +23,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.githubissues.GitHubIssuesClient;
@@ -44,9 +45,6 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 @ApplicationScoped
 public class GitHubIssues implements Tool<GitHubIssue> {
     public static final String GITHUB_ISSUE_FILTER_RATING_META = "FilterRating";
-    public static final String GITHUB_ISSUE_FILTER_QUESTION_ARG = "issueRatingQuestion";
-    public static final String GITHUB_ISSUES_DEFAULT_RATING_ARG = "diffDefaultRating";
-    public static final String GITHUB_ISSUE_FILTER_MINIMUM_RATING_ARG = "issueFilterMinimumRating";
     public static final String GITHUB_ORGANIZATION_ARG = "githubOrganization";
     public static final String GITHUB_REPO_ARG = "githubRepo";
     public static final String GITHUB_ISSUE_LABELS_ARG = "githubIssueLabels";
@@ -56,9 +54,6 @@ public class GitHubIssues implements Tool<GitHubIssue> {
     public static final String GITHUB_START_DATE_ARG = "githubStartDate";
     public static final String GITHUB_END_DATE_ARG = "githubEndDate";
     public static final String GITHUB_DAYS_ARG = "githubDays";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     private static final String INSTRUCTIONS = """
             You are an expert in reading GitHub issues diffs.
             You are given a question and a list of summaries of GitHub Issues.
@@ -489,8 +484,8 @@ class GitHubIssueConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    GitHubIssues.GITHUB_ISSUES_DEFAULT_RATING_ARG,
-                    GitHubIssues.GITHUB_ISSUES_DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
@@ -502,8 +497,8 @@ class GitHubIssueConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            GitHubIssues.GITHUB_ISSUE_FILTER_QUESTION_ARG,
-                            GitHubIssues.GITHUB_ISSUE_FILTER_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }
@@ -513,8 +508,8 @@ class GitHubIssueConfig {
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    GitHubIssues.GITHUB_ISSUE_FILTER_MINIMUM_RATING_ARG,
-                    GitHubIssues.GITHUB_ISSUE_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
@@ -597,8 +592,8 @@ class GitHubIssueConfig {
                     getConfigDays()::get,
                     arguments,
                     context,
-                    GitHubIssues.GITHUB_DAYS_ARG,
-                    GitHubIssues.GITHUB_DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
                     "0").getSafeValue();
 
             return Try.of(() -> Integer.parseInt(stringValue))
@@ -612,8 +607,8 @@ class GitHubIssueConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    GitHubIssues.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    GitHubIssues.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -622,8 +617,8 @@ class GitHubIssueConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    GitHubIssues.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    GitHubIssues.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -632,8 +627,8 @@ class GitHubIssueConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    GitHubIssues.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    GitHubIssues.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
     }

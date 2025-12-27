@@ -195,7 +195,7 @@ public class Meta implements Tool<Void> {
                                 () -> callPrivate(environmentSettings, prompt, arguments))
                         .result())
                 .filter(Objects::nonNull)
-                .onFailure(NoSuchElementException.class, ex -> logger.info("Failed to generate meta tool result: " + ex.getMessage()))
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to generate meta tool result: " + ex.getMessage()))
                 .get()
                 .convertToRagMultiDocumentContextVoid();
     }
