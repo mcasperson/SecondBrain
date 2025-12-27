@@ -15,7 +15,7 @@ public class PromptBuilderMistral implements PromptBuilder {
 
     @Override
     public String modelRegex() {
-        return "^mi(s|x)tral.*$";
+        return "^mi(s|x|nis)tral.*$";
     }
 
     @Override
