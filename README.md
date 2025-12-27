@@ -25,10 +25,10 @@ Build the project using Maven:
 
 The easiest way to get started is to use Ollama as the LLM backend. Install Ollama from https://ollama.com and then pull
 the
-`nemotron-3-nano:30b` model:
+`qwen3:30b-a3b` model:
 
 ```bash
-ollama pull nemotron-3-nano:30b
+ollama pull qwen3:30b-a3b
 ```
 
 You are free to use a variety of models, but I have found the nemotron and qwen3 models to be some of the best.
@@ -91,8 +91,8 @@ java \
 ```bash
 java \
     "-Dsb.llm.client=ollama" \
-    "-Dsb.ollama.model=nemotron-3-nano:30b" \
-    "-Dsb.ollama.contextwindow=100000" \
+    "-Dsb.ollama.model=qwen3:30b-a3b" \
+    "-Dsb.ollama.contextwindow=30000" \
     "-Dsb.tools.force=GitHubDiffs" \
     "-Dsb.github.owner=mcasperson" \
     "-Dsb.github.repo=SecondBrain" \
@@ -127,10 +127,10 @@ java \
 This is the same command using Ollama:
 
 ```bash
-ollama pull nemotron-3-nano:30b
+ollama pull qwen3:30b-a3b
 java \
     "-Dsb.llm.client=ollama" \
-    "-Dsb.ollama.model=nemotron-3-nano:30b" \
+    "-Dsb.ollama.model=qwen3:30b-a3b" \
     "-Dsb.tools.force=YoutubePlaylist" \
     "-Dsb.youtube.playlistId=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj" \
     "-Dsb.youtube.maxvideos=10" \
@@ -165,10 +165,10 @@ java \
 Here is the command using Ollama:
 
 ```bash
-ollama pull nemotron-3-nano:30b
+ollama pull qwen3:30b-a3b
 java \
     "-Dsb.llm.client=ollama" \
-    "-Dsb.ollama.model=nemotron-3-nano:30b" \
+    "-Dsb.ollama.model=qwen3:30b-a3b" \
     "-Dsb.tools.force=ZenDeskOrganization" \
     "-Dsb.zendesk.url=https://replaceme.zendesk.com" \
     "-Dsb.zendesk.user=replaceme@replaceme.org" \
@@ -203,10 +203,10 @@ java \
 ```
 
 ```bash
-ollama pull nemotron-3-nano:30b
+ollama pull qwen3:30b-a3b
 java \
     "-Dsb.llm.client=ollama" \
-    "-Dsb.ollama.model=nemotron-3-nano:30b" \
+    "-Dsb.ollama.model=qwen3:30b-a3b" \
     "-Dsb.tools.force=Gong" \
     "-Dsb.gong.url=https://api.gong.io" \
     "-Dsb.gong.accessKey=replaceme" \
@@ -233,11 +233,11 @@ This is useful when the results of this operation are consumed by another proces
 a report that indicated which documents mentioned Python or Kubernetes based on the results of the context meta prompts:
 
 ```bash
-ollama pull nemotron-3-nano:30bs
+ollama pull qwen3:30b-a3bs
 java \
      "-Dsb.llm.client=ollama" \
-     "-Dsb.ollama.model=nemotron-3-nano:30b" \
-     "-Dsb.ollama.contextwindow=100000" \
+     "-Dsb.ollama.model=qwen3:30b-a3b" \
+     "-Dsb.ollama.contextwindow=30000" \
      "-Dsb.tools.force=Meta" \
      "-Dsb.meta.toolNames=YoutubePlaylist,DirectoryScan" \
      "-Dsb.meta.metareport=meta.json" \
@@ -296,7 +296,7 @@ for an example of how to build your own tool.
 ```bash
 java \
     "-Dsb.llm.client=ollama" \
-    "-Dsb.ollama.model=nemotron-3-nano:30b" \
+    "-Dsb.ollama.model=qwen3:30b-a3b" \
     "-Dsb.tools.force=HelloWorld" \
     "-Dsb.helloworld.message=AI Fans" \
     -jar cli/target/secondbrain-cli-1.0-SNAPSHOT.jar \
