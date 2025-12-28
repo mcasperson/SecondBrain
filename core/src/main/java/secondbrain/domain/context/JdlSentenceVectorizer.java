@@ -16,6 +16,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.persist.LocalStorage;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Logger;
@@ -71,8 +72,17 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
             return List.of();
         }
 
-        return text.stream()
-                .map(this::vectorize)
+        return Arrays.stream(Try.of(() -> localStorage.getOrPutObject(JdlSentenceVectorizer.class.getSimpleName(),
+                                "vectorize",
+                                DigestUtils.sha256Hex(String.join("|", text) + DJL_PATH),
+                                TTL_SECONDS,
+                                RagStringContext[].class,
+                                () -> text.stream()
+                                        .map(this::vectorize)
+                                        .toArray(RagStringContext[]::new)).result())
+                        .filter(Objects::nonNull)
+                        .onFailure(ex -> logger.warning("Error while vectorizing sentences, annotations are not available: " + ExceptionUtils.getRootCause(ex)))
+                        .get())
                 .toList();
     }
 
@@ -82,11 +92,11 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
         }
 
         return Try.of(() -> localStorage.getOrPutObject(JdlSentenceVectorizer.class.getSimpleName(),
-                "vectorize",
-                DigestUtils.sha256Hex(text + hiddenText + DJL_PATH),
-                TTL_SECONDS,
-                RagStringContext.class,
-                () -> vectorizeApi(text, hiddenText)).result())
+                        "vectorize",
+                        DigestUtils.sha256Hex(text + hiddenText + DJL_PATH),
+                        TTL_SECONDS,
+                        RagStringContext.class,
+                        () -> vectorizeApi(text, hiddenText)).result())
                 .filter(Objects::nonNull)
                 .onFailure(ex -> logger.warning("Error while vectorizing sentences, annotations are not available: " + ExceptionUtils.getRootCause(ex)))
                 .get();
