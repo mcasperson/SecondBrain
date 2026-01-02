@@ -13,7 +13,7 @@ import java.util.stream.Stream;
  * A container for hooks that can be retrieved by comma separated names.
  */
 @ApplicationScoped
-public class LiteralHooksContainer implements HooksContainer {
+public class NamedHooksContainer implements HooksContainer {
     @Inject
     private Instance<PreProcessingHook> preprocessingHooks;
 

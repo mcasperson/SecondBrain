@@ -90,6 +90,10 @@ public record RagMultiDocumentContext<T>(@Nullable String prompt,
         return new RagMultiDocumentContext<T>(prompt, instructions, individualContexts, response, debug, annotationPrefix, metadata);
     }
 
+    public RagMultiDocumentContext<T> updateMetadata(@Nullable final MetaObjectResults metadata) {
+        return new RagMultiDocumentContext<T>(prompt, instructions, individualContexts, response, debug, annotationPrefix, metadata);
+    }
+
     @JsonIgnore
     public String generateDocumentLeft(final int length) {
         if (length <= 0) {
