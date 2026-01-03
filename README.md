@@ -226,9 +226,11 @@ combined data.
 In this example we combine the `YoutubePlaylist` and `DirectoryScan` tools to generate a
 summary of AI related news from both YouTube videos and PDF reports in the `samples` directory.
 
-Note the use of the `contextMetaField` and `contextMetaPrompt` parameters to add additional context to the report.
+Note the use of the `sb.meta.postInferenceHooks` setting to enable the `MetaDataHook` post inference processing step.
+We then set the `contextMetaField` and `contextMetaPrompt` parameters to add additional context to the report.
 The results of the prompts are captured in the file called `meta.json` which can be reviewed after the command
 completes.
+
 This is useful when the results of this operation are consumed by another process. For example, you could build
 a report that indicated which documents mentioned Python or Kubernetes based on the results of the context meta prompts:
 
@@ -240,12 +242,13 @@ java \
      "-Dsb.ollama.contextwindow=30000" \
      "-Dsb.tools.force=Meta" \
      "-Dsb.meta.toolNames=YoutubePlaylist,DirectoryScan" \
-     "-Dsb.meta.metareport=meta.json" \
      "-Dsb.meta.keywords=AI,LLM,MCP,Agent,K8s" \
-     "-Dsb.meta.contextMetaField1=Python" \
-     "-Dsb.meta.contextMetaPrompt1=Does the content describe anything related to the Python programming language?" \
-     "-Dsb.meta.contextMetaField2=Kubernetes" \
-     "-Dsb.meta.contextMetaPrompt2=Does the content describe anything related to Kubernetes?" \
+     "-Dsb.meta.postInferenceHooks=MetaDataHook" \
+     "-Dsb.metadatahook.metareport=meta.json" \
+     "-Dsb.metadatahook.contextMetaField1=Python" \
+     "-Dsb.metadatahook.contextMetaPrompt1=Does the content describe anything related to the Python programming language?" \
+     "-Dsb.metadatahook.contextMetaField2=Kubernetes" \
+     "-Dsb.metadatahook.contextMetaPrompt2=Does the content describe anything related to Kubernetes?" \
      "-Dsb.youtube.playlistId=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj" \
      "-Dsb.youtube.maxvideos=10" \
      "-Dsb.directoryscan.directory=samples" \

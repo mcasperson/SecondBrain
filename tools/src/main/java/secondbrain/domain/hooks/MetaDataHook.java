@@ -204,6 +204,8 @@ public class MetaDataHook implements PostInferenceHook {
 
     @Override
     public <T> RagMultiDocumentContext<T> process(final String toolName, final RagMultiDocumentContext<T> ragMultiDocumentContext) {
+        logger.fine("Executing MetaDataHook for tool: " + toolName);
+
         final List<MetaObjectResult> results = new ArrayList<>();
 
         final List<Pair<String, String>> metaFields = Stream.of(
