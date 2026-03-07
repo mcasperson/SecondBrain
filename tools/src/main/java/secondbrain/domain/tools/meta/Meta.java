@@ -32,7 +32,7 @@ import java.util.stream.Stream;
 
 /**
  * This tool combines many sub-tools to allow a single prompt to be answered by multiple different
- * data sources.
+ * data sources. This is a more generic version of the MultiSlackZenGoogle tool.
  * <p>
  * An example execution:
  * <p>
