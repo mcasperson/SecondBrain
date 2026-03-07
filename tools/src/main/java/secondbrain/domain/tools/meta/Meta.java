@@ -14,6 +14,7 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
+import secondbrain.domain.exceptions.EmptyList;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.objects.ToStringGenerator;
@@ -118,6 +119,10 @@ public class Meta implements Tool<Void> {
                 .filter(tool -> toolNames.contains(tool.getName()))
                 .filter(tool -> !tool.getName().equals(Meta.class.getSimpleName()))
                 .toList();
+
+        if (filteredTools.isEmpty()) {
+            throw new EmptyList("No valid tools found for names: " + toolNames);
+        }
 
         /*
             Common arguments are exposed by the meta tool and passed to each sub-tool to allow common
@@ -364,6 +369,11 @@ class MetaConfig {
             return getToStringGenerator().generateGetterConfig(this);
         }
 
+        /**
+         * Get the list of tool names to include in the meta tool execution.
+         * This is a comma-separated list of tool names that are included in the tools available to the meta tool.
+         * You must specify at least one tool name.
+         */
         public List<String> getToolNames() {
             return getArgsAccessor().getArgumentList(
                             getConfigToolNames()::get,
@@ -377,6 +387,10 @@ class MetaConfig {
                     .toList();
         }
 
+        /**
+         * Get the number of seconds to cache the result of the meta tool execution.
+         * This value is passed to the local storage implementation and may be used to determine how long to cache the result.
+         */
         public int getCacheTtl() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigTtlSeconds()::get,
@@ -389,6 +403,9 @@ class MetaConfig {
             return Math.max(0, Integer.parseInt(argument.getSafeValue()));
         }
 
+        /**
+         * Get the question used to determine the content rating of a document when filtering documents for inclusion in the context.
+         */
         public String getIndividualContextFilterQuestion() {
             return getArgsAccessor().getArgument(
                             getConfigIndividualContextFilterQuestion()::get,
@@ -400,6 +417,11 @@ class MetaConfig {
                     .getSafeValue();
         }
 
+        /**
+         * A value from 0-10 indicating the minimum rating a document must have to be included in the context
+         * when filtering documents for inclusion in the context. The default value is 0, meaning all
+         * documents are included regardless of rating.
+         */
         public Integer getIndividualContextFilterMinimumRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigIndividualContextFilterMinimumRating()::get,
@@ -412,6 +434,11 @@ class MetaConfig {
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
+        /**
+         * The default rating to assign to documents when no rating can be determined.
+         * This is a value from 0-10, where 0 is the lowest quality and 10 is the highest quality.
+         * The default value is 10, meaning that unrated documents are treated as high quality.
+         */
         public Integer getDefaultRating() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigDefaultRating()::get,
@@ -424,6 +451,11 @@ class MetaConfig {
             return Math.max(0, org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 10));
         }
 
+        /**
+         * Whether to filter out documents with a rating greater than the specified minimum rating (as opposed to
+         * filtering out documents with a rating less than the specified minimum rating).
+         * Essentially, this reverses the way documents are filtered.
+         */
         public Boolean getFilterGreaterThan() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigFilterGreaterThan()::get,
@@ -436,6 +468,10 @@ class MetaConfig {
             return BooleanUtils.toBoolean(argument.getSafeValue());
         }
 
+        /**
+         * The keywords to use for context filtering. This is a comma-separated list of keywords that are used to
+         * extract a subset of the document to include in the context. If not specified, the full document is included in the context.
+         */
         public String getKeywords() {
             return getArgsAccessor().getArgument(
                             getConfigKeywords()::get,
@@ -447,6 +483,9 @@ class MetaConfig {
                     .getSafeValue();
         }
 
+        /**
+         * The amount of content to include around any keyword matches.
+         */
         public Integer getKeywordWindow() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigKeywordWindow()::get,
@@ -459,6 +498,10 @@ class MetaConfig {
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
         }
 
+        /**
+         * The names of any pre-initialization hooks to apply, as a comma-separated list.
+         * Pre-initialization hooks are used to generate RagDocumentContexts before any tools are called.
+         */
         public String getPreInitializationHooks() {
             return getArgsAccessor().getArgument(
                             getConfigPreInitializationHooks()::get,
@@ -470,6 +513,11 @@ class MetaConfig {
                     .getSafeValue();
         }
 
+        /**
+         * The names of any pre-processing hooks to apply, as a comma-separated list.
+         * Pre-processing hooks are used to modify the list of RagDocumentContexts returned by the
+         * tools before they are passed to the LLM.
+         */
         public String getPreProcessorHooks() {
             return getArgsAccessor().getArgument(
                             getConfigPreProcessorHooks()::get,
@@ -481,6 +529,11 @@ class MetaConfig {
                     .getSafeValue();
         }
 
+        /**
+         * The names of any post-inference hooks to apply, as a comma-separated list.
+         * Post-inference hooks are used to modify the RagMultiDocumentContext after it is returned
+         * from the LLM but before it is returned from the meta tool. This can be used to modify the final output.
+         */
         public String getPostInferenceHooks() {
             return getArgsAccessor().getArgument(
                             getConfigPostInferenceHooks()::get,
@@ -492,6 +545,11 @@ class MetaConfig {
                     .getSafeValue();
         }
 
+        /**
+         * Whether to summarize the document before including it in the final context.
+         * If true, the document generated by a tool is summarized before being included in the context passed to the LLM
+         * to answer the main prompt. This can be used to reduce the amount of context passed to the LLM while still providing relevant information from the document.
+         */
         public Boolean getSummarizeDocument() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigSummarizeDocument()::get,
@@ -504,6 +562,9 @@ class MetaConfig {
             return BooleanUtils.toBoolean(argument.getSafeValue());
         }
 
+        /**
+         * The prompt to use when summarizing the document. This is only used if summarizeDocument is true.
+         */
         public String getSummarizeDocumentPrompt() {
             return getArgsAccessor().getArgument(
                             getConfigSummarizeDocumentPrompt()::get,
@@ -515,6 +576,10 @@ class MetaConfig {
                     .getSafeValue();
         }
 
+        /**
+         * The number of days to look back when retrieving recent documents. This can be used by tools that retrieve
+         * documents based on recency to limit the scope of documents considered for retrieval.
+         */
         public Integer getDays() {
             final Argument argument = getArgsAccessor().getArgument(
                     getConfigDays()::get,
@@ -527,6 +592,12 @@ class MetaConfig {
             return Math.max(0, Integer.parseInt(argument.getSafeValue()));
         }
 
+        /**
+         * The entity name used to embed in sentences converted to embeddings. This is used to ensure that sentences
+         * extracted from the external content have the name of the entity in them before they are converted to embeddings,
+         * which can help ensure that the embeddings are relevant to the entity.
+         * TODO: Is this useful for the meta tool? We may need to have a tool above the meta tool for this to be useful. Today, you can only supply one entity.
+         */
         public String getEntityName() {
             return getArgsAccessor().getArgument(
                             getConfigEntityName()::get,
