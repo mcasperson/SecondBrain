@@ -33,9 +33,9 @@ import java.util.stream.Stream;
 /**
  * This tool combines many sub-tools to allow a single prompt to be answered by multiple different
  * data sources.
- *
+ * <p>
  * An example execution:
- *
+ * <p>
  * java -jar secondbrain.jar \
  *   -Dsb.meta.toolNames="Gong,Salesforce" \
  *   -Dsb.meta.individualContextFilterQuestion="Does the document describe the use of GitHub Actions?" \
