@@ -282,34 +282,36 @@ public class H2LocalStorage implements LocalStorage {
 
             totalReads.incrementAndGet();
 
-            final Try<CacheResult<String>> result = Try.withResources(() -> connection.prepareStatement("""
-                            SELECT response FROM LOCAL_STORAGE
-                                            WHERE tool = ?
-                                            AND source = ?
-                                            AND prompt_hash = ?
-                                            AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
-                    .of(preparedStatement -> {
-                        preparedStatement.setString(1, tool);
-                        preparedStatement.setString(2, source);
-                        preparedStatement.setString(3, promptHash);
-                        return Try.withResources(preparedStatement::executeQuery)
-                                .of(resultSet -> {
-                                    if (resultSet.next()) {
-                                        totalCacheHits.incrementAndGet();
-                                        return new CacheResult<String>(resultSet.getString(1), true);
-                                    }
-                                    return new CacheResult<String>(null, false);
-                                }).get();
+            synchronized (H2LocalStorage.class) {
+                final Try<CacheResult<String>> result = Try.withResources(() -> connection.prepareStatement("""
+                                SELECT response FROM LOCAL_STORAGE
+                                                WHERE tool = ?
+                                                AND source = ?
+                                                AND prompt_hash = ?
+                                                AND (timestamp IS NULL OR timestamp > CURRENT_TIMESTAMP)""".stripIndent()))
+                        .of(preparedStatement -> {
+                            preparedStatement.setString(1, tool);
+                            preparedStatement.setString(2, source);
+                            preparedStatement.setString(3, promptHash);
+                            return Try.withResources(preparedStatement::executeQuery)
+                                    .of(resultSet -> {
+                                        if (resultSet.next()) {
+                                            totalCacheHits.incrementAndGet();
+                                            return new CacheResult<String>(resultSet.getString(1), true);
+                                        }
+                                        return new CacheResult<String>(null, false);
+                                    }).get();
 
-                    })
-                    .onFailure(ex -> totalFailures.incrementAndGet())
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+                        })
+                        .onFailure(ex -> totalFailures.incrementAndGet())
+                        .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
-            return result
-                    .mapFailure(
-                            API.Case(API.$(), ex -> new LocalStorageFailure("Failed to get record", ex))
-                    )
-                    .get();
+                return result
+                        .mapFailure(
+                                API.Case(API.$(), ex -> new LocalStorageFailure("Failed to get record", ex))
+                        )
+                        .get();
+            }
         }
     }
 
@@ -516,32 +518,34 @@ public class H2LocalStorage implements LocalStorage {
                 resetConnection();
             }
 
-            final Try<PreparedStatement> result = Try.withResources(() -> connection.prepareStatement("""
-                            INSERT INTO LOCAL_STORAGE (tool, source, prompt_hash, response, timestamp)
-                            VALUES (?, ?, ?, ?, ?)""".stripIndent()))
-                    .of(preparedStatement -> {
-                        preparedStatement.setString(1, tool);
-                        preparedStatement.setString(2, source);
-                        preparedStatement.setString(3, promptHash);
-                        preparedStatement.setString(4, response);
-                        preparedStatement.setTimestamp(5, ttlSeconds == 0
-                                ? null
-                                : Timestamp.from(ZonedDateTime
-                                .now(ZoneOffset.UTC)
-                                .plusSeconds(ttlSeconds)
-                                .toInstant()));
-                        preparedStatement.executeUpdate();
-                        return preparedStatement;
-                    })
-                    .onFailure(ex -> totalFailures.incrementAndGet())
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+            synchronized (H2LocalStorage.class) {
+                final Try<PreparedStatement> result = Try.withResources(() -> connection.prepareStatement("""
+                                INSERT INTO LOCAL_STORAGE (tool, source, prompt_hash, response, timestamp)
+                                VALUES (?, ?, ?, ?, ?)""".stripIndent()))
+                        .of(preparedStatement -> {
+                            preparedStatement.setString(1, tool);
+                            preparedStatement.setString(2, source);
+                            preparedStatement.setString(3, promptHash);
+                            preparedStatement.setString(4, response);
+                            preparedStatement.setTimestamp(5, ttlSeconds == 0
+                                    ? null
+                                    : Timestamp.from(ZonedDateTime
+                                    .now(ZoneOffset.UTC)
+                                    .plusSeconds(ttlSeconds)
+                                    .toInstant()));
+                            preparedStatement.executeUpdate();
+                            return preparedStatement;
+                        })
+                        .onFailure(ex -> totalFailures.incrementAndGet())
+                        .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
-            result
-                    .mapFailure(
-                            API.Case(API.$(instanceOf(LocalStorageFailure.class)), ex -> ex),
-                            API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
-                    )
-                    .get();
+                result
+                        .mapFailure(
+                                API.Case(API.$(instanceOf(LocalStorageFailure.class)), ex -> ex),
+                                API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
+                        )
+                        .get();
+            }
         }
     }
 

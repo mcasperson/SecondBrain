@@ -201,31 +201,33 @@ public class CosmosLocalStorage implements LocalStorage {
             resetConnection();
         }
 
-        totalReads.incrementAndGet();
+        synchronized (CosmosLocalStorage.class) {
+            totalReads.incrementAndGet();
 
-        final Try<CacheResult<String>> result = Try
-                // Attempt to get from local cache first
-                .of(() -> localStorageReadWrite.getString(tool, source, promptHash))
-                // We only accept the local cache value if it's not blank
-                .filter(Optional::isPresent)
-                // Convert to a CacheResult
-                .map(cache -> new CacheResult<String>(cache.get(), true))
-                // If there was no locally cached value, get from Cosmos DB
-                .recover(NoSuchElementException.class, ex -> loadFromDatabase(tool, source, promptHash))
-                // Decrypt and decompress the result if it was from cache
-                .map(value -> unpack(value, tool, source))
-                // If the item is not found, return a CacheResult with null
-                .recover(CosmosException.class, this::handleError)
-                // Track failures
-                .onFailure(ex -> totalFailures.incrementAndGet())
-                // Log errors
-                .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+            final Try<CacheResult<String>> result = Try
+                    // Attempt to get from local cache first
+                    .of(() -> localStorageReadWrite.getString(tool, source, promptHash))
+                    // We only accept the local cache value if it's not blank
+                    .filter(Optional::isPresent)
+                    // Convert to a CacheResult
+                    .map(cache -> new CacheResult<String>(cache.get(), true))
+                    // If there was no locally cached value, get from Cosmos DB
+                    .recover(NoSuchElementException.class, ex -> loadFromDatabase(tool, source, promptHash))
+                    // Decrypt and decompress the result if it was from cache
+                    .map(value -> unpack(value, tool, source))
+                    // If the item is not found, return a CacheResult with null
+                    .recover(CosmosException.class, this::handleError)
+                    // Track failures
+                    .onFailure(ex -> totalFailures.incrementAndGet())
+                    // Log errors
+                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
-        return result
-                .mapFailure(
-                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to get record", ex))
-                )
-                .get();
+            return result
+                    .mapFailure(
+                            API.Case(API.$(), ex -> new LocalStorageFailure("Failed to get record", ex))
+                    )
+                    .get();
+        }
     }
 
     private CacheResult<String> handleError(final CosmosException ex) {
@@ -549,26 +551,28 @@ public class CosmosLocalStorage implements LocalStorage {
             return;
         }
 
-        final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
-                .map(encryptor::encrypt)
-                .map(encrypted -> localStorageReadWrite.putString(tool, source, promptHash, getTimestamp((long) ttlSeconds), encrypted))
-                .map(encrypted -> new CacheItem(
-                        generateId(tool, source, promptHash),
-                        tool,
-                        source,
-                        promptHash,
-                        encrypted,
-                        getTimestamp((long) ttlSeconds),
-                        sanitizeTtl(ttlSeconds)))
-                .map(item -> container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions()))
-                .onFailure(ex -> totalFailures.incrementAndGet())
-                .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+        synchronized (CosmosLocalStorage.class) {
+            final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
+                    .map(encryptor::encrypt)
+                    .map(encrypted -> localStorageReadWrite.putString(tool, source, promptHash, getTimestamp((long) ttlSeconds), encrypted))
+                    .map(encrypted -> new CacheItem(
+                            generateId(tool, source, promptHash),
+                            tool,
+                            source,
+                            promptHash,
+                            encrypted,
+                            getTimestamp((long) ttlSeconds),
+                            sanitizeTtl(ttlSeconds)))
+                    .map(item -> container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions()))
+                    .onFailure(ex -> totalFailures.incrementAndGet())
+                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
-        result
-                .mapFailure(
-                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
-                )
-                .get();
+            result
+                    .mapFailure(
+                            API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
+                    )
+                    .get();
+        }
     }
 
     private Integer sanitizeTtl(final int ttlSeconds) {
