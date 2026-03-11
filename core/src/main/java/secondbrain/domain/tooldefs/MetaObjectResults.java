@@ -18,16 +18,16 @@ public class MetaObjectResults extends ArrayList<MetaObjectResult> {
     }
 
     public MetaObjectResults(final Iterable<MetaObjectResult> results, final String filename, final String id) {
-        this(results);
-    }
-
-    public MetaObjectResults(final Iterable<MetaObjectResult> results) {
         super();
-        this.filename = "";
-        this.id = "";
+        this.filename = filename;
+        this.id = id;
         if (results != null) {
             results.forEach(this::add);
         }
+    }
+
+    public MetaObjectResults(final Iterable<MetaObjectResult> results) {
+        this(results, "", "");
     }
 
     public MetaObjectResults(final MetaObjectResult result) {
