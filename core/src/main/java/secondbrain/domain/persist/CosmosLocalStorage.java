@@ -193,15 +193,15 @@ public class CosmosLocalStorage implements LocalStorage {
     @Override
     @Nullable
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
-        if (localStorageCacheDisable.isDisabled() || localStorageDisableTool.isToolDisabled(tool) || localStorageCacheWriteOnly.isWriteOnly() || container == null) {
-            return null;
-        }
-
-        if (totalFailures.get() > MAX_FAILURES) {
-            resetConnection();
-        }
-
         synchronized (CosmosLocalStorage.class) {
+            if (localStorageCacheDisable.isDisabled() || localStorageDisableTool.isToolDisabled(tool) || localStorageCacheWriteOnly.isWriteOnly() || container == null) {
+                return null;
+            }
+
+            if (totalFailures.get() > MAX_FAILURES) {
+                resetConnection();
+            }
+            
             totalReads.incrementAndGet();
 
             final Try<CacheResult<String>> result = Try
@@ -538,20 +538,21 @@ public class CosmosLocalStorage implements LocalStorage {
     @SuppressWarnings("NullAway")
     @Override
     public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String value) {
-        if (localStorageCacheDisable.isDisabled() || localStorageCacheReadOnly.isReadOnly() || container == null) {
-            return;
-        }
-
-        if (totalFailures.get() > MAX_FAILURES) {
-            resetConnection();
-        }
-
-        if (value.getBytes().length > MAX_ITEM_SIZE_BYTES) {
-            logger.warning("Item size exceeds maximum of " + MAX_ITEM_SIZE_BYTES + " bytes for tool " + tool + " source " + source + " prompt " + promptHash + ". Size: " + value.getBytes().length + " bytes. Skipping cache put.");
-            return;
-        }
-
         synchronized (CosmosLocalStorage.class) {
+            if (localStorageCacheDisable.isDisabled() || localStorageCacheReadOnly.isReadOnly() || container == null) {
+                return;
+            }
+
+            if (totalFailures.get() > MAX_FAILURES) {
+                resetConnection();
+            }
+
+            if (value.getBytes().length > MAX_ITEM_SIZE_BYTES) {
+                logger.warning("Item size exceeds maximum of " + MAX_ITEM_SIZE_BYTES + " bytes for tool " + tool + " source " + source + " prompt " + promptHash + ". Size: " + value.getBytes().length + " bytes. Skipping cache put.");
+                return;
+            }
+
+
             final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
                     .map(encryptor::encrypt)
                     .map(encrypted -> localStorageReadWrite.putString(tool, source, promptHash, getTimestamp((long) ttlSeconds), encrypted))
