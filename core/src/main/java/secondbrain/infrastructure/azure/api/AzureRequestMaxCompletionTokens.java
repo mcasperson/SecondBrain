@@ -22,12 +22,11 @@ import java.util.stream.Collectors;
 public record AzureRequestMaxCompletionTokens(
         List<AzureRequestMessage> messages,
         @Nullable @JsonProperty("max_completion_tokens") Integer maxOutputTokens,
+        @Nullable @JsonProperty("reasoning_effort") String reasoningEffort,
         String model) implements PromptTextGenerator {
 
     public AzureRequestMaxCompletionTokens(final List<AzureRequestMessage> messages, final String model) {
-        this(messages,
-                null,
-                model);
+        this(messages, null, null, model);
     }
 
     public List<AzureRequestMessage> getMessages() {
@@ -42,6 +41,6 @@ public record AzureRequestMaxCompletionTokens(
     }
 
     public AzureRequestMaxCompletionTokens updateMessages(List<AzureRequestMessage> newMessages) {
-        return new AzureRequestMaxCompletionTokens(newMessages, this.maxOutputTokens, this.model);
+        return new AzureRequestMaxCompletionTokens(newMessages, this.maxOutputTokens, this.reasoningEffort, this.model);
     }
 }
