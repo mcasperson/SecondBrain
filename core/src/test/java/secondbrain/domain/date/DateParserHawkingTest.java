@@ -17,7 +17,7 @@ class DateParserHawkingTest {
 
         final ZonedDateTime date = dateParser.parseDate("09/08/2024 07:00");
 
-        assertEquals(ZonedDateTime.of(2024, 8, 9, 7, 0, 0, 0, systemZone), date);
+        assertEquals(ZonedDateTime.of(2024, 9, 8, 7, 0, 0, 0, systemZone), date);
     }
 
     @Test
