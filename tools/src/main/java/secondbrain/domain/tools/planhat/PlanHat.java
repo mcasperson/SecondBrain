@@ -1,6 +1,7 @@
 package secondbrain.domain.tools.planhat;
 
 import com.google.common.collect.ImmutableList;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -287,6 +288,14 @@ class PlanHatConfig {
     private Optional<String> configFrom;
 
     @Inject
+    @ConfigProperty(name = "sb.planhat.startDate")
+    private Optional<String> configStartDate;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.endDate")
+    private Optional<String> configEndDate;
+
+    @Inject
     @ConfigProperty(name = "sb.planhat.accesstoken")
     private Optional<String> configToken;
 
@@ -311,6 +320,10 @@ class PlanHatConfig {
 
     @Inject
     private ArgsAccessor argsAccessor;
+
+    @Identifier("hawking")
+    @Inject
+    private DateParser dateParser;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.keywords")
@@ -363,6 +376,14 @@ class PlanHatConfig {
 
     public Optional<String> getConfigFrom() {
         return configFrom;
+    }
+
+    public Optional<String> getConfigStartDate() {
+        return configStartDate;
+    }
+
+    public Optional<String> getConfigEndDate() {
+        return configEndDate;
     }
 
     public Optional<String> getConfigToken() {
@@ -487,6 +508,18 @@ class PlanHatConfig {
 
         @Nullable
         public ZonedDateTime getStartDate() {
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigStartDate()::get,
+                    arguments,
+                    context,
+                    CommonArguments.START_DATE,
+                    CommonArguments.START_DATE,
+                    "").getSafeValue();
+
+            if (StringUtils.isNotBlank(stringValue)) {
+                return dateParser.parseDate(stringValue);
+            }
+
             if (getDays() == 0) {
                 return null;
             }
@@ -498,6 +531,18 @@ class PlanHatConfig {
 
         @Nullable
         public ZonedDateTime getEndDate() {
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigEndDate()::get,
+                    arguments,
+                    context,
+                    CommonArguments.END_DATE,
+                    CommonArguments.END_DATE,
+                    "").getSafeValue();
+
+            if (StringUtils.isNotBlank(stringValue)) {
+                return dateParser.parseDate(stringValue);
+            }
+
             if (getDays() == 0) {
                 return null;
             }

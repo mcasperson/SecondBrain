@@ -180,7 +180,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
         final List<RagDocumentContext<SlackSearchResultResource>> ragDocs = searchResult
                 .stream()
-                .filter(matchedItem -> parsedArgs.getDays() == 0 || dateParser.parseDate(matchedItem.timestamp()).isAfter(parsedArgs.getFromDate()))
+                .filter(matchedItem -> parsedArgs.getDays() == 0 || dateParser.parseDate(matchedItem.timestamp()).isAfter(parsedArgs.getStartDate()))
                 .filter(matchedItem -> parsedArgs.getIgnoreChannels()
                         .stream()
                         .noneMatch(matchedItem.channelName()::equalsIgnoreCase))
@@ -260,6 +260,10 @@ class SlackSearchConfig {
     @Inject
     private KeywordExtractor keywordExtractor;
 
+    @Identifier("hawking")
+    @Inject
+    private DateParser dateParser;
+
     @Inject
     @ConfigProperty(name = "sb.slack.accesstoken")
     private Optional<String> configSlackAccessToken;
@@ -287,6 +291,10 @@ class SlackSearchConfig {
     @Inject
     @ConfigProperty(name = "sb.slack.days")
     private Optional<String> configDays;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.startDate")
+    private Optional<String> configStartDate;
 
     @Inject
     @ConfigProperty(name = "sb.slack.searchttl")
@@ -366,6 +374,10 @@ class SlackSearchConfig {
 
     public Optional<String> getConfigDays() {
         return configDays;
+    }
+
+    public Optional<String> getConfigStartDate() {
+        return configStartDate;
     }
 
     public Optional<String> getConfigSearchTtl() {
@@ -499,7 +511,19 @@ class SlackSearchConfig {
                     .get();
         }
 
-        public ZonedDateTime getFromDate() {
+        public ZonedDateTime getStartDate() {
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigStartDate()::get,
+                    arguments,
+                    context,
+                    CommonArguments.START_DATE,
+                    CommonArguments.START_DATE,
+                    "").getSafeValue();
+
+            if (StringUtils.isNotBlank(stringValue)) {
+                return dateParser.parseDate(stringValue);
+            }
+
             return ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays());
         }
 

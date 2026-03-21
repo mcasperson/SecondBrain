@@ -20,6 +20,7 @@ import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
@@ -66,8 +67,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String RECIPIENT_ARG = "recipient";
     public static final String NUM_COMMENTS_ARG = "numComments";
     public static final String HOURS_ARG = "hours";
-    public static final String START_PERIOD_ARG = "start";
-    public static final String END_PERIOD_ARG = "end";
     public static final String ZENDESK_TICKET_SUMMARY_PROMPT_ARG = "ticketSummaryPrompt";
     public static final String ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG = "ticketFilterQuestion";
     public static final String ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG = "ticketFilterMinimumRating";
@@ -560,6 +559,10 @@ class ZenDeskConfig {
     @Inject
     private ValidateString validateString;
 
+    @Identifier("hawking")
+    @Inject
+    private DateParser dateParser;
+
     @Inject
     @Identifier("sanitizeEmail")
     private SanitizeArgument sanitizeEmail;
@@ -933,25 +936,37 @@ class ZenDeskConfig {
         }
 
         public String getStartPeriod() {
-            return getArgsAccessor().getArgument(
-                            getConfigZenDeskStartPeriod()::get,
-                            arguments,
-                            context,
-                            ZenDeskOrganization.START_PERIOD_ARG,
-                            ZenDeskOrganization.START_PERIOD_ARG,
-                            "")
-                    .getSafeValue();
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigZenDeskStartPeriod()::get,
+                    arguments,
+                    context,
+                    CommonArguments.START_DATE,
+                    CommonArguments.START_DATE,
+                    "").getSafeValue();
+
+            if (StringUtils.isNotBlank(stringValue)) {
+                return dateParser.parseDate(stringValue)
+                        .format(ISO_OFFSET_DATE_TIME);
+            }
+
+            return "";
         }
 
         public String getEndPeriod() {
-            return getArgsAccessor().getArgument(
-                            getConfigZenDeskEndPeriod()::get,
-                            arguments,
-                            context,
-                            ZenDeskOrganization.END_PERIOD_ARG,
-                            ZenDeskOrganization.END_PERIOD_ARG,
-                            "")
-                    .getSafeValue();
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigZenDeskEndPeriod()::get,
+                    arguments,
+                    context,
+                    CommonArguments.END_DATE,
+                    CommonArguments.END_DATE,
+                    "").getSafeValue();
+
+            if (StringUtils.isNotBlank(stringValue)) {
+                return dateParser.parseDate(stringValue)
+                        .format(ISO_OFFSET_DATE_TIME);
+            }
+
+            return "";
         }
 
         public boolean getZenDeskFilterByOrganization() {

@@ -620,6 +620,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, String.join(",", keywords), true),
+                        new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
+                        new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(envSettings, prompt, args))
@@ -655,6 +657,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Gong.COMPANY_ARG, id, true),
+                        new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
+                        new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> gong.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
@@ -688,6 +692,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Salesforce.ACCOUNT_ID, id, true),
+                        new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
+                        new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> salesforce.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
@@ -720,6 +726,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
+                        new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
+                        new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
                 .flatMap(args -> Try.of(() -> planHat.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
@@ -803,6 +811,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
+                        new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(envSettings, prompt, args))
@@ -835,6 +845,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
+                        new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
@@ -971,6 +983,14 @@ class MultiSlackZenGoogleConfig {
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.days")
     private Optional<String> configDays;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.startDate")
+    private Optional<String> configStartDate;
+
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.endDate")
+    private Optional<String> configEndDate;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.minTimeBasedContext")
@@ -1196,6 +1216,14 @@ class MultiSlackZenGoogleConfig {
         return configDays;
     }
 
+    public Optional<String> getConfigStartDate() {
+        return configStartDate;
+    }
+
+    public Optional<String> getConfigEndDate() {
+        return configEndDate;
+    }
+
     public Optional<String> getConfigSlackZenGoogleMinTimeBasedContext() {
         return configSlackZenGoogleMinTimeBasedContext;
     }
@@ -1409,6 +1437,14 @@ class MultiSlackZenGoogleConfig {
         return configAnnotationPrefix;
     }
 
+    public Optional<String> getStartDate() {
+        return configStartDate;
+    }
+
+    public Optional<String> getEndDate() {
+        return configEndDate;
+    }
+
     public Optional<String> getConfigIndividualContextSummaryPrompt() {
         return configIndividualContextSummaryPrompt;
     }
@@ -1459,6 +1495,26 @@ class MultiSlackZenGoogleConfig {
                     context,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_MAX_ANNOTATION_PREFIX_ARG,
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_MAX_ANNOTATION_PREFIX_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getStartDate() {
+            return getArgsAccessor().getArgument(
+                    getConfigStartDate()::get,
+                    arguments,
+                    context,
+                    CommonArguments.START_DATE,
+                    CommonArguments.START_DATE,
+                    "").getSafeValue();
+        }
+
+        public String getEndDate() {
+            return getArgsAccessor().getArgument(
+                    getConfigEndDate()::get,
+                    arguments,
+                    context,
+                    CommonArguments.END_DATE,
+                    CommonArguments.END_DATE,
                     "").getSafeValue();
         }
 

@@ -62,4 +62,12 @@ public class CommonArguments {
      * The number of days to look back when retrieving recent documents.
      */
     public static final String DAYS_ARG = "days";
+    /**
+     * The date from which to start returning documents.
+     */
+    public static final String START_DATE = "startDate";
+    /**
+     * The date until which documents are returned.
+     */
+    public static final String END_DATE = "endDate";
 }

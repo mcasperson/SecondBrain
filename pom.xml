@@ -79,6 +79,11 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>com.zoho</groupId>
+            <artifactId>hawking</artifactId>
+            <version>0.1.9</version>
+        </dependency>
         <!-- The Azure SDK has a dependency on SLF4j -->
         <dependency>
             <groupId>org.slf4j</groupId>

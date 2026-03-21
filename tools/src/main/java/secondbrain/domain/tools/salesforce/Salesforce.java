@@ -1,6 +1,7 @@
 package secondbrain.domain.tools.salesforce;
 
 import com.google.common.collect.ImmutableList;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -19,6 +20,7 @@ import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.date.DateParser;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.exceptions.InternalFailure;
@@ -46,6 +48,7 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 /**
  * A tool that answers a query based on the emails associated with a Salesforce account.
@@ -282,6 +285,10 @@ class SalesforceConfig {
 
     @Inject
     private ArgsAccessor argsAccessor;
+
+    @Identifier("hawking")
+    @Inject
+    private DateParser dateParser;
 
     @Inject
     @ConfigProperty(name = "sb.salesforce.domain")
@@ -572,28 +579,42 @@ class SalesforceConfig {
         }
 
         public String getStartPeriod() {
-            return getArgsAccessor().getArgument(
-                            getConfigSalesforceStartPeriod()::get,
-                            arguments,
-                            context,
-                            Salesforce.START_PERIOD_ARG,
-                            Salesforce.START_PERIOD_ARG,
-                            "")
-                    .getSafeValue();
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigSalesforceStartPeriod()::get,
+                    arguments,
+                    context,
+                    CommonArguments.START_DATE,
+                    CommonArguments.START_DATE,
+                    "").getSafeValue();
+
+            if (StringUtils.isNotBlank(stringValue)) {
+                return dateParser.parseDate(stringValue)
+                        .format(ISO_LOCAL_DATE);
+            }
+
+            return "";
         }
 
         public String getEndPeriod() {
-            return getArgsAccessor().getArgument(
-                            getConfigSalesforceEndPeriod()::get,
-                            arguments,
-                            context,
-                            Salesforce.END_PERIOD_ARG,
-                            Salesforce.END_PERIOD_ARG,
-                            "")
-                    .getSafeValue();
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigSalesforceEndPeriod()::get,
+                    arguments,
+                    context,
+                    CommonArguments.END_DATE,
+                    CommonArguments.END_DATE,
+                    "").getSafeValue();
+
+            if (StringUtils.isNotBlank(stringValue)) {
+                return dateParser.parseDate(stringValue)
+                        .format(ISO_LOCAL_DATE);
+            }
+
+            return "";
         }
 
         public String getStartDate() {
+
+
             // Truncating to hours or days means the cache has a higher chance of being hit.
             final TemporalUnit truncatedTo = getHours() == 0
                     ? ChronoUnit.DAYS

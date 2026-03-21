@@ -1,5 +1,6 @@
 package secondbrain.domain.tools.gong;
 
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -295,6 +296,10 @@ class GongConfig {
     private static final int DEFAULT_RATING = 10;
     private static final int DEFAULT_TTL_SECONDS = 60 * 60 * 24; // 24 hours
 
+    @Identifier("hawking")
+    @Inject
+    private DateParser dateParser;
+
     @Inject
     private ToStringGenerator toStringGenerator;
 
@@ -313,6 +318,14 @@ class GongConfig {
     @Inject
     @ConfigProperty(name = "sb.gong.days")
     private Optional<String> configDays;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.startDate")
+    private Optional<String> configStartDate;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.endDate")
+    private Optional<String> configEndDate;
 
     @Inject
     @ConfigProperty(name = "sb.gong.company")
@@ -491,6 +504,14 @@ class GongConfig {
 
     public Optional<String> getConfigDays() {
         return configDays;
+    }
+
+    public Optional<String> getConfigStartDate() {
+        return configStartDate;
+    }
+
+    public Optional<String> getConfigEndDate() {
+        return configEndDate;
     }
 
     public Optional<String> getConfigAccessKey() {
@@ -739,6 +760,19 @@ class GongConfig {
 
         @Nullable
         public String getStartDate() {
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigStartDate()::get,
+                    arguments,
+                    context,
+                    CommonArguments.START_DATE,
+                    CommonArguments.START_DATE,
+                    "").getSafeValue();
+
+            if (StringUtils.isNotBlank(stringValue)) {
+                return dateParser.parseDate(stringValue)
+                        .format(ISO_OFFSET_DATE_TIME);
+            }
+
             if (getDays() == 0) {
                 return null;
             }
@@ -753,6 +787,19 @@ class GongConfig {
 
         @Nullable
         public String getEndDate() {
+            final String stringValue = getArgsAccessor().getArgument(
+                    getConfigEndDate()::get,
+                    arguments,
+                    context,
+                    CommonArguments.END_DATE,
+                    CommonArguments.END_DATE,
+                    "").getSafeValue();
+
+            if (StringUtils.isNotBlank(stringValue)) {
+                return dateParser.parseDate(stringValue)
+                        .format(ISO_OFFSET_DATE_TIME);
+            }
+
             if (getDays() == 0) {
                 return null;
             }
