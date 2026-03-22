@@ -211,6 +211,44 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         final List<RagDocumentContext<ZenDeskTicket>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
+        final String query = buildTicketQuery(parsedArgs);
+
+        // We can have multiple ZenDesk servers
+        final List<ZenDeskCreds> zenDeskCreds = Stream.of(
+                        new ZenDeskCreds(
+                                parsedArgs.getUrl(),
+                                parsedArgs.getUser(),
+                                parsedArgs.getSecretToken(),
+                                parsedArgs.getSecretAuthHeader()),
+                        new ZenDeskCreds(
+                                parsedArgs.getUrl2(),
+                                parsedArgs.getUser2(),
+                                parsedArgs.getSecretToken2(),
+                                parsedArgs.getSecretAuthHeader2())
+                )
+                .filter(ZenDeskCreds::isValid)
+                .toList();
+
+        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.of(() -> zenDeskCreds
+                .stream()
+                .flatMap(zenDeskCred -> getContext(
+                        parsedArgs,
+                        environmentSettings,
+                        zenDeskCred,
+                        query).stream())
+                .toList());
+
+        final List<RagDocumentContext<ZenDeskTicket>> ragDocs = exceptionMapping.map(result).get();
+
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<ZenDeskTicket>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
+        // Apply preprocessing hooks
+        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
+    }
+
+    private String buildTicketQuery(final ZenDeskConfig.LocalArguments parsedArgs) {
         final List<String> query = new ArrayList<>();
         query.add("type:ticket");
 
@@ -235,39 +273,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             query.add("organization:" + parsedArgs.getOrganization());
         }
 
-        // We can have multiple ZenDesk servers
-        final List<ZenDeskCreds> zenDeskCreds = Stream.of(
-                        new ZenDeskCreds(
-                                parsedArgs.getUrl(),
-                                parsedArgs.getUser(),
-                                parsedArgs.getSecretToken(),
-                                parsedArgs.getSecretAuthHeader()),
-                        new ZenDeskCreds(
-                                parsedArgs.getUrl2(),
-                                parsedArgs.getUser2(),
-                                parsedArgs.getSecretToken2(),
-                                parsedArgs.getSecretAuthHeader2())
-                )
-                .filter(ZenDeskCreds::isValid)
-                .toList();
-
-        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.of(() -> zenDeskCreds
-                .stream()
-                .flatMap(zenDeskCred -> getContext(
-                        parsedArgs,
-                        environmentSettings,
-                        zenDeskCred,
-                        String.join(" ", query)).stream())
-                .toList());
-
-        final List<RagDocumentContext<ZenDeskTicket>> ragDocs = exceptionMapping.map(result).get();
-
-        // Combine preinitialization hooks with ragDocs
-        final List<RagDocumentContext<ZenDeskTicket>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
-
-        // Apply preprocessing hooks
-        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
-                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
+        return String.join(" ", query);
     }
 
     private List<RagDocumentContext<ZenDeskTicket>> getContext(
