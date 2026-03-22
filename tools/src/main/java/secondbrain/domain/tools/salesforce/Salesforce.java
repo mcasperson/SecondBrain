@@ -60,8 +60,6 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     public static final String CLIENT_SECRET = "clientSecret";
     public static final String CLIENT_ID = "clientId";
     public static final String HOURS_ARG = "hours";
-    public static final String START_PERIOD_ARG = "start";
-    public static final String END_PERIOD_ARG = "end";
     public static final String OPPORTUNITY_ATTRIBUTE_1_ARG = "opportunityAttribute1";
     public static final String OPPORTUNITY_ATTRIBUTE_1_NAME_ARG = "opportunityAttributeName";
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
