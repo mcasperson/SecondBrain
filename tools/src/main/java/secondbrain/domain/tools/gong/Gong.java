@@ -299,6 +299,9 @@ class GongConfig {
     private DateParser dateParser;
 
     @Inject
+    private Logger logger;
+
+    @Inject
     private ToStringGenerator toStringGenerator;
 
     @Inject
@@ -676,6 +679,10 @@ class GongConfig {
         return dateParser;
     }
 
+    public Logger getLogger() {
+        return logger;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
 
@@ -771,8 +778,10 @@ class GongConfig {
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(stringValue)) {
-                return getDateParser().parseDate(stringValue)
-                        .format(ISO_OFFSET_DATE_TIME);
+                return Try.of(() -> getDateParser().parseDate(stringValue))
+                        .map(date -> date.format(ISO_OFFSET_DATE_TIME))
+                        .onFailure(ex -> getLogger().warning("Failed to parse start date: " + ExceptionUtils.getRootCauseMessage(ex)))
+                        .get();
             }
 
             if (getDays() == 0) {
@@ -798,8 +807,10 @@ class GongConfig {
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(stringValue)) {
-                return getDateParser().parseDate(stringValue)
-                        .format(ISO_OFFSET_DATE_TIME);
+                return Try.of(() -> getDateParser().parseDate(stringValue))
+                        .map(date -> date.format(ISO_OFFSET_DATE_TIME))
+                        .onFailure(ex -> getLogger().warning("Failed to parse end date: " + ExceptionUtils.getRootCauseMessage(ex)))
+                        .get();
             }
 
             if (getDays() == 0) {
