@@ -3,6 +3,7 @@ package secondbrain.domain.date;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.Initialized;
 import jakarta.inject.Inject;
 
 import java.time.ZonedDateTime;
@@ -12,13 +13,15 @@ import java.time.ZonedDateTime;
 public class DateParserEverything implements DateParser {
 
     @Inject
-    private DateParserHawking dateParserHawking;
+    @Identifier("hawking")
+    private DateParser dateParserHawking;
 
     @Inject
-    private DateParserIso8601 dateParserIso8601;
+    private DateParser dateParserIso8601;
 
     @Inject
-    private DateParserUnix dateParserUnix;
+    @Identifier("unix")
+    private DateParser dateParserUnix;
 
     @Override
     public ZonedDateTime parseDate(final String date) {
