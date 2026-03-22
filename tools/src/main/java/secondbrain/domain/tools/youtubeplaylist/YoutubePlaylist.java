@@ -44,20 +44,15 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     public static final String YOUTUBE_PLAYLIST_ID_ARG = "playlistId";
     public static final String YOUTUBE_CHANNEL_ID_ARG = "channelId";
     public static final String YOUTUBE_QUERY_ARG = "query";
-    public static final String YOUTUBE_FILTER_MINIMUM_RATING_ARG = "filterMinimumRating";
-    public static final String YOUTUBE_FILTER_QUESTION_ARG = "filterQuestion";
-    public static final String YOUTUBE_DEFAULT_RATING_ARG = "defaultRating";
-    public static final String YOUTUBE_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
-    public static final String YOUTUBE_SUMMARIZE_TRANSCRIPT_PROMPT_ARG = "summarizeTranscriptPrompt";
     public static final String YOUTUBE_MAX_VIDEOS_ARG = "maxVideos";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
-            You are given a list of Youtube video transcripts.
+            You are given a list of YouTube video transcripts.
             You must assume the provided content is a video transcript.
             Assume the information required to answer the question is present in the transcripts.
             Answer the question based on the transcripts provided.
-            You will be penalized for answering that you can not access youtube videos.
+            You will be penalized for answering that you can not access YouTube videos.
             You will be penalized for answering that the transcripts cannot be accessed.
             You will be penalized for reporting that the content provided is not a video transcript.
             """.stripLeading();
@@ -553,8 +548,8 @@ class YoutubeConfig {
                     getConfigSummarizeTranscript()::get,
                     arguments,
                     context,
-                    YoutubePlaylist.YOUTUBE_SUMMARIZE_TRANSCRIPT_ARG,
-                    YoutubePlaylist.YOUTUBE_SUMMARIZE_TRANSCRIPT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -563,11 +558,11 @@ class YoutubeConfig {
         public String getTranscriptSummaryPrompt() {
             return getArgsAccessor()
                     .getArgument(
-                            getConfigSummarizeTranscriptPrompt()::get,
-                            arguments,
-                            context,
-                            YoutubePlaylist.YOUTUBE_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
-                            YoutubePlaylist.YOUTUBE_SUMMARIZE_TRANSCRIPT_PROMPT_ARG,
+                    getConfigSummarizeTranscriptPrompt()::get,
+                    arguments,
+                    context,
+                    CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the Youtube video transcript in three paragraphs")
                     .getSafeValue();
         }
@@ -577,8 +572,8 @@ class YoutubeConfig {
                             getConfigContextFilterQuestion()::get,
                             arguments,
                             context,
-                            YoutubePlaylist.YOUTUBE_FILTER_QUESTION_ARG,
-                            YoutubePlaylist.YOUTUBE_FILTER_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }
@@ -588,8 +583,8 @@ class YoutubeConfig {
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    YoutubePlaylist.YOUTUBE_FILTER_MINIMUM_RATING_ARG,
-                    YoutubePlaylist.YOUTUBE_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
@@ -600,8 +595,8 @@ class YoutubeConfig {
                     getConfigContextFilterDefaultRating()::get,
                     arguments,
                     context,
-                    YoutubePlaylist.YOUTUBE_DEFAULT_RATING_ARG,
-                    YoutubePlaylist.YOUTUBE_DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
+                    CommonArguments.DEFAULT_RATING_ARG,
                     DEFAULT_RATING + "");
 
             return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
