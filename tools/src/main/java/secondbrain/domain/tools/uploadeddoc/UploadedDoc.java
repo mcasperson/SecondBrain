@@ -22,6 +22,7 @@ import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -44,9 +45,6 @@ public class UploadedDoc implements Tool<Void> {
     public static final String UPLOADED_DOC_KEYWORD_ARG = "keywords";
     public static final String UPLOADED_DOC_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String UPLOADED_DOC_ENTITY_NAME_CONTEXT_ARG = "entityName";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -312,8 +310,8 @@ class UploadDocConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    UploadedDoc.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    UploadedDoc.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -322,8 +320,8 @@ class UploadDocConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    UploadedDoc.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    UploadedDoc.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -332,8 +330,8 @@ class UploadDocConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    UploadedDoc.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    UploadedDoc.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
     }

@@ -24,6 +24,7 @@ import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.publicfile.model.FileContents;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -45,9 +46,6 @@ public class PublicFile implements Tool<FileContents> {
     public static final String PUBLICWEB_KEYWORD_ARG = "keywords";
     public static final String PUBLICWEB_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String PUBLICWEB_ENTITY_NAME_CONTEXT_ARG = "entityName";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -296,8 +294,8 @@ class PublicWebConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    PublicFile.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    PublicFile.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -306,8 +304,8 @@ class PublicWebConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    PublicFile.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    PublicFile.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -316,8 +314,8 @@ class PublicWebConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    PublicFile.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    PublicFile.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
     }

@@ -14,6 +14,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.sanitize.SanitizeDocument;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -29,9 +30,6 @@ import java.util.stream.Stream;
  */
 @ApplicationScoped
 public class AliasTool implements Tool<Void> {
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -173,8 +171,8 @@ class AliasConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     environmentSettings,
-                    AliasTool.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    AliasTool.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -183,8 +181,8 @@ class AliasConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     environmentSettings,
-                    AliasTool.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    AliasTool.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -193,8 +191,8 @@ class AliasConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     environmentSettings,
-                    AliasTool.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    AliasTool.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
     }

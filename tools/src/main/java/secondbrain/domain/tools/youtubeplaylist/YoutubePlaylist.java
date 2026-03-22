@@ -24,6 +24,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -50,9 +51,6 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     public static final String YOUTUBE_DEFAULT_RATING_ARG = "defaultRating";
     public static final String YOUTUBE_SUMMARIZE_TRANSCRIPT_ARG = "summarizeTranscript";
     public static final String YOUTUBE_SUMMARIZE_TRANSCRIPT_PROMPT_ARG = "summarizeTranscriptPrompt";
-    public static final String PREPROCESSOR_HOOKS_CONTEXT_ARG = "preProcessorHooks";
-    public static final String PREINITIALIZATION_HOOKS_CONTEXT_ARG = "preInitializationHooks";
-    public static final String POSTINFERENCE_HOOKS_CONTEXT_ARG = "postInferenceHooks";
     public static final String YOUTUBE_MAX_VIDEOS_ARG = "maxVideos";
 
     private static final String INSTRUCTIONS = """
@@ -315,7 +313,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
                     .map(rating -> Integer.parseInt(rating.trim()))
-                    .onFailure(e -> logger.warning("Failed to get Gong call rating for ticket " + youtubeVideo.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
+                    .onFailure(e -> logger.warning("Failed to get Youtube rating for video " + youtubeVideo.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(ex -> parsedArgs.getDefaultRating())
                     .get();
@@ -640,8 +638,8 @@ class YoutubeConfig {
                     getConfigPreprocessorHooks()::get,
                     arguments,
                     context,
-                    YoutubePlaylist.PREPROCESSOR_HOOKS_CONTEXT_ARG,
-                    YoutubePlaylist.PREPROCESSOR_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
+                    CommonArguments.PREPROCESSOR_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -650,8 +648,8 @@ class YoutubeConfig {
                     getConfigPreinitializationHooks()::get,
                     arguments,
                     context,
-                    YoutubePlaylist.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
-                    YoutubePlaylist.PREINITIALIZATION_HOOKS_CONTEXT_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
+                    CommonArguments.PREINITIALIZATION_HOOKS_ARG,
                     "").getSafeValue();
         }
 
@@ -660,8 +658,8 @@ class YoutubeConfig {
                     getConfigPostInferenceHooks()::get,
                     arguments,
                     context,
-                    YoutubePlaylist.POSTINFERENCE_HOOKS_CONTEXT_ARG,
-                    YoutubePlaylist.POSTINFERENCE_HOOKS_CONTEXT_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
+                    CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
         }
 
