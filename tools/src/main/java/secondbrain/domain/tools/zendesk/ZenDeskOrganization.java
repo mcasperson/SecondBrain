@@ -565,7 +565,7 @@ class ZenDeskConfig {
     @Inject
     private ValidateString validateString;
 
-    @Identifier("hawking")
+    @Identifier("everything")
     @Inject
     private DateParser dateParser;
 

@@ -260,7 +260,7 @@ class SlackSearchConfig {
     @Inject
     private KeywordExtractor keywordExtractor;
 
-    @Identifier("hawking")
+    @Identifier("everything")
     @Inject
     private DateParser dateParser;
 

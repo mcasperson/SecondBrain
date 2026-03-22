@@ -294,7 +294,7 @@ class GongConfig {
     private static final int DEFAULT_RATING = 10;
     private static final int DEFAULT_TTL_SECONDS = 60 * 60 * 24; // 24 hours
 
-    @Identifier("hawking")
+    @Identifier("everything")
     @Inject
     private DateParser dateParser;
 

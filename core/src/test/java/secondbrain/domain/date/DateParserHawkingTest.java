@@ -21,6 +21,16 @@ class DateParserHawkingTest {
     }
 
     @Test
+    void testParseDateWithConfiguredDayYearMonthDayFormat() {
+        assertThrows(IllegalArgumentException.class, () -> dateParser.parseDate("2023-12-30"));
+    }
+
+    @Test
+    void testParseDateWithIso8601() {
+        assertThrows(IllegalArgumentException.class, () -> dateParser.parseDate("2025-03-01T00:00:00.000Z"));
+    }
+
+    @Test
     void testParseDateSupportsNaturalLanguageInput() {
         final ZoneId systemZone = ZoneId.systemDefault();
 

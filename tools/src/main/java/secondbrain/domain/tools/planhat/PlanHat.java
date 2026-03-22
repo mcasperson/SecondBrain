@@ -321,7 +321,7 @@ class PlanHatConfig {
     @Inject
     private ArgsAccessor argsAccessor;
 
-    @Identifier("hawking")
+    @Identifier("everything")
     @Inject
     private DateParser dateParser;
 
