@@ -190,10 +190,7 @@ public class Gong implements Tool<GongCallDetails> {
                         .map(gong -> new GongCallDetails(
                                 gong.metaData().id(),
                                 gong.metaData().url(),
-                                gong.getSystemContext("Salesforce")
-                                        .flatMap(c -> c.getObject("Name"))
-                                        .map(f -> f.value().toString())
-                                        .orElse("Unknown"),
+                                gong.getSystemContextOrDefault("Salesforce", "Name", "Unknown"),
                                 gong.parties(),
                                 gongClient.getCallTranscript(parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), gong),
                                 dateParser.parseDate(gong.metaData().started()),
@@ -248,9 +245,7 @@ public class Gong implements Tool<GongCallDetails> {
 
         return new MetaObjectResult(
                 name,
-                gong.getSystemContext(system, type, field)
-                        .map(f -> f.value().toString())
-                        .orElse("Unknown"),
+                gong.getSystemContextValue(system, type, field, "Unknown"),
                 gong.metaData().id(),
                 getName());
     }

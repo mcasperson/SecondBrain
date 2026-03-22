@@ -12,6 +12,13 @@ public record GongCallExtensive(GongCallExtensiveMetadata metaData,
                                 List<GongCallExtensiveContext> context,
                                 List<GongCallExtensiveParty> parties) {
 
+    public String getSystemContextOrDefault(final String systemName, final String objectName, final String defaultValue) {
+        return getSystemContext(systemName)
+                .flatMap(c -> c.getObject(objectName))
+                .map(f -> Objects.toString(f.value(), defaultValue))
+                .orElse(defaultValue);
+    }
+
     public Optional<GongCallExtensiveContext> getSystemContext(final String system) {
         return Objects.requireNonNullElse(context(), List.<GongCallExtensiveContext>of())
                 .stream()
@@ -28,6 +35,12 @@ public record GongCallExtensive(GongCallExtensiveMetadata metaData,
                 .flatMap(o -> o.getFields().stream())
                 .filter(f -> fieldName.equals(f.name()))
                 .findFirst();
+    }
+
+    public String getSystemContextValue(final String system, final String objectType, final String fieldName, final String defaultValue) {
+        return getSystemContext(system, objectType, fieldName)
+                .map(f -> Objects.toString(f.value(), defaultValue))
+                .orElse(defaultValue);
     }
 
     @Nullable
