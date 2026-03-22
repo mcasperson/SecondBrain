@@ -58,7 +58,6 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     public static final String ACCOUNT_ID = "accountId";
     public static final String CLIENT_SECRET = "clientSecret";
     public static final String CLIENT_ID = "clientId";
-    public static final String HOURS_ARG = "hours";
     public static final String OPPORTUNITY_ATTRIBUTE_1_ARG = "opportunityAttribute1";
     public static final String OPPORTUNITY_ATTRIBUTE_1_NAME_ARG = "opportunityAttributeName";
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
@@ -530,8 +529,8 @@ class SalesforceConfig {
                     getConfigSalesforceHours()::get,
                     arguments,
                     context,
-                    Salesforce.HOURS_ARG,
-                    Salesforce.HOURS_ARG,
+                    CommonArguments.HOURS_ARG,
+                    CommonArguments.HOURS_ARG,
                     "0");
         }
 

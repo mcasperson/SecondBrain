@@ -66,7 +66,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String EXCLUDE_SUBMITTERS_ARG = "excludeSubmitters";
     public static final String RECIPIENT_ARG = "recipient";
     public static final String NUM_COMMENTS_ARG = "numComments";
-    public static final String HOURS_ARG = "hours";
     public static final String ZENDESK_MAX_TICKETS_ARG = "maxTickets";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
     public static final String ZENDESK_HISTORY_TTL_ARG = "historyTtl";
@@ -161,7 +160,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 new ToolArguments(RECIPIENT_ARG, "An optional recipient email address that tickets must be sent to", ""),
                 new ToolArguments(NUM_COMMENTS_ARG, "The optional number of comments to include in the context", "1"),
                 new ToolArguments(CommonArguments.DAYS_ARG, "The optional number of days worth of tickets to return", "0"),
-                new ToolArguments(HOURS_ARG, "The optional number of hours worth of tickets to return", "0"));
+                new ToolArguments(CommonArguments.HOURS_ARG, "The optional number of hours worth of tickets to return", "0"));
     }
 
     @Override
@@ -892,8 +891,8 @@ class ZenDeskConfig {
                     getConfigZenDeskHours()::get,
                     arguments,
                     context,
-                    ZenDeskOrganization.HOURS_ARG,
-                    ZenDeskOrganization.HOURS_ARG,
+                    CommonArguments.HOURS_ARG,
+                    CommonArguments.HOURS_ARG,
                     "0");
         }
 
