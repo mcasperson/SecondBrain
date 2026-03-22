@@ -273,7 +273,6 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
 @ApplicationScoped
 class SalesforceConfig {
-    private static final int DEFAULT_RATING = 10;
     private static final int DEFAULT_TTL_SECONDS = 60 * 60 * 24; // 24 hours
 
     @Inject
