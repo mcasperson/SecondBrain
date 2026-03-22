@@ -54,7 +54,6 @@ import static com.google.common.base.Predicates.instanceOf;
 @ApplicationScoped
 public class SlackSearch implements Tool<SlackSearchResultResource> {
     public static final String SLACK_SEARCH_KEYWORDS_ARG = "searchKeywords";
-    public static final String SLACK_SEARCH_FILTER_KEYWORDS_ARG = "keywords";
     public static final String SLACK_IGNORE_CHANNELS_ARG = "ignoreChannels";
     public static final String API_DELAY_ARG = "apiDelay";
     public static final String SEARCH_TTL_ARG = "searchTtl";
@@ -472,8 +471,8 @@ class SlackSearchConfig {
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG,
-                            SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)

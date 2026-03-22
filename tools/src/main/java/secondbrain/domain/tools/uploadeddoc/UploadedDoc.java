@@ -42,9 +42,6 @@ import java.util.stream.Stream;
  */
 @ApplicationScoped
 public class UploadedDoc implements Tool<Void> {
-    public static final String UPLOADED_DOC_KEYWORD_ARG = "keywords";
-    public static final String UPLOADED_DOC_KEYWORD_WINDOW_ARG = "keywordWindow";
-    public static final String UPLOADED_DOC_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -98,8 +95,8 @@ public class UploadedDoc implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments(UPLOADED_DOC_KEYWORD_ARG, "An optional list of keywords used to trim the document", ""),
-                new ToolArguments(UPLOADED_DOC_KEYWORD_WINDOW_ARG, "The window size around any matching keywords", "")
+                new ToolArguments(CommonArguments.KEYWORDS_ARG, "An optional list of keywords used to trim the document", ""),
+                new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", "")
         );
     }
 
@@ -275,8 +272,8 @@ class UploadDocConfig {
                             getConfigUploadKeywords()::get,
                             arguments,
                             context,
-                            UploadedDoc.UPLOADED_DOC_KEYWORD_ARG,
-                            UploadedDoc.UPLOADED_DOC_KEYWORD_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -288,8 +285,8 @@ class UploadDocConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    UploadedDoc.UPLOADED_DOC_KEYWORD_WINDOW_ARG,
-                    UploadedDoc.UPLOADED_DOC_KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -301,7 +298,7 @@ class UploadDocConfig {
                     null,
                     context,
                     null,
-                    UploadedDoc.UPLOADED_DOC_ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     "").getSafeValue();
         }
 

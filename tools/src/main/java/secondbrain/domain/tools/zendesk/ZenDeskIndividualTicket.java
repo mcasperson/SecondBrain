@@ -25,6 +25,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.sanitize.SanitizeDocument;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -48,8 +49,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     public static final String ZENDESK_RATING_QUESTION_ARG = "ticketRatingQuestion";
     public static final String ZENDESK_DEFAULT_RATING_ARG = "ticketDefaultRating";
-    public static final String ZENDESK_KEYWORD_ARG = "keywords";
-    public static final String ZENDESK_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String ZENDESK_ENTITY_NAME_CONTEXT_ARG = "entity";
     public static final String ZENDESK_TICKET_ID_ARG = "ticketId";
     public static final String ZENDESK_TICKET_SUBJECT_ARG = "ticketSubject";
@@ -679,8 +678,8 @@ class ZenDeskTicketConfig {
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            ZenDeskIndividualTicket.ZENDESK_KEYWORD_ARG,
-                            ZenDeskIndividualTicket.ZENDESK_KEYWORD_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -693,8 +692,8 @@ class ZenDeskTicketConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    ZenDeskIndividualTicket.ZENDESK_KEYWORD_WINDOW_ARG,
-                    ZenDeskIndividualTicket.ZENDESK_KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);

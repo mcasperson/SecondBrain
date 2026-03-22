@@ -44,8 +44,6 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     public static final String YOUTUBE_PLAYLIST_ID_ARG = "playlistId";
     public static final String YOUTUBE_CHANNEL_ID_ARG = "channelId";
     public static final String YOUTUBE_QUERY_ARG = "query";
-    public static final String YOUTUBE_KEYWORD_ARG = "keywords";
-    public static final String YOUTUBE_KEYWORD_WINDOW_ARG = "keywordWindow";
     public static final String YOUTUBE_FILTER_MINIMUM_RATING_ARG = "filterMinimumRating";
     public static final String YOUTUBE_FILTER_QUESTION_ARG = "filterQuestion";
     public static final String YOUTUBE_DEFAULT_RATING_ARG = "defaultRating";
@@ -530,8 +528,8 @@ class YoutubeConfig {
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            YoutubePlaylist.YOUTUBE_KEYWORD_ARG,
-                            YoutubePlaylist.YOUTUBE_KEYWORD_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -543,8 +541,8 @@ class YoutubeConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    YoutubePlaylist.YOUTUBE_KEYWORD_WINDOW_ARG,
-                    YoutubePlaylist.YOUTUBE_KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);

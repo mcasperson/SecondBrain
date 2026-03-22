@@ -43,9 +43,6 @@ import java.util.stream.Stream;
 public class PublicFile implements Tool<FileContents> {
 
     public static final String PUBLICWEB_URL_ARG = "url";
-    public static final String PUBLICWEB_KEYWORD_ARG = "keywords";
-    public static final String PUBLICWEB_KEYWORD_WINDOW_ARG = "keywordWindow";
-    public static final String PUBLICWEB_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -95,9 +92,9 @@ public class PublicFile implements Tool<FileContents> {
                         PUBLICWEB_URL_ARG,
                         "The URL of the document to download",
                         ""),
-                new ToolArguments(PUBLICWEB_KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
                 new ToolArguments(
-                        PUBLICWEB_KEYWORD_ARG,
+                        CommonArguments.KEYWORDS_ARG,
                         "The keywords to limit the document to",
                         ""));
     }
@@ -257,8 +254,8 @@ class PublicWebConfig {
                             getConfigKeywords()::get,
                             arguments,
                             context,
-                            PublicFile.PUBLICWEB_KEYWORD_ARG,
-                            PublicFile.PUBLICWEB_KEYWORD_ARG,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -271,8 +268,8 @@ class PublicWebConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    PublicFile.PUBLICWEB_KEYWORD_WINDOW_ARG,
-                    PublicFile.PUBLICWEB_KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "");
 
             return NumberUtils.toInt(argument.getSafeValue(), Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -285,7 +282,7 @@ class PublicWebConfig {
                     null,
                     context,
                     null,
-                    PublicFile.PUBLICWEB_ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     "").getSafeValue();
         }
 

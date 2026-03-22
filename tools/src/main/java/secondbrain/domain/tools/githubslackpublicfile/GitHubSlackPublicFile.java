@@ -38,9 +38,7 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
 @ApplicationScoped
 public class GitHubSlackPublicFile implements Tool<Void> {
 
-    public static final String GITHUB_SLACK_PUBLICFILE_ENTITY_NAME_ARG = "entityName";
     public static final String GITHUB_SLACK_PUBLICFILE_URL_ARG = "url";
-    public static final String GITHUB_SLACK_PUBLICFILE_DAYS_ARG = "days";
     public static final String GITHUB_SLACK_PUBLICFILE_CONTEXT_FILTER_QUESTION_ARG = "individualContextFilterQuestion";
     public static final String GITHUB_SLACK_PUBLICFILE_CONTEXT_FILTER_MINIMUM_RATING_ARG = "individualContextFilterMinimumRating";
     public static final String GITHUB_SLACK_PUBLICFILE_CONTEXT_SUMMARY_PROMPT_ARG = "individualContextSummaryPrompt";
@@ -404,7 +402,7 @@ class GitHubSlackPublicFileConfig {
                     getConfigDays()::get,
                     arguments,
                     context,
-                    GitHubSlackPublicFile.GITHUB_SLACK_PUBLICFILE_DAYS_ARG,
+                    CommonArguments.DAYS_ARG,
                     "githubslackpublicfile_days",
                     "0").getSafeValue();
 
@@ -498,7 +496,7 @@ class GitHubSlackPublicFileConfig {
                             getConfigEntity()::get,
                             arguments,
                             context,
-                            GitHubSlackPublicFile.GITHUB_SLACK_PUBLICFILE_ENTITY_NAME_ARG,
+                            CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                             "githubslackpublicfile_entity_name",
                             "")
                     .stream()

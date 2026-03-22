@@ -53,14 +53,11 @@ import java.util.stream.Stream;
 @ApplicationScoped
 public class DirectoryScan implements Tool<Void> {
     public static final String DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG = "summarizeIndividualFiles";
-    public static final String DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW = "keywordWindow";
-    public static final String DIRECTORYSCAN_SUMMARIZE_KEYWORDS = "keywords";
     public static final String DIRECTORYSCAN_EXCLUDE_FILES = "excludeFiles";
     public static final String DIRECTORYSCAN_PATHSPEC = "pathspec";
     public static final String DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT = "individualDocumentPrompt";
     public static final String DIRECTORYSCAN_MAX_FILES = "maxfiles";
     public static final String DIRECTORYSCAN_DIRECTORY = "directory";
-    public static final String DIRECTORYSCAN_ENTITY_NAME_CONTEXT_ARG = "entityName";
 
     private static final String INSTRUCTIONS = """
             You are given a question and the answer to the question from many individual files.
@@ -553,11 +550,11 @@ class DirectoryScanConfig {
         @Override
         public List<String> getKeywords() {
             return getArgsAccessor().getArgumentList(
-                            getConfigKeywords()::get,
-                            arguments,
-                            context,
-                            DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
-                            DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORDS,
+                    getConfigKeywords()::get,
+                    arguments,
+                    context,
+                    CommonArguments.KEYWORDS_ARG,
+                    CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)
@@ -571,8 +568,8 @@ class DirectoryScanConfig {
                     getConfigKeywordWindow()::get,
                     arguments,
                     context,
-                    DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW,
-                    DirectoryScan.DIRECTORYSCAN_SUMMARIZE_KEYWORD_WINDOW,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
+                    CommonArguments.KEYWORD_WINDOW_ARG,
                     Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH + "").getSafeValue();
 
             return NumberUtils.toInt(stringValue, Constants.DEFAULT_DOCUMENT_TRIMMED_SECTION_LENGTH);
@@ -597,7 +594,7 @@ class DirectoryScanConfig {
                     null,
                     context,
                     null,
-                    DirectoryScan.DIRECTORYSCAN_ENTITY_NAME_CONTEXT_ARG,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     "").getSafeValue();
         }
 
