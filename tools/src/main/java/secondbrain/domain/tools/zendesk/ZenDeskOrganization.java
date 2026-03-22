@@ -67,10 +67,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public static final String RECIPIENT_ARG = "recipient";
     public static final String NUM_COMMENTS_ARG = "numComments";
     public static final String HOURS_ARG = "hours";
-    public static final String ZENDESK_TICKET_SUMMARY_PROMPT_ARG = "ticketSummaryPrompt";
-    public static final String ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG = "ticketFilterQuestion";
-    public static final String ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG = "ticketFilterMinimumRating";
-    public static final String ZENDESK_SUMMARIZE_TICKET_ARG = "summarizeTicket";
     public static final String ZENDESK_MAX_TICKETS_ARG = "maxTickets";
     public static final String ZENDESK_CONTEXT_FILTER_BY_ORGANIZATION_ARG = "filterByOrganization";
     public static final String ZENDESK_HISTORY_TTL_ARG = "historyTtl";
@@ -423,8 +419,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_RATING_QUESTION_ARG, parsedArgs.getTicketFilterQuestion(), true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_ENTITY_NAME_CONTEXT_ARG, parsedArgs.getEntity(), true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_KEYWORD_ARG, String.join(",", parsedArgs.getKeywords()), true),
-                                new ToolArgs(ZenDeskIndividualTicket.ZENDESK_KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow() + "", true)
+                                new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", parsedArgs.getKeywords()), true),
+                                new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow() + "", true)
                         )
                 ).stream())
                 // Get a list of context strings
@@ -782,11 +778,11 @@ class ZenDeskConfig {
 
         public String getTicketFilterQuestion() {
             return getArgsAccessor().getArgument(
-                            getConfigTicketFilterQuestion()::get,
-                            arguments,
-                            context,
-                            ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
-                            ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_QUESTION_ARG,
+                    getConfigTicketFilterQuestion()::get,
+                    arguments,
+                    context,
+                    CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                    CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }
@@ -796,8 +792,8 @@ class ZenDeskConfig {
                     getConfigContextFilterMinimumRating()::get,
                     arguments,
                     context,
-                    ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
-                    ZenDeskOrganization.ZENDESK_TICKET_INDIVIDUAL_CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
+                    CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG,
                     "0");
 
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
@@ -1186,8 +1182,8 @@ class ZenDeskConfig {
                             getConfigTicketSummaryPrompt()::get,
                             arguments,
                             context,
-                            ZenDeskOrganization.ZENDESK_TICKET_SUMMARY_PROMPT_ARG,
-                            ZenDeskOrganization.ZENDESK_TICKET_SUMMARY_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             """
                                     Summarise the ticket in one paragraph.
                                     You will be penalized for including ticket numbers or IDs, invoice numbers, purchase order numbers, or reference numbers.""".stripLeading())
@@ -1199,8 +1195,8 @@ class ZenDeskConfig {
                     getConfigSummarizeTicket()::get,
                     arguments,
                     context,
-                    ZenDeskOrganization.ZENDESK_SUMMARIZE_TICKET_ARG,
-                    ZenDeskOrganization.ZENDESK_SUMMARIZE_TICKET_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
                     "true").getSafeValue();
 
             return BooleanUtils.toBoolean(value);

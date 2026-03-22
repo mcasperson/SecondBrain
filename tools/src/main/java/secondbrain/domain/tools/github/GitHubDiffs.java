@@ -51,11 +51,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     public static final String GITHUB_DIFF_REPO_ARG = "repo";
     public static final String GITHUB_DIFF_BRANCH_ARG = "branch";
     public static final String GITHUB_DIFF_SHA_ARG = "sha";
-    public static final String GITHUB_DIFF_SINCE_ARG = "since";
-    public static final String GITHUB_DIFF_UNTIL_ARG = "until";
     public static final String GITHUB_DIFF_MAX_DIFFS_ARG = "maxDiffs";
-    public static final String GITHUB_DIFF_SUMMARY_PROMPT_ARG = "githubIssueSummaryPrompt";
-    public static final String GITHUB_DIFF_SUMMARIZE_ARG = "githubSummarizeDiff";
     private static final String INSTRUCTIONS = """
             You are an expert in reading Git diffs.
             You are given a question and a list of summaries of Git Diffs and their associated commit messages.
@@ -123,12 +119,12 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
                 new ToolArguments(GITHUB_DIFF_REPO_ARG, "The repository to check", "SecondBrain"),
                 new ToolArguments(GITHUB_DIFF_BRANCH_ARG, "The branch to check", "main"),
                 new ToolArguments(GITHUB_DIFF_SHA_ARG, "The git sha to check", ""),
-                new ToolArguments(GITHUB_DIFF_SINCE_ARG, "The optional date to start checking from", ""),
-                new ToolArguments(GITHUB_DIFF_UNTIL_ARG, "The optional date to stop checking at", ""),
+                new ToolArguments(CommonArguments.START_DATE, "The optional date to start checking from", ""),
+                new ToolArguments(CommonArguments.END_DATE, "The optional date to stop checking at", ""),
                 new ToolArguments(CommonArguments.DAYS_ARG, "The optional number of days worth of diffs to return", "0"),
                 new ToolArguments(GITHUB_DIFF_MAX_DIFFS_ARG, "The optional number of diffs to return", "0"),
-                new ToolArguments(GITHUB_DIFF_SUMMARIZE_ARG, "Set to true to first summarize each diff", "true"),
-                new ToolArguments(GITHUB_DIFF_SUMMARY_PROMPT_ARG, "The prompt used to summarize the diff", "true")
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize each diff", "true"),
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the diff", "true")
         );
     }
 
@@ -495,8 +491,8 @@ class GitHubDiffConfig {
                     getConfigGithubSince()::get,
                     arguments,
                     context,
-                    GitHubDiffs.GITHUB_DIFF_SINCE_ARG,
-                    GitHubDiffs.GITHUB_DIFF_SINCE_ARG,
+                    CommonArguments.START_DATE,
+                    CommonArguments.START_DATE,
                     ZonedDateTime.now(ZoneOffset.UTC)
                             .truncatedTo(ChronoUnit.DAYS)
                             .minusDays(getDays())
@@ -508,8 +504,8 @@ class GitHubDiffConfig {
                     getConfigGithubUntil()::get,
                     arguments,
                     context,
-                    GitHubDiffs.GITHUB_DIFF_UNTIL_ARG,
-                    GitHubDiffs.GITHUB_DIFF_UNTIL_ARG,
+                    CommonArguments.END_DATE,
+                    CommonArguments.END_DATE,
                     ZonedDateTime.now(ZoneOffset.UTC)
                             .plusDays(1)
                             .truncatedTo(ChronoUnit.DAYS)
@@ -571,8 +567,8 @@ class GitHubDiffConfig {
                             getConfigDiffSummaryPrompt()::get,
                             arguments,
                             context,
-                            GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG,
-                            GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the GitHub issue in three paragraphs")
                     .getSafeValue();
         }
@@ -582,8 +578,8 @@ class GitHubDiffConfig {
                     getConfigSummarizeDiff()::get,
                     arguments,
                     context,
-                    GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG,
-                    GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);

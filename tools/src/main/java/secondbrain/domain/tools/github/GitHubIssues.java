@@ -49,11 +49,6 @@ public class GitHubIssues implements Tool<GitHubIssue> {
     public static final String GITHUB_REPO_ARG = "githubRepo";
     public static final String GITHUB_ISSUE_LABELS_ARG = "githubIssueLabels";
     public static final String GITHUB_ISSUE_STATE_ARG = "githubIssueState";
-    public static final String GITHUB_ISSUE_SUMMARY_PROMPT_ARG = "githubIssueSummaryPrompt";
-    public static final String GITHUB_SUMMARIZE_ISSUE_ARG = "githubSummarizeIssue";
-    public static final String GITHUB_START_DATE_ARG = "githubStartDate";
-    public static final String GITHUB_END_DATE_ARG = "githubEndDate";
-    public static final String GITHUB_DAYS_ARG = "githubDays";
     private static final String INSTRUCTIONS = """
             You are an expert in reading GitHub issues diffs.
             You are given a question and a list of summaries of GitHub Issues.
@@ -521,8 +516,8 @@ class GitHubIssueConfig {
                             getConfigIssueSummaryPrompt()::get,
                             arguments,
                             context,
-                            GitHubIssues.GITHUB_ISSUE_SUMMARY_PROMPT_ARG,
-                            GitHubIssues.GITHUB_ISSUE_SUMMARY_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the GitHub issue in three paragraphs")
                     .getSafeValue();
         }
@@ -532,8 +527,8 @@ class GitHubIssueConfig {
                     getConfigSummarizeIssue()::get,
                     arguments,
                     context,
-                    GitHubIssues.GITHUB_SUMMARIZE_ISSUE_ARG,
-                    GitHubIssues.GITHUB_SUMMARIZE_ISSUE_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
                     "").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
@@ -545,8 +540,8 @@ class GitHubIssueConfig {
                     getConfigStartDate()::get,
                     arguments,
                     context,
-                    GitHubIssues.GITHUB_START_DATE_ARG,
-                    GitHubIssues.GITHUB_START_DATE_ARG,
+                    CommonArguments.START_DATE,
+                    CommonArguments.START_DATE,
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(configuredDate)) {
@@ -569,8 +564,8 @@ class GitHubIssueConfig {
                     getConfigEndDate()::get,
                     arguments,
                     context,
-                    GitHubIssues.GITHUB_END_DATE_ARG,
-                    GitHubIssues.GITHUB_END_DATE_ARG,
+                    CommonArguments.END_DATE,
+                    CommonArguments.END_DATE,
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(configuredDate)) {

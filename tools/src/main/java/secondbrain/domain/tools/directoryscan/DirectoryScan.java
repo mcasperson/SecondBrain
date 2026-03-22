@@ -52,10 +52,8 @@ import java.util.stream.Stream;
  */
 @ApplicationScoped
 public class DirectoryScan implements Tool<Void> {
-    public static final String DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG = "summarizeIndividualFiles";
     public static final String DIRECTORYSCAN_EXCLUDE_FILES = "excludeFiles";
     public static final String DIRECTORYSCAN_PATHSPEC = "pathspec";
-    public static final String DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT = "individualDocumentPrompt";
     public static final String DIRECTORYSCAN_MAX_FILES = "maxfiles";
     public static final String DIRECTORYSCAN_DIRECTORY = "directory";
 
@@ -516,8 +514,8 @@ class DirectoryScanConfig {
                     getConfigDocumentPrompt()::get,
                     arguments,
                     context,
-                    DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
-                    DirectoryScan.DIRECTORYSCAN_INDIVIDUAL_DOCUMENT_PROMPT,
+                    CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                     prompt).getSafeValue();
         }
 
@@ -580,8 +578,8 @@ class DirectoryScanConfig {
                     getConfigSummarizeIndividualFiles()::get,
                     arguments,
                     context,
-                    DirectoryScan.DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG,
-                    DirectoryScan.DIRECTORYSCAN_SUMMARIZE_INDIVIDUAL_FILES_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
+                    CommonArguments.SUMMARIZE_DOCUMENT_ARG,
                     "true").getSafeValue();
 
             return BooleanUtils.toBoolean(stringValue);
