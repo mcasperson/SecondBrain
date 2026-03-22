@@ -48,7 +48,6 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
-import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 /**
  * A tool that answers a query based on the emails associated with a Salesforce account.
@@ -472,6 +471,10 @@ class SalesforceConfig {
         return configTtlSeconds;
     }
 
+    public DateParser getDateParser() {
+        return dateParser;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private static final int DEFAULT_RATING = 10;
 
@@ -586,7 +589,7 @@ class SalesforceConfig {
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(stringValue)) {
-                return dateParser.parseDate(stringValue)
+                return getDateParser().parseDate(stringValue)
                         .format(ISO_LOCAL_DATE);
             }
 
@@ -603,7 +606,7 @@ class SalesforceConfig {
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(stringValue)) {
-                return dateParser.parseDate(stringValue)
+                return getDateParser().parseDate(stringValue)
                         .format(ISO_LOCAL_DATE);
             }
 

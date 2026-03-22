@@ -672,6 +672,10 @@ class GongConfig {
         return configTtlSeconds;
     }
 
+    public DateParser getDateParser() {
+        return dateParser;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
 
@@ -767,7 +771,7 @@ class GongConfig {
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(stringValue)) {
-                return dateParser.parseDate(stringValue)
+                return getDateParser().parseDate(stringValue)
                         .format(ISO_OFFSET_DATE_TIME);
             }
 
@@ -794,7 +798,7 @@ class GongConfig {
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(stringValue)) {
-                return dateParser.parseDate(stringValue)
+                return getDateParser().parseDate(stringValue)
                         .format(ISO_OFFSET_DATE_TIME);
             }
 

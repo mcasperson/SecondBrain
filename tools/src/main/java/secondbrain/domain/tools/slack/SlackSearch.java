@@ -424,6 +424,10 @@ class SlackSearchConfig {
         return configTtlSeconds;
     }
 
+    public DateParser getDateParser() {
+        return dateParser;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
@@ -521,7 +525,7 @@ class SlackSearchConfig {
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(stringValue)) {
-                return dateParser.parseDate(stringValue);
+                return getDateParser().parseDate(stringValue);
             }
 
             return ZonedDateTime.now(ZoneOffset.UTC).minusDays(getDays());

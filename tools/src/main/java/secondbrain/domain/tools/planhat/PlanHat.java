@@ -466,6 +466,10 @@ class PlanHatConfig {
         return toStringGenerator;
     }
 
+    public DateParser getDateParser() {
+        return dateParser;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigSummarizer, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
@@ -517,7 +521,7 @@ class PlanHatConfig {
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(stringValue)) {
-                return dateParser.parseDate(stringValue);
+                return getDateParser().parseDate(stringValue);
             }
 
             if (getDays() == 0) {
@@ -540,7 +544,7 @@ class PlanHatConfig {
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(stringValue)) {
-                return dateParser.parseDate(stringValue);
+                return getDateParser().parseDate(stringValue);
             }
 
             if (getDays() == 0) {
