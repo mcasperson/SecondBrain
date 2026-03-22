@@ -19,6 +19,7 @@ class DateParserEverythingTest {
         setField("dateParserHawking", new DateParserHawking());
         setField("dateParserIso8601", new DateParserIso8601());
         setField("dateParserUnix", new DateParserUnix());
+        setField("dateParserYyyyMmDd", new DateParserYyyyMmDd());
     }
 
     private void setField(final String name, final Object value) throws Exception {
@@ -53,6 +54,16 @@ class DateParserEverythingTest {
         assertEquals(9, date.getMonthValue());
         assertEquals(8, date.getDayOfMonth());
         assertEquals(7, date.getHour());
+    }
+
+    @Test
+    void testParseYyyyMmDDateWithTimezone() {
+        final ZonedDateTime date = dateParser.parseDate("2024-09-08");
+
+        assertNotNull(date);
+        assertEquals(2024, date.getYear());
+        assertEquals(9, date.getMonthValue());
+        assertEquals(8, date.getDayOfMonth());
     }
 
     @Test

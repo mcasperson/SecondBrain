@@ -23,10 +23,15 @@ public class DateParserEverything implements DateParser {
     @Identifier("unix")
     private DateParser dateParserUnix;
 
+    @Inject
+    @Identifier("yyyyMmDd")
+    private DateParser dateParserYyyyMmDd;
+
     @Override
     public ZonedDateTime parseDate(final String date) {
         return Try.of(() -> dateParserUnix.parseDate(date))
                 .recoverWith(error -> Try.of(() -> dateParserIso8601.parseDate(date)))
+                .recoverWith(error -> Try.of(() -> dateParserYyyyMmDd.parseDate(date)))
                 .recoverWith(error -> Try.of(() -> dateParserHawking.parseDate(date)))
                 .get();
     }
