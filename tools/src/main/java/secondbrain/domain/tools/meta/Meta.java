@@ -103,6 +103,7 @@ public class Meta implements Tool<Void> {
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Whether to summarize the document before including it in the final context", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt to use when summarizing the document", ""),
                 new ToolArguments(CommonArguments.DAYS_ARG, "The number of days to look back when retrieving recent documents", "7"),
+                new ToolArguments(CommonArguments.HOURS_ARG, "The number of hours to look back when retrieving recent documents", "0"),
                 new ToolArguments(CommonArguments.ENTITY_NAME_CONTEXT_ARG, "The entity name used to embed in sentences converted to embeddings", "")
         );
     }
@@ -139,6 +140,7 @@ public class Meta implements Tool<Void> {
                 new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, parsedArgs.getSummarizeDocument() + "", true),
                 new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getSummarizeDocumentPrompt(), true),
                 new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true),
+                new ToolArgs(CommonArguments.HOURS_ARG, parsedArgs.getHours() + "", true),
                 new ToolArgs(CommonArguments.ENTITY_NAME_CONTEXT_ARG, parsedArgs.getEntityName(), true)
         );
 
@@ -283,6 +285,10 @@ class MetaConfig {
     private Optional<String> configDays;
 
     @Inject
+    @ConfigProperty(name = "sb.meta.hours")
+    private Optional<String> configHours;
+
+    @Inject
     @ConfigProperty(name = "sb.meta.entityName")
     private Optional<String> configEntityName;
 
@@ -348,6 +354,10 @@ class MetaConfig {
 
     public Optional<String> getConfigDays() {
         return configDays;
+    }
+
+    public Optional<String> getConfigHours() {
+        return configHours;
     }
 
     public Optional<String> getConfigEntityName() {
@@ -588,6 +598,22 @@ class MetaConfig {
                     CommonArguments.DAYS_ARG,
                     CommonArguments.DAYS_ARG,
                     "7");
+
+            return Math.max(0, Integer.parseInt(argument.getSafeValue()));
+        }
+
+        /**
+         * The number of hours to look back when retrieving recent documents. This can be used by tools that retrieve
+         * documents based on recency to limit the scope of documents considered for retrieval.
+         */
+        public Integer getHours() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigHours()::get,
+                    arguments,
+                    context,
+                    CommonArguments.HOURS_ARG,
+                    CommonArguments.HOURS_ARG,
+                    "0");
 
             return Math.max(0, Integer.parseInt(argument.getSafeValue()));
         }
