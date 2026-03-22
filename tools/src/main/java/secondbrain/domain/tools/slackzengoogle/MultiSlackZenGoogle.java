@@ -619,7 +619,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true),
-                        new ToolArgs(SlackSearch.SLACK_SEARCH_FILTER_KEYWORDS_ARG, String.join(",", keywords), true),
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", keywords), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
@@ -840,8 +840,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating().toString(), true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_TICKET_SUMMARY_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
-                        new ToolArgs(ZenDeskOrganization.ZENDESK_SUMMARIZE_TICKET_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),

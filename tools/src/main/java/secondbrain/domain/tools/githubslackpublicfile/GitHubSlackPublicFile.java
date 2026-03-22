@@ -194,11 +194,11 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
-                        new ToolArgs(GitHubIssues.GITHUB_SUMMARIZE_ISSUE_ARG, "" + !id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()).isBlank(), true),
-                        new ToolArgs(GitHubIssues.GITHUB_ISSUE_SUMMARY_PROMPT_ARG, id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()), true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()).isBlank(), true),
+                        new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()), true),
                         new ToolArgs(GitHubIssues.GITHUB_ORGANIZATION_ARG, id.organization(), true),
                         new ToolArgs(GitHubIssues.GITHUB_REPO_ARG, id.repository(), true),
-                        new ToolArgs(GitHubIssues.GITHUB_DAYS_ARG, "" + parsedArgs.getDays(), true))
+                        new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true))
                 )
                 .flatMap(args -> Try.of(() -> gitHubIssues.getContext(context, prompt, args))
                         .onFailure(InternalFailure.class, ex -> logger.warning("GitHub issues failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -219,8 +219,8 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                 .stream()
                 .map(id ->
                         List.of(
-                                new ToolArgs(GitHubDiffs.GITHUB_DIFF_SUMMARIZE_ARG, !id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()).isBlank() + "", true),
-                                new ToolArgs(GitHubDiffs.GITHUB_DIFF_SUMMARY_PROMPT_ARG, id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()), true),
+                                new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, !id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()).isBlank() + "", true),
+                                new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, id.getIndividualPromptOrDefault(parsedArgs.getIndividualContextSummaryPrompt()), true),
                                 new ToolArgs("owner", id.organization(), true),
                                 new ToolArgs("repo", id.repository(), true),
                                 new ToolArgs("days", "" + parsedArgs.getDays(), true)))
