@@ -104,9 +104,6 @@ public class PlanHat implements Tool<Conversation> {
     private HtmlToText htmlToText;
 
     @Inject
-    private DateParser dateParser;
-
-    @Inject
     private ValidateString validateString;
 
     @Inject
