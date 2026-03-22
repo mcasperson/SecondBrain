@@ -73,9 +73,6 @@ public class Meta implements Tool<Void> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
-    @Inject
-    private RatingTool ratingTool;
-
     @Override
     public String getName() {
         return Meta.class.getSimpleName();
