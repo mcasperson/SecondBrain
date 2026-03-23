@@ -115,7 +115,20 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments(YOUTUBE_MAX_VIDEOS_ARG, "The maximum number of videos to process", "10")
+                new ToolArguments(YOUTUBE_PLAYLIST_ID_ARG, "The optional comma-separated list of YouTube playlist IDs to retrieve videos from", ""),
+                new ToolArguments(YOUTUBE_CHANNEL_ID_ARG, "The optional YouTube channel ID to search videos from", ""),
+                new ToolArguments(YOUTUBE_QUERY_ARG, "The optional search query to find YouTube videos", ""),
+                new ToolArguments(YOUTUBE_MAX_VIDEOS_ARG, "The maximum number of videos to process", "10"),
+                new ToolArguments(CommonArguments.KEYWORDS_ARG, "The optional keywords to limit the video transcripts to", ""),
+                new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize each video transcript", "false"),
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the video transcript", "Summarize the YouTube video transcript in three paragraphs"),
+                new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of a video transcript", ""),
+                new ToolArguments(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, "The minimum rating a video transcript must have to be included in the context", "0"),
+                new ToolArguments(CommonArguments.DEFAULT_RATING_ARG, "The default rating to assign to video transcripts when no rating can be determined", "10"),
+                new ToolArguments(CommonArguments.PREINITIALIZATION_HOOKS_ARG, "The names of pre-initialization hooks to apply before collecting video data", ""),
+                new ToolArguments(CommonArguments.PREPROCESSOR_HOOKS_ARG, "The names of pre-processor hooks to apply before processing the video transcripts", ""),
+                new ToolArguments(CommonArguments.POSTINFERENCE_HOOKS_ARG, "The names of post-inference hooks to apply after the LLM has processed the video transcripts", "")
         );
     }
 
@@ -558,11 +571,11 @@ class YoutubeConfig {
         public String getTranscriptSummaryPrompt() {
             return getArgsAccessor()
                     .getArgument(
-                    getConfigSummarizeTranscriptPrompt()::get,
-                    arguments,
-                    context,
-                    CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
-                    CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            getConfigSummarizeTranscriptPrompt()::get,
+                            arguments,
+                            context,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
+                            CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                             "Summarise the Youtube video transcript in three paragraphs")
                     .getSafeValue();
         }

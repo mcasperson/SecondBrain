@@ -141,7 +141,45 @@ public class Gong implements Tool<GongCallDetails> {
 
     @Override
     public List<ToolArguments> getArguments() {
-        return List.of();
+        return List.of(
+                new ToolArguments(COMPANY_ARG, "The name of the company whose Gong calls are to be retrieved", ""),
+                new ToolArguments(CALLID_ARG, "The optional ID of a specific Gong call to retrieve", ""),
+                new ToolArguments(CommonArguments.DAYS_ARG, "The optional number of days worth of calls to return", "0"),
+                new ToolArguments(CommonArguments.START_DATE, "The optional date to start retrieving calls from", ""),
+                new ToolArguments(CommonArguments.END_DATE, "The optional date to stop retrieving calls at", ""),
+                new ToolArguments(CommonArguments.KEYWORDS_ARG, "The optional keywords to limit the call transcripts to", ""),
+                new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize each call transcript", "false"),
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the call transcript", ""),
+                new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of a call transcript", ""),
+                new ToolArguments(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, "The minimum rating a call transcript must have to be included in the context", "0"),
+                new ToolArguments(CommonArguments.DEFAULT_RATING_ARG, "The default rating to assign to call transcripts when no rating can be determined", "10"),
+                new ToolArguments(CommonArguments.FILTER_GREATER_THAN_ARG, "Set to true to filter out any call transcripts with a rating greater than the specified minimum rating", "false"),
+                new ToolArguments(CommonArguments.PREINITIALIZATION_HOOKS_ARG, "The names of pre-initialization hooks to apply before collecting call data", ""),
+                new ToolArguments(CommonArguments.PREPROCESSOR_HOOKS_ARG, "The names of pre-processor hooks to apply before processing the call transcripts", ""),
+                new ToolArguments(CommonArguments.POSTINFERENCE_HOOKS_ARG, "The names of post-inference hooks to apply after the LLM has processed the call transcripts", ""),
+                new ToolArguments(TTL_SECONDS_ARG, "The number of seconds to cache the Gong call results", "86400"),
+                new ToolArguments(GONG_OBJECT_1_NAME_ARG, "The display name of the first additional Gong context object", ""),
+                new ToolArguments(GONG_OBJECT_1_ARG, "The first additional Gong context object in system:type:field format (e.g. Salesforce:Account:BillingCity)", ""),
+                new ToolArguments(GONG_OBJECT_2_NAME_ARG, "The display name of the second additional Gong context object", ""),
+                new ToolArguments(GONG_OBJECT_2_ARG, "The second additional Gong context object in system:type:field format", ""),
+                new ToolArguments(GONG_OBJECT_3_NAME_ARG, "The display name of the third additional Gong context object", ""),
+                new ToolArguments(GONG_OBJECT_3_ARG, "The third additional Gong context object in system:type:field format", ""),
+                new ToolArguments(GONG_OBJECT_4_NAME_ARG, "The display name of the fourth additional Gong context object", ""),
+                new ToolArguments(GONG_OBJECT_4_ARG, "The fourth additional Gong context object in system:type:field format", ""),
+                new ToolArguments(GONG_OBJECT_5_NAME_ARG, "The display name of the fifth additional Gong context object", ""),
+                new ToolArguments(GONG_OBJECT_5_ARG, "The fifth additional Gong context object in system:type:field format", ""),
+                new ToolArguments(GONG_OBJECT_6_NAME_ARG, "The display name of the sixth additional Gong context object", ""),
+                new ToolArguments(GONG_OBJECT_6_ARG, "The sixth additional Gong context object in system:type:field format", ""),
+                new ToolArguments(GONG_OBJECT_7_NAME_ARG, "The display name of the seventh additional Gong context object", ""),
+                new ToolArguments(GONG_OBJECT_7_ARG, "The seventh additional Gong context object in system:type:field format", ""),
+                new ToolArguments(GONG_OBJECT_8_NAME_ARG, "The display name of the eighth additional Gong context object", ""),
+                new ToolArguments(GONG_OBJECT_8_ARG, "The eighth additional Gong context object in system:type:field format", ""),
+                new ToolArguments(GONG_OBJECT_9_NAME_ARG, "The display name of the ninth additional Gong context object", ""),
+                new ToolArguments(GONG_OBJECT_9_ARG, "The ninth additional Gong context object in system:type:field format", ""),
+                new ToolArguments(GONG_OBJECT_10_NAME_ARG, "The display name of the tenth additional Gong context object", ""),
+                new ToolArguments(GONG_OBJECT_10_ARG, "The tenth additional Gong context object in system:type:field format", "")
+        );
     }
 
     @Override

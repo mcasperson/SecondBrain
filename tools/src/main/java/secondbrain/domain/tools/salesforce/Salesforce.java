@@ -121,10 +121,28 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
     @Override
     public List<ToolArguments> getArguments() {
-        return ImmutableList.of(new ToolArguments(
-                "greeting",
-                "The greeting to display",
-                "World"));
+        return ImmutableList.of(
+                new ToolArguments(ACCOUNT_ID, "The Salesforce account ID to retrieve emails for", ""),
+                new ToolArguments(DOMAIN, "The optional domain to associate with the Salesforce account", ""),
+                new ToolArguments(CommonArguments.DAYS_ARG, "The optional number of days worth of emails to return", "0"),
+                new ToolArguments(CommonArguments.HOURS_ARG, "The optional number of hours worth of emails to return", "0"),
+                new ToolArguments(CommonArguments.START_DATE, "The optional date to start retrieving emails from", ""),
+                new ToolArguments(CommonArguments.END_DATE, "The optional date to stop retrieving emails at", ""),
+                new ToolArguments(CommonArguments.KEYWORDS_ARG, "The optional keywords to limit the emails to", ""),
+                new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize each email", "false"),
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the email", ""),
+                new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of an email", ""),
+                new ToolArguments(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, "The minimum rating an email must have to be included in the context", "0"),
+                new ToolArguments(CommonArguments.DEFAULT_RATING_ARG, "The default rating to assign to emails when no rating can be determined", "10"),
+                new ToolArguments(CommonArguments.FILTER_GREATER_THAN_ARG, "Set to true to filter out any emails with a rating greater than the specified minimum rating", "false"),
+                new ToolArguments(CommonArguments.PREINITIALIZATION_HOOKS_ARG, "The names of pre-initialization hooks to apply before collecting email data", ""),
+                new ToolArguments(CommonArguments.PREPROCESSOR_HOOKS_ARG, "The names of pre-processor hooks to apply before processing the emails", ""),
+                new ToolArguments(CommonArguments.POSTINFERENCE_HOOKS_ARG, "The names of post-inference hooks to apply after the LLM has processed the emails", ""),
+                new ToolArguments(TTL_SECONDS_ARG, "The number of seconds to cache the Salesforce email results", "86400"),
+                new ToolArguments(OPPORTUNITY_ATTRIBUTE_1_NAME_ARG, "The display name of the opportunity attribute to include as metadata", ""),
+                new ToolArguments(OPPORTUNITY_ATTRIBUTE_1_ARG, "The Salesforce opportunity field name to include as metadata", "")
+        );
     }
 
     @Override
