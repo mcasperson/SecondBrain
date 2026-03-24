@@ -106,9 +106,21 @@ public class SlackChannel implements Tool<SlackChannelResource> {
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments(SLACK_CHANEL_ARG, "The Slack channel to read", "general"),
+                new ToolArguments(CommonArguments.DAYS_ARG, "The number of days worth of messages to return", "7"),
+                new ToolArguments(HISTORY_TTL_ARG, "The number of milliseconds to cache the Slack history", "86400000"),
+                new ToolArguments(API_DELAY_ARG, "The number of milliseconds to delay between Slack API calls", "120000"),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to limit the Slack messages to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
-                new ToolArguments(CommonArguments.DAYS_ARG, "The number of days worth of messages to return", "7")
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize the Slack messages", "false"),
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the Slack messages", ""),
+                new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of the Slack messages", ""),
+                new ToolArguments(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, "The minimum rating the Slack messages must have to be included in the context", "0"),
+                new ToolArguments(CommonArguments.DEFAULT_RATING_ARG, "The default rating to assign to the Slack messages when no rating can be determined", "10"),
+                new ToolArguments(CommonArguments.FILTER_GREATER_THAN_ARG, "Set to true to filter out any Slack messages with a rating greater than the specified minimum rating", "false"),
+                new ToolArguments(CommonArguments.PREINITIALIZATION_HOOKS_ARG, "The names of pre-initialization hooks to apply before collecting Slack data", ""),
+                new ToolArguments(CommonArguments.PREPROCESSOR_HOOKS_ARG, "The names of pre-processor hooks to apply before processing the Slack messages", ""),
+                new ToolArguments(CommonArguments.POSTINFERENCE_HOOKS_ARG, "The names of post-inference hooks to apply after the LLM has processed the Slack messages", ""),
+                new ToolArguments(TTL_SECONDS_ARG, "The number of seconds to cache the Slack channel results", "86400")
         );
     }
 
