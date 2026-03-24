@@ -144,11 +144,25 @@ public class PlanHat implements Tool<Conversation> {
 
     @Override
     public List<ToolArguments> getArguments() {
-        return ImmutableList.of(
+        return List.of(
                 new ToolArguments(COMPANY_ID_ARGS, "The company ID to query", ""),
+                new ToolArguments(CommonArguments.DAYS_ARG, "The optional number of days worth of conversations to return", "0"),
+                new ToolArguments(CommonArguments.START_DATE, "The optional date to start retrieving conversations from", ""),
+                new ToolArguments(CommonArguments.END_DATE, "The optional date to stop retrieving conversations at", ""),
+                new ToolArguments(CommonArguments.KEYWORDS_ARG, "The optional keywords to limit the conversations to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
-                new ToolArguments(CommonArguments.DAYS_ARG, "The number of days to query", ""),
-                new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to restrict the activities to", ""));
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize each conversation", "false"),
+                new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the conversation", ""),
+                new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of a conversation", ""),
+                new ToolArguments(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, "The minimum rating a conversation must have to be included in the context", "0"),
+                new ToolArguments(CommonArguments.DEFAULT_RATING_ARG, "The default rating to assign to conversations when no rating can be determined", "10"),
+                new ToolArguments(CommonArguments.FILTER_GREATER_THAN_ARG, "Set to true to filter out any conversations with a rating greater than the specified minimum rating", "false"),
+                new ToolArguments(CommonArguments.PREINITIALIZATION_HOOKS_ARG, "The names of pre-initialization hooks to apply before collecting conversation data", ""),
+                new ToolArguments(CommonArguments.PREPROCESSOR_HOOKS_ARG, "The names of pre-processor hooks to apply before processing the conversations", ""),
+                new ToolArguments(CommonArguments.POSTINFERENCE_HOOKS_ARG, "The names of post-inference hooks to apply after the LLM has processed the conversations", ""),
+                new ToolArguments(PLANHAT_TTL_SECONDS_ARG, "The number of seconds to cache the PlanHat conversation results", "86400"),
+                new ToolArguments(SEARCH_TTL_ARG, "The time-to-live in milliseconds for the PlanHat search query cache", "")
+        );
     }
 
     @Override
