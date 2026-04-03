@@ -17,6 +17,7 @@ import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredParent;
 import secondbrain.domain.config.LocalConfigSummarizer;
+import secondbrain.domain.config.LocalSkipEmptyInLastDuration;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -201,6 +202,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             final List<ToolArgs> arguments) {
         logger.fine("Getting context for " + getName());
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration() && !zenDeskClient.anyItemsInDuration(parsedArgs.getSecretAuthHeader(), parsedArgs.getUrl(), "", ChronoUnit.MONTHS)) {
+            logger.info("Skipping ZenDesk context retrieval because skipEmptyInLastDuration is set and there are no ZenDesk tickets in the specified duration");
+            return List.of();
+        }
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<ZenDeskTicket>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
@@ -595,6 +602,10 @@ class ZenDeskConfig {
     @ConfigProperty(name = "sb.zendesk.ttlSeconds")
     private Optional<String> configTtlSeconds;
 
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.skipEmptyInLastDuration", defaultValue = "false")
+    private Optional<String> configSkipEmptyInLastDuration;
+
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
     }
@@ -754,11 +765,15 @@ class ZenDeskConfig {
         return configTtlSeconds;
     }
 
+    public Optional<String> getConfigSkipEmptyInLastDuration() {
+        return configSkipEmptyInLastDuration;
+    }
+
     public DateParser getDateParser() {
         return dateParser;
     }
 
-    public class LocalArguments implements LocalConfigFilteredParent, LocalConfigSummarizer {
+    public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredParent, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -1279,6 +1294,17 @@ class ZenDeskConfig {
                     DEFAULT_TOOL_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
+        }
+
+        @Override
+        public boolean isSkipEmptyInLastDuration() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigSkipEmptyInLastDuration()::get,
+                    arguments,
+                    context,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    "false").getSafeValue());
         }
     }
 }

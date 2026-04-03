@@ -20,6 +20,7 @@ import secondbrain.domain.config.LocalConfigFilteredItem;
 import secondbrain.domain.config.LocalConfigFilteredParent;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.config.LocalConfigSummarizer;
+import secondbrain.domain.config.LocalSkipEmptyInLastDuration;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -194,6 +195,17 @@ public class PlanHat implements Tool<Conversation> {
             throw new InternalFailure("You must provide a company ID to query");
         }
 
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration()) {
+            final boolean hasItems = Try.withResources(ClientBuilder::newClient)
+                    .of(client -> planHatClient.anyItemsInDuration(client, parsedArgs.getCompany(), parsedArgs.getUrl(), parsedArgs.getSecretToken(), ChronoUnit.MONTHS))
+                    .getOrElse(true);
+            if (!hasItems) {
+                logger.info("Skipping PlanHat context retrieval because skipEmptyInLastDuration is set and there are no PlanHat conversations in the specified duration");
+                return List.of();
+            }
+        }
+
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<Conversation>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
@@ -289,6 +301,10 @@ class PlanHatConfig {
     @Inject
     @ConfigProperty(name = "sb.planhat.ttlSeconds")
     private Optional<String> configTtlSeconds;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.skipEmptyInLastDuration", defaultValue = "false")
+    private Optional<String> configSkipEmptyInLastDuration;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.company")
@@ -473,6 +489,10 @@ class PlanHatConfig {
         return configTtlSeconds;
     }
 
+    public Optional<String> getConfigSkipEmptyInLastDuration() {
+        return configSkipEmptyInLastDuration;
+    }
+
     public ToStringGenerator getToStringGenerator() {
         return toStringGenerator;
     }
@@ -481,7 +501,7 @@ class PlanHatConfig {
         return dateParser;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigSummarizer, LocalConfigKeywordsEntity {
+    public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigSummarizer, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -772,6 +792,17 @@ class PlanHatConfig {
                     DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
+        }
+
+        @Override
+        public boolean isSkipEmptyInLastDuration() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigSkipEmptyInLastDuration()::get,
+                    arguments,
+                    context,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    "false").getSafeValue());
         }
     }
 }

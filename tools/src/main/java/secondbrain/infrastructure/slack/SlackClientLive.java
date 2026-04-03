@@ -32,9 +32,11 @@ import secondbrain.infrastructure.slack.api.SlackChannelResource;
 import secondbrain.infrastructure.slack.api.SlackConversationResource;
 import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -89,6 +91,20 @@ public class SlackClientLive implements SlackClient {
                 conversationHistory(client, accessToken, channelId, oldest,
                         (int) duration.getDuration().toSeconds(), apiDelay,
                         "SlackAPIConversationHistoryDuration"));
+    }
+
+    @Override
+    public boolean anyItemsInDuration(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final Set<String> keywords,
+            final int apiDelay,
+            final ChronoUnit duration) {
+        final String afterDate = LocalDate.now(ZoneId.systemDefault()).minus(1, duration).toString();
+        final Set<String> durationKeywords = new HashSet<>(keywords);
+        durationKeywords.add("after:" + afterDate);
+        return !search(client, accessToken, durationKeywords,
+                (int) duration.getDuration().toSeconds(), apiDelay).isEmpty();
     }
 
     @Override

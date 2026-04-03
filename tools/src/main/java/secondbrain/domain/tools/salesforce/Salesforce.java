@@ -17,6 +17,7 @@ import secondbrain.domain.config.LocalConfigFilteredItem;
 import secondbrain.domain.config.LocalConfigFilteredParent;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
 import secondbrain.domain.config.LocalConfigSummarizer;
+import secondbrain.domain.config.LocalSkipEmptyInLastDuration;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -174,6 +175,17 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         logger.fine("Getting context for " + getName());
 
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration()) {
+            final boolean hasItems = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
+                    .map(token -> salesforceClient.anyItemsInDuration(token.accessToken(), parsedArgs.getAccountId(), "Email", ChronoUnit.MONTHS))
+                    .getOrElse(true);
+            if (!hasItems) {
+                logger.info("Skipping Salesforce context retrieval because skipEmptyInLastDuration is set and there are no Salesforce emails in the specified duration");
+                return List.of();
+            }
+        }
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<SalesforceTaskRecord>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
@@ -391,6 +403,10 @@ class SalesforceConfig {
     @ConfigProperty(name = "sb.salesforce.ttlSeconds")
     private Optional<String> configTtlSeconds;
 
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.skipEmptyInLastDuration", defaultValue = "false")
+    private Optional<String> configSkipEmptyInLastDuration;
+
     public Optional<String> getConfigClientId() {
         return configClientId;
     }
@@ -487,11 +503,15 @@ class SalesforceConfig {
         return configTtlSeconds;
     }
 
+    public Optional<String> getConfigSkipEmptyInLastDuration() {
+        return configSkipEmptyInLastDuration;
+    }
+
     public DateParser getDateParser() {
         return dateParser;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
+    public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private static final int DEFAULT_RATING = 10;
 
         private final List<ToolArgs> arguments;
@@ -855,6 +875,17 @@ class SalesforceConfig {
                     DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), DEFAULT_TTL_SECONDS));
+        }
+
+        @Override
+        public boolean isSkipEmptyInLastDuration() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigSkipEmptyInLastDuration()::get,
+                    arguments,
+                    context,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    "false").getSafeValue());
         }
     }
 }

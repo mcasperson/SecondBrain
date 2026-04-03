@@ -621,6 +621,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, id, true),
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", keywords), true),
+                        new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
@@ -694,6 +695,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Salesforce.ACCOUNT_ID, id, true),
+                        new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
@@ -728,6 +730,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
+                        new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
@@ -813,6 +816,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))

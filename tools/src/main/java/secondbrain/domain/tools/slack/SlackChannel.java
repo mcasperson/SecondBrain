@@ -16,6 +16,7 @@ import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
 import secondbrain.domain.config.LocalConfigFilteredParent;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
+import secondbrain.domain.config.LocalSkipEmptyInLastDuration;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -39,6 +40,7 @@ import secondbrain.infrastructure.slack.api.SlackChannelResource;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -159,6 +161,23 @@ public class SlackChannel implements Tool<SlackChannelResource> {
         logger.fine("Getting context for " + getName());
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration()) {
+            final AsyncMethodsClient earlyOutClient = Slack.getInstance().methodsAsync();
+            final String channelId = Try.of(() -> slackClient.findChannelId(
+                            earlyOutClient,
+                            parsedArgs.getSecretAccessToken(),
+                            parsedArgs.getChannel(),
+                            parsedArgs.getApiDelay()))
+                    .map(c -> c.channelId())
+                    .getOrElse("");
+            if (org.apache.commons.lang3.StringUtils.isNotBlank(channelId)
+                    && !slackClient.anyItemsInDuration(earlyOutClient, parsedArgs.getSecretAccessToken(), channelId, parsedArgs.getApiDelay(), ChronoUnit.MONTHS)) {
+                logger.info("Skipping SlackChannel context retrieval because skipEmptyInLastDuration is set and there are no Slack messages in the specified duration");
+                return List.of();
+            }
+        }
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<SlackChannelResource>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
@@ -372,6 +391,10 @@ class SlackChannelConfig {
     private Optional<String> configTtlSeconds;
 
     @Inject
+    @ConfigProperty(name = "sb.slackchannel.skipEmptyInLastDuration", defaultValue = "false")
+    private Optional<String> configSkipEmptyInLastDuration;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -457,7 +480,11 @@ class SlackChannelConfig {
         return configTtlSeconds;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
+    public Optional<String> getConfigSkipEmptyInLastDuration() {
+        return configSkipEmptyInLastDuration;
+    }
+
+    public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -689,6 +716,17 @@ class SlackChannelConfig {
                     DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_TTL_SECONDS));
+        }
+
+        @Override
+        public boolean isSkipEmptyInLastDuration() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigSkipEmptyInLastDuration()::get,
+                    arguments,
+                    context,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    "false").getSafeValue());
         }
     }
 }

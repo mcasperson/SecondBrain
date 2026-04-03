@@ -17,6 +17,13 @@ public interface SlackClient {
             int apiDelay,
             ChronoUnit duration);
 
+    boolean anyItemsInDuration(
+            AsyncMethodsClient client,
+            String accessToken,
+            Set<String> keywords,
+            int apiDelay,
+            ChronoUnit duration);
+
     String conversationHistory(
             AsyncMethodsClient client,
             String accessToken,

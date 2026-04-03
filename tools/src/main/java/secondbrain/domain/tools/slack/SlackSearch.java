@@ -17,6 +17,7 @@ import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
 import secondbrain.domain.config.LocalConfigFilteredParent;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
+import secondbrain.domain.config.LocalSkipEmptyInLastDuration;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -45,6 +46,7 @@ import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -157,6 +159,17 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
         // If there is nothing to search for, return an empty list
         if (CollectionUtils.isEmpty(parsedArgs.getSearchKeywords())) {
+            return List.of();
+        }
+
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration() && !slackClient.anyItemsInDuration(
+                Slack.getInstance().methodsAsync(),
+                parsedArgs.getSecretAccessToken(),
+                parsedArgs.getSearchKeywords(),
+                parsedArgs.getApiDelay(),
+                ChronoUnit.MONTHS)) {
+            logger.info("Skipping SlackSearch context retrieval because skipEmptyInLastDuration is set and there are no Slack messages in the specified duration");
             return List.of();
         }
 
@@ -335,6 +348,10 @@ class SlackSearchConfig {
     @ConfigProperty(name = "sb.slacksearch.ttlSeconds")
     private Optional<String> configTtlSeconds;
 
+    @Inject
+    @ConfigProperty(name = "sb.slacksearch.skipEmptyInLastDuration", defaultValue = "false")
+    private Optional<String> configSkipEmptyInLastDuration;
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -423,11 +440,15 @@ class SlackSearchConfig {
         return configTtlSeconds;
     }
 
+    public Optional<String> getConfigSkipEmptyInLastDuration() {
+        return configSkipEmptyInLastDuration;
+    }
+
     public DateParser getDateParser() {
         return dateParser;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
+    public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -689,6 +710,17 @@ class SlackSearchConfig {
                     DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_TTL_SECONDS));
+        }
+
+        @Override
+        public boolean isSkipEmptyInLastDuration() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigSkipEmptyInLastDuration()::get,
+                    arguments,
+                    context,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    "false").getSafeValue());
         }
     }
 }
