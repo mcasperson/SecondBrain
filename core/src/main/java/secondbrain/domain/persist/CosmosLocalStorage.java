@@ -297,13 +297,13 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     @Override
-    public CacheResult<String> getOrPutString(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
+    public CacheResult<String> getOrPutString(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<String> generateValue) {
         return Try.withResources(() -> new TimedOperation("Cached string result for " + tool + " " + source))
                 .of(t -> getOrPutStringTimed(tool, source, promptHash, ttlSeconds, generateValue))
                 .get();
     }
 
-    private CacheResult<String> getOrPutStringTimed(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
+    private CacheResult<String> getOrPutStringTimed(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<String> generateValue) {
         if (localStorageCacheDisable.isDisabled() || container == null) {
             return new CacheResult<String>(generateValue.generate(), false);
         }
@@ -336,7 +336,7 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     @Override
-    public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
+    public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
         return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserialize(json, clazz));
     }
 
@@ -346,12 +346,12 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     @Override
-    public <T> CacheResult<List<T>> getOrPutList(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<List<T>> generateValue) {
+    public <T> CacheResult<List<T>> getOrPutList(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> clazz, final GenerateValue<List<T>> generateValue) {
         return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeCollection(json, clazz));
     }
 
     @Override
-    public <T, U> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, int ttlSeconds, Class<T> container, Class<U> contained, GenerateValue<T> generateValue) {
+    public <T, U> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, long ttlSeconds, Class<T> container, Class<U> contained, GenerateValue<T> generateValue) {
         return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeGeneric(json, container, contained));
     }
 
@@ -361,7 +361,7 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     @Override
-    public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, int ttlSeconds, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
+    public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, long ttlSeconds, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
         return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeGeneric(json, container, contained, contained2));
     }
 
@@ -373,7 +373,7 @@ public class CosmosLocalStorage implements LocalStorage {
     /**
      * Wrap up the cache operation in a timed operation for logging.
      */
-    private <T> CacheResult<T> getOrPutPrivate(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
+    private <T> CacheResult<T> getOrPutPrivate(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
         return Try.withResources(() -> new TimedOperation("Cached object result for " + tool + " " + source))
                 .of(t -> getOrPutTimed(tool, source, promptHash, ttlSeconds, generateValue, deserializer))
                 .get();
@@ -383,7 +383,7 @@ public class CosmosLocalStorage implements LocalStorage {
      * A generic method to get or put an object or list of objects in the cache.
      */
     @SuppressWarnings("NullAway")
-    private <T> CacheResult<T> getOrPutTimed(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
+    private <T> CacheResult<T> getOrPutTimed(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
         if (localStorageCacheDisable.isDisabled() || container == null) {
             return new CacheResult<T>(generateValue.generate(), false);
         }
@@ -425,14 +425,14 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     @Override
-    public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
+    public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
         return Try.withResources(() -> new TimedOperation("Cached array result for " + tool + " " + source))
                 .of(t -> getOrPutObjectArrayTimed(tool, source, promptHash, ttlSeconds, clazz, arrayClazz, generateValue))
                 .get();
     }
 
     @SuppressWarnings("NullAway")
-    private <T> CacheResult<T[]> getOrPutObjectArrayTimed(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
+    private <T> CacheResult<T[]> getOrPutObjectArrayTimed(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
         if (localStorageCacheDisable.isDisabled() || container == null) {
             return new CacheResult<T[]>(generateValue.generate(), false);
         }
@@ -489,16 +489,16 @@ public class CosmosLocalStorage implements LocalStorage {
                 .get();
     }
 
-    private <T> void persistArrayResultLocal(final String tool, final String source, final String promptHash, final int ttlSeconds, final T[] value) {
+    private <T> void persistArrayResultLocal(final String tool, final String source, final String promptHash, final long ttlSeconds, final T[] value) {
         Try.of(() -> jsonDeserializer.serialize(value))
                 .map(zipper::compressString)
                 .map(encryptor::encrypt)
-                .map(result -> localStorageReadWrite.putString(tool, source, promptHash + "_all", getTimestamp((long) ttlSeconds), result))
+                .map(result -> localStorageReadWrite.putString(tool, source, promptHash + "_all", getTimestamp(ttlSeconds), result))
                 .onFailure(ex -> logger.warning("Failed to persist full array result to local storage: " + exceptionHandler.getExceptionMessage(ex)));
     }
 
     @SuppressWarnings("ReturnValueIgnored")
-    private <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T[]> generateValue) {
+    private <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T[]> generateValue) {
         final T[] value = generateValue.generate();
 
         if (value != null) {
@@ -537,7 +537,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @SuppressWarnings("NullAway")
     @Override
-    public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String value) {
+    public void putString(final String tool, final String source, final String promptHash, final long ttlSeconds, final String value) {
         synchronized (CosmosLocalStorage.class) {
             if (localStorageCacheDisable.isDisabled() || localStorageCacheReadOnly.isReadOnly() || container == null) {
                 return;
@@ -555,14 +555,14 @@ public class CosmosLocalStorage implements LocalStorage {
 
             final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
                     .map(encryptor::encrypt)
-                    .map(encrypted -> localStorageReadWrite.putString(tool, source, promptHash, getTimestamp((long) ttlSeconds), encrypted))
+                    .map(encrypted -> localStorageReadWrite.putString(tool, source, promptHash, getTimestamp(ttlSeconds), encrypted))
                     .map(encrypted -> new CacheItem(
                             generateId(tool, source, promptHash),
                             tool,
                             source,
                             promptHash,
                             encrypted,
-                            getTimestamp((long) ttlSeconds),
+                            getTimestamp(ttlSeconds),
                             sanitizeTtl(ttlSeconds)))
                     .map(item -> container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions()))
                     .onFailure(ex -> totalFailures.incrementAndGet())
@@ -576,9 +576,9 @@ public class CosmosLocalStorage implements LocalStorage {
         }
     }
 
-    private Integer sanitizeTtl(final int ttlSeconds) {
+    private Integer sanitizeTtl(final long ttlSeconds) {
         if (ttlSeconds > 0) {
-            return ttlSeconds;
+            return (int) ttlSeconds;
         }
         return -1;
     }

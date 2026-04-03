@@ -13,10 +13,7 @@ import org.jooq.lambda.Seq;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.LocalConfigFilteredItem;
-import secondbrain.domain.config.LocalConfigFilteredParent;
-import secondbrain.domain.config.LocalConfigKeywordsEntity;
-import secondbrain.domain.config.LocalConfigSummarizer;
+import secondbrain.domain.config.*;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -212,6 +209,12 @@ public class Gong implements Tool<GongCallDetails> {
 
         logger.fine("Settings are:\n" + parsedArgs);
 
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration() && !gongClient.anyItemsInDuration(parsedArgs.getCompany(), parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), ChronoUnit.MONTHS)) {
+            logger.info("Skipping Gong context retrieval because skipEmptyInLastDuration is set and there are Gong calls in the specified duration");
+            return List.of();
+        }
+
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<GongCallDetails>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
@@ -341,6 +344,10 @@ class GongConfig {
 
     @Inject
     private ToStringGenerator toStringGenerator;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.skipEmptyInLastDuration", defaultValue = "false")
+    private Optional<String> configSkipEmptyInLastDuration;
 
     @Inject
     @ConfigProperty(name = "sb.gong.ttlSeconds")
@@ -721,7 +728,11 @@ class GongConfig {
         return logger;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
+    public Optional<String> getConfigSkipEmptyInLastDuration() {
+        return configSkipEmptyInLastDuration;
+    }
+
+    public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -1455,6 +1466,17 @@ class GongConfig {
                     DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
+        }
+
+        @Override
+        public boolean isSkipEmptyInLastDuration() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigSkipEmptyInLastDuration()::get,
+                    arguments,
+                    context,
+                    Gong.TTL_SECONDS_ARG,
+                    Gong.TTL_SECONDS_ARG,
+                    "false").getSafeValue());
         }
     }
 }

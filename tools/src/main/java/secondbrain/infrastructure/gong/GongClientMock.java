@@ -2,6 +2,7 @@ package secondbrain.infrastructure.gong;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.validation.constraints.Null;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.gong.api.GongCallExtensive;
@@ -10,6 +11,7 @@ import secondbrain.infrastructure.gong.api.GongCallExtensiveMetadata;
 import secondbrain.infrastructure.gong.api.GongCallExtensiveParty;
 import secondbrain.infrastructure.llm.LlmClient;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -22,7 +24,18 @@ public class GongClientMock implements GongClient {
     private LlmClient llmClient;
 
     @Override
-    public List<GongCallExtensive> getCallsExtensive(final String company, final String callId, final String username, final String password, @Nullable final String fromDateTime, @Nullable final String toDateTime) {
+    public boolean anyItemsInDuration(String company, String username, String password, ChronoUnit duration) {
+        return true;
+    }
+
+    @Override
+    public List<GongCallExtensive> getCallsExtensive(
+            final String company,
+            @Nullable final String callId,
+            final String username,
+            final String password,
+            @Nullable final String fromDateTime,
+            @Nullable final String toDateTime) {
         return List.of(new GongCallExtensive(
                 new GongCallExtensiveMetadata("12345", "https://gong.io/call/12345", "2023-10-01T10:00:00Z"),
                 List.of(new GongCallExtensiveContext("unused", List.of())),

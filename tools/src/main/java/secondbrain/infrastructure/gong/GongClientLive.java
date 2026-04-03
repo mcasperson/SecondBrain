@@ -75,11 +75,45 @@ public class GongClientLive implements GongClient {
     }
 
     @Override
-    public List<GongCallExtensive> getCallsExtensive(
+    public boolean anyItemsInDuration(
             final String company,
-            final String callId,
             final String username,
             final String password,
+            final ChronoUnit duration) {
+        final String toDateTime = OffsetDateTime.now(ZoneId.systemDefault())
+                .truncatedTo(duration).format(ISO_OFFSET_DATE_TIME);
+        final String fromDateTime = OffsetDateTime.now(ZoneId.systemDefault())
+                .minus(1, duration).truncatedTo(duration).format(ISO_OFFSET_DATE_TIME);
+
+        return !getCallsExtensive(
+                company,
+                null,
+                username,
+                password,
+                "GongAPICallsExtensiveParentDurationV2",
+                duration.getDuration().toSeconds(),
+                fromDateTime,
+                toDateTime).isEmpty();
+    }
+
+    @Override
+    public List<GongCallExtensive> getCallsExtensive(
+            final String company,
+            @Nullable final String callId,
+            final String username,
+            final String password,
+            @Nullable final String fromDateTime,
+            @Nullable final String toDateTime) {
+        return getCallsExtensive(company, callId, username, password,  "GongAPICallsExtensiveParentV2", TTL, fromDateTime, toDateTime);
+    }
+
+    private List<GongCallExtensive> getCallsExtensive(
+            final String company,
+            @Nullable final String callId,
+            final String username,
+            final String password,
+            final String source,
+            final long ttl,
             @Nullable final String fromDateTime,
             @Nullable final String toDateTime) {
 
@@ -94,9 +128,9 @@ public class GongClientLive implements GongClient {
          */
         final GongCallExtensive[] calls = localStorage.getOrPutObjectArray(
                         GongClientLive.class.getSimpleName(),
-                        "GongAPICallsExtensiveParentV2",
+                        source,
                         DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
-                        TTL,
+                        ttl,
                         GongCallExtensive.class,
                         GongCallExtensive[].class,
                         () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0))
@@ -150,7 +184,7 @@ public class GongClientLive implements GongClient {
     private GongCallExtensive[] getCallsExtensiveApiLocked(
             @Nullable final String fromDateTime,
             @Nullable final String toDateTime,
-            final String callId,
+            @Nullable final String callId,
             final String username,
             final String password,
             final String cursor,

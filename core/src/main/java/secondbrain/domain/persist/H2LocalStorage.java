@@ -314,7 +314,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public CacheResult<String> getOrPutString(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<String> generateValue) {
+    public CacheResult<String> getOrPutString(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<String> generateValue) {
         if (isDisabled(tool) || connection == null) {
             return new CacheResult<String>(generateValue.generate(), false);
         }
@@ -356,12 +356,12 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
+    public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> clazz, final GenerateValue<T> generateValue) {
         return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserialize(json, clazz));
     }
 
     @SuppressWarnings("NullAway")
-    private <T> CacheResult<T> getOrPutPrivate(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
+    private <T> CacheResult<T> getOrPutPrivate(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
         if (isDisabled(tool) || connection == null) {
             return new CacheResult<T>(generateValue.generate(), false);
         }
@@ -411,7 +411,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public <T> CacheResult<List<T>> getOrPutList(final String tool, final String source, final String promptHash, final int ttlSeconds, Class<T> clazz, final GenerateValue<List<T>> generateValue) {
+    public <T> CacheResult<List<T>> getOrPutList(final String tool, final String source, final String promptHash, final long ttlSeconds, Class<T> clazz, final GenerateValue<List<T>> generateValue) {
         return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeCollection(json, clazz));
     }
 
@@ -421,7 +421,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public <T, U> CacheResult<T> getOrPutGeneric(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> container, final Class<U> contained, final GenerateValue<T> generateValue) {
+    public <T, U> CacheResult<T> getOrPutGeneric(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> container, final Class<U> contained, final GenerateValue<T> generateValue) {
         return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeGeneric(json, container, contained));
     }
 
@@ -431,7 +431,7 @@ public class H2LocalStorage implements LocalStorage {
     }
 
     @Override
-    public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, int ttlSeconds, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
+    public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, long ttlSeconds, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
         return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeGeneric(json, container, contained, contained2));
     }
 
@@ -442,7 +442,7 @@ public class H2LocalStorage implements LocalStorage {
 
     @SuppressWarnings("NullAway")
     @Override
-    public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final int ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
+    public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
         if (isDisabled(tool) || connection == null) {
             return new CacheResult<T[]>(generateValue.generate(), false);
         }
@@ -478,7 +478,7 @@ public class H2LocalStorage implements LocalStorage {
                 .get();
     }
 
-    private <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final int ttlSeconds, final GenerateValue<T[]> generateValue) {
+    private <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T[]> generateValue) {
         final T[] value = generateValue.generate();
 
         // The result associated with the original hash is the count of items
@@ -506,7 +506,7 @@ public class H2LocalStorage implements LocalStorage {
 
     @SuppressWarnings("NullAway")
     @Override
-    public void putString(final String tool, final String source, final String promptHash, final int ttlSeconds, final String response) {
+    public void putString(final String tool, final String source, final String promptHash, final long ttlSeconds, final String response) {
         synchronized (H2LocalStorage.class) {
             if (isDisabled(tool) || isReadOnly() || this.connection == null) {
                 return;

@@ -15,6 +15,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.config.LocalSkipEmptyInLastDuration;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.EnvironmentSettings;
 import secondbrain.domain.context.HashMapEnvironmentSettings;
@@ -657,6 +658,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Gong.COMPANY_ARG, id, true),
+                        new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
@@ -1200,6 +1202,10 @@ class MultiSlackZenGoogleConfig {
     @ConfigProperty(name = "sb.multislackzengoogle.stripMarkdownCodeBlock")
     private Optional<String> configStripMarkdownCodeBlock;
 
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.skipEmptyInLastDuration", defaultValue = "false")
+    private Optional<String> configSkipEmptyInLastDuration;
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -1457,11 +1463,15 @@ class MultiSlackZenGoogleConfig {
         return configTtlSeconds;
     }
 
+    public Optional<String> getConfigSkipEmptyInLastDuration() {
+        return configSkipEmptyInLastDuration;
+    }
+
     public Optional<String> getConfigExcludeConfigCacheGetters() {
         return configExcludeConfigCacheGetters;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalSkipEmptyInLastDuration {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
@@ -2164,6 +2174,17 @@ class MultiSlackZenGoogleConfig {
                     DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
+        }
+
+        @Override
+        public boolean isSkipEmptyInLastDuration() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigSkipEmptyInLastDuration()::get,
+                    arguments,
+                    context,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    "false").getSafeValue());
         }
     }
 }

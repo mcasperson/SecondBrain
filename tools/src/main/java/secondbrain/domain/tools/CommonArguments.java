@@ -74,4 +74,8 @@ public class CommonArguments {
      * The date until which documents are returned.
      */
     public static final String END_DATE = "endDate";
+    /**
+     * Whether to skip lookups when there were no results during the previous duration (typically a month)
+     */
+    public static final String SKIP_EMPTY_IN_LAST_DURATION = "skipEnptyInLastDuration";
 }

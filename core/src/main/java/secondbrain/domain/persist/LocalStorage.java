@@ -27,7 +27,7 @@ public interface LocalStorage {
      * @param generateValue A way to generate a new value
      * @return The value, if one was saved, or the generated value
      */
-    CacheResult<String> getOrPutString(String tool, String source, String promptHash, int ttlSeconds, GenerateValue<String> generateValue);
+    CacheResult<String> getOrPutString(String tool, String source, String promptHash, long ttlSeconds, GenerateValue<String> generateValue);
 
     /**
      * Get the value associated with a tool, source, and prompt hash, or save a new value if one is not found.
@@ -49,7 +49,7 @@ public interface LocalStorage {
      * @param generateValue A way to generate a new value
      * @return The value, if one was saved, or the generated value
      */
-    <T> CacheResult<T> getOrPutObject(String tool, String source, String promptHash, int ttlSeconds, Class<T> clazz, GenerateValue<T> generateValue);
+    <T> CacheResult<T> getOrPutObject(String tool, String source, String promptHash, long ttlSeconds, Class<T> clazz, GenerateValue<T> generateValue);
 
     /**
      * Get the value associated with a tool, source, and prompt hash, or save a new value if one is not found.
@@ -71,7 +71,7 @@ public interface LocalStorage {
      * @param generateValue A way to generate a new value
      * @return The value, if one was saved, or the generated value
      */
-    <T> CacheResult<List<T>> getOrPutList(String tool, String source, String promptHash, int ttlSeconds, Class<T> clazz, GenerateValue<List<T>> generateValue);
+    <T> CacheResult<List<T>> getOrPutList(String tool, String source, String promptHash, long ttlSeconds, Class<T> clazz, GenerateValue<List<T>> generateValue);
 
     /**
      * Get the value associated with a tool, source, and prompt hash, or save a new value if one is not found.
@@ -93,7 +93,7 @@ public interface LocalStorage {
      * @param generateValue A way to generate a new value
      * @return The value, if one was saved, or the generated value
      */
-    <T, U> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, int ttlSeconds, Class<T> container, Class<U> contained, GenerateValue<T> generateValue);
+    <T, U> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, long ttlSeconds, Class<T> container, Class<U> contained, GenerateValue<T> generateValue);
 
     /**
      * Get the value associated with a tool, source, and prompt hash, or save a new value if one is not found.
@@ -115,7 +115,7 @@ public interface LocalStorage {
      * @param generateValue A way to generate a new value
      * @return The value, if one was saved, or the generated value
      */
-    <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, int ttlSeconds, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue);
+    <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, long ttlSeconds, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue);
 
     /**
      * Get the value associated with a tool, source, and prompt hash, or save a new value if one is not found.
@@ -139,7 +139,7 @@ public interface LocalStorage {
      * @param ttlSeconds    The time to live in seconds for the cached value
      * @return The value, if one was saved, or the generated value
      */
-    <T> CacheResult<T[]> getOrPutObjectArray(String tool, String source, String promptHash, int ttlSeconds, Class<T> clazz, Class<T[]> arrayClazz, GenerateValue<T[]> generateValue);
+    <T> CacheResult<T[]> getOrPutObjectArray(String tool, String source, String promptHash, long ttlSeconds, Class<T> clazz, Class<T[]> arrayClazz, GenerateValue<T[]> generateValue);
 
     /**
      * Save a value associated with a tool, source, and prompt hash.
@@ -150,7 +150,7 @@ public interface LocalStorage {
      * @param ttlSeconds The time to live in seconds for the cached value
      * @param value      The value to save
      */
-    void putString(String tool, String source, String promptHash, int ttlSeconds, String value);
+    void putString(String tool, String source, String promptHash, long ttlSeconds, String value);
 
     void putString(String tool, String source, String promptHash, String value);
 }
