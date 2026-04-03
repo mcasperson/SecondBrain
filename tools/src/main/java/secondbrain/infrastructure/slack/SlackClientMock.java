@@ -12,6 +12,7 @@ import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 
@@ -20,6 +21,16 @@ public class SlackClientMock implements SlackClient {
     @Inject
     @Preferred
     private LlmClient llmClient;
+
+    @Override
+    public boolean anyItemsInDuration(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channelId,
+            final int apiDelay,
+            final ChronoUnit duration) {
+        return true;
+    }
 
     @Override
     public String conversationHistory(AsyncMethodsClient client, String accessToken, String channelId, String oldest, int ttlSeconds, int apiDelay) {

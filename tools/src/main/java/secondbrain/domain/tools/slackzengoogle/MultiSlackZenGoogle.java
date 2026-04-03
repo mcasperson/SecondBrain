@@ -848,6 +848,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
+                        new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(envSettings, prompt, args))

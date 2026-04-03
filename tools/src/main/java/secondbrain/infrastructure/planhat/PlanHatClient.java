@@ -6,9 +6,17 @@ import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
 
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 public interface PlanHatClient {
+    boolean anyItemsInDuration(
+            Client client,
+            String company,
+            String url,
+            String token,
+            ChronoUnit duration);
+
     List<Conversation> getConversations(
             Client client,
             String company,

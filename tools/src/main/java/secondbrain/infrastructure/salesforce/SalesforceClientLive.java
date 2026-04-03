@@ -26,6 +26,10 @@ import secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
@@ -89,6 +93,22 @@ public class SalesforceClientLive implements SalesforceClient {
     }
 
     @Override
+    public boolean anyItemsInDuration(
+            final String token,
+            final String accountId,
+            final String type,
+            final ChronoUnit duration) {
+        final String endDate = OffsetDateTime.now(ZoneId.systemDefault())
+                .truncatedTo(duration).format(DateTimeFormatter.ISO_LOCAL_DATE);
+        final String startDate = OffsetDateTime.now(ZoneId.systemDefault())
+                .minus(1, duration).truncatedTo(duration).format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+        final SalesforceTaskRecord[] tasks = getTasks(token, accountId, type, startDate, endDate,
+                "SalesforceAPITasksDuration");
+        return tasks != null && tasks.length > 0;
+    }
+
+    @Override
     public SalesforceOauthTokenResponse getToken(final String clientId, final String clientSecret) {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
 
@@ -136,11 +156,15 @@ public class SalesforceClientLive implements SalesforceClient {
 
     @Override
     public SalesforceTaskRecord[] getTasks(final String token, final String accountId, final String type, final String startDate, final String endDate) {
+        return getTasks(token, accountId, type, startDate, endDate, "SalesforceAPITasks");
+    }
+
+    private SalesforceTaskRecord[] getTasks(final String token, final String accountId, final String type, final String startDate, final String endDate, final String source) {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
 
         return Try.of(() -> localStorage.getOrPutObject(
                                 SalesforceClientLive.class.getSimpleName(),
-                                "SalesforceAPITasks",
+                                source,
                                 DigestUtils.sha256Hex(domain.get() + accountId + type + startDate + endDate),
                                 DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
                                 SalesforceTaskRecord[].class,

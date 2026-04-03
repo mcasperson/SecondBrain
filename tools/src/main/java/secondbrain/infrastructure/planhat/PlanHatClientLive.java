@@ -23,7 +23,9 @@ import secondbrain.infrastructure.planhat.api.Conversation;
 
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -74,6 +76,24 @@ public class PlanHatClientLive implements PlanHatClient {
     private Logger logger;
 
     @Override
+    public boolean anyItemsInDuration(
+            final Client client,
+            final String company,
+            final String url,
+            final String token,
+            final ChronoUnit duration) {
+        final ZonedDateTime endDate = ZonedDateTime.now(ZoneId.systemDefault())
+                .truncatedTo(duration);
+        final ZonedDateTime startDate = ZonedDateTime.now(ZoneId.systemDefault())
+                .minus(1, duration)
+                .truncatedTo(duration);
+
+        return !getConversations(client, company, url, token, startDate, endDate,
+                (int) duration.getDuration().toSeconds(),
+                "PlanHatAPIConversationParentDuration").isEmpty();
+    }
+
+    @Override
     public List<Conversation> getConversations(
             final Client client,
             final String company,
@@ -82,6 +102,19 @@ public class PlanHatClientLive implements PlanHatClient {
             @Nullable final ZonedDateTime startDate,
             @Nullable final ZonedDateTime endDate,
             final int ttlSeconds) {
+        return getConversations(client, company, url, token, startDate, endDate, ttlSeconds,
+                "PlanHatAPIConversationParent");
+    }
+
+    private List<Conversation> getConversations(
+            final Client client,
+            final String company,
+            final String url,
+            final String token,
+            @Nullable final ZonedDateTime startDate,
+            @Nullable final ZonedDateTime endDate,
+            final int ttlSeconds,
+            final String source) {
 
         // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
         final String end = endDate == null ? "" : endDate.format(ISO_OFFSET_DATE_TIME);
@@ -92,7 +125,7 @@ public class PlanHatClientLive implements PlanHatClient {
         // If we get a cache miss, we will go to the external cache for each page of results.
         final Conversation[] conversations = localStorage.getOrPutObjectArray(
                         PlanHatClientLive.class.getSimpleName(),
-                        "PlanHatAPIConversationParent",
+                        source,
                         DigestUtils.sha256Hex(company + url + start + end),
                         ttlSeconds,
                         Conversation.class,

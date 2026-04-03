@@ -5,10 +5,18 @@ import secondbrain.infrastructure.slack.api.SlackChannelResource;
 import secondbrain.infrastructure.slack.api.SlackConversationResource;
 import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 
 public interface SlackClient {
+    boolean anyItemsInDuration(
+            AsyncMethodsClient client,
+            String accessToken,
+            String channelId,
+            int apiDelay,
+            ChronoUnit duration);
+
     String conversationHistory(
             AsyncMethodsClient client,
             String accessToken,

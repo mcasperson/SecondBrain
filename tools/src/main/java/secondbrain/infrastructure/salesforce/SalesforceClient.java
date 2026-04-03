@@ -4,7 +4,11 @@ import secondbrain.infrastructure.salesforce.api.SalesforceOauthTokenResponse;
 import secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
+import java.time.temporal.ChronoUnit;
+
 public interface SalesforceClient {
+    boolean anyItemsInDuration(String token, String accountId, String type, ChronoUnit duration);
+
     SalesforceOauthTokenResponse getToken(String clientId, String clientSecret);
 
     SalesforceTaskRecord[] getTasks(String token, String accountId, String type, String startDate, String endDate);

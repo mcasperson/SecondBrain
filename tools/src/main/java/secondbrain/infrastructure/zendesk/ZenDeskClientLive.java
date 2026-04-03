@@ -18,9 +18,14 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.zendesk.api.*;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class ZenDeskClientLive implements ZenDeskClient {
@@ -77,6 +82,27 @@ public class ZenDeskClientLive implements ZenDeskClient {
     }
 
     /**
+     * Checks if any tickets exist within the last complete duration period.
+     * For example, if duration is MONTHS, checks whether any tickets were created in the previous calendar month.
+     */
+    @Override
+    public boolean anyItemsInDuration(
+            final String authorization,
+            final String url,
+            final String query,
+            final ChronoUnit duration) {
+        final String toDateTime = OffsetDateTime.now(ZoneId.systemDefault())
+                .truncatedTo(duration).format(ISO_OFFSET_DATE_TIME);
+        final String fromDateTime = OffsetDateTime.now(ZoneId.systemDefault())
+                .minus(1, duration).truncatedTo(duration).format(ISO_OFFSET_DATE_TIME);
+
+        final String durationQuery = (StringUtils.isBlank(query) ? "" : query + " ")
+                + "type:ticket created>" + fromDateTime + " created<" + toDateTime;
+
+        return !getTickets(authorization, url, durationQuery, 1, MAX_PAGES, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
+    }
+
+    /**
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
      */
@@ -91,7 +117,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Query is required");
         }
 
-        return getTickets(authorization, url, query, 1, MAX_PAGES, ttlSeconds);
+        return getTickets(authorization, url, query, 1, MAX_PAGES, "ZenDeskApiTicketsV2", ttlSeconds);
     }
 
     @Override
@@ -119,11 +145,12 @@ public class ZenDeskClientLive implements ZenDeskClient {
             String query,
             int page,
             int maxPage,
+            String source,
             int ttlSeconds) {
 
         final ZenDeskTicket[] value = localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
-                "ZenDeskApiTicketsV2",
+                source,
                 DigestUtils.sha256Hex(url + query + maxPage),
                 ttlSeconds,
                 ZenDeskTicket[].class,

@@ -6,6 +6,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.zendesk.api.*;
 
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -16,6 +17,15 @@ public class ZenDeskClientMock implements ZenDeskClient {
     @Inject
     @Preferred
     private LlmClient llmClient;
+
+    @Override
+    public boolean anyItemsInDuration(
+            final String authorization,
+            final String url,
+            final String query,
+            final ChronoUnit duration) {
+        return true;
+    }
 
     @Override
     public List<ZenDeskTicket> getTickets(

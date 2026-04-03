@@ -12,6 +12,7 @@ import secondbrain.infrastructure.planhat.api.Conversation;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,16 @@ public class PlanHatClientMock implements PlanHatClient {
     @Inject
     @Preferred
     private LlmClient llmClient;
+
+    @Override
+    public boolean anyItemsInDuration(
+            final Client client,
+            final String company,
+            final String url,
+            final String token,
+            final ChronoUnit duration) {
+        return true;
+    }
 
     @Override
     public List<Conversation> getConversations(final Client client, final String company, final String url, final String token, @Nullable final ZonedDateTime startDate, @Nullable final ZonedDateTime endDate, final int ttlSeconds) {

@@ -32,11 +32,16 @@ import secondbrain.infrastructure.slack.api.SlackChannelResource;
 import secondbrain.infrastructure.slack.api.SlackConversationResource;
 import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Logger;
+
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 import static io.vavr.Predicates.instanceOf;
 
@@ -71,6 +76,22 @@ public class SlackClientLive implements SlackClient {
     private TimeoutService timeoutService;
 
     @Override
+    public boolean anyItemsInDuration(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channelId,
+            final int apiDelay,
+            final ChronoUnit duration) {
+        final String oldest = String.valueOf(OffsetDateTime.now(ZoneId.systemDefault())
+                .minus(1, duration).truncatedTo(duration).toEpochSecond());
+
+        return org.apache.commons.lang3.StringUtils.isNotBlank(
+                conversationHistory(client, accessToken, channelId, oldest,
+                        (int) duration.getDuration().toSeconds(), apiDelay,
+                        "SlackAPIConversationHistoryDuration"));
+    }
+
+    @Override
     public String conversationHistory(
             final AsyncMethodsClient client,
             final String accessToken,
@@ -78,6 +99,18 @@ public class SlackClientLive implements SlackClient {
             final String oldest,
             final int ttlSeconds,
             final int apiDelay) {
+        return conversationHistory(client, accessToken, channelId, oldest, ttlSeconds, apiDelay,
+                "SlackAPIConversationHistory");
+    }
+
+    private String conversationHistory(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channelId,
+            final String oldest,
+            final int ttlSeconds,
+            final int apiDelay,
+            final String source) {
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
@@ -87,7 +120,7 @@ public class SlackClientLive implements SlackClient {
         return Try
                 .of(() -> localStorage.getOrPutObject(
                                 SlackClientLive.class.getSimpleName(),
-                                "SlackAPIConversationHistory",
+                                source,
                                 hash,
                                 ttlSeconds,
                                 ConversationsHistoryResponse.class,

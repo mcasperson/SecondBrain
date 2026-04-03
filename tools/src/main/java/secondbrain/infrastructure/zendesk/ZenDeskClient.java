@@ -5,9 +5,16 @@ import secondbrain.infrastructure.zendesk.api.ZenDeskOrganizationItemResponse;
 import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 public interface ZenDeskClient {
+    boolean anyItemsInDuration(
+            String authorization,
+            String url,
+            String query,
+            ChronoUnit duration);
+
     List<ZenDeskTicket> getTickets(
             String authorization,
             String url,
