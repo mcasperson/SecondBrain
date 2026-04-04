@@ -8,6 +8,7 @@ public interface LlmClient {
     String MODEL_OVERRIDE_ENV = "modelOverride";
     String CONTEXT_WINDOW_OVERRIDE_ENV = "contextWindowOverride";
     String REASONING_EFFORT_OVERRIDE_ENV = "reasoningEffortOverride";
+    String URL_OVERRIDE_ENV = "urlOverride";
 
     String call(final String prompt);
 

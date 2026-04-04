@@ -118,10 +118,11 @@ public class OllamaClient implements LlmClient {
 
         final String model = modelConfig.getCalculatedModel(environmentSettings);
         final Integer contextWindow = modelConfig.getCalculatedContextWindow(environmentSettings);
+        final String resolvedUri = environmentSettings.getOrDefault(LlmClient.URL_OVERRIDE_ENV, uri);
 
         final String prompt = getPromptFromDocument(ragDoc);
 
-        final String promptHash = DigestUtils.sha256Hex(prompt + model + contextWindow);
+        final String promptHash = DigestUtils.sha256Hex(prompt + model + contextWindow + resolvedUri);
 
         final String result = Try.of(() -> localStorage.getOrPutString(
                         tool,
@@ -129,7 +130,7 @@ public class OllamaClient implements LlmClient {
                         promptHash,
                         NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
                         () -> {
-                            final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow);
+                            final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow, resolvedUri);
                             final String responseText = response.getResponse();
 
                             // Don't cache errors
@@ -142,25 +143,33 @@ public class OllamaClient implements LlmClient {
         // Don't return cached errors
         return valueOrDefaultOnError(result,
                 ragDoc.updateResponse(result),
-                ragDoc.updateResponse(callOllama(ragDoc, model, contextWindow).response()));
+                ragDoc.updateResponse(callOllama(ragDoc, model, contextWindow, resolvedUri).response()));
     }
 
     /**
      * Call Ollama with the given body. This method is thread-safe, and only allows one call at a time.
      */
     private synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body, int retryCount) {
+        return callOllama(client, body, uri, retryCount);
+    }
+
+    private synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body, final String resolvedUri) {
+        return callOllama(client, body, resolvedUri, 0);
+    }
+
+    private OllamaResponse callOllama(final Client client, final OllamaGenerateBody body, final String resolvedUri, int retryCount) {
         if (retryCount > MAX_RETIES) {
             throw new FailedOllama("OllamaClient failed to call Ollama after " + MAX_RETIES + " retries.");
         }
 
         logger.fine(body.prompt());
-        logger.fine("Calling: " + uri);
+        logger.fine("Calling: " + resolvedUri);
         logger.fine("Called with model: " + body.model());
         logger.fine("Called with context window: " + Optional.ofNullable(body.options()).map(OllamaGenerateBodyOptions::num_ctx).map(Object::toString).orElse("null"));
 
-        final String target = uri + "/api/generate";
+        final String target = resolvedUri + "/api/generate";
 
-        final OllamaResponse result = Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(uri + "/api/generate")
+        final OllamaResponse result = Try.withResources(() -> SEMAPHORE_LENDER.lend(client.target(resolvedUri + "/api/generate")
                         .request()
                         .header("Content-Type", "application/json")
                         .header("Accept", "application/json")
@@ -186,7 +195,7 @@ public class OllamaClient implements LlmClient {
                     logger.warning("Ollama exception: " + ex.getMessage());
                     logger.warning("Retrying Ollama call, attempt " + (retryCount + 1));
                     Try.run(() -> Thread.sleep(retryCount * RETRY_DELAY));
-                    return callOllama(client, body, retryCount + 1);
+                    return callOllama(client, body, resolvedUri, retryCount + 1);
                 })
                 .get();
 
@@ -195,7 +204,8 @@ public class OllamaClient implements LlmClient {
         return result;
     }
 
-    private <T> RagMultiDocumentContext<T> callOllama(final Client client, final OllamaGenerateBodyWithContext<T> body) {
+    private <T> RagMultiDocumentContext<T> callOllama(
+            final Client client, final OllamaGenerateBodyWithContext<T> body) {
         final String prompt = getPromptFromDocument(body.prompt());
 
         final OllamaResponse response = callOllama(client, new OllamaGenerateBody(
@@ -207,13 +217,34 @@ public class OllamaClient implements LlmClient {
     }
 
     private <T> RagMultiDocumentContext<T> callOllama(
+            final Client client, final OllamaGenerateBodyWithContext<T> body, final String resolvedUri) {
+        final String prompt = getPromptFromDocument(body.prompt());
+
+        final OllamaResponse response = callOllama(client, new OllamaGenerateBody(
+                body.model(),
+                prompt,
+                body.stream(),
+                new OllamaGenerateBodyOptions(body.contextWindow())), resolvedUri);
+        return body.prompt().updateResponse(response.response());
+    }
+
+    private <T> RagMultiDocumentContext<T> callOllama(
             final RagMultiDocumentContext<T> ragDoc,
             final String model,
             @Nullable final Integer contextWindow) {
+        return callOllama(ragDoc, model, contextWindow, uri);
+    }
+
+    private <T> RagMultiDocumentContext<T> callOllama(
+            final RagMultiDocumentContext<T> ragDoc,
+            final String model,
+            @Nullable final Integer contextWindow,
+            final String resolvedUri) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client -> timeoutService.executeWithTimeout(() -> callOllama(
                                 client,
-                                new OllamaGenerateBodyWithContext<>(model, contextWindow, ragDoc, false)),
+                                new OllamaGenerateBodyWithContext<>(model, contextWindow, ragDoc, false),
+                                resolvedUri),
                         () -> ragDoc.updateResponse(API_CALL_TIMEOUT_MESSAGE),
                         API_CALL_TIMEOUT_SECONDS))
                 .get();

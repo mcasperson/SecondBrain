@@ -139,14 +139,17 @@ public class GoogleClient implements LlmClient {
                 )
         );
 
-        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + model);
+        final String resolvedUrl = environmentSettings.getOrDefault(URL_OVERRIDE_ENV, this.url.orElse(""));
+        final String resolvedModel = environmentSettings.getOrDefault(MODEL_OVERRIDE_ENV, this.model.orElse(DEFAULT_MODEL));
+
+        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + resolvedModel + resolvedUrl);
 
         final String result = localStorage.getOrPutString(
                         tool,
                         "GoogleLLM",
                         promptHash,
                         NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
-                        () -> call(request))
+                        () -> call(request, resolvedUrl, resolvedModel))
                 .result();
         return ragDocs.updateResponse(result);
     }
@@ -156,6 +159,14 @@ public class GoogleClient implements LlmClient {
         checkState(url.isPresent());
         checkState(model.isPresent());
 
+        return call(request, url.get(), model.get());
+    }
+
+    private String call(final GoogleRequest request, final String resolvedUrl, final String resolvedModel) {
+        checkState(apiKey.isPresent());
+        checkArgument(org.apache.commons.lang3.StringUtils.isNotBlank(resolvedUrl));
+        checkArgument(org.apache.commons.lang3.StringUtils.isNotBlank(resolvedModel));
+
         logger.fine("Calling Google LLM");
         logger.fine(request.generatePromptText());
 
@@ -163,7 +174,7 @@ public class GoogleClient implements LlmClient {
 
         final String result = httpClientCaller.call(
                 this::getClient,
-                client -> client.target(url.get() + model.get() + ":generateContent")
+                client -> client.target(resolvedUrl + resolvedModel + ":generateContent")
                         .request()
                         .header("Content-Type", "application/json")
                         .header("Accept", "application/json")

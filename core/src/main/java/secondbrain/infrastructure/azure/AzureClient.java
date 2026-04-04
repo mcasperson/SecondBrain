@@ -231,6 +231,7 @@ public class AzureClient implements LlmClient {
                 .orElse(DEFAULT_INPUT_TOKENS);
 
         final String modelName = environmentSettings.getOrDefault(MODEL_OVERRIDE_ENV, this.model.orElse(DEFAULT_MODEL));
+        final String resolvedUrl = environmentSettings.getOrDefault(URL_OVERRIDE_ENV, this.url.orElse(""));
         final String resolvedReasoningEffort = environmentSettings.containsKey(REASONING_EFFORT_OVERRIDE_ENV)
                 ? StringUtils.trimToNull(environmentSettings.get(REASONING_EFFORT_OVERRIDE_ENV))
                 : reasoningEffort.filter(StringUtils::isNotBlank).orElse(null);
@@ -267,12 +268,12 @@ public class AzureClient implements LlmClient {
                 resolvedReasoningEffort,
                 modelName);
 
-        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + url.orElse(""));
+        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + resolvedUrl);
 
         logger.fine("Calling Azure LLM");
         logger.fine(request.generatePromptText());
 
-        final CacheResult<String> result = handleCaching(request, tool, promptHash);
+        final CacheResult<String> result = handleCaching(request, tool, promptHash, resolvedUrl);
 
         logger.info("LLM Response from " + modelName + (result.fromCache() ? " (from cache)" : ""));
         logger.info(result.result());
@@ -280,18 +281,18 @@ public class AzureClient implements LlmClient {
         return ragDocs.updateResponse(result.result());
     }
 
-    private CacheResult<String> handleCaching(final AzureRequestMaxCompletionTokens request, final String tool, final String promptHash) {
+    private CacheResult<String> handleCaching(final AzureRequestMaxCompletionTokens request, final String tool, final String promptHash, final String resolvedUrl) {
         final int ttl = NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60;
         final String cacheSource = "AzureLLMV3";
 
         // Bypass cache altogether if both read and write are disabled.
         if (getDisableToolReadCache().contains(tool) && getDisableToolWriteCache().contains(tool)) {
-            return new CacheResult<String>(call(request), false);
+            return new CacheResult<String>(call(request, resolvedUrl), false);
         }
 
         // We can refresh the cache with a new value, but we don't want to read from it.
         if (getDisableToolReadCache().contains(tool)) {
-            final String result = call(request);
+            final String result = call(request, resolvedUrl);
             localStorage.putString(
                     tool,
                     cacheSource,
@@ -307,7 +308,7 @@ public class AzureClient implements LlmClient {
                             tool,
                             cacheSource,
                             promptHash))
-                    .getOrElse(() -> new CacheResult<String>(call(request), false));
+                    .getOrElse(() -> new CacheResult<String>(call(request, resolvedUrl), false));
         }
 
         // Normal caching operation - get or put
@@ -316,7 +317,7 @@ public class AzureClient implements LlmClient {
                 cacheSource,
                 promptHash,
                 ttl,
-                () -> call(request));
+                () -> call(request, resolvedUrl));
     }
 
     private String call(final AzureRequestMaxCompletionTokens request) {
@@ -324,10 +325,18 @@ public class AzureClient implements LlmClient {
         checkState(url.isPresent(), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> callLocked(request, 0));
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> callLocked(request, url.get(), 0));
     }
 
-    private String callLocked(final AzureRequestMaxCompletionTokens request, int retry) {
+    private String call(final AzureRequestMaxCompletionTokens request, final String resolvedUrl) {
+        checkState(apiKey.isPresent(), "Azure LLM API Key is not configured. Please set sb.azurellm.apikey");
+        checkState(org.apache.commons.lang3.StringUtils.isNotBlank(resolvedUrl), "Azure LLM URL is not configured. Please set sb.azurellm.url");
+        checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
+
+        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> callLocked(request, resolvedUrl, 0));
+    }
+
+    private String callLocked(final AzureRequestMaxCompletionTokens request, final String resolvedUrl, int retry) {
         if (retry > RATELIMIT_API_RETRIES) {
             throw new RateLimit("Exceeded max retries for rate limited Azure LLM calls");
         }
@@ -336,13 +345,13 @@ public class AzureClient implements LlmClient {
 
         return Try.of(() -> httpClientCaller.call(
                         this::getClient,
-                        client -> client.target(url.get())
+                        client -> client.target(resolvedUrl)
                                 .request()
                                 .header("Content-Type", "application/json")
                                 .header("Accept", "application/json")
                                 .header("Authorization", "Bearer " + apiKey.get())
                                 .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
-                        response -> Try.of(() -> responseValidation.validate(response, url.get()))
+                        response -> Try.of(() -> responseValidation.validate(response, resolvedUrl))
                                 .map(r -> r.readEntity(AzureResponse.class))
                                 .peek(r -> logger.fine(jsonDeserializerJackson.serialize(r)))
                                 .map(AzureResponse::getResponseText)
@@ -362,7 +371,7 @@ public class AzureClient implements LlmClient {
                     if (ex.getCause() instanceof InvalidResponse invalidResponse) {
                         if (invalidResponse.getCode() == 429 || invalidResponse.getCode() >= 500) {
                             Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
-                            return callLocked(request, retry + 1);
+                            return callLocked(request, resolvedUrl, retry + 1);
                         }
 
                         if (invalidResponse.getCode() == 400 && messageTooLongResponseInspector.isMatch(invalidResponse.getBody())) {
@@ -372,12 +381,12 @@ public class AzureClient implements LlmClient {
                                             AzureRequestMessage::content,
                                             trimIfTooLongFraction));
 
-                            return callLocked(trimmed, retry + 1);
+                            return callLocked(trimmed, resolvedUrl, retry + 1);
                         }
                     }
 
                     if (ex.getCause() instanceof EmptyString) {
-                        return callLocked(request, retry + 1);
+                        return callLocked(request, resolvedUrl, retry + 1);
                     }
 
                     throw ex;
