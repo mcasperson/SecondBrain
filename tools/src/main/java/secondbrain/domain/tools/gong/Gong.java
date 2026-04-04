@@ -184,8 +184,6 @@ public class Gong implements Tool<GongCallDetails> {
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        logger.info(parsedArgs.toString());
-
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return Try.of(() -> localStorage.getOrPutGeneric(
                         getName(),
