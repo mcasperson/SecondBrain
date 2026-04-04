@@ -359,7 +359,7 @@ public class AzureClient implements LlmClient {
                                 .map(r -> answerFormatterService.formatResponse(model.get(), r))
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
-                        e -> new FailedAzure("Failed to call the Azure AI service.\n" + e.toString(), e),
+                        e -> new FailedAzure("Failed to call the Azure AI service for " + resolvedUrl + ".\n" + e.toString(), e),
                         () -> {
                             throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                         },
