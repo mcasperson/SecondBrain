@@ -603,7 +603,7 @@ class ZenDeskConfig {
     private Optional<String> configTtlSeconds;
 
     @Inject
-    @ConfigProperty(name = "sb.zendesk.skipEmptyInLastDuration", defaultValue = "false")
+    @ConfigProperty(name = "sb.zendesk.skipEmptyInLastDuration", defaultValue = "")
     private Optional<String> configSkipEmptyInLastDuration;
 
     public Optional<String> getConfigContextFilterMinimumRating() {

@@ -1208,7 +1208,7 @@ class MultiSlackZenGoogleConfig {
     private Optional<String> configStripMarkdownCodeBlock;
 
     @Inject
-    @ConfigProperty(name = "sb.multislackzengoogle.skipEmptyInLastDuration", defaultValue = "false")
+    @ConfigProperty(name = "sb.multislackzengoogle.skipEmptyInLastDuration", defaultValue = "")
     private Optional<String> configSkipEmptyInLastDuration;
 
     public Optional<String> getConfigUrl() {

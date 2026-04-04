@@ -391,7 +391,7 @@ class SlackChannelConfig {
     private Optional<String> configTtlSeconds;
 
     @Inject
-    @ConfigProperty(name = "sb.slackchannel.skipEmptyInLastDuration", defaultValue = "false")
+    @ConfigProperty(name = "sb.slackchannel.skipEmptyInLastDuration", defaultValue = "")
     private Optional<String> configSkipEmptyInLastDuration;
 
     @Inject

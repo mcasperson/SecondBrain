@@ -404,7 +404,7 @@ class SalesforceConfig {
     private Optional<String> configTtlSeconds;
 
     @Inject
-    @ConfigProperty(name = "sb.salesforce.skipEmptyInLastDuration", defaultValue = "false")
+    @ConfigProperty(name = "sb.salesforce.skipEmptyInLastDuration", defaultValue = "")
     private Optional<String> configSkipEmptyInLastDuration;
 
     public Optional<String> getConfigClientId() {

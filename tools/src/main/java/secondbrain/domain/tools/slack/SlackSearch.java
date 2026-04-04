@@ -349,7 +349,7 @@ class SlackSearchConfig {
     private Optional<String> configTtlSeconds;
 
     @Inject
-    @ConfigProperty(name = "sb.slacksearch.skipEmptyInLastDuration", defaultValue = "false")
+    @ConfigProperty(name = "sb.slacksearch.skipEmptyInLastDuration", defaultValue = "")
     private Optional<String> configSkipEmptyInLastDuration;
 
     public ArgsAccessor getArgsAccessor() {

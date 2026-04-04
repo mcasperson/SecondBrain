@@ -303,7 +303,7 @@ class PlanHatConfig {
     private Optional<String> configTtlSeconds;
 
     @Inject
-    @ConfigProperty(name = "sb.planhat.skipEmptyInLastDuration", defaultValue = "false")
+    @ConfigProperty(name = "sb.planhat.skipEmptyInLastDuration", defaultValue = "")
     private Optional<String> configSkipEmptyInLastDuration;
 
     @Inject

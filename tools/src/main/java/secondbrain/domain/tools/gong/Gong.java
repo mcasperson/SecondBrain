@@ -346,7 +346,7 @@ class GongConfig {
     private ToStringGenerator toStringGenerator;
 
     @Inject
-    @ConfigProperty(name = "sb.gong.skipEmptyInLastDuration", defaultValue = "false")
+    @ConfigProperty(name = "sb.gong.skipEmptyInLastDuration", defaultValue = "")
     private Optional<String> configSkipEmptyInLastDuration;
 
     @Inject
