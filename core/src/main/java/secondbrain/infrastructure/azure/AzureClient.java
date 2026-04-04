@@ -14,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.answer.AnswerFormatterService;
+import secondbrain.domain.collections.MapUtils;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.*;
@@ -230,11 +231,21 @@ public class AzureClient implements LlmClient {
                 .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
                 .orElse(DEFAULT_INPUT_TOKENS);
 
-        final String modelName = environmentSettings.getOrDefault(MODEL_OVERRIDE_ENV, this.model.orElse(DEFAULT_MODEL));
-        final String resolvedUrl = environmentSettings.getOrDefault(URL_OVERRIDE_ENV, this.url.orElse(""));
-        final String resolvedReasoningEffort = environmentSettings.containsKey(REASONING_EFFORT_OVERRIDE_ENV)
-                ? StringUtils.trimToNull(environmentSettings.get(REASONING_EFFORT_OVERRIDE_ENV))
-                : reasoningEffort.filter(StringUtils::isNotBlank).orElse(null);
+        final String modelName = MapUtils.getOrNotNullDefaultIfBlank(
+                environmentSettings,
+                MODEL_OVERRIDE_ENV,
+                this.model.orElse(DEFAULT_MODEL));
+
+        final String resolvedUrl = MapUtils.getOrNotNullDefaultIfBlank(
+                environmentSettings,
+                URL_OVERRIDE_ENV,
+                this.url.orElse(""));
+
+        final String resolvedReasoningEffort = MapUtils.getOrDefaultIfBlank(
+                environmentSettings,
+                REASONING_EFFORT_OVERRIDE_ENV,
+                reasoningEffort.filter(StringUtils::isNotBlank).orElse(null));
+
         final Integer modelContextWindow = Try.of(() -> Integer.parseInt(environmentSettings.getOrDefault(CONTEXT_WINDOW_OVERRIDE_ENV, maxInputTokens + "")))
                 .getOrElse(maxInputTokens);
 
