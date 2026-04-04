@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.azure.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jspecify.annotations.Nullable;
 
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
  * This appears to be the more common endpoint for all models.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record AzureRequestMaxCompletionTokens(
         List<AzureRequestMessage> messages,
         @Nullable @JsonProperty("max_completion_tokens") Integer maxOutputTokens,

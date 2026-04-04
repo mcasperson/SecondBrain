@@ -98,7 +98,7 @@ public class AzureClient implements LlmClient {
     private Optional<String> outputTokens;
 
     @Inject
-    @ConfigProperty(name = "sb.azurellm.reasoningEffort", defaultValue = "low")
+    @ConfigProperty(name = "sb.azurellm.reasoningEffort", defaultValue = "")
     private Optional<String> reasoningEffort;
 
     @Inject
@@ -258,7 +258,11 @@ public class AzureClient implements LlmClient {
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
 
-        final AzureRequestMaxCompletionTokens request = new AzureRequestMaxCompletionTokens(messages, maxOutputTokens, reasoningEffort.orElse(null), modelName);
+        final AzureRequestMaxCompletionTokens request = new AzureRequestMaxCompletionTokens(
+                messages,
+                maxOutputTokens,
+                reasoningEffort.filter(StringUtils::isNotBlank).orElse(null),
+                modelName);
 
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + url.orElse(""));
 
