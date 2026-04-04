@@ -231,6 +231,9 @@ public class AzureClient implements LlmClient {
                 .orElse(DEFAULT_INPUT_TOKENS);
 
         final String modelName = environmentSettings.getOrDefault(MODEL_OVERRIDE_ENV, this.model.orElse(DEFAULT_MODEL));
+        final String resolvedReasoningEffort = environmentSettings.containsKey(REASONING_EFFORT_OVERRIDE_ENV)
+                ? StringUtils.trimToNull(environmentSettings.get(REASONING_EFFORT_OVERRIDE_ENV))
+                : reasoningEffort.filter(StringUtils::isNotBlank).orElse(null);
         final Integer modelContextWindow = Try.of(() -> Integer.parseInt(environmentSettings.getOrDefault(CONTEXT_WINDOW_OVERRIDE_ENV, maxInputTokens + "")))
                 .getOrElse(maxInputTokens);
 
@@ -261,7 +264,7 @@ public class AzureClient implements LlmClient {
         final AzureRequestMaxCompletionTokens request = new AzureRequestMaxCompletionTokens(
                 messages,
                 maxOutputTokens,
-                reasoningEffort.filter(StringUtils::isNotBlank).orElse(null),
+                resolvedReasoningEffort,
                 modelName);
 
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + url.orElse(""));
