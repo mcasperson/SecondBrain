@@ -53,8 +53,10 @@ public class RatingTool implements Tool<Void> {
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "ratingDocument";
     public static final String RATING_SECOND_MODEL_ARG = "secondModel";
     public static final String RATING_SECOND_CONTEXT_WINDOW_ARG = "secondContextWindow";
+    public static final String RATING_SECOND_REASONING_EFFORT_ARG = "secondReasoningEffort";
     public static final String RATING_THIRD_MODEL_ARG = "thirdModel";
     public static final String RATING_THIRD_CONTEXT_WINDOW_ARG = "thirdContextWindow";
+    public static final String RATING_THIRD_REASONING_EFFORT_ARG = "thirdReasoningEffort";
     public static final String IGNORE_INVALID_RESPONSES_ARG = "ignoreinvalidResponses";
 
     private static final String INSTRUCTIONS = """
@@ -139,8 +141,8 @@ public class RatingTool implements Tool<Void> {
         final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
         final List<Integer> results = Stream.of(
                         LLMServerDetails.fromEnvironment(),
-                        LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow()),
-                        LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow())
+                        LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow(), parsedArgs.getSecondReasoningEffort()),
+                        LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort())
                 )
                 .filter(server -> server.type() != LLMServerType.UNDEFINED)
                 .map(server -> getEnvironmentOverrides(server, environmentSettings))
@@ -191,6 +193,7 @@ public class RatingTool implements Tool<Void> {
         }
         newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, server.model());
         newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, server.contextWindow());
+        newEnvironmentSettings.put(LlmClient.REASONING_EFFORT_OVERRIDE_ENV, server.reasoningEffort());
         return newEnvironmentSettings;
     }
 
@@ -237,12 +240,20 @@ class RatingConfig {
     private Optional<String> configSecondContextWindow;
 
     @Inject
+    @ConfigProperty(name = "sb.rating.secondReasoningEffort", defaultValue = "")
+    private Optional<String> configSecondReasoningEffort;
+
+    @Inject
     @ConfigProperty(name = "sb.rating.thirdModel", defaultValue = "")
     private Optional<String> configThirdModel;
 
     @Inject
     @ConfigProperty(name = "sb.rating.thirdContextWindow", defaultValue = "")
     private Optional<String> configThirdContextWindow;
+
+    @Inject
+    @ConfigProperty(name = "sb.rating.thirdReasoningEffort", defaultValue = "")
+    private Optional<String> configThirdReasoningEffort;
 
     @Inject
     @ConfigProperty(name = "sb.rating.preprocessorHooks", defaultValue = "")
@@ -281,6 +292,10 @@ class RatingConfig {
         return configSecondContextWindow;
     }
 
+    public Optional<String> getConfigSecondReasoningEffort() {
+        return configSecondReasoningEffort;
+    }
+
     /**
      * You can optionally have a third model to do a rating, with the result being the average of the two.
      */
@@ -290,6 +305,10 @@ class RatingConfig {
 
     public Optional<String> getConfigThirdContextWindow() {
         return configThirdContextWindow;
+    }
+
+    public Optional<String> getConfigThirdReasoningEffort() {
+        return configThirdReasoningEffort;
     }
 
     public Optional<String> getConfigIgnoreInvalidResponses() {
@@ -351,6 +370,16 @@ class RatingConfig {
                     "").getSafeValue();
         }
 
+        public String getSecondReasoningEffort() {
+            return getArgsAccessor().getArgument(
+                    getConfigSecondReasoningEffort()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_SECOND_REASONING_EFFORT_ARG,
+                    RatingTool.RATING_SECOND_REASONING_EFFORT_ARG,
+                    "").getSafeValue();
+        }
+
         public String getThirdModel() {
             return getArgsAccessor().getArgument(
                     getConfigThirdModel()::get,
@@ -368,6 +397,16 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.RATING_THIRD_CONTEXT_WINDOW_ARG,
                     RatingTool.RATING_THIRD_CONTEXT_WINDOW_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getThirdReasoningEffort() {
+            return getArgsAccessor().getArgument(
+                    getConfigThirdReasoningEffort()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_THIRD_REASONING_EFFORT_ARG,
+                    RatingTool.RATING_THIRD_REASONING_EFFORT_ARG,
                     "").getSafeValue();
         }
 
@@ -418,24 +457,25 @@ class RatingConfig {
 /**
  * Represents a definition of a LLM server to use for a call.
  *
- * @param model         The model to use
- * @param contextWindow The model's context window
- * @param type          The type of the server definition
+ * @param model           The model to use
+ * @param contextWindow   The model's context window
+ * @param reasoningEffort The reasoning effort level (e.g. "low", "medium", "high"), or empty to use the default
+ * @param type            The type of the server definition
  */
-record LLMServerDetails(String model, String contextWindow, LLMServerType type) {
+record LLMServerDetails(String model, String contextWindow, String reasoningEffort, LLMServerType type) {
     public static LLMServerDetails undefined() {
-        return new LLMServerDetails("", "", LLMServerType.UNDEFINED);
+        return new LLMServerDetails("", "", "", LLMServerType.UNDEFINED);
     }
 
     public static LLMServerDetails fromEnvironment() {
-        return new LLMServerDetails("", "", LLMServerType.FROM_ENVIRONMENT);
+        return new LLMServerDetails("", "", "", LLMServerType.FROM_ENVIRONMENT);
     }
 
-    public static LLMServerDetails custom(final String model, final String contextWindow) {
+    public static LLMServerDetails custom(final String model, final String contextWindow, final String reasoningEffort) {
         if (StringUtils.isBlank(model)) {
             return undefined();
         }
 
-        return new LLMServerDetails(model, contextWindow, LLMServerType.CUSTOM);
+        return new LLMServerDetails(model, contextWindow, reasoningEffort, LLMServerType.CUSTOM);
     }
 }
