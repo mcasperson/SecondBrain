@@ -1474,8 +1474,8 @@ class GongConfig {
                     getConfigSkipEmptyInLastDuration()::get,
                     arguments,
                     context,
-                    Gong.TTL_SECONDS_ARG,
-                    Gong.TTL_SECONDS_ARG,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
                     "false").getSafeValue());
         }
     }
