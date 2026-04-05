@@ -6,9 +6,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record AzureResponseChoice(AzureResponseOutputContent message,
+public record AzureResponseChoice(AzureResponseChoiceMessage message,
                                   @JsonProperty("finish_reason") String finishReason) {
-    public AzureResponseOutputContent getMessage() {
-        return Objects.requireNonNullElse(message, new AzureResponseOutputContent(""));
+    public AzureResponseChoiceMessage getMessage() {
+        return Objects.requireNonNullElse(message, new AzureResponseChoiceMessage(""));
     }
 }
