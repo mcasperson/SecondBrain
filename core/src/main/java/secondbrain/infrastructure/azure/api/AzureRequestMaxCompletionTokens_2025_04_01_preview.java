@@ -9,13 +9,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-/**
- * The challenge with this record is supporting the input used by multiple models. OpenAI models hosted by Azure AI Foundry
- * are shown to use the /openai/responses?api-version=2025-04-01-preview endpoint. Other models, like Phi-4,
- * use the completions endpoint /models/chat/completions?api-version=2024-05-01-preview.
- * <p>
- * This record then supports the chat completions endpoint, specifically version 2024-05-01-preview.
- */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AzureRequestMaxCompletionTokens_2025_04_01_preview(
