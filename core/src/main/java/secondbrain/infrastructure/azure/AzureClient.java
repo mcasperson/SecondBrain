@@ -29,6 +29,7 @@ import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseInspector;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.url.UrlUtils;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.azure.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -211,7 +212,7 @@ public class AzureClient implements LlmClient {
                         prompt
                 )),
                 model,
-                getApiVersion(resolvedUrl)
+                UrlUtils.getQueryString(resolvedUrl, "api-version")
         );
 
         return call(request);
@@ -268,7 +269,7 @@ public class AzureClient implements LlmClient {
                 maxOutputTokens,
                 resolvedReasoningEffort,
                 modelName,
-                getApiVersion(resolvedUrl));
+                UrlUtils.getQueryString(resolvedUrl, "api-version"));
 
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + resolvedUrl);
 
@@ -446,16 +447,5 @@ public class AzureClient implements LlmClient {
 
     private int getMaxChars(final Integer modelContextWindow) {
         return (int) (modelContextWindow * DEFAULT_CHARS_PER_INPUT_TOKENS);
-    }
-
-    private String getApiVersion(final String url) {
-        return Try.of(() -> new URI(url))
-                .map(URI::getQuery)
-                .map(query -> Arrays.stream(query.split("&"))
-                        .filter(param -> param.startsWith("api-version="))
-                        .map(param -> param.substring("api-version=".length()))
-                        .findFirst()
-                        .orElse(""))
-                .getOrElse("");
     }
 }
