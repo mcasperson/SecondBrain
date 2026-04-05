@@ -1,5 +1,6 @@
 package secondbrain.infrastructure.azure.api;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,7 +13,7 @@ import java.util.stream.Collectors;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AzureRequestMaxCompletionTokens_2025_04_01_preview(
-        @Nullable List<AzureRequestMessage> input,
+        @Nullable @JsonProperty("input") List<AzureRequestMessage> input,
         @Nullable @JsonProperty("max_completion_tokens") Integer maxOutputTokens,
         @Nullable @JsonProperty("reasoning_effort") String reasoningEffort,
         String model) implements PromptTextGenerator {
@@ -21,6 +22,7 @@ public record AzureRequestMaxCompletionTokens_2025_04_01_preview(
         this(messages, null, null, model);
     }
 
+    @JsonIgnore
     public List<AzureRequestMessage> getMessages() {
         return Objects.requireNonNullElse(input, List.of());
     }
