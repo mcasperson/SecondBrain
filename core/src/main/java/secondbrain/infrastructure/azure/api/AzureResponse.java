@@ -7,6 +7,10 @@ import org.apache.commons.collections4.CollectionUtils;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * This record captures all the various outputs of all the API versions. We'll accept anything and abstract away the
+ * differences with methods like getResponseText().
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AzureResponse(List<AzureResponseChoice> choices,
                             List<AzureResponseOutput> output,
