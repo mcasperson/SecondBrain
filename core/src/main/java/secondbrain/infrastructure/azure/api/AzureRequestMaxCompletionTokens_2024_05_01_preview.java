@@ -13,9 +13,9 @@ import java.util.stream.Collectors;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AzureRequestMaxCompletionTokens_2024_05_01_preview(
-        @Nullable @JsonProperty("messages") List<AzureRequestMessage> messages,
+        @JsonProperty("messages") List<AzureRequestMessage> messages,
         @Nullable @JsonProperty("max_completion_tokens") Integer maxOutputTokens,
-        String model) implements PromptTextGenerator {
+        @JsonProperty("model") String model) implements PromptTextGenerator {
 
     public AzureRequestMaxCompletionTokens_2024_05_01_preview(final List<AzureRequestMessage> messages, final String model) {
         this(messages, null, model);
