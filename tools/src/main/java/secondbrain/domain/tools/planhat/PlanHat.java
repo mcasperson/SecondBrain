@@ -170,6 +170,17 @@ public class PlanHat implements Tool<Conversation> {
     public List<RagDocumentContext<Conversation>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration()) {
+            final boolean hasItems = Try.withResources(ClientBuilder::newClient)
+                    .of(client -> planHatClient.anyItemsInDuration(client, parsedArgs.getCompany(), parsedArgs.getUrl(), parsedArgs.getSecretToken(), ChronoUnit.MONTHS))
+                    .getOrElse(true);
+            if (!hasItems) {
+                logger.info("Skipping PlanHat context retrieval because skipEmptyInLastDuration is set and there are no PlanHat conversations in the specified duration");
+                return List.of();
+            }
+        }
+
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return Try.of(() -> localStorage.getOrPutGeneric(
                                 getName(),
@@ -195,16 +206,6 @@ public class PlanHat implements Tool<Conversation> {
             throw new InternalFailure("You must provide a company ID to query");
         }
 
-        // Early out if we haven't seen any items in the last month
-        if (parsedArgs.isSkipEmptyInLastDuration()) {
-            final boolean hasItems = Try.withResources(ClientBuilder::newClient)
-                    .of(client -> planHatClient.anyItemsInDuration(client, parsedArgs.getCompany(), parsedArgs.getUrl(), parsedArgs.getSecretToken(), ChronoUnit.MONTHS))
-                    .getOrElse(true);
-            if (!hasItems) {
-                logger.info("Skipping PlanHat context retrieval because skipEmptyInLastDuration is set and there are no PlanHat conversations in the specified duration");
-                return List.of();
-            }
-        }
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<Conversation>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))

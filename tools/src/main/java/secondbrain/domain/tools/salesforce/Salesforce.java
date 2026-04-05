@@ -152,6 +152,18 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
             final String prompt,
             final List<ToolArgs> arguments) {
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration()) {
+            final boolean hasItems = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
+                    .map(token -> salesforceClient.anyItemsInDuration(token.accessToken(), parsedArgs.getAccountId(), "Email", ChronoUnit.MONTHS))
+                    .getOrElse(true);
+            if (!hasItems) {
+                logger.info("Skipping Salesforce context retrieval because skipEmptyInLastDuration is set and there are no Salesforce emails in the specified duration");
+                return List.of();
+            }
+        }
+
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return Try.of(() -> localStorage.getOrPutGeneric(
                                 getName(),
@@ -176,16 +188,6 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
 
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        // Early out if we haven't seen any items in the last month
-        if (parsedArgs.isSkipEmptyInLastDuration()) {
-            final boolean hasItems = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
-                    .map(token -> salesforceClient.anyItemsInDuration(token.accessToken(), parsedArgs.getAccountId(), "Email", ChronoUnit.MONTHS))
-                    .getOrElse(true);
-            if (!hasItems) {
-                logger.info("Skipping Salesforce context retrieval because skipEmptyInLastDuration is set and there are no Salesforce emails in the specified duration");
-                return List.of();
-            }
-        }
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<SalesforceTaskRecord>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))

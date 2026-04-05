@@ -184,6 +184,12 @@ public class Gong implements Tool<GongCallDetails> {
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration() && !gongClient.anyItemsInDuration(parsedArgs.getCompany(), parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), ChronoUnit.MONTHS)) {
+            logger.info("Skipping Gong context retrieval because skipEmptyInLastDuration is set and there are Gong calls in the specified duration");
+            return List.of();
+        }
+
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return Try.of(() -> localStorage.getOrPutGeneric(
                         getName(),
@@ -206,12 +212,6 @@ public class Gong implements Tool<GongCallDetails> {
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         logger.fine("Settings are:\n" + parsedArgs);
-
-        // Early out if we haven't seen any items in the last month
-        if (parsedArgs.isSkipEmptyInLastDuration() && !gongClient.anyItemsInDuration(parsedArgs.getCompany(), parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), ChronoUnit.MONTHS)) {
-            logger.info("Skipping Gong context retrieval because skipEmptyInLastDuration is set and there are Gong calls in the specified duration");
-            return List.of();
-        }
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<GongCallDetails>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))

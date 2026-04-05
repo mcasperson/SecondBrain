@@ -180,6 +180,13 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public List<RagDocumentContext<ZenDeskTicket>> getContext(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration() && !zenDeskClient.anyItemsInDuration(parsedArgs.getSecretAuthHeader(), parsedArgs.getUrl(), "", ChronoUnit.MONTHS)) {
+            logger.info("Skipping ZenDesk context retrieval because skipEmptyInLastDuration is set and there are no ZenDesk tickets in the specified duration");
+            return List.of();
+        }
+
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return Try.of(() -> localStorage.getOrPutGeneric(
                                 getName(),
@@ -203,11 +210,6 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         logger.fine("Getting context for " + getName());
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        // Early out if we haven't seen any items in the last month
-        if (parsedArgs.isSkipEmptyInLastDuration() && !zenDeskClient.anyItemsInDuration(parsedArgs.getSecretAuthHeader(), parsedArgs.getUrl(), "", ChronoUnit.MONTHS)) {
-            logger.info("Skipping ZenDesk context retrieval because skipEmptyInLastDuration is set and there are no ZenDesk tickets in the specified duration");
-            return List.of();
-        }
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<ZenDeskTicket>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))

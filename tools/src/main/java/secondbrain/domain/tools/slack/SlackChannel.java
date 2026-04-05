@@ -137,6 +137,24 @@ public class SlackChannel implements Tool<SlackChannelResource> {
             final String prompt,
             final List<ToolArgs> arguments) {
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration()) {
+            final AsyncMethodsClient earlyOutClient = Slack.getInstance().methodsAsync();
+            final String channelId = Try.of(() -> slackClient.findChannelId(
+                            earlyOutClient,
+                            parsedArgs.getSecretAccessToken(),
+                            parsedArgs.getChannel(),
+                            parsedArgs.getApiDelay()))
+                    .map(c -> c.channelId())
+                    .getOrElse("");
+            if (org.apache.commons.lang3.StringUtils.isNotBlank(channelId)
+                    && !slackClient.anyItemsInDuration(earlyOutClient, parsedArgs.getSecretAccessToken(), channelId, parsedArgs.getApiDelay(), ChronoUnit.MONTHS)) {
+                logger.info("Skipping SlackChannel context retrieval because skipEmptyInLastDuration is set and there are no Slack messages in the specified duration");
+                return List.of();
+            }
+        }
+
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return Try.of(() -> localStorage.getOrPutGeneric(
                                 getName(),
@@ -162,22 +180,6 @@ public class SlackChannel implements Tool<SlackChannelResource> {
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        // Early out if we haven't seen any items in the last month
-        if (parsedArgs.isSkipEmptyInLastDuration()) {
-            final AsyncMethodsClient earlyOutClient = Slack.getInstance().methodsAsync();
-            final String channelId = Try.of(() -> slackClient.findChannelId(
-                            earlyOutClient,
-                            parsedArgs.getSecretAccessToken(),
-                            parsedArgs.getChannel(),
-                            parsedArgs.getApiDelay()))
-                    .map(c -> c.channelId())
-                    .getOrElse("");
-            if (org.apache.commons.lang3.StringUtils.isNotBlank(channelId)
-                    && !slackClient.anyItemsInDuration(earlyOutClient, parsedArgs.getSecretAccessToken(), channelId, parsedArgs.getApiDelay(), ChronoUnit.MONTHS)) {
-                logger.info("Skipping SlackChannel context retrieval because skipEmptyInLastDuration is set and there are no Slack messages in the specified duration");
-                return List.of();
-            }
-        }
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<SlackChannelResource>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))

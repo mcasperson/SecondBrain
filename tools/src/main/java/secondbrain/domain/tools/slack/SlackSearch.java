@@ -132,6 +132,18 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
             final String prompt,
             final List<ToolArgs> arguments) {
         final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Early out if we haven't seen any items in the last month
+        if (parsedArgs.isSkipEmptyInLastDuration() && !slackClient.anyItemsInDuration(
+                Slack.getInstance().methodsAsync(),
+                parsedArgs.getSecretAccessToken(),
+                parsedArgs.getSearchKeywords(),
+                parsedArgs.getApiDelay(),
+                ChronoUnit.MONTHS)) {
+            logger.info("Skipping SlackSearch context retrieval because skipEmptyInLastDuration is set and there are no Slack messages in the specified duration");
+            return List.of();
+        }
+
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return Try.of(() -> localStorage.getOrPutGeneric(
                                 getName(),
@@ -159,17 +171,6 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
         // If there is nothing to search for, return an empty list
         if (CollectionUtils.isEmpty(parsedArgs.getSearchKeywords())) {
-            return List.of();
-        }
-
-        // Early out if we haven't seen any items in the last month
-        if (parsedArgs.isSkipEmptyInLastDuration() && !slackClient.anyItemsInDuration(
-                Slack.getInstance().methodsAsync(),
-                parsedArgs.getSecretAccessToken(),
-                parsedArgs.getSearchKeywords(),
-                parsedArgs.getApiDelay(),
-                ChronoUnit.MONTHS)) {
-            logger.info("Skipping SlackSearch context retrieval because skipEmptyInLastDuration is set and there are no Slack messages in the specified duration");
             return List.of();
         }
 
