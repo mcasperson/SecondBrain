@@ -90,13 +90,13 @@ public class OllamaClient implements LlmClient {
         return callOllama(client, body, 0);
     }
 
-    public String call(final String prompt) {
+    public String call(final String prompt, final Map<String, String> environmentSettings) {
         checkArgument(StringUtils.isNotBlank(prompt));
 
-        return call(prompt, modelConfig.getModel());
+        return call(prompt, modelConfig.getModel(), environmentSettings);
     }
 
-    public String call(final String prompt, final String model) {
+    public String call(final String prompt, final String model, final Map<String, String> environmentSettings) {
         checkArgument(StringUtils.isNotBlank(prompt));
         checkArgument(StringUtils.isNotBlank(model));
 

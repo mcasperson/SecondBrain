@@ -19,12 +19,12 @@ public class MockLLmCLient implements LlmClient {
     }
 
     @Override
-    public String call(final String prompt) {
+    public String call(final String prompt, final Map<String, String> environmentSettings) {
         return Objects.requireNonNullElse(mockResponse, "");
     }
 
     @Override
-    public String call(final String prompt, final String model) {
+    public String call(final String prompt, final String model, final Map<String, String> environmentSettings) {
         return Objects.requireNonNullElse(mockResponse, "");
     }
 

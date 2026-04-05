@@ -93,14 +93,14 @@ public class GoogleClient implements LlmClient {
     }
 
     @Override
-    public String call(final String prompt) {
+    public String call(final String prompt, final Map<String, String> environmentSettings) {
         checkArgument(StringUtils.isNotBlank(prompt));
 
-        return call(prompt, model.orElse(DEFAULT_MODEL));
+        return call(prompt, model.orElse(DEFAULT_MODEL), environmentSettings);
     }
 
     @Override
-    public String call(final String prompt, final String model) {
+    public String call(final String prompt, final String model, final Map<String, String> environmentSettings) {
         checkArgument(StringUtils.isNotBlank(prompt));
         checkArgument(StringUtils.isNotBlank(model));
 

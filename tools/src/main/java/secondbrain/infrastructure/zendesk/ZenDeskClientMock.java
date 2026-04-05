@@ -7,10 +7,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.zendesk.api.*;
 
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 @ApplicationScoped
 public class ZenDeskClientMock implements ZenDeskClient {
@@ -60,7 +57,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
         List<ZenDeskCommentResponse> comments = new ArrayList<>();
 
         for (int i = 0; i < 3; i++) {
-            String comment = llmClient.call("Generate a customer support comment for a ZenDesk ticket. Make it sound like a real customer support conversation.");
+            String comment = llmClient.call("Generate a customer support comment for a ZenDesk ticket. Make it sound like a real customer support conversation.", Map.of());
             comments.add(new ZenDeskCommentResponse(comment, new Random().nextLong(), ""));
         }
 
@@ -72,7 +69,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
             final String authorization,
             final String url,
             final String orgId) {
-        final String name = llmClient.call("Generate a company or organization name. Return only the name, nothing else.");
+        final String name = llmClient.call("Generate a company or organization name. Return only the name, nothing else.", Map.of());
         return new ZenDeskOrganizationItemResponse(name, orgId != null ? orgId : UUID.randomUUID().toString());
     }
 
@@ -81,7 +78,7 @@ public class ZenDeskClientMock implements ZenDeskClient {
             final String authorization,
             final String url,
             final String userId) {
-        final String name = llmClient.call("Generate a person's full name. Return only the name, nothing else.");
+        final String name = llmClient.call("Generate a person's full name. Return only the name, nothing else.", Map.of());
         return new ZenDeskUserItemResponse(name, userId != null ? userId : UUID.randomUUID().toString(), "user@example.org", 1L);
     }
 
@@ -89,8 +86,8 @@ public class ZenDeskClientMock implements ZenDeskClient {
         final List<ZenDeskTicket> tickets = new ArrayList<>();
 
         for (int i = 0; i < count; i++) {
-            final String subject = llmClient.call("Generate a subject line for a customer support ticket. Keep it concise.");
-            final String email = llmClient.call("Generate a random email address. Return only the email address, nothing else.");
+            final String subject = llmClient.call("Generate a subject line for a customer support ticket. Keep it concise.", Map.of());
+            final String email = llmClient.call("Generate a random email address. Return only the email address, nothing else.", Map.of());
 
             final String id = UUID.randomUUID().toString();
             final String submitterId = UUID.randomUUID().toString();

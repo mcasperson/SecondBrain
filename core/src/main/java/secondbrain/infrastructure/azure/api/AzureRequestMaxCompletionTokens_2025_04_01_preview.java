@@ -14,25 +14,22 @@ import java.util.stream.Collectors;
  * are shown to use the /openai/responses?api-version=2025-04-01-preview endpoint. Other models, like Phi-4,
  * use the completions endpoint /models/chat/completions?api-version=2024-05-01-preview.
  * <p>
- * The /response endpoint appears to adopt newer API versions faster. However, OpenAI models can also use the /completions endpoint.
- * <p>
  * This record then supports the chat completions endpoint, specifically version 2024-05-01-preview.
- * This appears to be the more common endpoint for all models.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record AzureRequestMaxCompletionTokens(
-        List<AzureRequestMessage> messages,
+public record AzureRequestMaxCompletionTokens_2025_04_01_preview(
+        @Nullable List<AzureRequestMessage> input,
         @Nullable @JsonProperty("max_completion_tokens") Integer maxOutputTokens,
         @Nullable @JsonProperty("reasoning_effort") String reasoningEffort,
         String model) implements PromptTextGenerator {
 
-    public AzureRequestMaxCompletionTokens(final List<AzureRequestMessage> messages, final String model) {
+    public AzureRequestMaxCompletionTokens_2025_04_01_preview(final List<AzureRequestMessage> messages, final String model) {
         this(messages, null, null, model);
     }
 
     public List<AzureRequestMessage> getMessages() {
-        return Objects.requireNonNullElse(messages, List.of());
+        return Objects.requireNonNullElse(input, List.of());
     }
 
     public String generatePromptText() {
@@ -42,7 +39,7 @@ public record AzureRequestMaxCompletionTokens(
                 .collect(Collectors.joining("\n\n"));
     }
 
-    public AzureRequestMaxCompletionTokens updateMessages(List<AzureRequestMessage> newMessages) {
-        return new AzureRequestMaxCompletionTokens(newMessages, this.maxOutputTokens, this.reasoningEffort, this.model);
+    public PromptTextGenerator updateMessages(List<AzureRequestMessage> newMessages) {
+        return new AzureRequestMaxCompletionTokens_2025_04_01_preview(newMessages, this.maxOutputTokens, this.reasoningEffort, this.model);
     }
 }

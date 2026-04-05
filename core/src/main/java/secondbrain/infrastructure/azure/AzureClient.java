@@ -13,6 +13,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.answer.AnswerFormatterService;
 import secondbrain.domain.collections.MapUtils;
 import secondbrain.domain.context.RagDocumentContext;
@@ -29,12 +30,12 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseInspector;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.azure.api.AzureRequestMaxCompletionTokens;
-import secondbrain.infrastructure.azure.api.AzureRequestMessage;
-import secondbrain.infrastructure.azure.api.AzureResponse;
+import secondbrain.infrastructure.azure.api.*;
 import secondbrain.infrastructure.llm.LlmClient;
 
+import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -191,23 +192,26 @@ public class AzureClient implements LlmClient {
     }
 
     @Override
-    public String call(final String prompt) {
+    public String call(final String prompt, final Map<String, String> environmentSettings) {
         checkArgument(StringUtils.isNotBlank(prompt));
 
-        return call(prompt, model.orElse(DEFAULT_MODEL));
+        return call(prompt, model.orElse(DEFAULT_MODEL), environmentSettings);
     }
 
     @Override
-    public String call(final String prompt, final String model) {
+    public String call(final String prompt, final String model, final Map<String, String> environmentSettings) {
         checkArgument(StringUtils.isNotBlank(prompt));
         checkArgument(StringUtils.isNotBlank(model));
 
-        final AzureRequestMaxCompletionTokens request = new AzureRequestMaxCompletionTokens(
+        final String resolvedUrl = getResolvedUrl(environmentSettings);
+
+        final PromptTextGenerator request = AzureRequestMaxCompletionTokensFactory.generateRequest(
                 List.of(new AzureRequestMessage(
                         "user",
                         prompt
                 )),
-                model
+                model,
+                getApiVersion(resolvedUrl)
         );
 
         return call(request);
@@ -223,33 +227,19 @@ public class AzureClient implements LlmClient {
         checkNotNull(environmentSettings);
         checkArgument(StringUtils.isNotBlank(tool));
 
-        final Integer maxOutputTokens = outputTokens
-                .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
-                .orElse(null);
+        final Integer maxOutputTokens = getMaxOutputTokens();
 
-        final Integer maxInputTokens = inputTokens
-                .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
-                .orElse(DEFAULT_INPUT_TOKENS);
+        final Integer maxInputTokens = getMaxInputTokens();
 
-        final String modelName = MapUtils.getOrNotNullDefaultIfBlank(
-                environmentSettings,
-                MODEL_OVERRIDE_ENV,
-                this.model.orElse(DEFAULT_MODEL));
+        final String modelName = getModelName(environmentSettings);
 
-        final String resolvedUrl = MapUtils.getOrNotNullDefaultIfBlank(
-                environmentSettings,
-                URL_OVERRIDE_ENV,
-                this.url.orElse(""));
+        final String resolvedUrl = getResolvedUrl(environmentSettings);
 
-        final String resolvedReasoningEffort = MapUtils.getOrDefaultIfBlank(
-                environmentSettings,
-                REASONING_EFFORT_OVERRIDE_ENV,
-                reasoningEffort.filter(StringUtils::isNotBlank).orElse(null));
+        final String resolvedReasoningEffort = getResolvedReasoningEffort(environmentSettings);
 
-        final Integer modelContextWindow = Try.of(() -> Integer.parseInt(environmentSettings.getOrDefault(CONTEXT_WINDOW_OVERRIDE_ENV, maxInputTokens + "")))
-                .getOrElse(maxInputTokens);
+        final Integer modelContextWindow = getModelContextWindow(environmentSettings, maxInputTokens);
 
-        final int maxChars = (int) (modelContextWindow * DEFAULT_CHARS_PER_INPUT_TOKENS);
+        final int maxChars = getMaxChars(modelContextWindow);
 
         final List<AzureRequestMessage> messages = new ArrayList<>();
         messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
@@ -273,18 +263,19 @@ public class AzureClient implements LlmClient {
 
         messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
 
-        final AzureRequestMaxCompletionTokens request = new AzureRequestMaxCompletionTokens(
+        final PromptTextGenerator request = AzureRequestMaxCompletionTokensFactory.generateRequest(
                 messages,
                 maxOutputTokens,
                 resolvedReasoningEffort,
-                modelName);
+                modelName,
+                getApiVersion(resolvedUrl));
 
         final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + resolvedUrl);
 
         logger.fine("Calling Azure LLM");
         logger.fine(request.generatePromptText());
 
-        final CacheResult<String> result = handleCaching(request, tool, promptHash, resolvedUrl);
+        final CacheResult<String> result = handleCaching(request, tool, promptHash, resolvedUrl, environmentSettings);
 
         logger.info("LLM Response from " + modelName + (result.fromCache() ? " (from cache)" : ""));
         logger.info(result.result());
@@ -292,7 +283,7 @@ public class AzureClient implements LlmClient {
         return ragDocs.updateResponse(result.result());
     }
 
-    private CacheResult<String> handleCaching(final AzureRequestMaxCompletionTokens request, final String tool, final String promptHash, final String resolvedUrl) {
+    private CacheResult<String> handleCaching(final PromptTextGenerator request, final String tool, final String promptHash, final String resolvedUrl, final Map<String, String> environmentSettings) {
         final int ttl = NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60;
         final String cacheSource = "AzureLLMV3";
 
@@ -331,7 +322,7 @@ public class AzureClient implements LlmClient {
                 () -> call(request, resolvedUrl));
     }
 
-    private String call(final AzureRequestMaxCompletionTokens request) {
+    private String call(final PromptTextGenerator request) {
         checkState(apiKey.isPresent(), "Azure LLM API Key is not configured. Please set sb.azurellm.apikey");
         checkState(url.isPresent(), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
@@ -339,7 +330,7 @@ public class AzureClient implements LlmClient {
         return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> callLocked(request, url.get(), 0));
     }
 
-    private String call(final AzureRequestMaxCompletionTokens request, final String resolvedUrl) {
+    private String call(final PromptTextGenerator request, final String resolvedUrl) {
         checkState(apiKey.isPresent(), "Azure LLM API Key is not configured. Please set sb.azurellm.apikey");
         checkState(org.apache.commons.lang3.StringUtils.isNotBlank(resolvedUrl), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
@@ -347,7 +338,7 @@ public class AzureClient implements LlmClient {
         return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> callLocked(request, resolvedUrl, 0));
     }
 
-    private String callLocked(final AzureRequestMaxCompletionTokens request, final String resolvedUrl, int retry) {
+    private String callLocked(final PromptTextGenerator request, final String resolvedUrl, int retry) {
         if (retry > RATELIMIT_API_RETRIES) {
             throw new RateLimit("Exceeded max retries for rate limited Azure LLM calls");
         }
@@ -386,7 +377,7 @@ public class AzureClient implements LlmClient {
                         }
 
                         if (invalidResponse.getCode() == 400 && messageTooLongResponseInspector.isMatch(invalidResponse.getBody())) {
-                            final AzureRequestMaxCompletionTokens trimmed = request.updateMessages(
+                            final PromptTextGenerator trimmed = request.updateMessages(
                                     listLimiter.limitListContentByFraction(
                                             request.getMessages(),
                                             AzureRequestMessage::content,
@@ -413,5 +404,58 @@ public class AzureClient implements LlmClient {
     private List<String> getDisableToolWriteCache() {
         final String fixedString = disableToolWriteCache.map(String::trim).orElse("");
         return stringToList.convert(fixedString);
+    }
+
+    @Nullable private Integer getMaxOutputTokens() {
+        return outputTokens
+                .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
+                .orElse(null);
+    }
+
+    private Integer getMaxInputTokens() {
+        return inputTokens
+                .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
+                .orElse(DEFAULT_INPUT_TOKENS);
+    }
+
+    private String getModelName(final Map<String, String> environmentSettings) {
+        return MapUtils.getOrNotNullDefaultIfBlank(
+                environmentSettings,
+                MODEL_OVERRIDE_ENV,
+                this.model.orElse(DEFAULT_MODEL));
+    }
+
+    private String getResolvedUrl(final Map<String, String> environmentSettings) {
+        return MapUtils.getOrNotNullDefaultIfBlank(
+                environmentSettings,
+                URL_OVERRIDE_ENV,
+                this.url.orElse(""));
+    }
+
+    @Nullable private String getResolvedReasoningEffort(final Map<String, String> environmentSettings) {
+        return MapUtils.getOrDefaultIfBlank(
+                environmentSettings,
+                REASONING_EFFORT_OVERRIDE_ENV,
+                reasoningEffort.filter(StringUtils::isNotBlank).orElse(null));
+    }
+
+    private Integer getModelContextWindow(final Map<String, String> environmentSettings, final Integer maxInputTokens) {
+        return Try.of(() -> Integer.parseInt(environmentSettings.getOrDefault(CONTEXT_WINDOW_OVERRIDE_ENV, maxInputTokens + "")))
+                .getOrElse(maxInputTokens);
+    }
+
+    private int getMaxChars(final Integer modelContextWindow) {
+        return (int) (modelContextWindow * DEFAULT_CHARS_PER_INPUT_TOKENS);
+    }
+
+    private String getApiVersion(final String url) {
+        return Try.of(() -> new URI(url))
+                .map(URI::getQuery)
+                .map(query -> Arrays.stream(query.split("&"))
+                        .filter(param -> param.startsWith("api-version="))
+                        .map(param -> param.substring("api-version=".length()))
+                        .findFirst()
+                        .orElse(""))
+                .getOrElse("");
     }
 }

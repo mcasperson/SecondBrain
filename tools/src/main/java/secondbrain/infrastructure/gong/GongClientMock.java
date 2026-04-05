@@ -13,6 +13,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A mock implementation of the GongClient interface that uses Ollama to generate a random call transcript.
@@ -44,6 +45,6 @@ public class GongClientMock implements GongClient {
 
     @Override
     public String getCallTranscript(final String username, final String password, final GongCallExtensive call) {
-        return llmClient.call("Write a 5 paragraph call log between 3 people discussing the design of a new AI product.");
+        return llmClient.call("Write a 5 paragraph call log between 3 people discussing the design of a new AI product.", Map.of());
     }
 }

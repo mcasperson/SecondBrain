@@ -124,7 +124,7 @@ public class ToolSelector {
     private String callOllama(final String llmPrompt) {
         return Try.withResources(ClientBuilder::newClient)
                 .of(client ->
-                        llmClient.call(llmPrompt, toolModel.get()))
+                        llmClient.call(llmPrompt, toolModel.get(), Map.of()))
                 .get();
     }
 

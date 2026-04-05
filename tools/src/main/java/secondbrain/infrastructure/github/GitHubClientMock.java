@@ -10,6 +10,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @SuppressWarnings("NullAway")
@@ -62,7 +63,7 @@ public class GitHubClientMock implements GitHubClient {
         return llmClient.call(
                 "Generate a small but realistic git diff for a commit. Include file additions, modifications with context. " +
                         "Format like a real git diff with --- and +++ headers and @@ sections. " +
-                        "It should be for a code file in the " + repo + " repository.");
+                        "It should be for a code file in the " + repo + " repository.", Map.of());
     }
 
     private String generateMockSha() {
