@@ -168,7 +168,7 @@ public class Main {
         final String annotations = content.getAnnotations() + content.getDebugInfo();
 
         if (StringUtils.isNotBlank(annotations)) {
-            Try.run(() -> Files.write(pathBuilder.getFilePath(directory, annotationsFile.get()), annotations.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+            Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, annotationsFile.get()), annotations, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(e -> System.err.println("Failed to write annotations to file: " + e.getMessage()));
         }
     }
@@ -179,9 +179,9 @@ public class Main {
         }
 
         if (StringUtils.isNotBlank(content.getLinks())) {
-            Try.run(() -> Files.write(
+            Try.run(() -> Files.writeString(
                             pathBuilder.getFilePath(directory, linksFile.get()),
-                            ("Links:" + System.lineSeparator() + content.getLinks()).getBytes(),
+                            "Links:" + System.lineSeparator() + content.getLinks(),
                             StandardOpenOption.CREATE,
                             StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(e -> System.err.println("Failed to write links to file: " + e.getMessage()));
@@ -194,7 +194,7 @@ public class Main {
         }
 
         if (StringUtils.isNotBlank(content.getDebugInfo())) {
-            Try.run(() -> Files.write(pathBuilder.getFilePath(directory, debugFile.get()), content.getDebugInfo().getBytes(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+            Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, debugFile.get()), content.getDebugInfo(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
                     .onFailure(e -> System.err.println("Failed to write debug to file: " + e.getMessage()));
         }
     }
@@ -208,7 +208,7 @@ public class Main {
                 ? StandardOpenOption.APPEND
                 : StandardOpenOption.TRUNCATE_EXISTING;
 
-        Try.run(() -> Files.write(pathBuilder.getFilePath(directory, file.get()), content.getResponseText().getBytes(), StandardOpenOption.CREATE, option))
+        Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, file.get()), content.getResponseText(), StandardOpenOption.CREATE, option))
                 .onFailure(e -> System.err.println("Failed to write output to file: " + e.getMessage()));
     }
 
