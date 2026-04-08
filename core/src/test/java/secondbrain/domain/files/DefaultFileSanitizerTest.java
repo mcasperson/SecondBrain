@@ -22,6 +22,13 @@ class DefaultFileSanitizerTest {
     }
 
     @Test
+    void testSanitizeFilePath_withForbiddenCharsOnLinux() {
+        String input = "/tmp/invalidfi*le?na<me>|.txt";
+        String expected = "/tmp/invalidfi_le_na_me__.txt";
+        assertEquals(expected, sanitizer.sanitizeFilePath(input));
+    }
+
+    @Test
     void testSanitizeFilePath_noForbiddenChars() {
         String input = "valid_filename.txt";
         assertEquals(input, sanitizer.sanitizeFilePath(input));
