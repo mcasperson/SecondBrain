@@ -23,7 +23,8 @@ public interface SlackClient {
             String accessToken,
             Set<String> keywords,
             int apiDelay,
-            ChronoUnit duration);
+            ChronoUnit duration,
+            ChronoUnit cached);
 
     String conversationHistory(
             AsyncMethodsClient client,

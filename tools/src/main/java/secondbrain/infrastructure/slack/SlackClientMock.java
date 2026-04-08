@@ -40,7 +40,8 @@ public class SlackClientMock implements SlackClient {
             final String accessToken,
             final Set<String> keywords,
             final int apiDelay,
-            final ChronoUnit duration) {
+            final ChronoUnit duration,
+            final ChronoUnit cached) {
         return true;
     }
 
