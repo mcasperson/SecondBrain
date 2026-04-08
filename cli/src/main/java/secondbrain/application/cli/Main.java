@@ -114,6 +114,12 @@ public class Main {
         final String format = args.length > 1 ? args[1] : "no-op";
         final StringConverter converter = stringConverterSelector.getStringConverter(format);
 
+        System.out.println("Directory: " + directory);
+        System.out.println("File: " + file.orElse(""));
+        System.out.println("Annotations: " + annotationsFile.orElse(""));
+        System.out.println("Links: " + linksFile.orElse(""));
+        System.out.println("Debug: " + debugFile.orElse(""));
+
         // Force initialization of local storage
         localStorageReadWrite.toString();
 
