@@ -19,6 +19,7 @@ import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.date.DateTruncate;
 import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
@@ -85,8 +86,8 @@ public class SlackClientLive implements SlackClient {
             final int apiDelay,
             final ChronoUnit duration,
             final ChronoUnit cached) {
-        final String oldest = String.valueOf(OffsetDateTime.now(ZoneId.systemDefault())
-                .minus(1, duration).truncatedTo(duration).toEpochSecond());
+        final String oldest = String.valueOf(DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault())
+                .minus(1, duration), duration).toEpochSecond());
 
         return org.apache.commons.lang3.StringUtils.isNotBlank(
                 conversationHistory(client, accessToken, channelId, oldest,

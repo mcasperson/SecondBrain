@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.date.DateParser;
+import secondbrain.domain.date.DateTruncate;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
@@ -23,6 +24,7 @@ import secondbrain.infrastructure.planhat.api.Conversation;
 
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -83,11 +85,8 @@ public class PlanHatClientLive implements PlanHatClient {
             final String token,
             final ChronoUnit duration,
             final ChronoUnit cached) {
-        final ZonedDateTime endDate = ZonedDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(cached);
-        final ZonedDateTime startDate = ZonedDateTime.now(ZoneId.systemDefault())
-                .minus(1, duration)
-                .truncatedTo(duration);
+        final ZonedDateTime endDate = DateTruncate.truncate(ZonedDateTime.now(ZoneId.systemDefault()), cached);
+        final ZonedDateTime startDate = DateTruncate.truncate(ZonedDateTime.now(ZoneId.systemDefault()).minus(1, duration), duration);
 
         return !getConversations(client, company, url, token, startDate, endDate,
                 (int) duration.getDuration().toSeconds(),

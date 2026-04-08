@@ -10,6 +10,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.date.DateTruncate;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
 import secondbrain.domain.injection.Preferred;
@@ -92,10 +93,9 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String query,
             final ChronoUnit duration,
             final ChronoUnit cached) {
-        final String toDateTime = OffsetDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(cached).format(ISO_OFFSET_DATE_TIME);
-        final String fromDateTime = OffsetDateTime.now(ZoneId.systemDefault())
-                .minus(1, duration).truncatedTo(duration).format(ISO_OFFSET_DATE_TIME);
+        final String toDateTime = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault()), cached).format(ISO_OFFSET_DATE_TIME);
+        final String fromDateTime = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault())
+                .minus(1, duration), duration).format(ISO_OFFSET_DATE_TIME);
 
         final String durationQuery = (StringUtils.isBlank(query) ? "" : query + " ")
                 + "type:ticket created>" + fromDateTime + " created<" + toDateTime;

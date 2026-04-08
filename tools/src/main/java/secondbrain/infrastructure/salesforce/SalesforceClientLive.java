@@ -13,6 +13,7 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.date.DateTruncate;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.Timeout;
@@ -99,10 +100,10 @@ public class SalesforceClientLive implements SalesforceClient {
             final String type,
             final ChronoUnit duration,
             final ChronoUnit cached) {
-        final String endDate = OffsetDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(cached).format(DateTimeFormatter.ISO_LOCAL_DATE);
-        final String startDate = OffsetDateTime.now(ZoneId.systemDefault())
-                .minus(1, duration).truncatedTo(duration).format(DateTimeFormatter.ISO_LOCAL_DATE);
+        final String endDate = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault()), cached)
+                .format(DateTimeFormatter.ISO_LOCAL_DATE);
+        final String startDate = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault())
+                .minus(1, duration), duration).format(DateTimeFormatter.ISO_LOCAL_DATE);
 
         final SalesforceTaskRecord[] tasks = getTasks(token, accountId, type, startDate, endDate,
                 "SalesforceAPITasksDuration");

@@ -14,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.constants.Constants;
+import secondbrain.domain.date.DateTruncate;
 import secondbrain.domain.httpclient.HttpClientCaller;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
@@ -81,10 +82,10 @@ public class GongClientLive implements GongClient {
             final String password,
             final ChronoUnit duration,
             final ChronoUnit cached) {
-        final String toDateTime = OffsetDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(cached).format(ISO_OFFSET_DATE_TIME);
-        final String fromDateTime = OffsetDateTime.now(ZoneId.systemDefault())
-                .minus(1, duration).truncatedTo(duration).format(ISO_OFFSET_DATE_TIME);
+        final String toDateTime = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault()), cached)
+                .format(ISO_OFFSET_DATE_TIME);
+        final String fromDateTime = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault())
+                .minus(1, duration), duration).format(ISO_OFFSET_DATE_TIME);
 
         return !getCallsExtensive(
                 company,
