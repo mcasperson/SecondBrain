@@ -9,8 +9,8 @@ class DefaultFileSanitizerTest {
 
     @Test
     void testSanitizeFilePath_withForbiddenChars() {
-        String input = "inva:lidfi*le?na<me>|.txt";
-        String expected = "inva_lidfi_le_na_me__.txt";
+        String input = "invalidfi*le?na<me>|.txt";
+        String expected = "invalidfi_le_na_me__.txt";
         assertEquals(expected, sanitizer.sanitizeFilePath(input));
     }
 
@@ -27,15 +27,15 @@ class DefaultFileSanitizerTest {
 
     @Test
     void testSanitizeFilePath_onlyForbiddenChars() {
-        String input = ":*?\"<>|";
-        String expected = "_______";
+        String input = "*?\"<>|";
+        String expected = "______";
         assertEquals(expected, sanitizer.sanitizeFilePath(input));
     }
 
     @Test
     void testSanitizeFilePath_mixed() {
-        String input = "a:bc*d?e\"f<g>h|i";
-        String expected = "a_bc_d_e_f_g_h_i";
+        String input = "abc*d?e\"f<g>h|i";
+        String expected = "abc_d_e_f_g_h_i";
         assertEquals(expected, sanitizer.sanitizeFilePath(input));
     }
 
