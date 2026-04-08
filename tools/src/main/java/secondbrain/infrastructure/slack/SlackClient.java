@@ -15,7 +15,8 @@ public interface SlackClient {
             String accessToken,
             String channelId,
             int apiDelay,
-            ChronoUnit duration);
+            ChronoUnit duration,
+            ChronoUnit cached);
 
     boolean anyItemsInDuration(
             AsyncMethodsClient client,

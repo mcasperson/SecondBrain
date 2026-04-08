@@ -83,13 +83,14 @@ public class SlackClientLive implements SlackClient {
             final String accessToken,
             final String channelId,
             final int apiDelay,
-            final ChronoUnit duration) {
+            final ChronoUnit duration,
+            final ChronoUnit cached) {
         final String oldest = String.valueOf(OffsetDateTime.now(ZoneId.systemDefault())
                 .minus(1, duration).truncatedTo(duration).toEpochSecond());
 
         return org.apache.commons.lang3.StringUtils.isNotBlank(
                 conversationHistory(client, accessToken, channelId, oldest,
-                        (int) duration.getDuration().toSeconds(), apiDelay,
+                        (int) cached.getDuration().toSeconds(), apiDelay,
                         "SlackAPIConversationHistoryDuration"));
     }
 
@@ -99,7 +100,8 @@ public class SlackClientLive implements SlackClient {
             final String accessToken,
             final Set<String> keywords,
             final int apiDelay,
-            final ChronoUnit duration) {
+            final ChronoUnit duration,
+            final ChronoUnit cached) {
         final String afterDate = LocalDate.now(ZoneId.systemDefault()).minus(1, duration).toString();
         final Set<String> durationKeywords = new HashSet<>(keywords);
         durationKeywords.add("after:" + afterDate);

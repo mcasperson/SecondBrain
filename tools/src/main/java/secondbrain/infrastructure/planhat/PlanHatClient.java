@@ -15,7 +15,8 @@ public interface PlanHatClient {
             String company,
             String url,
             String token,
-            ChronoUnit duration);
+            ChronoUnit duration,
+            ChronoUnit cached);
 
     List<Conversation> getConversations(
             Client client,

@@ -13,7 +13,8 @@ public interface ZenDeskClient {
             String authorization,
             String url,
             String query,
-            ChronoUnit duration);
+            ChronoUnit duration,
+            ChronoUnit cached);
 
     List<ZenDeskTicket> getTickets(
             String authorization,

@@ -149,7 +149,7 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                     .map(c -> c.channelId())
                     .getOrElse("");
             if (org.apache.commons.lang3.StringUtils.isNotBlank(channelId)
-                    && !slackClient.anyItemsInDuration(earlyOutClient, parsedArgs.getSecretAccessToken(), channelId, parsedArgs.getApiDelay(), ChronoUnit.MONTHS)) {
+                    && !slackClient.anyItemsInDuration(earlyOutClient, parsedArgs.getSecretAccessToken(), channelId, parsedArgs.getApiDelay(), ChronoUnit.YEARS, ChronoUnit.MONTHS)) {
                 logger.info("Skipping SlackChannel context retrieval because skipEmptyInLastDuration is set and there are no Slack messages in the specified duration");
                 return List.of();
             }

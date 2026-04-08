@@ -7,7 +7,7 @@ import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 import java.time.temporal.ChronoUnit;
 
 public interface SalesforceClient {
-    boolean anyItemsInDuration(String token, String accountId, String type, ChronoUnit duration);
+    boolean anyItemsInDuration(String token, String accountId, String type, ChronoUnit duration, ChronoUnit cached);
 
     SalesforceOauthTokenResponse getToken(String clientId, String clientSecret);
 

@@ -81,9 +81,10 @@ public class PlanHatClientLive implements PlanHatClient {
             final String company,
             final String url,
             final String token,
-            final ChronoUnit duration) {
+            final ChronoUnit duration,
+            final ChronoUnit cached) {
         final ZonedDateTime endDate = ZonedDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(duration);
+                .truncatedTo(cached);
         final ZonedDateTime startDate = ZonedDateTime.now(ZoneId.systemDefault())
                 .minus(1, duration)
                 .truncatedTo(duration);

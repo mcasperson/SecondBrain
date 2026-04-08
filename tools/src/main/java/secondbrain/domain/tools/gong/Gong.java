@@ -185,7 +185,7 @@ public class Gong implements Tool<GongCallDetails> {
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         // Early out if we haven't seen any items in the last month
-        if (parsedArgs.isSkipEmptyInLastDuration() && !gongClient.anyItemsInDuration(parsedArgs.getCompany(), parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), ChronoUnit.MONTHS)) {
+        if (parsedArgs.isSkipEmptyInLastDuration() && !gongClient.anyItemsInDuration(parsedArgs.getCompany(), parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), ChronoUnit.YEARS, ChronoUnit.MONTHS)) {
             logger.info("Skipping Gong context retrieval because skipEmptyInLastDuration is set and there are Gong calls in the specified duration");
             return List.of();
         }

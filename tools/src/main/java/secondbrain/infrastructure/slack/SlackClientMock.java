@@ -29,7 +29,8 @@ public class SlackClientMock implements SlackClient {
             final String accessToken,
             final String channelId,
             final int apiDelay,
-            final ChronoUnit duration) {
+            final ChronoUnit duration,
+            final ChronoUnit cached) {
         return true;
     }
 

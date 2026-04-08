@@ -11,7 +11,8 @@ public interface GongClient {
             String company,
             String username,
             String password,
-            ChronoUnit duration);
+            ChronoUnit duration,
+            ChronoUnit cached);
 
     List<GongCallExtensive> getCallsExtensive(
             String company,

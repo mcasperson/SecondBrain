@@ -97,9 +97,10 @@ public class SalesforceClientLive implements SalesforceClient {
             final String token,
             final String accountId,
             final String type,
-            final ChronoUnit duration) {
+            final ChronoUnit duration,
+            final ChronoUnit cached) {
         final String endDate = OffsetDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(duration).format(DateTimeFormatter.ISO_LOCAL_DATE);
+                .truncatedTo(cached).format(DateTimeFormatter.ISO_LOCAL_DATE);
         final String startDate = OffsetDateTime.now(ZoneId.systemDefault())
                 .minus(1, duration).truncatedTo(duration).format(DateTimeFormatter.ISO_LOCAL_DATE);
 

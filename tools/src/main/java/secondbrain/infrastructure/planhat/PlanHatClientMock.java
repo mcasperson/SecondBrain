@@ -30,7 +30,8 @@ public class PlanHatClientMock implements PlanHatClient {
             final String company,
             final String url,
             final String token,
-            final ChronoUnit duration) {
+            final ChronoUnit duration,
+            final ChronoUnit cached) {
         return true;
     }
 

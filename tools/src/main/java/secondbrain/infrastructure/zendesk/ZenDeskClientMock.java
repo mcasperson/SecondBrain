@@ -20,7 +20,8 @@ public class ZenDeskClientMock implements ZenDeskClient {
             final String authorization,
             final String url,
             final String query,
-            final ChronoUnit duration) {
+            final ChronoUnit duration,
+            final ChronoUnit cached) {
         return true;
     }
 

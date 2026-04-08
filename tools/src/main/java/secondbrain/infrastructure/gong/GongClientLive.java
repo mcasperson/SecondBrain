@@ -79,9 +79,10 @@ public class GongClientLive implements GongClient {
             final String company,
             final String username,
             final String password,
-            final ChronoUnit duration) {
+            final ChronoUnit duration,
+            final ChronoUnit cached) {
         final String toDateTime = OffsetDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(duration).format(ISO_OFFSET_DATE_TIME);
+                .truncatedTo(cached).format(ISO_OFFSET_DATE_TIME);
         final String fromDateTime = OffsetDateTime.now(ZoneId.systemDefault())
                 .minus(1, duration).truncatedTo(duration).format(ISO_OFFSET_DATE_TIME);
 

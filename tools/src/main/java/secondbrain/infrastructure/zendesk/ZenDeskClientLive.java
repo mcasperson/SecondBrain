@@ -90,9 +90,10 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String authorization,
             final String url,
             final String query,
-            final ChronoUnit duration) {
+            final ChronoUnit duration,
+            final ChronoUnit cached) {
         final String toDateTime = OffsetDateTime.now(ZoneId.systemDefault())
-                .truncatedTo(duration).format(ISO_OFFSET_DATE_TIME);
+                .truncatedTo(cached).format(ISO_OFFSET_DATE_TIME);
         final String fromDateTime = OffsetDateTime.now(ZoneId.systemDefault())
                 .minus(1, duration).truncatedTo(duration).format(ISO_OFFSET_DATE_TIME);
 

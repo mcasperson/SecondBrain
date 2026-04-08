@@ -173,7 +173,7 @@ public class PlanHat implements Tool<Conversation> {
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration()) {
             final boolean hasItems = Try.withResources(ClientBuilder::newClient)
-                    .of(client -> planHatClient.anyItemsInDuration(client, parsedArgs.getCompany(), parsedArgs.getUrl(), parsedArgs.getSecretToken(), ChronoUnit.MONTHS))
+                    .of(client -> planHatClient.anyItemsInDuration(client, parsedArgs.getCompany(), parsedArgs.getUrl(), parsedArgs.getSecretToken(), ChronoUnit.YEARS, ChronoUnit.MONTHS))
                     .getOrElse(true);
             if (!hasItems) {
                 logger.info("Skipping PlanHat context retrieval because skipEmptyInLastDuration is set and there are no PlanHat conversations in the specified duration");

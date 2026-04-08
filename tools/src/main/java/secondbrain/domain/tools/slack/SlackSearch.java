@@ -139,7 +139,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                 parsedArgs.getSecretAccessToken(),
                 parsedArgs.getSearchKeywords(),
                 parsedArgs.getApiDelay(),
-                ChronoUnit.MONTHS)) {
+                ChronoUnit.YEARS)) {
             logger.info("Skipping SlackSearch context retrieval because skipEmptyInLastDuration is set and there are no Slack messages in the specified duration");
             return List.of();
         }
