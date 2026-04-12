@@ -214,7 +214,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                 .map(ragDoc -> ragDoc.addMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
-                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-SlackSearch" + ragDoc.id() + ".txt")))
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-SlackSearch" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
                 .toList();
     }
 

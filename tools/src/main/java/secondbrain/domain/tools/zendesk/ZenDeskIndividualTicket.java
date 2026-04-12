@@ -141,7 +141,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                 .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                 .map(ticket -> ticket.addMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ticket, parsedArgs)))
                 .map(ticket -> ticket.addIntermediateResult(
-                        new IntermediateResult(ticket.document(), ticketToFileName(ticket))))
+                        new IntermediateResult(ticket.document(), ticketToFileName(ticket, parsedArgs.getEntity()))))
                 .map(List::of)
                 // deal with the filter failing
                 .recover(NoSuchElementException.class, ex -> List.of());
@@ -149,8 +149,8 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
         return exceptionMapping.map(result).get();
     }
 
-    private String ticketToFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
-        return "Data-ZenDesk-" + ticket.id() + ".txt";
+    private String ticketToFileName(final RagDocumentContext<ZenDeskTicket> ticket, final String entity) {
+        return "Data-ZenDesk-" + ticket.id() + "-" + entity + ".txt";
     }
 
     @Override

@@ -238,7 +238,7 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                 .map(ragDoc -> ragDoc.addMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
-                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-SlackChannel" + ragDoc.id() + ".txt")))
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-SlackChannel" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
                 .toList();
     }
 
