@@ -29,10 +29,7 @@ import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
-import secondbrain.domain.tooldefs.MetaObjectResult;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.tooldefs.ToolArgs;
-import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
 import secondbrain.domain.validate.ValidateString;
@@ -270,6 +267,7 @@ public class Gong implements Tool<GongCallDetails> {
                     raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
                     call transcripts.
                  */
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-Gong" + ragDoc.id() + ".txt")))
                 .map(ragDoc -> parsedArgs.getSummarizeTranscript()
                         ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(ragDoc.source()), "Gong", ragDoc, environmentSettings, parsedArgs)
                         : ragDoc)

@@ -150,7 +150,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     }
 
     private String ticketToFileName(final RagDocumentContext<ZenDeskTicket> ticket) {
-        return "ZenDesk-" + ticket.id() + ".txt";
+        return "Data-ZenDesk-" + ticket.id() + ".txt";
     }
 
     @Override
