@@ -17,6 +17,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.EmptyList;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.config.LocalSkipEmptyInLastDuration;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tooldefs.Tool;
@@ -90,6 +91,7 @@ public class Meta implements Tool<Void> {
                 new ToolArguments(META_TOOL_NAMES_ARG, "Comma-separated list of tool names to include", ""),
                 new ToolArguments(META_TTL_SECONDS_ARG, "The number of seconds to cache the result", "604800"),
                 new ToolArguments(META_DISABLE_PROMPT_ARG, "Set to true to disable sending the prompt to the LLM and return only the context documents", "false"),
+                new ToolArguments(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, "Set to true to skip results when there are no documents returned within the specified duration", "false"),
                 new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of a document", ""),
                 new ToolArguments(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, "The minimum rating a document must have to be included in the context", "0"),
                 new ToolArguments(CommonArguments.DEFAULT_RATING_ARG, "The default rating to assign to documents when no rating can be determined", "10"),
@@ -130,6 +132,7 @@ public class Meta implements Tool<Void> {
             but if they do, the values will be shared.
          */
         final List<ToolArgs> toolArgs = List.of(
+                new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, parsedArgs.isSkipEmptyInLastDuration() + "", true),
                 new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                 new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                 new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
@@ -256,6 +259,10 @@ class MetaConfig {
     private Optional<String> configDisablePrompt;
 
     @Inject
+    @ConfigProperty(name = "sb.meta.skipEmptyInLastDuration", defaultValue = "")
+    private Optional<String> configSkipEmptyInLastDuration;
+
+    @Inject
     @ConfigProperty(name = "sb.meta.individualContextFilterQuestion")
     private Optional<String> configIndividualContextFilterQuestion;
 
@@ -323,6 +330,10 @@ class MetaConfig {
         return configDisablePrompt;
     }
 
+    public Optional<String> getConfigSkipEmptyInLastDuration() {
+        return configSkipEmptyInLastDuration;
+    }
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -387,7 +398,7 @@ class MetaConfig {
         return configEntityName;
     }
 
-    public class LocalArguments {
+    public class LocalArguments implements LocalSkipEmptyInLastDuration {
         private final List<ToolArgs> arguments;
         private final String prompt;
         private final Map<String, String> context;
@@ -672,6 +683,17 @@ class MetaConfig {
                             CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                             "")
                     .getSafeValue();
+        }
+
+        @Override
+        public boolean isSkipEmptyInLastDuration() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigSkipEmptyInLastDuration()::get,
+                    arguments,
+                    context,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    "false").getSafeValue());
         }
     }
 }
