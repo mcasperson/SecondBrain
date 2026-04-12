@@ -105,7 +105,9 @@ public class Meta implements Tool<Void> {
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt to use when summarizing the document", ""),
                 new ToolArguments(CommonArguments.DAYS_ARG, "The number of days to look back when retrieving recent documents", "7"),
                 new ToolArguments(CommonArguments.HOURS_ARG, "The number of hours to look back when retrieving recent documents", "0"),
-                new ToolArguments(CommonArguments.ENTITY_NAME_CONTEXT_ARG, "The entity name used to embed in sentences converted to embeddings", "")
+                new ToolArguments(CommonArguments.ENTITY_NAME_CONTEXT_ARG, "The entity name used to embed in sentences converted to embeddings", ""),
+                new ToolArguments(CommonArguments.START_DATE, "The optional start date (ISO-8601) to limit the scope of documents retrieved by sub-tools", ""),
+                new ToolArguments(CommonArguments.END_DATE, "The optional end date (ISO-8601) to limit the scope of documents retrieved by sub-tools", "")
         );
     }
 
@@ -318,6 +320,14 @@ class MetaConfig {
     @ConfigProperty(name = "sb.meta.entityName")
     private Optional<String> configEntityName;
 
+    @Inject
+    @ConfigProperty(name = "sb.meta.startDate")
+    private Optional<String> configStartDate;
+
+    @Inject
+    @ConfigProperty(name = "sb.meta.endDate")
+    private Optional<String> configEndDate;
+
     public Optional<String> getConfigToolNames() {
         return configToolNames;
     }
@@ -396,6 +406,14 @@ class MetaConfig {
 
     public Optional<String> getConfigEntityName() {
         return configEntityName;
+    }
+
+    public Optional<String> getConfigStartDate() {
+        return configStartDate;
+    }
+
+    public Optional<String> getConfigEndDate() {
+        return configEndDate;
     }
 
     public class LocalArguments implements LocalSkipEmptyInLastDuration {
@@ -694,6 +712,32 @@ class MetaConfig {
                     CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
                     CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
                     "false").getSafeValue());
+        }
+
+        /**
+         * The optional start date (ISO-8601) to limit the scope of documents retrieved by sub-tools.
+         */
+        public String getStartDate() {
+            return getArgsAccessor().getArgument(
+                    getConfigStartDate()::get,
+                    arguments,
+                    context,
+                    CommonArguments.START_DATE,
+                    CommonArguments.START_DATE,
+                    "").getSafeValue();
+        }
+
+        /**
+         * The optional end date (ISO-8601) to limit the scope of documents retrieved by sub-tools.
+         */
+        public String getEndDate() {
+            return getArgsAccessor().getArgument(
+                    getConfigEndDate()::get,
+                    arguments,
+                    context,
+                    CommonArguments.END_DATE,
+                    CommonArguments.END_DATE,
+                    "").getSafeValue();
         }
     }
 }
