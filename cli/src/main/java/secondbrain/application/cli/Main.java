@@ -232,6 +232,7 @@ public class Main {
                 .stream()
                 .filter(Objects::nonNull)
                 .filter(meta -> StringUtils.isNotBlank(meta.filename()) && meta.content() != null)
+                .peek(meta -> System.err.println("Saving intermediate result: " + meta.filename()))
                 .forEach(meta -> Try.of(() -> Files.write(
                                 pathBuilder.getFilePath(directory, meta.filename()),
                                 meta.content().getBytes(),
