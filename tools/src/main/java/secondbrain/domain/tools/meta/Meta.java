@@ -216,7 +216,7 @@ public class Meta implements Tool<Void> {
                     prompt,
                     "",
                     context,
-                    null,
+                    "No op",
                     null,
                     "",
                     null))
