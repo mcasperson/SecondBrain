@@ -265,7 +265,7 @@ public class PlanHat implements Tool<Conversation> {
                         : doc)
                 .toList();
 
-        logger.info("Found " + context + " PlanHat conversations");
+        logger.info("Found " + context.size() + " PlanHat conversations");
 
         return context;
     }
