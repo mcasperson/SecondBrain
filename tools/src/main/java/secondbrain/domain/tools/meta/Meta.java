@@ -214,9 +214,9 @@ public class Meta implements Tool<Void> {
         if (parsedArgs.getDisablePrompt()) {
             return contextResult.map(context -> new RagMultiDocumentContext<Void>(
                     prompt,
-                    "",
+                    "Unused",
                     context,
-                    "No op",
+                    "Unused",
                     null,
                     "",
                     null))
