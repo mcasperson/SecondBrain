@@ -901,7 +901,7 @@ class GongConfig {
         public String getEntity() {
             return getArgsAccessor().getArgument(
                     null,
-                    null,
+                    arguments,
                     context,
                     CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     CommonArguments.ENTITY_NAME_CONTEXT_ARG,

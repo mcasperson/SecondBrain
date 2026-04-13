@@ -532,9 +532,9 @@ class GoogleDocsConfig {
         public String getEntity() {
             return getArgsAccessor().getArgument(
                     null,
-                    null,
+                    arguments,
                     context,
-                    null,
+                    CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     CommonArguments.ENTITY_NAME_CONTEXT_ARG,
                     "").getSafeValue();
         }
