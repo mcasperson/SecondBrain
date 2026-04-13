@@ -218,6 +218,7 @@ public class Main {
                 .stream()
                 .filter(Objects::nonNull)
                 .filter(meta -> StringUtils.isNotBlank(meta.getFilename()))
+                .peek(meta -> System.err.println("Saving metadata: " + pathBuilder.getFilePath(directory, meta.getFilename())))
                 .forEach(meta -> Try.of(() -> Files.write(
                                 pathBuilder.getFilePath(directory, meta.getFilename()),
                                 jsonDeserializer.serialize(meta).getBytes(),
