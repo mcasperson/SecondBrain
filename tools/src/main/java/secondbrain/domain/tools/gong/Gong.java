@@ -204,9 +204,9 @@ public class Gong implements Tool<GongCallDetails> {
 
     private List<RagDocumentContext<GongCallDetails>> getContextPrivate(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        logger.fine("Getting context for " + getName());
-
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        logger.fine("Getting context for " + getName() + " for company " + parsedArgs.getCompany() + " with call ID " + parsedArgs.getCallId());
 
         logger.fine("Settings are:\n" + parsedArgs);
 

@@ -207,9 +207,9 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        logger.fine("Getting context for " + getName());
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        logger.fine("Getting context for " + getName() + " for organization " + parsedArgs.getOrganization());
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<ZenDeskTicket>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))

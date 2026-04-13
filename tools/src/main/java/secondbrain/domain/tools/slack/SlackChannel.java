@@ -177,10 +177,9 @@ public class SlackChannel implements Tool<SlackChannelResource> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        logger.fine("Getting context for " + getName());
-
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        logger.fine("Getting context for " + getName() + " for channel " + parsedArgs.getChannel());
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<SlackChannelResource>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
