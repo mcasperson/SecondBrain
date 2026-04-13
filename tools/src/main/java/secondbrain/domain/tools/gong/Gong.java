@@ -206,9 +206,7 @@ public class Gong implements Tool<GongCallDetails> {
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        logger.fine("Getting context for " + getName() + " for company " + parsedArgs.getCompany() + " with call ID " + parsedArgs.getCallId());
-
-        logger.fine("Settings are:\n" + parsedArgs);
+        logger.info("Getting context for " + getName() + " for company " + parsedArgs.getCompany() + " with call ID " + parsedArgs.getCallId());
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<GongCallDetails>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))

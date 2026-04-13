@@ -186,7 +186,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
             final List<ToolArgs> arguments) {
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        logger.fine("Getting context for " + getName() + " with account ID " + parsedArgs.getAccountId());
+        logger.info("Getting context for " + getName() + " with account ID " + parsedArgs.getAccountId());
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<SalesforceTaskRecord>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
