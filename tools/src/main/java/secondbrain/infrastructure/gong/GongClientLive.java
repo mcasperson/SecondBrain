@@ -263,7 +263,7 @@ public class GongClientLive implements GongClient {
                 response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(GongCallsExtensive.class))
                         .get(),
-                e -> new RuntimeException("Failed to get calls from Gong API", e));
+                e -> new RuntimeException("Failed to get calls from Gong API: " + e.toString(), e));
     }
 
 
