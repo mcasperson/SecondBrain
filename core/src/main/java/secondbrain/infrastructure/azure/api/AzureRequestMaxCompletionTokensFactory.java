@@ -18,7 +18,7 @@ public class AzureRequestMaxCompletionTokensFactory {
                                   final String model,
                                   final String apiVersion) {
         if (V_2025_04_01_PREVIEW.equals(apiVersion)) {
-            return new AzureRequestMaxCompletionTokens_2025_04_01_preview(messages, maxOutputTokens, reasoningEffort, model);
+            return new AzureRequestMaxCompletionTokens_2025_04_01_preview(messages, maxOutputTokens, new AzureRequestMaxCompletionTokensReasoning_2025_04_01_preview(reasoningEffort), model);
         }
 
         return new AzureRequestMaxCompletionTokens_2024_05_01_preview(messages, maxOutputTokens, model);
@@ -29,7 +29,7 @@ public class AzureRequestMaxCompletionTokensFactory {
                                          final String model,
                                          final String apiVersion) {
         if (V_2025_04_01_PREVIEW.equals(apiVersion)) {
-            return new AzureRequestMaxCompletionTokens_2025_04_01_preview(messages, maxOutputTokens, "", model);
+            return new AzureRequestMaxCompletionTokens_2025_04_01_preview(messages, maxOutputTokens, null, model);
         }
 
         return new AzureRequestMaxCompletionTokens_2024_05_01_preview(messages, maxOutputTokens, model);
