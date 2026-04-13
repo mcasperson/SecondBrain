@@ -265,7 +265,7 @@ public class Gong implements Tool<GongCallDetails> {
                     raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
                     call transcripts.
                  */
-                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-Gong" + ragDoc.id()+ "-" + parsedArgs.getEntity() + ".txt")))
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-Gong-" + ragDoc.id()+ "-" + parsedArgs.getEntity() + ".txt")))
                 .map(ragDoc -> parsedArgs.getSummarizeTranscript()
                         ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(ragDoc.source()), "Gong", ragDoc, environmentSettings, parsedArgs)
                         : ragDoc)
