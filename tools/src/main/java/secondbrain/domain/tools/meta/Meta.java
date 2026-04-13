@@ -161,7 +161,9 @@ public class Meta implements Tool<Void> {
 
         // Get the rag docs from each tool
         final List<RagDocumentContext<Void>> ragDocs = filteredTools.stream()
-                .flatMap(tool -> tool.getContext(environmentSettings, prompt, toolArgs).stream())
+                .flatMap(tool -> Try.of(() -> tool.getContext(environmentSettings, prompt, toolArgs).stream())
+                        .onFailure(ex -> logger.severe("Failed to get context for tool " + tool.getName() + ": " + ex.toString()))
+                        .getOrElse(Stream.of()))
                 .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
 

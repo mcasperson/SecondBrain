@@ -146,7 +146,7 @@ public class SalesforceClientLive implements SalesforceClient {
                                 .map(r -> r.readEntity(SalesforceOauthTokenResponse.class))
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
-                        e -> new ExternalFailure("Failed to call the Salesforce API", e),
+                        e -> new ExternalFailure("Failed to call the Salesforce API: " + e.toString(), e),
                         () -> {
                             throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                         },
@@ -224,7 +224,7 @@ public class SalesforceClientLive implements SalesforceClient {
                                 .map(r -> r.readEntity(SalesforceOpportunityQuery.class))
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
-                        e -> new ExternalFailure("Failed to call the Salesforce API", e),
+                        e -> new ExternalFailure("Failed to call the Salesforce API: " + e.toString(), e),
                         () -> {
                             throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                         },
@@ -283,7 +283,7 @@ public class SalesforceClientLive implements SalesforceClient {
                                 .map(SalesforceTaskQuery::getRecordsArray)
                                 .onFailure(e -> logger.severe(e.getMessage()))
                                 .get(),
-                        e -> new ExternalFailure("Failed to call the Salesforce API", e),
+                        e -> new ExternalFailure("Failed to call the Salesforce API: " + e.toString(), e),
                         () -> {
                             throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                         },
