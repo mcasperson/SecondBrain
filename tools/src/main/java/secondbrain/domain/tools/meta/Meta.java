@@ -120,13 +120,18 @@ public class Meta implements Tool<Void> {
 
         // Filter the tools to those included in the toolNames
         final List<Tool<?>> filteredTools = tools.stream()
-                .filter(tool -> toolNames.contains(tool.getName()))
+                .filter(tool -> toolNames.stream()
+                        .map(String::toLowerCase)
+                        .toList()
+                        .contains(tool.getName().toLowerCase()))
                 .filter(tool -> !tool.getName().equals(Meta.class.getSimpleName()))
                 .toList();
 
         if (filteredTools.isEmpty()) {
             throw new EmptyList("No valid tools found for names: " + toolNames);
         }
+
+        filteredTools.forEach(tool -> logger.info("Including tool: " + tool.getName()));
 
         /*
             Common arguments are exposed by the meta tool and passed to each sub-tool to allow common
