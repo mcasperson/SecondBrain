@@ -3,6 +3,7 @@ package secondbrain.infrastructure.azure.api;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Objects;
@@ -36,10 +37,22 @@ public record AzureResponse(List<AzureResponseChoice> choices,
                     .reduce("", String::concat);
         }
 
-        // This is the output for newer API versions
+        // The output might be in the text field
+        if (!CollectionUtils.isEmpty(getOutput())) {
+            final String result = getOutput().stream()
+                    .map(AzureResponseOutput::text)
+                    .filter(Objects::nonNull)
+                    .reduce("", String::concat);
+            if (StringUtils.isNotBlank(result)) {
+                return result;
+            }
+        }
+
+        // This used to be how we got results? Not sure now, as the text field above
+        // might be the new way.
         if (!CollectionUtils.isEmpty(getOutput())) {
             return getOutput().stream()
-                    .flatMap(o -> o.content().stream())
+                    .flatMap(o -> o.getContent().stream())
                     .filter(o -> "output_text".equals(o.type()))
                     .map(AzureResponseOutputContent::text)
                     .reduce("", String::concat);
