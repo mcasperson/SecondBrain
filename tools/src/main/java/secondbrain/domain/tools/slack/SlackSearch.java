@@ -207,7 +207,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
         final List<RagDocumentContext<SlackSearchResultResource>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
         // Apply preprocessing hooks
-        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+        final List<RagDocumentContext<SlackSearchResultResource>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
                 // Get the metadata, which includes a rating against the filter question if present
@@ -216,6 +216,10 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-SlackSearch" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
                 .toList();
+
+        logger.info("Found " + context.size() + " Slack from search");
+
+        return context;
     }
 
     @Override

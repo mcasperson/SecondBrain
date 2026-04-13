@@ -253,7 +253,7 @@ public class Gong implements Tool<GongCallDetails> {
         final List<RagDocumentContext<GongCallDetails>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
         // Apply preprocessing hooks, and then rating metadata and filtering
-        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+        final List<RagDocumentContext<GongCallDetails>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
                 // Get the metadata, which includes a rating against the filter question if present
@@ -272,6 +272,10 @@ public class Gong implements Tool<GongCallDetails> {
                         ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(ragDoc.source()), "Gong", ragDoc, environmentSettings, parsedArgs)
                         : ragDoc)
                 .toList();
+
+        logger.info("Found " + context.size() + " Gong calls");
+
+        return context;
     }
 
     @Nullable

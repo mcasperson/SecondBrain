@@ -248,8 +248,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         final List<RagDocumentContext<ZenDeskTicket>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
         // Apply preprocessing hooks
-        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+        final List<RagDocumentContext<ZenDeskTicket>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
+
+        logger.info("Found " + context.size() + " ZenDesk emails");
+
+        return context;
     }
 
     private String buildTicketQuery(final ZenDeskConfig.LocalArguments parsedArgs) {

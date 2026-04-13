@@ -218,7 +218,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         }
 
         // Only do the post processing after the hooks
-        return filteredDocs.stream()
+        final List<RagDocumentContext<SalesforceTaskRecord>> records = filteredDocs.stream()
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc -> ragDoc.addMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
@@ -229,6 +229,10 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                         ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(doc.source()), "SalesforceEmail", doc, environmentSettings, parsedArgs)
                         : doc)
                 .toList();
+
+        logger.info("Found " + records.size() + " Salesforce records");
+
+        return records;
     }
 
     @Override

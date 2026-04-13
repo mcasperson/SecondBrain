@@ -252,7 +252,7 @@ public class PlanHat implements Tool<Conversation> {
         final List<RagDocumentContext<Conversation>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
         // Apply preprocessing hooks
-        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+        final List<RagDocumentContext<Conversation>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
                 // Get the metadata, which includes a rating against the filter question if present
@@ -264,6 +264,10 @@ public class PlanHat implements Tool<Conversation> {
                         ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(doc.source()), "PlanHat", doc, environmentSettings, parsedArgs)
                         : doc)
                 .toList();
+
+        logger.info("Found " + context + " PlanHat conversations");
+
+        return context;
     }
 
     @Override

@@ -231,7 +231,7 @@ public class SlackChannel implements Tool<SlackChannelResource> {
         final List<RagDocumentContext<SlackChannelResource>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
         // Apply preprocessing hooks
-        return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+        final List<RagDocumentContext<SlackChannelResource>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
                 // Get the metadata, which includes a rating against the filter question if present
@@ -240,6 +240,10 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-SlackChannel" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
                 .toList();
+
+        logger.info("Found " + context.size() + " Slack channel messages");
+
+        return context;
     }
 
     @Override
