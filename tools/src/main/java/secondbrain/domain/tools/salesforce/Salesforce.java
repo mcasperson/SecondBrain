@@ -222,7 +222,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                 .map(ragDoc -> ragDoc.addMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
-                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-Salesforce" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-Salesforce-" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
                 .map(ragDoc -> ragDoc.addMetadata(getOpportunityMeta(parsedArgs)))
                 .map(doc -> parsedArgs.getSummarizeDocument()
                         ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(doc.source()), "SalesforceEmail", doc, environmentSettings, parsedArgs)
