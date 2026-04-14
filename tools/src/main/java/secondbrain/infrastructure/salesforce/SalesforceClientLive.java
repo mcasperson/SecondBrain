@@ -22,6 +22,8 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.infrastructure.salesforce.api.SalesforceEmailQuery;
+import secondbrain.infrastructure.salesforce.api.SalesforceEmailRecord;
 import secondbrain.infrastructure.salesforce.api.SalesforceOauthTokenResponse;
 import secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskQuery;
@@ -174,6 +176,92 @@ public class SalesforceClientLive implements SalesforceClient {
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Tasks not found for salesforce account " + accountId))
+                .get();
+    }
+
+    @Override
+    public SalesforceEmailRecord[] getEmails(final String token, final String accountId, final String startDate, final String endDate) {
+        return getEmails(token, accountId, "SalesforceAPIEmails", startDate, endDate);
+    }
+
+    private SalesforceEmailRecord[] getEmails(final String token, final String accountId, final String source, final String startDate, final String endDate) {
+        checkState(domain.isPresent(), "Salesforce domain is not configured");
+
+        return Try.of(() -> localStorage.getOrPutObject(
+                                SalesforceClientLive.class.getSimpleName(),
+                                source,
+                                DigestUtils.sha256Hex(domain.get() + accountId),
+                                DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
+                                SalesforceEmailRecord[].class,
+                                () -> getEmailsApi(token, accountId, startDate, endDate))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Emails not found for salesforce account " + accountId))
+                .get();
+    }
+
+    private SalesforceEmailRecord[] getEmailsApi(final String token, final String accountId, final String startDate, final String endDate) {
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile,
+                () -> getEmailsApiLocked(token, accountId, startDate, endDate, 0));
+    }
+
+    private SalesforceEmailRecord[] getEmailsApiLocked(final String token, final String accountId, final String startDate, final String endDate, final int retryCount) {
+        logger.fine("Getting Salesforce emails for account " + accountId);
+
+        if (retryCount > API_RETRIES) {
+            throw new ExternalFailure("Exceeded maximum retries calling Salesforce API");
+        }
+
+        RATE_LIMITER.acquire();
+
+        final String url = getUrl() + "/services/data/" + version + "/query";
+
+        final StringBuilder soql = new StringBuilder();
+        soql.append("SELECT Subject,Id,TextBody FROM EmailMessage WHERE RelatedToId='")
+                .append(accountId)
+                .append("'");
+        if (StringUtils.isNotBlank(startDate)) {
+            soql.append(" AND MessageDate>=")
+                    .append(startDate).append("T00:00:00Z");
+        }
+        if (StringUtils.isNotBlank(endDate)) {
+            soql.append(" AND MessageDate<=")
+                    .append(endDate).append("T23:59:59Z");
+        }
+        soql.append(" ORDER BY MessageDate DESC Limit 100");
+
+        return Try.of(() -> httpClientCaller.call(
+                        this::getClient,
+                        client -> client.target(url)
+                                .queryParam("q", soql)
+                                .request()
+                                .header("Authorization", "Bearer " + token)
+                                .accept(MediaType.APPLICATION_JSON_TYPE)
+                                .get(),
+                        response -> Try.of(() -> responseValidation.validate(response, url))
+                                .map(r -> r.readEntity(SalesforceEmailQuery.class))
+                                .map(SalesforceEmailQuery::getRecordsArray)
+                                .onFailure(e -> logger.severe(e.getMessage()))
+                                .get(),
+                        e -> new ExternalFailure("Failed to call the Salesforce API: " + e.toString(), e),
+                        () -> {
+                            throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                        },
+                        API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                        API_CALL_DELAY_SECONDS_DEFAULT,
+                        API_RETRIES))
+                .recover(InvalidResponse.class, ex -> {
+                    if (ex.getCode() == 429) {
+                        Try.run(() -> Thread.sleep(API_CALL_DELAY_SECONDS_DEFAULT * 1000));
+                        return getEmailsApiLocked(token, accountId, startDate, endDate, retryCount + 1);
+                    }
+
+                    throw new ExternalFailure("Could not call salesforce query", ex);
+                })
+                .onFailure(e -> logger.severe("Failed to get emails for salesforce account " + accountId + "\n" + e.getMessage()))
+                .onSuccess(records -> logger.fine("Retrieved " + (records != null ? records.length : 0) + " emails from Salesforce for account " + accountId))
                 .get();
     }
 

@@ -38,6 +38,8 @@ import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.salesforce.SalesforceClient;
+import secondbrain.infrastructure.salesforce.api.SalesforceEmailRecord;
+import secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
 import java.time.OffsetDateTime;
@@ -54,7 +56,7 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
  * A tool that answers a query based on the emails associated with a Salesforce account.
  */
 @ApplicationScoped
-public class Salesforce implements Tool<SalesforceTaskRecord> {
+public class Salesforce implements Tool<SalesforceEmailRecord> {
     public static final String DOMAIN = "domain";
     public static final String ACCOUNT_ID = "accountId";
     public static final String CLIENT_SECRET = "clientSecret";
@@ -147,7 +149,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     }
 
     @Override
-    public List<RagDocumentContext<SalesforceTaskRecord>> getContext(
+    public List<RagDocumentContext<SalesforceEmailRecord>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -167,12 +169,12 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return Try.of(() -> localStorage.getOrPutGeneric(
                                 getName(),
-                                getName() + "V2",
+                                getName() + "V3",
                                 Integer.toString(cacheKey.hashCode()),
                                 parsedArgs.getCacheTtl(),
                                 List.class,
                                 RagDocumentContext.class,
-                                SalesforceTaskRecord.class,
+                                SalesforceEmailRecord.class,
                                 () -> getContextPrivate(environmentSettings, prompt, arguments))
                         .result())
                 .filter(Objects::nonNull)
@@ -180,7 +182,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                 .get();
     }
 
-    private List<RagDocumentContext<SalesforceTaskRecord>> getContextPrivate(
+    private List<RagDocumentContext<SalesforceEmailRecord>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -189,27 +191,41 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         logger.info("Getting context for " + getName() + " with account ID " + parsedArgs.getAccountId());
 
         // Get preinitialization hooks before ragdocs
-        final List<RagDocumentContext<SalesforceTaskRecord>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+        final List<RagDocumentContext<SalesforceEmailRecord>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         final String startDate = StringUtils.isNotBlank(parsedArgs.getStartPeriod()) ? parsedArgs.getStartPeriod() : parsedArgs.getStartDate();
         final String endDate = StringUtils.isNotBlank(parsedArgs.getEndPeriod()) ? parsedArgs.getEndPeriod() : parsedArgs.getEndDate();
 
-        final Try<List<RagDocumentContext<SalesforceTaskRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
-                .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
-                .map(emails -> Stream.of(emails)
+//        final Try<List<RagDocumentContext<SalesforceTaskRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
+//                .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
+//                .map(emails -> Stream.of(emails)
+//                        .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabelWithDate(email), parsedArgs))
+//                        .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
+//                        .toList());
+
+        // Get emails related to the account and any opportunities associated with the account
+        final List<String> relatedToIds = new ArrayList<>(getOpportunities(parsedArgs));
+        relatedToIds.add(parsedArgs.getAccountId());
+
+        final Try<List<RagDocumentContext<SalesforceEmailRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
+                .map(token -> relatedToIds
+                        .stream()
+                        .flatMap(id -> Arrays.stream(salesforceClient.getEmails(token.accessToken(), id, startDate, endDate)))
+                        .toList())
+                .map(emails -> emails.stream()
                         .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabelWithDate(email), parsedArgs))
                         .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                         .toList());
 
         // Combine preinitialization hooks with ragDocs
-        final List<RagDocumentContext<SalesforceTaskRecord>> combinedDocs = Stream.concat(
+        final List<RagDocumentContext<SalesforceEmailRecord>> combinedDocs = Stream.concat(
                 preinitHooks.stream(),
                 exceptionMapping.map(context).get().stream()
         ).toList();
 
         // Apply preprocessing hooks
-        final List<RagDocumentContext<SalesforceTaskRecord>> filteredDocs = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+        final List<RagDocumentContext<SalesforceEmailRecord>> filteredDocs = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
 
         if (filteredDocs.isEmpty()) {
@@ -217,7 +233,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         }
 
         // Only do the post processing after the hooks
-        final List<RagDocumentContext<SalesforceTaskRecord>> records = filteredDocs.stream()
+        final List<RagDocumentContext<SalesforceEmailRecord>> records = filteredDocs.stream()
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc -> ragDoc.addMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
@@ -235,7 +251,7 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
     }
 
     @Override
-    public RagMultiDocumentContext<SalesforceTaskRecord> call(
+    public RagMultiDocumentContext<SalesforceEmailRecord> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -248,13 +264,13 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
             throw new InternalFailure("You must provide an account ID to query");
         }
 
-        final List<RagDocumentContext<SalesforceTaskRecord>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<SalesforceEmailRecord>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<SalesforceTaskRecord>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<SalesforceEmailRecord>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        final RagMultiDocumentContext<SalesforceTaskRecord> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<SalesforceEmailRecord> mappedResult = exceptionMapping.map(result).get();
 
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
@@ -274,6 +290,14 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
         return getContextLabel() + " " + record.getCreatedDate();
     }
 
+    private String getContextLabelWithDate(@Nullable final SalesforceEmailRecord record) {
+        if (record == null || record.messageDate() == null) {
+            return getContextLabel();
+        }
+
+        return getContextLabel() + " " + record.messageDate();
+    }
+
     private MetaObjectResult getOpportunityMeta(final SalesforceConfig.LocalArguments parsedArgs) {
         return Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
                 .map(token -> salesforceClient.getOpportunityByAccountId(token.accessToken(), parsedArgs.getAccountId()))
@@ -282,6 +306,19 @@ public class Salesforce implements Tool<SalesforceTaskRecord> {
                 .map(Optional::get)
                 .map(opp -> getMeta(opp, parsedArgs.getOpportunity1Name(), parsedArgs.getOpportunity1()))
                 .get();
+    }
+
+    private List<String> getOpportunities(final SalesforceConfig.LocalArguments parsedArgs) {
+        final List<Map<String, Object>> opps = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
+                .map(token -> salesforceClient.getOpportunityByAccountId(token.accessToken(), parsedArgs.getAccountId()))
+                .map(SalesforceOpportunityQuery::records)
+                .get();
+
+        return opps.stream()
+                .map(map -> map.getOrDefault("Id", ""))
+                .map(Object::toString)
+                .filter(StringUtils::isNotBlank)
+                .toList();
     }
 
     @Nullable
