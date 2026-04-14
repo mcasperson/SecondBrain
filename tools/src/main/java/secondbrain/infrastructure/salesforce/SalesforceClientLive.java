@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.salesforce;
 
 import com.google.common.util.concurrent.RateLimiter;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -13,6 +14,7 @@ import jakarta.ws.rs.core.MultivaluedMap;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.date.DateParser;
 import secondbrain.domain.date.DateTruncate;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InvalidResponse;
@@ -81,6 +83,10 @@ public class SalesforceClientLive implements SalesforceClient {
     @Inject
     @Preferred
     private Mutex mutex;
+
+    @Inject
+    @Identifier("everything")
+    private DateParser dateParser;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -223,12 +229,15 @@ public class SalesforceClientLive implements SalesforceClient {
                 .append(accountId)
                 .append("'");
         if (StringUtils.isNotBlank(startDate)) {
-            soql.append(" AND MessageDate>=")
-                    .append(startDate).append("T00:00:00Z");
+            Try.of(() -> dateParser.parseDate(startDate))
+                    .onFailure(e -> logger.warning("Failed to parse start date " + startDate))
+                    .onSuccess(date -> soql.append(" AND MessageDate>=").append(DateTimeFormatter.ISO_INSTANT.format(date)));
+
         }
         if (StringUtils.isNotBlank(endDate)) {
-            soql.append(" AND MessageDate<=")
-                    .append(endDate).append("T23:59:59Z");
+            Try.of(() -> dateParser.parseDate(endDate))
+                    .onFailure(e -> logger.warning("Failed to parse end date " + endDate))
+                    .onSuccess(date -> soql.append(" AND MessageDate<=").append(DateTimeFormatter.ISO_INSTANT.format(date)));
         }
         soql.append(" ORDER BY MessageDate DESC Limit 100");
 
