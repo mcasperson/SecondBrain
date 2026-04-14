@@ -223,7 +223,7 @@ public class PlanHat implements Tool<Conversation> {
                 .flatMap(pair -> Try.withResources(ClientBuilder::newClient)
                         .of(client -> planHatClient.getConversations(
                                 client,
-                                "", // No entity filtering at this time to improve cache hits
+                                parsedArgs.getCompany(),
                                 pair.getLeft(),
                                 pair.getRight(),
                                 parsedArgs.getStartDate(),
