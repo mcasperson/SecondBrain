@@ -199,6 +199,7 @@ public class PlanHatClientLive implements PlanHatClient {
          There is no way to select a date range with the Planhat API,
          so instead we keep recursing over the API until all the conversations
          are before the start date.
+         See https://www.planhat.com/developers/api/conversation#get-conversations-list-item
          */
         final Conversation[] filtered = Stream.of(Objects.requireNonNullElse(conversations, new Conversation[]{}))
                 .filter(c -> startDate == null || dateParser.parseDate(c.date()).isAfter(startDate))
