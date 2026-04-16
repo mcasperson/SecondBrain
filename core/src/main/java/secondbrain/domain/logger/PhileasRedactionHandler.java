@@ -12,6 +12,9 @@ import ai.philterd.phileas.services.strategies.rules.*;
 import java.util.Arrays;
 import java.util.logging.*;
 
+/**
+ * Any logging, typically for debugging, is filtered for PII.
+ */
 public class PhileasRedactionHandler extends Handler {
     private final Handler delegate;
     private final PlainTextFilterService filterService;
