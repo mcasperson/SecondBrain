@@ -158,7 +158,7 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration()) {
             final boolean hasItems = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
-                    .map(token -> salesforceClient.anyItemsInDuration(token.accessToken(), parsedArgs.getAccountId(), "Email", ChronoUnit.YEARS, ChronoUnit.MONTHS))
+                    .map(token -> salesforceClient.anyItemsInDuration(token.accessToken(), parsedArgs.getAccountId(), ChronoUnit.YEARS, ChronoUnit.MONTHS))
                     .getOrElse(true);
             if (!hasItems) {
                 logger.info("Skipping Salesforce context retrieval because skipEmptyInLastDuration is set and there are no Salesforce emails in the specified duration");
