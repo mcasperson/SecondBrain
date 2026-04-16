@@ -105,7 +105,6 @@ public class SalesforceClientLive implements SalesforceClient {
     public boolean anyItemsInDuration(
             final String token,
             final String accountId,
-            final String type,
             final ChronoUnit duration,
             final ChronoUnit cached) {
         final String endDate = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault()), cached)
@@ -113,8 +112,7 @@ public class SalesforceClientLive implements SalesforceClient {
         final String startDate = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault())
                 .minus(1, duration), duration).format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-        final SalesforceTaskRecord[] tasks = getTasks(token, accountId, type, startDate, endDate,
-                "SalesforceAPITasksDuration");
+        final SalesforceEmailRecord[] tasks = getEmails(token, accountId, startDate, endDate);
         return tasks != null && tasks.length > 0;
     }
 

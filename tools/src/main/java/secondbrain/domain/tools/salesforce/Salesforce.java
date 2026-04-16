@@ -197,13 +197,6 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
         final String startDate = StringUtils.isNotBlank(parsedArgs.getStartPeriod()) ? parsedArgs.getStartPeriod() : parsedArgs.getStartDate();
         final String endDate = StringUtils.isNotBlank(parsedArgs.getEndPeriod()) ? parsedArgs.getEndPeriod() : parsedArgs.getEndDate();
 
-//        final Try<List<RagDocumentContext<SalesforceTaskRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
-//                .map(token -> salesforceClient.getTasks(token.accessToken(), parsedArgs.getAccountId(), "Email", startDate, endDate))
-//                .map(emails -> Stream.of(emails)
-//                        .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabelWithDate(email), parsedArgs))
-//                        .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
-//                        .toList());
-
         // Get emails related to the account and any opportunities associated with the account
         final List<String> relatedToIds = new ArrayList<>(getOpportunities(parsedArgs));
         relatedToIds.add(parsedArgs.getAccountId());
