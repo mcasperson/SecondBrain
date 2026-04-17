@@ -1,5 +1,6 @@
 package secondbrain.domain.tools.github;
 
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -369,6 +370,7 @@ class GitHubDiffConfig {
     private ArgsAccessor argsAccessor;
 
     @Inject
+    @Identifier("AES")
     private Encryptor textEncryptor;
 
     @Inject

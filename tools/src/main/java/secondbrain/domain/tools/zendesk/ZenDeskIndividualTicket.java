@@ -384,6 +384,7 @@ class ZenDeskTicketConfig {
     private ArgsAccessor argsAccessor;
 
     @Inject
+    @Identifier("AES")
     private Encryptor textEncryptor;
 
     @Inject

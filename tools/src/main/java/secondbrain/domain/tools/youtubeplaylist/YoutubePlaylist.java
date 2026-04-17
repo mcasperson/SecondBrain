@@ -1,5 +1,6 @@
 package secondbrain.domain.tools.youtubeplaylist;
 
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -355,6 +356,7 @@ class YoutubeConfig {
     private ArgsAccessor argsAccessor;
 
     @Inject
+    @Identifier("AES")
     private Encryptor textEncryptor;
 
     @Inject

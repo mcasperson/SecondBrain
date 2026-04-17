@@ -9,6 +9,7 @@ import com.google.api.services.docs.v1.model.*;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -79,6 +80,7 @@ public class GoogleDocs implements Tool<Void> {
     private GoogleDocsConfig config;
 
     @Inject
+    @Identifier("AES")
     private Encryptor textEncryptor;
 
     @Inject

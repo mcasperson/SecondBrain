@@ -3,6 +3,7 @@ package secondbrain.domain.persist;
 import com.azure.core.util.MetricsOptions;
 import com.azure.cosmos.*;
 import com.azure.cosmos.models.*;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
@@ -94,6 +95,7 @@ public class CosmosLocalStorage implements LocalStorage {
     private Logger logger;
 
     @Inject
+    @Identifier("AES")
     private Encryptor encryptor;
 
     @Inject

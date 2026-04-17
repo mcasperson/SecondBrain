@@ -568,6 +568,7 @@ class ZenDeskConfig {
     private ValidateInputs validateInputs;
 
     @Inject
+    @Identifier("AES")
     private Encryptor textEncryptor;
 
     @Inject

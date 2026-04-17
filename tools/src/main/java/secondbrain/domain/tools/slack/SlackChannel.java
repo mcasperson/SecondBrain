@@ -2,6 +2,7 @@ package secondbrain.domain.tools.slack;
 
 import com.slack.api.Slack;
 import com.slack.api.methods.AsyncMethodsClient;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -405,6 +406,7 @@ class SlackChannelConfig {
     private ArgsAccessor argsAccessor;
 
     @Inject
+    @Identifier("AES")
     private Encryptor textEncryptor;
 
     public Optional<String> getConfigSlackAccessToken() {

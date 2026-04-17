@@ -1,6 +1,7 @@
 package secondbrain.application.web;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -41,6 +42,7 @@ public class LinkedInOauthCallback {
     private JsonDeserializer jsonDeserializer;
 
     @Inject
+    @Identifier("AES")
     private Encryptor textEncryptor;
 
     @GET
