@@ -74,7 +74,7 @@ public class AesEncryptor implements Encryptor {
             .get();
     }
 
-    private SecretKey getKeyFromPassword(String password, String salt) {
+    private SecretKey getKeyFromPassword(final String password, final String salt) {
         final KeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(), 65536, 256);
 
         return Try.of(() -> SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256"))
@@ -89,7 +89,7 @@ public class AesEncryptor implements Encryptor {
         return generateIv(iv);
     }
 
-    private GCMParameterSpec generateIv(byte[] iv) {
+    private GCMParameterSpec generateIv(final byte[] iv) {
         return new GCMParameterSpec(AUTH_TAG_LENGTH, iv);
     }
 }
