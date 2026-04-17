@@ -27,6 +27,7 @@ public class AesEncryptor implements Encryptor {
 
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int IV_LENGTH = 12;
+    private static final int AUTH_TAG_LENGTH = 128;
 
     @Inject
     @ConfigProperty(name = "sb.encryption.password")
@@ -89,6 +90,6 @@ public class AesEncryptor implements Encryptor {
     }
 
     private GCMParameterSpec generateIv(byte[] iv) {
-        return new GCMParameterSpec(128, iv);
+        return new GCMParameterSpec(AUTH_TAG_LENGTH, iv);
     }
 }
