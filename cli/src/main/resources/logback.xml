@@ -13,7 +13,9 @@
         <appender-ref ref="STDOUT"/>
     </root>
 
+    <logger name="io.smallrye.faulttolerance" level="warn"/>
     <logger name="ai.philterd.phileas" level="warn"/>
+    <logger name="org.jboss.weld" level="warn"/>
     <logger name="org.jboss.logging" level="warn"/>
     <logger name="org.apache.pdfbox.pdmodel" level="error"/>
     <logger name="org.apache.fontbox" level="error"/>
