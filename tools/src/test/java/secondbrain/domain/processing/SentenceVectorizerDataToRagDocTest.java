@@ -62,7 +62,8 @@ class SentenceVectorizerDataToRagDocTest {
     void updateConfig() {
         final var configSource = new PropertiesConfigSource(
                 Map.of(
-                        "sb.encryption.password", "1234567890"
+                        "sb.encryption.password", "1234567890",
+                        "sb.encryption.salt", "1234567890"
                 ),
                 "TestConfig",
                 Integer.MAX_VALUE
