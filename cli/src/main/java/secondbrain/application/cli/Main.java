@@ -22,6 +22,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 
 public class Main {
@@ -68,6 +69,9 @@ public class Main {
     @Inject
     private ToolSelector toolSelector;
 
+    @Inject
+    private Logger logger;
+
     /**
      * This is included here to force the service to initialise as early as possible.
      */
@@ -95,7 +99,7 @@ public class Main {
 
     private String getPrompt(final String[] args) {
         if (args.length > 0 && !StringUtils.isBlank(args[0])) {
-            System.err.println("Prompt: " + args[0]);
+            logger.info("Prompt: " + args[0]);
             return args[0];
         }
 
@@ -114,11 +118,11 @@ public class Main {
         final String format = args.length > 1 ? args[1] : "no-op";
         final StringConverter converter = stringConverterSelector.getStringConverter(format);
 
-        System.err.println("Directory: " + directory);
-        System.err.println("File: " + file.orElse(""));
-        System.err.println("Annotations: " + annotationsFile.orElse(""));
-        System.err.println("Links: " + linksFile.orElse(""));
-        System.err.println("Debug: " + debugFile.orElse(""));
+        logger.info("Directory: " + directory);
+        logger.info("File: " + file.orElse(""));
+        logger.info("Annotations: " + annotationsFile.orElse(""));
+        logger.info("Links: " + linksFile.orElse(""));
+        logger.info("Debug: " + debugFile.orElse(""));
 
         // Force initialization of local storage
         localStorageReadWrite.toString();
@@ -132,7 +136,7 @@ public class Main {
                 .onSuccess(this::writeOutput)
                 .onSuccess(this::saveMetadata)
                 .onSuccess(this::saveIntermediateResults)
-                .onFailure(e -> System.err.println("Failed to process prompt: " + e.getMessage()));
+                .onFailure(e -> logger.severe("Failed to process prompt: " + e.getMessage()));
     }
 
     private void printHelp() {
@@ -169,7 +173,7 @@ public class Main {
 
         if (StringUtils.isNotBlank(annotations)) {
             Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, annotationsFile.get()), annotations, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
-                    .onFailure(e -> System.err.println("Failed to write annotations to file: " + e.getMessage()));
+                    .onFailure(e -> logger.severe("Failed to write annotations to file: " + e.getMessage()));
         }
     }
 
@@ -184,7 +188,7 @@ public class Main {
                             "Links:" + System.lineSeparator() + content.getLinks(),
                             StandardOpenOption.CREATE,
                             StandardOpenOption.TRUNCATE_EXISTING))
-                    .onFailure(e -> System.err.println("Failed to write links to file: " + e.getMessage()));
+                    .onFailure(e -> logger.severe("Failed to write links to file: " + e.getMessage()));
         }
     }
 
@@ -195,7 +199,7 @@ public class Main {
 
         if (StringUtils.isNotBlank(content.getDebugInfo())) {
             Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, debugFile.get()), content.getDebugInfo(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
-                    .onFailure(e -> System.err.println("Failed to write debug to file: " + e.getMessage()));
+                    .onFailure(e -> logger.severe("Failed to write debug to file: " + e.getMessage()));
         }
     }
 
@@ -209,7 +213,7 @@ public class Main {
                 : StandardOpenOption.TRUNCATE_EXISTING;
 
         Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, file.get()), content.getResponseText(), StandardOpenOption.CREATE, option))
-                .onFailure(e -> System.err.println("Failed to write output to file: " + e.getMessage()));
+                .onFailure(e -> logger.severe("Failed to write output to file: " + e.getMessage()));
     }
 
     private void saveMetadata(final PromptHandlerResponse content) {
@@ -218,13 +222,13 @@ public class Main {
                 .stream()
                 .filter(Objects::nonNull)
                 .filter(meta -> StringUtils.isNotBlank(meta.getFilename()))
-                .peek(meta -> System.err.println("Saving metadata: " + pathBuilder.getFilePath(directory, meta.getFilename())))
+                .peek(meta -> logger.info("Saving metadata: " + pathBuilder.getFilePath(directory, meta.getFilename())))
                 .forEach(meta -> Try.of(() -> Files.write(
                                 pathBuilder.getFilePath(directory, meta.getFilename()),
                                 jsonDeserializer.serialize(meta).getBytes(),
                                 StandardOpenOption.CREATE,
                                 StandardOpenOption.TRUNCATE_EXISTING))
-                        .onFailure(e -> System.err.println("Failed to write metadata to files: " + e.getMessage())));
+                        .onFailure(e -> logger.severe("Failed to write metadata to files: " + e.getMessage())));
     }
 
     private void saveIntermediateResults(final PromptHandlerResponse content) {
@@ -233,12 +237,12 @@ public class Main {
                 .stream()
                 .filter(Objects::nonNull)
                 .filter(meta -> StringUtils.isNotBlank(meta.filename()) && meta.content() != null)
-                .peek(meta -> System.err.println("Saving intermediate result: " + pathBuilder.getFilePath(directory, meta.filename())))
+                .peek(meta -> logger.info("Saving intermediate result: " + pathBuilder.getFilePath(directory, meta.filename())))
                 .forEach(meta -> Try.of(() -> Files.write(
                                 pathBuilder.getFilePath(directory, meta.filename()),
                                 meta.content().getBytes(),
                                 StandardOpenOption.CREATE,
                                 StandardOpenOption.TRUNCATE_EXISTING))
-                        .onFailure(e -> System.err.println("Failed to write intermediate result to files: " + e.getMessage())));
+                        .onFailure(e -> logger.severe("Failed to write intermediate result to files: " + e.getMessage())));
     }
 }
