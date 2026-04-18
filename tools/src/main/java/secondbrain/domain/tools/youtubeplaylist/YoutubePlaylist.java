@@ -221,7 +221,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                         video,
                         "[Youtube " + video.title() + "](https://www.youtube.com/watch?v=" + video.id() + ")",
                         trimmedConversationResult.keywordMatches()))
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences for YoutubePlaylist: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                .onFailure(throwable -> logger.severe("Failed to vectorize sentences for YoutubePlaylist: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // We will proceed without any annotations if the vectorization fails
                 .recover(throwable -> new RagDocumentContext<>(
                         getName(),

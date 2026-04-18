@@ -18,6 +18,8 @@ import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.tooldefs.MetaObjectResults;
 
+import java.util.logging.Logger;
+
 @ApplicationScoped
 public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
     @Inject
@@ -32,6 +34,9 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
     @Inject
     @ConfigProperty(name = "sb.output.disableAnnotations", defaultValue = "false")
     private Boolean disableAnnotations;
+
+    @Inject
+    private Logger logger;
 
     @Override
     public <T extends TextData & IdData & UrlData> RagDocumentContext<T> getDocumentContext(
@@ -78,7 +83,7 @@ public class SentenceVectorizerDataToRagDoc implements DataToRagDoc {
                         null,
                         "[" + task.generateLinkText() + "](" + task.generateUrl() + ")",
                         trimmedConversationResult.keywordMatches()))
-                .onFailure(throwable -> System.err.println("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
+                .onFailure(throwable -> logger.severe("Failed to vectorize sentences: " + ExceptionUtils.getRootCauseMessage(throwable)))
                 // Proceed without vectors if vectorization fails
                 // This will always happen on older macs as they are no loner supported
                 .recover(InternalFailure.class, e -> new RagDocumentContext<>(

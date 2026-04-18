@@ -51,7 +51,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
                         .build())
                 .mapTry(Criteria::loadModel)
                 .mapTry(ZooModel::newPredictor)
-                .onFailure((Throwable e) -> System.err.println("Failed to initialise predictor: " + ExceptionUtils.getRootCause(e)))
+                .onFailure((Throwable e) -> logger.severe("Failed to initialise predictor: " + ExceptionUtils.getRootCause(e)))
                 .getOrElse(() -> null);
     }
 
