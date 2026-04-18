@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.data.IdData;
+import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.injection.Preferred;
@@ -33,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @AddBeanClasses(LLMRagDocSummarizer.class)
 @AddBeanClasses(MockLLmCLient.class)
 @AddBeanClasses(JasyptEncryptor.class)
+@AddBeanClasses(AesEncryptor.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 class LLMRagDocSummarizerTest {

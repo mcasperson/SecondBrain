@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.context.JdlSentenceVectorizer;
 import secondbrain.domain.context.RagStringContext;
+import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
@@ -36,6 +37,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(JsonDeserializerJackson.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(JasyptEncryptor.class)
+@AddBeanClasses(AesEncryptor.class)
+@AddBeanClasses(AesEncryptor.class)
 @AddBeanClasses(ApacheCompressZipper.class)
 public class JdlSentenceVectorizerTest {
 

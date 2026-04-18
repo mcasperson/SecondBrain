@@ -20,6 +20,7 @@ import secondbrain.domain.context.CosineSimilarityCalculator;
 import secondbrain.domain.context.JdlSentenceVectorizer;
 import secondbrain.domain.context.SimpleSentenceSplitter;
 import secondbrain.domain.debug.DebugToolArgsKeyValue;
+import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
@@ -79,6 +80,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(H2LocalStorage.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(JasyptEncryptor.class)
+@AddBeanClasses(AesEncryptor.class)
 @AddBeanClasses(OkResponseValidation.class)
 @AddBeanClasses(ToolBuilderLlama3.class)
 @AddBeanClasses(JsonDeserializerJackson.class)

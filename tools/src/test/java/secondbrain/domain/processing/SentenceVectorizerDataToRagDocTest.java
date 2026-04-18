@@ -18,6 +18,7 @@ import secondbrain.domain.context.SimpleSentenceSplitter;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
+import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
@@ -50,6 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(JsonDeserializerJackson.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(JasyptEncryptor.class)
+@AddBeanClasses(AesEncryptor.class)
 @AddBeanClasses(ApacheCompressZipper.class)
 class SentenceVectorizerDataToRagDocTest {
 
