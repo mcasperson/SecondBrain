@@ -1,5 +1,6 @@
 package secondbrain.domain.encryption;
 
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -15,6 +16,7 @@ import java.util.logging.Logger;
 import static com.google.common.base.Preconditions.checkState;
 
 @ApplicationScoped
+@Identifier("Jasypt")
 public class JasyptEncryptor implements Encryptor {
     private final StrongTextEncryptor textEncryptor = new StrongTextEncryptor();
 
