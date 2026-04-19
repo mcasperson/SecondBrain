@@ -105,6 +105,7 @@ public class CosmosLocalStorage implements LocalStorage {
     private Zipper zipper;
 
     @Inject
+    @jakarta.enterprise.inject.Any
     private Instance<Zipper> zippers;
 
     @Inject
