@@ -256,7 +256,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .map(decrypted -> zipper.decompressString(decrypted))
                 .onFailure(ex -> logger.warning("Failed to unpack cached string for tool " + tool
                         + " and source " + source + "."
-                        + " This is likely due to an invalid password in the sb.encryption.password setting."
+                        + " This is likely due to an invalid password in the sb.encryption.password setting or a change to the sb.encryption.salt setting."
                         + " The cached value will be ignored and the value will be obtained from the source: "
                         + exceptionHandler.getExceptionMessage(ex)))
                 .getOrNull();
