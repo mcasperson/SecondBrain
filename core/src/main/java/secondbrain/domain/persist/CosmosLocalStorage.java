@@ -338,6 +338,10 @@ public class CosmosLocalStorage implements LocalStorage {
                     final String o1ClassName = o1.getClass().getName();
                     final String o2ClassName = o2.getClass().getName();
 
+                    if (o1ClassName.equals(o2ClassName)) {
+                        return 0;
+                    }
+
                     // Prioritize the object used to compress the results by default
                     if (o1ClassName.equals(zipperClassName)) {
                         return -1;
