@@ -9,6 +9,7 @@ import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -25,6 +26,7 @@ import secondbrain.domain.persist.config.LocalStorageCacheDisable;
 import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
 import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
 import secondbrain.domain.persist.config.LocalStorageDisableTool;
+import secondbrain.domain.reader.FileReadingStrategy;
 import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
@@ -99,7 +101,11 @@ public class CosmosLocalStorage implements LocalStorage {
     private Encryptor encryptor;
 
     @Inject
+    @Identifier("ApacheCommonsZStdZipper")
     private Zipper zipper;
+
+    @Inject
+    private Instance<Zipper> zippers;
 
     @Inject
     private LocalStorageReadWrite localStorageReadWrite;
@@ -253,7 +259,7 @@ public class CosmosLocalStorage implements LocalStorage {
         totalCacheHits.incrementAndGet();
 
         final String original = Try.of(() -> encryptor.decrypt(result.result()))
-                .map(decrypted -> zipper.decompressString(decrypted))
+                .map(this::decompressString)
                 .onFailure(ex -> logger.warning("Failed to unpack cached string for tool " + tool
                         + " and source " + source + "."
                         + " This is likely due to an invalid password in the sb.encryption.password setting or a change to the sb.encryption.salt setting."
@@ -263,6 +269,17 @@ public class CosmosLocalStorage implements LocalStorage {
 
 
         return new CacheResult<String>(original, true);
+    }
+
+    private String decompressString(final String compressed) {
+        // Try all available zippers in order, returning the first one that succeeds.
+        // This is to support backwards compatibility with older versions of the application.
+        return zippers.stream()
+                .map(zipper -> Try.of(() -> zipper.decompressString(compressed)))
+                .filter(Try::isSuccess)
+                .map(Try::get)
+                .findFirst()
+                .orElseThrow(() -> new DeserializationFailed("Failed to decompress string with any available zipper"));
     }
 
     private CacheResult<String> loadFromDatabase(final String tool, final String source, final String promptHash) {
@@ -450,7 +467,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .map(encryptor::decrypt)
-                .map(zipper::decompressString)
+                .map(this::decompressString)
                 .map(result -> jsonDeserializer.deserialize(result, arrayClazz))
                 .map(array -> new CacheResult<T[]>(array, true));
 
