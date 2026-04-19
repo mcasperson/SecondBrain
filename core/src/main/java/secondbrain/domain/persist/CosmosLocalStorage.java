@@ -329,9 +329,26 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     private String decompressString(final String compressed) {
+        final String zipperClassName = zipper.getClass().getName();
+
         // Try all available zippers in order, returning the first one that succeeds.
         // This is to support backwards compatibility with older versions of the application.
         return zippers.stream()
+                .sorted((o1, o2) -> {
+                    final String o1ClassName = o1.getClass().getName();
+                    final String o2ClassName = o2.getClass().getName();
+
+                    // Prioritize the object used to compress the results by default
+                    if (o1ClassName.equals(zipperClassName)) {
+                        return -1;
+                    }
+
+                    if (o2ClassName.equals(zipperClassName)) {
+                        return 1;
+                    }
+
+                    return o1ClassName.compareTo(o2ClassName);
+                })
                 .map(zipper -> Try.of(() -> zipper.decompressString(compressed)))
                 .filter(Try::isSuccess)
                 .map(Try::get)
