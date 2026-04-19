@@ -52,8 +52,8 @@ public class CosmosLocalStorage implements LocalStorage {
     private static final String CONTAINER_NAME = "localstoragezipped";
     private static final String DATABASE_NAME = "secondbrain";
     private static final int DEFAULT_TTL_SECONDS = 86400;
-    private static final int MAX_FAILURES = 5;
-    private static final int MAX_ITEM_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+    private static final int MAX_FAILURES = 5; // 2 MB
+    private static final int SPLIT_ITEM_SIZE_BYTES = 1024 * 1024;
 
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
@@ -230,11 +230,18 @@ public class CosmosLocalStorage implements LocalStorage {
                     // Log errors
                     .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
 
-            return result
+            final CacheResult<String> directResult = result
                     .mapFailure(
                             API.Case(API.$(), ex -> new LocalStorageFailure("Failed to get record", ex))
                     )
                     .get();
+
+            // If no direct result found, check whether chunked items exist and reassemble
+            if (directResult == null || StringUtils.isBlank(directResult.result())) {
+                return reassembleChunks(tool, source, promptHash);
+            }
+
+            return directResult;
         }
     }
 
@@ -243,6 +250,55 @@ public class CosmosLocalStorage implements LocalStorage {
             return new CacheResult<String>(null, false);
         }
         throw ex;
+    }
+
+    /**
+     * Attempts to find and reassemble chunked items for the given promptHash.
+     * Chunks are stored with suffix "_chunk_<index>", and the total count is stored under "_chunked_size".
+     * Returns null if no chunks are found.
+     */
+    @Nullable
+    private CacheResult<String> reassembleChunks(final String tool, final String source, final String promptHash) {
+        // Look up the total chunk count saved alongside the chunks
+        final CacheResult<String> sizeResult = Try
+                .of(() -> localStorageReadWrite.getString(tool, source, promptHash + "_chunked_size"))
+                .filter(Optional::isPresent)
+                .map(cache -> new CacheResult<String>(cache.get(), true))
+                .recover(NoSuchElementException.class, ex -> loadFromDatabase(tool, source, promptHash + "_chunked_size"))
+                .map(value -> unpack(value, tool, source))
+                .recover(CosmosException.class, this::handleError)
+                .getOrNull();
+
+        if (sizeResult == null || StringUtils.isBlank(sizeResult.result())) {
+            return null;
+        }
+
+        final int total = NumberUtils.toInt(sizeResult.result(), 0);
+        if (total <= 0) {
+            return null;
+        }
+
+        final StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < total; i++) {
+            final String key = promptHash + "_chunk_" + i;
+            final CacheResult<String> chunk = Try
+                    .of(() -> localStorageReadWrite.getString(tool, source, key))
+                    .filter(Optional::isPresent)
+                    .map(cache -> new CacheResult<String>(cache.get(), true))
+                    .recover(NoSuchElementException.class, ex -> loadFromDatabase(tool, source, key))
+                    .map(value -> unpack(value, tool, source))
+                    .recover(CosmosException.class, this::handleError)
+                    .getOrNull();
+
+            if (chunk == null || StringUtils.isBlank(chunk.result())) {
+                logger.warning("Missing chunk " + i + " of " + total + " for tool " + tool + " source " + source + " prompt " + promptHash);
+                return null;
+            }
+            sb.append(chunk.result());
+        }
+
+        logger.fine("Reassembled " + total + " chunks for tool " + tool + " source " + source + " prompt " + promptHash);
+        return new CacheResult<>(sb.toString(), true);
     }
 
     @SuppressWarnings("NullAway")
@@ -566,11 +622,12 @@ public class CosmosLocalStorage implements LocalStorage {
                 resetConnection();
             }
 
-            if (value.getBytes().length > MAX_ITEM_SIZE_BYTES) {
-                logger.warning("Item size exceeds maximum of " + MAX_ITEM_SIZE_BYTES + " bytes for tool " + tool + " source " + source + " prompt " + promptHash + ". Size: " + value.getBytes().length + " bytes. Skipping cache put.");
+            // If value exceeds SPLIT_ITEM_SIZE_BYTES, split into chunks and persist each separately
+            final byte[] valueBytes = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            if (valueBytes.length > SPLIT_ITEM_SIZE_BYTES) {
+                putStringChunked(tool, source, promptHash, ttlSeconds, valueBytes);
                 return;
             }
-
 
             final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
                     .map(encryptor::encrypt)
@@ -592,6 +649,19 @@ public class CosmosLocalStorage implements LocalStorage {
                             API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
                     )
                     .get();
+        }
+    }
+
+    private void putStringChunked(final String tool, final String source, final String promptHash, final long ttlSeconds, final byte[] valueBytes) {
+        final int totalChunks = (int) Math.ceil((double) valueBytes.length / SPLIT_ITEM_SIZE_BYTES);
+        logger.fine("Splitting item of " + valueBytes.length + " bytes into " + totalChunks + " chunks for tool " + tool + " source " + source);
+        // Save the total chunk count so reassembly can look it up directly
+        putString(tool, source, promptHash + "_chunked_size", ttlSeconds, String.valueOf(totalChunks));
+        for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+            final int start = chunkIndex * SPLIT_ITEM_SIZE_BYTES;
+            final int end = Math.min(start + SPLIT_ITEM_SIZE_BYTES, valueBytes.length);
+            final String chunk = new String(valueBytes, start, end - start, java.nio.charset.StandardCharsets.UTF_8);
+            putString(tool, source, promptHash + "_chunk_" + chunkIndex, ttlSeconds, chunk);
         }
     }
 
