@@ -128,7 +128,7 @@ public class OllamaClient implements LlmClient {
                         tool,
                         "LLM",
                         promptHash,
-                        NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
+                        NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60L,
                         () -> {
                             final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow, resolvedUri);
                             final String responseText = response.getResponse();

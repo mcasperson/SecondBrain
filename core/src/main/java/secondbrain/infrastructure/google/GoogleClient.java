@@ -148,7 +148,7 @@ public class GoogleClient implements LlmClient {
                         tool,
                         "GoogleLLM",
                         promptHash,
-                        NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60,
+                        NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60L,
                         () -> call(request, resolvedUrl, resolvedModel))
                 .result();
         return ragDocs.updateResponse(result);
