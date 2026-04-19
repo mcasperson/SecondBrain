@@ -6,6 +6,7 @@ import jakarta.ws.rs.core.Response;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
 import secondbrain.domain.exceptions.UnauthorizedResponse;
+import org.apache.commons.lang3.StringUtils;
 
 @ApplicationScoped
 public class OkResponseValidation implements ResponseValidation {
@@ -21,17 +22,18 @@ public class OkResponseValidation implements ResponseValidation {
 
         if (response.getStatus() != 200 && response.getStatus() != 201) {
             final String responseBody = getResponseBody(response);
+            final String fixedResponseBody = StringUtils.isNotBlank(responseBody) ? responseBody : "No response body available";
             throw new InvalidResponse("Expected status code 200, but got "
                     + response.getStatus()
-                    + " from URI " + uri + ". " + responseBody,
-                    responseBody,
+                    + " from URI " + uri + ". " + fixedResponseBody,
+                    fixedResponseBody,
                     response.getStatus());
         }
 
         return response;
     }
 
-    private String getResponseBody(Response response) {
+    private String getResponseBody(final Response response) {
         return Try.of(() -> response.readEntity(String.class))
                 .getOrElse("No response body available");
     }
