@@ -74,7 +74,7 @@ public class ApacheCompressZipper implements Zipper {
                         .of(gcis -> copyStream(gcis, bos))
                         .mapTry(ByteArrayOutputStream::toByteArray)
                         .get())
-                .onFailure(ex -> logger.warning("Failed to decompress data: " + ex.getMessage()))
+                .onFailure(ex -> logger.fine("Failed to decompress data: " + ex.getMessage()))
                 .get();
 
         return new String(uncompressed, DEFAULT_CHARSET);
