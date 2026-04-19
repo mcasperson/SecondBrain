@@ -9,6 +9,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.enterprise.inject.spi.InjectionPoint;
 import org.jspecify.annotations.Nullable;
+import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import java.util.logging.Handler;
 
 import java.util.Properties;
 import java.util.logging.ConsoleHandler;
@@ -20,10 +23,10 @@ import java.util.logging.SimpleFormatter;
 public class Loggers {
 
     @Nullable
-    private PhileasRedactionHandler fileHandler;
+    private Handler fileHandler;
 
     @Nullable
-    private PhileasRedactionHandler consoleHandler;
+    private Handler consoleHandler;
 
     @Inject
     @ConfigProperty(name = "sb.logging.redacted", defaultValue = "false")
@@ -32,14 +35,6 @@ public class Loggers {
     @PostConstruct
     private void init() {
         System.setProperty("java.util.logging.SimpleFormatter.format", "%4$s: %5$s %n");
-        final SimpleFormatter formatter = new SimpleFormatter();
-
-        final PhileasConfiguration config = new PhileasConfiguration(new Properties());
-        final PlainTextFilterService filterService = new PlainTextFilterService(
-                config,
-                new DefaultContextService(),
-                null,
-                null);
 
         if (this.redacted) {
             configureRedactedHandlers();
@@ -50,6 +45,8 @@ public class Loggers {
     }
 
     private void configureRegularHandlers() {
+        final SimpleFormatter formatter = new SimpleFormatter();
+
         this.fileHandler = Try.of(() -> new FileHandler("SecondBrain.log", true))
                 .onSuccess(handler -> handler.setFormatter(formatter))
                 .getOrNull();
@@ -58,6 +55,14 @@ public class Loggers {
     }
 
     private void configureRedactedHandlers() {
+        final SimpleFormatter formatter = new SimpleFormatter();
+        final PhileasConfiguration config = new PhileasConfiguration(new Properties());
+        final PlainTextFilterService filterService = new PlainTextFilterService(
+                config,
+                new DefaultContextService(),
+                null,
+                null);
+
         this.fileHandler = Try.of(() -> new FileHandler("SecondBrain.log", true))
                 .onSuccess(handler -> handler.setFormatter(formatter))
                 .map(handler -> new PhileasRedactionHandler(handler, filterService))
