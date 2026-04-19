@@ -19,6 +19,7 @@ import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
 
 import java.util.Arrays;
@@ -37,6 +38,7 @@ import java.util.UUID;
 @AddBeanClasses(JasyptBinaryEncryptor.class)
 @AddBeanClasses(AesEncryptor.class)
 @AddBeanClasses(ApacheCompressZipper.class)
+@AddBeanClasses(ApacheCommonsZStdZipper.class)
 public class CosmosLocalStorageTest {
 
     @Inject
