@@ -21,6 +21,7 @@ import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.persist.FileLocalStorageReadWrite;
 import secondbrain.domain.persist.H2LocalStorage;
 import secondbrain.domain.persist.LocalStorageProducer;
+import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
 
 import java.util.Map;
@@ -40,6 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(AesEncryptor.class)
 @AddBeanClasses(AesEncryptor.class)
 @AddBeanClasses(ApacheCompressZipper.class)
+@AddBeanClasses(ApacheCommonsZStdZipper.class)
 public class JdlSentenceVectorizerTest {
 
     @Inject
