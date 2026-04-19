@@ -25,6 +25,10 @@ public class Loggers {
     @Nullable
     private PhileasRedactionHandler consoleHandler;
 
+    @Inject
+    @ConfigProperty(name = "sb.logging.redacted", defaultValue = "false")
+    private Boolean redacted;
+
     @PostConstruct
     private void init() {
         System.setProperty("java.util.logging.SimpleFormatter.format", "%4$s: %5$s %n");
@@ -37,6 +41,23 @@ public class Loggers {
                 null,
                 null);
 
+        if (this.redacted) {
+            configureRedactedHandlers();
+        } else {
+            configureRegularHandlers();
+        }
+
+    }
+
+    private void configureRegularHandlers() {
+        this.fileHandler = Try.of(() -> new FileHandler("SecondBrain.log", true))
+                .onSuccess(handler -> handler.setFormatter(formatter))
+                .getOrNull();
+
+        this.consoleHandler = new ConsoleHandler();
+    }
+
+    private void configureRedactedHandlers() {
         this.fileHandler = Try.of(() -> new FileHandler("SecondBrain.log", true))
                 .onSuccess(handler -> handler.setFormatter(formatter))
                 .map(handler -> new PhileasRedactionHandler(handler, filterService))
