@@ -256,9 +256,7 @@ public class CosmosLocalStorage implements LocalStorage {
     /**
      * Attempts to find and reassemble chunked items for the given promptHash.
      * Chunks are stored with suffix "_chunk_<index>", and the total count is stored under "_chunked_size".
-     * Returns null if no chunks are found.
      */
-    @Nullable
     private CacheResult<String> reassembleChunks(final String tool, final String source, final String promptHash) {
         // Look up the total chunk count saved alongside the chunks
         final CacheResult<String> sizeResult = Try
@@ -271,12 +269,12 @@ public class CosmosLocalStorage implements LocalStorage {
                 .getOrNull();
 
         if (sizeResult == null || StringUtils.isBlank(sizeResult.result())) {
-            return null;
+            return new CacheResult<String>(null, false);
         }
 
         final int total = NumberUtils.toInt(sizeResult.result(), 0);
         if (total <= 0) {
-            return null;
+            return new CacheResult<String>(null, false);
         }
 
         final StringBuilder sb = new StringBuilder();
@@ -293,7 +291,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
             if (chunk == null || StringUtils.isBlank(chunk.result())) {
                 logger.warning("Missing chunk " + i + " of " + total + " for tool " + tool + " source " + source + " prompt " + promptHash);
-                return null;
+                return new CacheResult<String>(null, false);
             }
             sb.append(chunk.result());
         }
