@@ -353,11 +353,11 @@ public class CosmosLocalStorage implements LocalStorage {
 
                     return o1ClassName.compareTo(o2ClassName);
                 })
-                .map(zipper -> Try.of(() -> zipper.decompressString(compressed)))
-                .filter(Try::isSuccess)
+                .map(z -> Try.of(() -> z.decompressString(compressed)))
+                .filter(t -> t.isSuccess() && t.get() != null)
                 .map(Try::get)
                 .findFirst()
-                .orElseThrow(() -> new DeserializationFailed("Failed to decompress string with any available zipper"));
+                .orElse(compressed);
     }
 
     private CacheResult<String> loadFromDatabase(final String tool, final String source, final String promptHash) {

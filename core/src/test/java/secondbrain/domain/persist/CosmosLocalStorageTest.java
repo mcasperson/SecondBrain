@@ -47,13 +47,17 @@ public class CosmosLocalStorageTest {
     /**
      * <a href="https://github.com/weld/weld-testing/issues/81#issuecomment-1564002983">...</a>
      * Also need to run local cosmos emulator for this test to pass:
-     * docker run --publish 9081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach --restart unless-stopped mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+     * docker run --platform linux/amd64 --publish 9081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach --restart unless-stopped mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
      * <p>
      * Get the self signed certificate
      * curl --insecure https://localhost:9081/_explorer/emulator.pem > ~/emulatorcert.crt
      * <p>
      * Import it into the java keystore. You might need to chaneg the path to your JAVA_HOME to be something like /home/matthew/.jdks/azul-25
      * keytool -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore $JAVA_HOME/lib/security/cacerts
+     * <p>
+     * Do this on a mac:
+     * <p>
+     * sudo keytool -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore /Library/Java/JavaVirtualMachines/zulu-25.jdk/Contents/Home/lib/security/cacerts
      */
     @BeforeEach
     void updateConfig() {
