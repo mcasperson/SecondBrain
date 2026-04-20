@@ -18,9 +18,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
-import secondbrain.domain.exceptions.DeserializationFailed;
-import secondbrain.domain.exceptions.LocalStorageFailure;
-import secondbrain.domain.exceptions.SerializationFailed;
+import secondbrain.domain.exceptions.*;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.config.LocalStorageCacheDisable;
 import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
@@ -99,6 +97,10 @@ public class CosmosLocalStorage implements LocalStorage {
     @Inject
     @Identifier("AES")
     private Encryptor encryptor;
+
+    @Inject
+    @jakarta.enterprise.inject.Any
+    private Instance<Encryptor> encryptors;
 
     @Inject
     @Identifier("ApacheCommonsZStdZipper")
@@ -313,7 +315,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
         totalCacheHits.incrementAndGet();
 
-        final String original = Try.of(() -> encryptor.decrypt(result.result()))
+        final String original = Try.of(() -> this.decryptString(result.result()))
                 .map(this::decompressString)
                 .onFailure(ex -> logger.warning("Failed to unpack cached string for tool " + tool
                         + " and source " + source + "."
@@ -355,7 +357,39 @@ public class CosmosLocalStorage implements LocalStorage {
                 .filter(t -> t.isSuccess() && t.get() != null)
                 .map(Try::get)
                 .findFirst()
-                .orElse(compressed);
+                .orElseThrow(DecompressionFailed::new);
+    }
+
+    private String decryptString(final String encrypted) {
+        final String encryptorClassName = encryptor.getClass().getName();
+
+        // Try all available encryptors in order, returning the first one that succeeds.
+        // This is to support backwards compatibility with older versions of the application.
+        return encryptors.stream()
+                .sorted((o1, o2) -> {
+                    final String o1ClassName = o1.getClass().getName();
+                    final String o2ClassName = o2.getClass().getName();
+
+                    if (o1ClassName.equals(o2ClassName)) {
+                        return 0;
+                    }
+
+                    // Prioritize the object used to decrypt the results by default
+                    if (o1ClassName.equals(encryptorClassName)) {
+                        return -1;
+                    }
+
+                    if (o2ClassName.equals(encryptorClassName)) {
+                        return 1;
+                    }
+
+                    return o1ClassName.compareTo(o2ClassName);
+                })
+                .map(z -> Try.of(() -> z.decrypt(encrypted)))
+                .filter(t -> t.isSuccess() && t.get() != null)
+                .map(Try::get)
+                .findFirst()
+                .orElseThrow(DecryptionFailed::new);
     }
 
     private CacheResult<String> loadFromDatabase(final String tool, final String source, final String promptHash) {
