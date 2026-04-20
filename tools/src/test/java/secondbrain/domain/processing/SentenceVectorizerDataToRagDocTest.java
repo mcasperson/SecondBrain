@@ -28,6 +28,7 @@ import secondbrain.domain.persist.CosmosLocalStorage;
 import secondbrain.domain.persist.FileLocalStorageReadWrite;
 import secondbrain.domain.persist.H2LocalStorage;
 import secondbrain.domain.persist.LocalStorageProducer;
+import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
 
 import java.util.List;
@@ -53,6 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(JasyptEncryptor.class)
 @AddBeanClasses(AesEncryptor.class)
 @AddBeanClasses(ApacheCompressZipper.class)
+@AddBeanClasses(ApacheCommonsZStdZipper.class)
 class SentenceVectorizerDataToRagDocTest {
 
     @Inject
