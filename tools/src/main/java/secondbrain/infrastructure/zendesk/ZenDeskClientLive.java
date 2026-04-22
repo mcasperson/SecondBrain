@@ -100,7 +100,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         final String durationQuery = (StringUtils.isBlank(query) ? "" : query + " ")
                 + "type:ticket created>" + fromDateTime + " created<" + toDateTime;
 
-        return !getTickets(authorization, url, durationQuery, 1, MAX_PAGES, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
+        return !getTickets(authorization, url, durationQuery, 1, 1, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
     }
 
     /**
