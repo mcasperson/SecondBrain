@@ -90,7 +90,7 @@ public class PlanHatClientLive implements PlanHatClient {
 
         return !getConversations(client, company, url, token, startDate, endDate,
                 (int) duration.getDuration().toSeconds(),
-                "PlanHatAPIConversationParentDuration").isEmpty();
+                "PlanHatAPIConversationParentDuration", 1).isEmpty();
     }
 
     @Override
@@ -103,7 +103,7 @@ public class PlanHatClientLive implements PlanHatClient {
             @Nullable final ZonedDateTime endDate,
             final int ttlSeconds) {
         return getConversations(client, company, url, token, startDate, endDate, ttlSeconds,
-                "PlanHatAPIConversationParent");
+                "PlanHatAPIConversationParent", getMaxOffset());
     }
 
     private List<Conversation> getConversations(
@@ -114,7 +114,8 @@ public class PlanHatClientLive implements PlanHatClient {
             @Nullable final ZonedDateTime startDate,
             @Nullable final ZonedDateTime endDate,
             final int ttlSeconds,
-            final String source) {
+            final String source,
+            final int maxOffset) {
 
         // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
         final String end = endDate == null ? "" : endDate.format(ISO_OFFSET_DATE_TIME);
@@ -130,7 +131,7 @@ public class PlanHatClientLive implements PlanHatClient {
                         ttlSeconds,
                         Conversation.class,
                         Conversation[].class,
-                        () -> getConversationsApi(client, company, url, token, ttlSeconds, startDate, endDate, 0))
+                        () -> getConversationsApi(client, company, url, token, ttlSeconds, startDate, endDate, 0, maxOffset))
                 .result();
 
         // Do one last filter to ensure we only return conversations before the end date.
@@ -172,8 +173,21 @@ public class PlanHatClientLive implements PlanHatClient {
             @Nullable final ZonedDateTime startDate,
             @Nullable final ZonedDateTime endDate,
             final int offset) {
-        if (offset >= getMaxOffset()) {
-            logger.warning("Reached maximum offset of " + getMaxOffset() + " when fetching PlanHat conversations for company " + company);
+        return getConversationsApi(client, company, url, token, ttlSeconds, startDate, endDate, offset, getMaxOffset());
+    }
+
+    private Conversation[] getConversationsApi(
+            final Client client,
+            final String company,
+            final String url,
+            final String token,
+            final int ttlSeconds,
+            @Nullable final ZonedDateTime startDate,
+            @Nullable final ZonedDateTime endDate,
+            final int offset,
+            final int maxOffset) {
+        if (offset >= maxOffset) {
+            logger.warning("Reached maximum offset of " + maxOffset + " when fetching PlanHat conversations for company " + company);
             return new Conversation[]{};
         }
 
