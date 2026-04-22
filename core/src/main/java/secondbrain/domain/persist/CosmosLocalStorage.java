@@ -627,7 +627,7 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     @SuppressWarnings("ReturnValueIgnored")
-    private <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T[]> generateValue) {
+    public <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T[]> generateValue) {
         final T[] value = generateValue.generate();
 
         if (value != null) {

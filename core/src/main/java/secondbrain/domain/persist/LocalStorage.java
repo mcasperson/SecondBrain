@@ -153,4 +153,6 @@ public interface LocalStorage {
     void putString(String tool, String source, String promptHash, long ttlSeconds, String value);
 
     void putString(String tool, String source, String promptHash, String value);
+
+    <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T[]> generateValue);
 }

@@ -478,7 +478,7 @@ public class H2LocalStorage implements LocalStorage {
                 .get();
     }
 
-    private <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T[]> generateValue) {
+    public <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T[]> generateValue) {
         final T[] value = generateValue.generate();
 
         // The result associated with the original hash is the count of items

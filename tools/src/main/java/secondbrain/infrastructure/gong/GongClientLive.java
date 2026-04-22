@@ -15,8 +15,10 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.date.DateTruncate;
+import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.httpclient.HttpClientCaller;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.persist.TimedOperation;
@@ -66,6 +68,8 @@ public class GongClientLive implements GongClient {
     @Inject
     @Preferred
     private Mutex mutex;
+    @Inject
+    private JsonDeserializerJackson jsonDeserializerJackson;
 
     private Client getClient() {
         final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
@@ -128,7 +132,7 @@ public class GongClientLive implements GongClient {
             Cache at the parent level to take advantage of the local cache, even if the remote cache
             (CosmoDB) has limits on the size of each cached object.
          */
-        final GongCallExtensive[] calls = localStorage.getOrPutObjectArray(
+        final GongCallExtensive[] calls = Try.of(() -> localStorage.getOrPutObjectArray(
                         GongClientLive.class.getSimpleName(),
                         source,
                         DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
@@ -136,7 +140,27 @@ public class GongClientLive implements GongClient {
                         GongCallExtensive.class,
                         GongCallExtensive[].class,
                         () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0))
-                .result();
+                .result()
+        ).recover(GongAPIException.class, e -> {
+            // I have seen cases where the gong result was stopped half-way through and the
+            // cursor went stale. Every attempt to load the result resulted in failure.
+            // In this case, we get a fresh copy of the data and do not load it from the cache.
+            if (e.getCause() instanceof InvalidResponse invalidResponse) {
+                if (invalidResponse.getBody().contains("cursor has expired")) {
+                    return localStorage.persistArrayResult(
+                                    GongClientLive.class.getSimpleName(),
+                                    source,
+                                    DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
+                                    ttl,
+                                    () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0))
+                            .result();
+                }
+            }
+
+            // Something else went wrong, so rethrow
+            throw e;
+        })
+        .get();
 
         if (calls == null) {
             return List.of();
@@ -263,7 +287,7 @@ public class GongClientLive implements GongClient {
                 response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(GongCallsExtensive.class))
                         .get(),
-                e -> new RuntimeException("Failed to get calls from Gong API: " + e.toString(), e));
+                e -> new GongAPIException("Failed to get calls from Gong API: " + e.toString(), e));
     }
 
 
