@@ -96,8 +96,9 @@ public class GongClientLive implements GongClient {
                 null,
                 username,
                 password,
-                "GongAPICallsExtensiveParentDurationV2",
+                "GongAPICallsExtensiveParentDurationV3",
                 duration.getDuration().toSeconds(),
+                1,
                 fromDateTime,
                 toDateTime).isEmpty();
     }
@@ -122,6 +123,19 @@ public class GongClientLive implements GongClient {
             final long ttl,
             @Nullable final String fromDateTime,
             @Nullable final String toDateTime) {
+        return getCallsExtensive(company, callId, username, password, source, ttl, MAX_PAGES, fromDateTime, toDateTime);
+    }
+
+    private List<GongCallExtensive> getCallsExtensive(
+            final String company,
+            @Nullable final String callId,
+            final String username,
+            final String password,
+            final String source,
+            final long ttl,
+            final int maxPages,
+            @Nullable final String fromDateTime,
+            @Nullable final String toDateTime) {
 
         // Build a "to" date for the cache key
         final String toDateTimeFinal = StringUtils.isBlank(toDateTime)
@@ -139,7 +153,7 @@ public class GongClientLive implements GongClient {
                         ttl,
                         GongCallExtensive.class,
                         GongCallExtensive[].class,
-                        () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0))
+                        () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0, maxPages))
                 .result()
         ).recover(GongAPIException.class, e -> {
             // I have seen cases where the gong result was stopped half-way through and the
@@ -204,6 +218,17 @@ public class GongClientLive implements GongClient {
                 .getTranscript(call);
     }
 
+    private GongCallExtensive[] getCallsExtensiveApiLocked(
+            @Nullable final String fromDateTime,
+            @Nullable final String toDateTime,
+            @Nullable final String callId,
+            final String username,
+            final String password,
+            final String cursor,
+            final int page) {
+        return getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, cursor, page, MAX_PAGES);
+    }
+
     /**
      * https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/extensive
      */
@@ -214,8 +239,9 @@ public class GongClientLive implements GongClient {
             final String username,
             final String password,
             final String cursor,
-            final int page) {
-        if (page >= MAX_PAGES) {
+            final int page,
+            final int maxPages) {
+        if (page >= maxPages) {
             logger.warning("Reached maximum pages of " + MAX_PAGES + " when fetching Gong calls extensive");
             return new GongCallExtensive[]{};
         }
@@ -248,7 +274,7 @@ public class GongClientLive implements GongClient {
 
         final GongCallExtensive[] callsArray = calls != null ? calls.getCallsArray() : new GongCallExtensive[]{};
         final GongCallExtensive[] nextCallsArray = calls != null && StringUtils.isNotBlank(calls.records().cursor())
-                ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, calls.records().cursor(), page + 1)
+                ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, calls.records().cursor(), page + 1, maxPages)
                 : new GongCallExtensive[]{};
 
         return ArrayUtils.addAll(callsArray, nextCallsArray);
