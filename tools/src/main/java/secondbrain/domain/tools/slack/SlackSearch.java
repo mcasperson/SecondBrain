@@ -169,6 +169,11 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
         final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        if (parsedArgs.getKeywords().isEmpty()) {
+            logger.info("No keywords found for " + getName() + ", returning empty context");
+            return List.of();
+        }
+
         logger.fine("Getting context for " + getName() + " for keywords " + parsedArgs.getKeywords());
 
         // If there is nothing to search for, return an empty list

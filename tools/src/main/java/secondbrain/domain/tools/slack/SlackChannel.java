@@ -180,6 +180,11 @@ public class SlackChannel implements Tool<SlackChannelResource> {
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        if (StringUtils.isBlank(parsedArgs.getChannel())) {
+            logger.fine("No channel provided for " + this.getName() + " so returning no results");
+            return List.of();
+        }
+
         logger.fine("Getting context for " + getName() + " for channel " + parsedArgs.getChannel());
 
         // Get preinitialization hooks before ragdocs
