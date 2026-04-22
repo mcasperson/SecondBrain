@@ -235,6 +235,8 @@ public class DovetailClientLive implements DovetailClient {
             final String id) {
         RATE_LIMITER.acquire();
 
+        logger.fine("Exporting Dovetail data item " + id + " as markdown");
+
         final String target = url + "/api/v1/data/" + id + "/export/markdown";
 
         return httpClientCaller.call(
