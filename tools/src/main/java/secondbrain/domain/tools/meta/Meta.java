@@ -470,7 +470,7 @@ class MetaConfig {
                     context,
                     Meta.META_TTL_SECONDS_ARG,
                     Meta.META_TTL_SECONDS_ARG,
-                    "604800");
+                    "86400");
 
             return Math.max(0, Integer.parseInt(argument.getSafeValue()));
         }
