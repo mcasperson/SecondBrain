@@ -144,7 +144,8 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
                 new ToolArguments(CommonArguments.POSTINFERENCE_HOOKS_ARG, "The names of post-inference hooks to apply after the LLM has processed the emails", ""),
                 new ToolArguments(TTL_SECONDS_ARG, "The number of seconds to cache the Salesforce email results", "86400"),
                 new ToolArguments(OPPORTUNITY_ATTRIBUTE_1_NAME_ARG, "The display name of the opportunity attribute to include as metadata", ""),
-                new ToolArguments(OPPORTUNITY_ATTRIBUTE_1_ARG, "The Salesforce opportunity field name to include as metadata", "")
+                new ToolArguments(OPPORTUNITY_ATTRIBUTE_1_ARG, "The Salesforce opportunity field name to include as metadata", ""),
+                new ToolArguments(CommonArguments.REQUIRE_COMPANY, "Set to true to require an account ID to be supplied before retrieving Salesforce emails", "false")
         );
     }
 
@@ -154,6 +155,12 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
             final String prompt,
             final List<ToolArgs> arguments) {
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Early out if requireCompany is set but no account ID has been supplied
+        if (parsedArgs.isRequireCompany() && StringUtils.isBlank(parsedArgs.getAccountId())) {
+            logger.info("Skipping Salesforce context retrieval because requireCompany is set and no account ID has been specified");
+            return List.of();
+        }
 
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration()) {
@@ -253,7 +260,7 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
 
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        if (StringUtils.isBlank(parsedArgs.getAccountId())) {
+        if (parsedArgs.isRequireCompany() && StringUtils.isBlank(parsedArgs.getAccountId())) {
             throw new InternalFailure("You must provide an account ID to query");
         }
 
@@ -442,6 +449,10 @@ class SalesforceConfig {
     @ConfigProperty(name = "sb.salesforce.skipEmptyInLastDuration", defaultValue = "")
     private Optional<String> configSkipEmptyInLastDuration;
 
+    @Inject
+    @ConfigProperty(name = "sb.salesforce.requireCompany")
+    private Optional<String> configRequireCompany;
+
     public Optional<String> getConfigClientId() {
         return configClientId;
     }
@@ -540,6 +551,10 @@ class SalesforceConfig {
 
     public Optional<String> getConfigSkipEmptyInLastDuration() {
         return configSkipEmptyInLastDuration;
+    }
+
+    public Optional<String> getConfigRequireCompany() {
+        return configRequireCompany;
     }
 
     public DateParser getDateParser() {
@@ -920,6 +935,16 @@ class SalesforceConfig {
                     context,
                     CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
                     CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    "false").getSafeValue());
+        }
+
+        public boolean isRequireCompany() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigRequireCompany()::get,
+                    arguments,
+                    context,
+                    CommonArguments.REQUIRE_COMPANY,
+                    CommonArguments.REQUIRE_COMPANY,
                     "false").getSafeValue());
         }
     }

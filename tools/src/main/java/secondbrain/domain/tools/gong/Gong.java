@@ -153,6 +153,7 @@ public class Gong implements Tool<GongCallDetails> {
                 new ToolArguments(CommonArguments.PREPROCESSOR_HOOKS_ARG, "The names of pre-processor hooks to apply before processing the call transcripts", ""),
                 new ToolArguments(CommonArguments.POSTINFERENCE_HOOKS_ARG, "The names of post-inference hooks to apply after the LLM has processed the call transcripts", ""),
                 new ToolArguments(TTL_SECONDS_ARG, "The number of seconds to cache the Gong call results", "86400"),
+                new ToolArguments(CommonArguments.REQUIRE_COMPANY, "Set to true to require a company name to be supplied before retrieving Gong calls", "false"),
                 new ToolArguments(GONG_OBJECT_1_NAME_ARG, "The display name of the first additional Gong context object", ""),
                 new ToolArguments(GONG_OBJECT_1_ARG, "The first additional Gong context object in system:type:field format (e.g. Salesforce:Account:BillingCity)", ""),
                 new ToolArguments(GONG_OBJECT_2_NAME_ARG, "The display name of the second additional Gong context object", ""),
@@ -180,6 +181,12 @@ public class Gong implements Tool<GongCallDetails> {
     public List<RagDocumentContext<GongCallDetails>> getContext(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Early out if requireCompany is set but no company has been supplied
+        if (parsedArgs.isRequireCompany() && StringUtils.isBlank(parsedArgs.getCompany())) {
+            logger.info("Skipping Gong context retrieval because requireCompany is set and no company has been specified");
+            return List.of();
+        }
 
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration() && !gongClient.anyItemsInDuration(parsedArgs.getCompany(), parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), ChronoUnit.YEARS, ChronoUnit.MONTHS)) {
@@ -297,7 +304,7 @@ public class Gong implements Tool<GongCallDetails> {
 
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        if (StringUtils.isBlank(parsedArgs.getCompany()) && StringUtils.isBlank(parsedArgs.getCallId())) {
+        if (StringUtils.isBlank(parsedArgs.getCompany()) && StringUtils.isBlank(parsedArgs.getCallId()) && parsedArgs.isRequireCompany()) {
             throw new InternalFailure("You must provide a company or call ID to query");
         }
 
@@ -346,6 +353,10 @@ class GongConfig {
     @Inject
     @ConfigProperty(name = "sb.gong.skipEmptyInLastDuration", defaultValue = "")
     private Optional<String> configSkipEmptyInLastDuration;
+
+    @Inject
+    @ConfigProperty(name = "sb.gong.requireCompany")
+    private Optional<String> configRequireCompany;
 
     @Inject
     @ConfigProperty(name = "sb.gong.ttlSeconds")
@@ -729,6 +740,10 @@ class GongConfig {
 
     public Optional<String> getConfigSkipEmptyInLastDuration() {
         return configSkipEmptyInLastDuration;
+    }
+
+    public Optional<String> getConfigRequireCompany() {
+        return configRequireCompany;
     }
 
     public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
@@ -1475,6 +1490,16 @@ class GongConfig {
                     context,
                     CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
                     CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    "false").getSafeValue());
+        }
+
+        public boolean isRequireCompany() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigRequireCompany()::get,
+                    arguments,
+                    context,
+                    CommonArguments.REQUIRE_COMPANY,
+                    CommonArguments.REQUIRE_COMPANY,
                     "false").getSafeValue());
         }
     }

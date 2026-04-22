@@ -161,7 +161,8 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 new ToolArguments(RECIPIENT_ARG, "An optional recipient email address that tickets must be sent to", ""),
                 new ToolArguments(NUM_COMMENTS_ARG, "The optional number of comments to include in the context", "1"),
                 new ToolArguments(CommonArguments.DAYS_ARG, "The optional number of days worth of tickets to return", "0"),
-                new ToolArguments(CommonArguments.HOURS_ARG, "The optional number of hours worth of tickets to return", "0"));
+                new ToolArguments(CommonArguments.HOURS_ARG, "The optional number of hours worth of tickets to return", "0"),
+                new ToolArguments(CommonArguments.REQUIRE_COMPANY, "Set to true to require an organization name to be supplied before retrieving ZenDesk tickets", "false"));
     }
 
     @Override
@@ -180,6 +181,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     public List<RagDocumentContext<ZenDeskTicket>> getContext(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+
+        // Early out if requireCompany is set but no organization has been supplied
+        if (parsedArgs.isRequireCompany() && StringUtils.isBlank(parsedArgs.getOrganization())) {
+            logger.info("Skipping ZenDesk context retrieval because requireCompany is set and no organization has been specified");
+            return List.of();
+        }
 
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration() && !zenDeskClient.anyItemsInDuration(parsedArgs.getSecretAuthHeader(), parsedArgs.getUrl(), "", ChronoUnit.YEARS, ChronoUnit.MONTHS)) {
@@ -613,6 +620,10 @@ class ZenDeskConfig {
     @ConfigProperty(name = "sb.zendesk.skipEmptyInLastDuration", defaultValue = "")
     private Optional<String> configSkipEmptyInLastDuration;
 
+    @Inject
+    @ConfigProperty(name = "sb.zendesk.requireCompany")
+    private Optional<String> configRequireCompany;
+
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
     }
@@ -774,6 +785,10 @@ class ZenDeskConfig {
 
     public Optional<String> getConfigSkipEmptyInLastDuration() {
         return configSkipEmptyInLastDuration;
+    }
+
+    public Optional<String> getConfigRequireCompany() {
+        return configRequireCompany;
     }
 
     public DateParser getDateParser() {
@@ -1311,6 +1326,16 @@ class ZenDeskConfig {
                     context,
                     CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
                     CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    "false").getSafeValue());
+        }
+
+        public boolean isRequireCompany() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigRequireCompany()::get,
+                    arguments,
+                    context,
+                    CommonArguments.REQUIRE_COMPANY,
+                    CommonArguments.REQUIRE_COMPANY,
                     "false").getSafeValue());
         }
     }

@@ -78,4 +78,9 @@ public class CommonArguments {
      * Whether to skip lookups when there were no results during the previous duration (typically a month)
      */
     public static final String SKIP_EMPTY_IN_LAST_DURATION = "skipEnptyInLastDuration";
+    /**
+     * Whether the tool requires a company to be specified. When set to true and no company
+     * is defined, a tool will not return any values.
+     */
+    public static final String REQUIRE_COMPANY = "requireCompany";
 }
