@@ -81,6 +81,8 @@ public class CommonArguments {
     /**
      * Whether the tool requires a company to be specified. When set to true and no company
      * is defined, a tool will not return any values.
+     * This is set to true to avoid tools like ZenDesk or Gong returning every email/call when a company
+     * is left blank, as these tools often can't or don't force the use of a company when collecting data.
      */
     public static final String REQUIRE_COMPANY = "requireCompany";
 }
