@@ -189,7 +189,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         }
 
         // Early out if we haven't seen any items in the last month
-        if (parsedArgs.isSkipEmptyInLastDuration() && !zenDeskClient.anyItemsInDuration(parsedArgs.getSecretAuthHeader(), parsedArgs.getUrl(), "", ChronoUnit.YEARS, ChronoUnit.MONTHS)) {
+        if (parsedArgs.isSkipEmptyInLastDuration() && !zenDeskClient.anyItemsInDuration(parsedArgs.getSecretAuthHeader(), parsedArgs.getUrl(), parsedArgs.getOrganization(), ChronoUnit.YEARS, ChronoUnit.MONTHS)) {
             logger.info("Skipping ZenDesk context retrieval because skipEmptyInLastDuration is set and there are no ZenDesk tickets in the specified duration");
             return List.of();
         }

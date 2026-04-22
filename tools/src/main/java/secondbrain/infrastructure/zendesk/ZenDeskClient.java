@@ -12,7 +12,7 @@ public interface ZenDeskClient {
     boolean anyItemsInDuration(
             String authorization,
             String url,
-            String query,
+            String organization,
             ChronoUnit duration,
             ChronoUnit cached);
 

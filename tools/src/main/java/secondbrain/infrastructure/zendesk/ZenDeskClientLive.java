@@ -90,17 +90,22 @@ public class ZenDeskClientLive implements ZenDeskClient {
     public boolean anyItemsInDuration(
             final String authorization,
             final String url,
-            final String query,
+            final String organization,
             final ChronoUnit duration,
             final ChronoUnit cached) {
         final String toDateTime = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault()), cached).format(ISO_OFFSET_DATE_TIME);
         final String fromDateTime = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault())
                 .minus(1, duration), duration).format(ISO_OFFSET_DATE_TIME);
 
-        final String durationQuery = (StringUtils.isBlank(query) ? "" : query + " ")
-                + "type:ticket created>" + fromDateTime + " created<" + toDateTime;
+        final List<String> query = new ArrayList<>();
+        query.add("type:ticket");
+        query.add("created>" + fromDateTime);
+        query.add("created<" + toDateTime);
+        if (StringUtils.isNotBlank(organization)) {
+            query.add("organization:" + organization);
+        }
 
-        return !getTickets(authorization, url, durationQuery, 1, 1, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
+        return !getTickets(authorization, url, String.join(" ", query), 1, 1, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
     }
 
     /**
