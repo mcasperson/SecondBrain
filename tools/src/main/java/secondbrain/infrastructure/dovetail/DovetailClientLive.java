@@ -186,25 +186,24 @@ public class DovetailClientLive implements DovetailClient {
 
         final String target = url + "/api/v1/data";
 
-        jakarta.ws.rs.client.WebTarget filteredTarget = getClient().target(target);
-        if (StringUtils.isNotBlank(fromDateTime)) {
-            filteredTarget = filteredTarget.queryParam("filter[created_at][gte]", fromDateTime);
-        }
-        if (StringUtils.isNotBlank(toDateTime)) {
-            filteredTarget = filteredTarget.queryParam("filter[created_at][lte]", toDateTime);
-        }
-        if (StringUtils.isNotBlank(cursor)) {
-            filteredTarget = filteredTarget.queryParam("page[start_cursor]", cursor);
-        }
-
-        final jakarta.ws.rs.client.WebTarget finalTarget = filteredTarget;
-
         return httpClientCaller.call(
                 this::getClient,
-                client -> finalTarget
-                        .request(MediaType.APPLICATION_JSON_TYPE)
-                        .header("Authorization", "Bearer " + apiKey)
-                        .get(),
+                client -> {
+                    jakarta.ws.rs.client.WebTarget filteredTarget = client.target(target);
+                    if (StringUtils.isNotBlank(fromDateTime)) {
+                        filteredTarget = filteredTarget.queryParam("filter[created_at][gte]", fromDateTime);
+                    }
+                    if (StringUtils.isNotBlank(toDateTime)) {
+                        filteredTarget = filteredTarget.queryParam("filter[created_at][lte]", toDateTime);
+                    }
+                    if (StringUtils.isNotBlank(cursor)) {
+                        filteredTarget = filteredTarget.queryParam("page[start_cursor]", cursor);
+                    }
+                    return filteredTarget
+                            .request(MediaType.APPLICATION_JSON_TYPE)
+                            .header("Authorization", "Bearer " + apiKey)
+                            .get();
+                },
                 response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(DovetailDataList.class))
                         .get(),
