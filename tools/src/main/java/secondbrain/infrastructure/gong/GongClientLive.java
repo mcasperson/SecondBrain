@@ -98,7 +98,6 @@ public class GongClientLive implements GongClient {
                 password,
                 "GongAPICallsExtensiveParentDurationV3",
                 duration.getDuration().toSeconds(),
-                1,
                 fromDateTime,
                 toDateTime).isEmpty();
     }
