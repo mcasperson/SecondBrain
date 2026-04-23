@@ -6,6 +6,7 @@ import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.commons.lang.StringUtils;
 import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
@@ -65,6 +66,7 @@ public class SnowflakeClientLive {
     @SuppressWarnings("NullAway")
     public ResultSet getLicenseDetails(final String id) {
         Preconditions.checkArgument(connection != null, "Connection must be established before querying");
+        Preconditions.checkArgument(StringUtils.isNotBlank(id), "Id must be provided");
 
         return Try.of(() -> connection.createStatement())
                 .mapTry(statement -> statement.executeQuery("SELECT * from prod_model.integration.integration_account_usage_summary where SFDC_ACCOUNT_SYSTEM_ID = '" + id + "'"))
