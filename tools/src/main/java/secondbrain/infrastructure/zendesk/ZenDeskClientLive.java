@@ -101,11 +101,15 @@ public class ZenDeskClientLive implements ZenDeskClient {
         query.add("type:ticket");
         query.add("created>" + fromDateTime);
         query.add("created<" + toDateTime);
+
+        // When an organization is defined, we only need 1 page
         if (StringUtils.isNotBlank(organization)) {
             query.add("organization:" + organization);
+            return !getTickets(authorization, url, String.join(" ", query), 1, 1, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
         }
 
-        return !getTickets(authorization, url, String.join(" ", query), 1, 1, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
+        // When an organization is not defined, we must return all items
+        return !getTickets(authorization, url, String.join(" ", query), 1, MAX_PAGES, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
     }
 
     /**
