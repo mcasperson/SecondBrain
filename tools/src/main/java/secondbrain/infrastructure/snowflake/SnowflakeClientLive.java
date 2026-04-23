@@ -1,42 +1,47 @@
 package secondbrain.infrastructure.snowflake;
 
 import com.google.common.base.Preconditions;
+import io.vavr.API;
 import io.vavr.control.Try;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import jakarta.enterprise.context.ApplicationScoped;
 import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.jspecify.annotations.Nullable;
 
 import java.io.StringReader;
-import java.security.KeyFactory;
 import java.security.PrivateKey;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.util.Base64;
 import java.util.Properties;
 
+@ApplicationScoped
 public class SnowflakeClientLive {
-
     @Nullable
     private Connection connection;
 
+    @PostConstruct
     public void openConnection(final String username, final String pem, final String url) {
         if (connection != null) {
             return;
         }
 
-        final PrivateKey privateKey = Try.of(() -> getPrivateKeyFromPEM(pem)).get();
+        final PrivateKey privateKey = getPrivateKeyFromPEM(pem);
+
 
         Properties properties = new Properties();
         properties.put("user", username);
         properties.put("authenticator", "SNOWFLAKE_JWT");
         properties.put("privateKey", privateKey);
         properties.put("JDBC_QUERY_RESULT_FORMAT", "json");
+        properties.put("CLIENT_TELEMETRY_ENABLED", "false");
         connection = Try.of(() -> DriverManager.getConnection(url, properties)).get();
     }
 
+    @PreDestroy
     @SuppressWarnings("NullAway")
     public void closeConnection() {
         if (connection == null) {
@@ -47,16 +52,14 @@ public class SnowflakeClientLive {
         this.connection = null;
     }
 
-    public PrivateKey getPrivateKeyFromPEM(String pemString) throws Exception {
-        PEMParser pemParser = new PEMParser(new StringReader(pemString));
-        Object object = pemParser.readObject();
-
-        // PEMKeyPair is used for PKCS#1 format
-        JcaPEMKeyConverter converter = new JcaPEMKeyConverter();
-        if (object instanceof PEMKeyPair pemKeyPair) {
-            return converter.getKeyPair(pemKeyPair).getPrivate();
-        }
-        throw new IllegalArgumentException("Not a valid PKCS#1 RSA private key");
+    public PrivateKey getPrivateKeyFromPEM(String pemString) {
+        return Try.of(() -> new PEMParser(new StringReader(pemString)))
+                .mapTry(PEMParser::readObject)
+                .filter(o -> o instanceof PEMKeyPair)
+                .map(o -> (PEMKeyPair) o)
+                .mapTry(p -> new JcaPEMKeyConverter().getKeyPair(p).getPrivate())
+                .mapFailure(API.Case(API.$(), ex -> new IllegalArgumentException("Failed to parse PEM string", ex)))
+                .get();
     }
 
     @SuppressWarnings("NullAway")
