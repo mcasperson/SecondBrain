@@ -188,12 +188,6 @@ public class Gong implements Tool<GongCallDetails> {
             return List.of();
         }
 
-        // Early out if we haven't seen any items in the last month
-        if (parsedArgs.isSkipEmptyInLastDuration() && !gongClient.anyItemsInDuration(parsedArgs.getCompany(), parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), ChronoUnit.YEARS, ChronoUnit.MONTHS)) {
-            logger.info("Skipping Gong context retrieval because skipEmptyInLastDuration is set and there are no Gong calls in the specified duration");
-            return List.of();
-        }
-
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return Try.of(() -> localStorage.getOrPutGeneric(
                         getName(),

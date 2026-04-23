@@ -80,29 +80,6 @@ public class GongClientLive implements GongClient {
     }
 
     @Override
-    public boolean anyItemsInDuration(
-            final String company,
-            final String username,
-            final String password,
-            final ChronoUnit duration,
-            final ChronoUnit cached) {
-        final String toDateTime = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault()), cached)
-                .format(ISO_OFFSET_DATE_TIME);
-        final String fromDateTime = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault())
-                .minus(1, duration), duration).format(ISO_OFFSET_DATE_TIME);
-
-        return !getCallsExtensive(
-                company,
-                null,
-                username,
-                password,
-                "GongAPICallsExtensiveParentDurationV3",
-                duration.getDuration().toSeconds(),
-                fromDateTime,
-                toDateTime).isEmpty();
-    }
-
-    @Override
     public List<GongCallExtensive> getCallsExtensive(
             final String company,
             @Nullable final String callId,

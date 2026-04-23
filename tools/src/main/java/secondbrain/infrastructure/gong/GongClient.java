@@ -7,13 +7,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 public interface GongClient {
-    boolean anyItemsInDuration(
-            String company,
-            String username,
-            String password,
-            ChronoUnit duration,
-            ChronoUnit cached);
-
     List<GongCallExtensive> getCallsExtensive(
             String company,
             @Nullable String callId,

@@ -25,11 +25,6 @@ public class GongClientMock implements GongClient {
     private LlmClient llmClient;
 
     @Override
-    public boolean anyItemsInDuration(String company, String username, String password, ChronoUnit duration, ChronoUnit cached) {
-        return true;
-    }
-
-    @Override
     public List<GongCallExtensive> getCallsExtensive(
             final String company,
             @Nullable final String callId,
