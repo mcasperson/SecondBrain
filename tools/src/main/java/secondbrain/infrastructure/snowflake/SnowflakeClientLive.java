@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Properties;
 
 @ApplicationScoped
-public class SnowflakeClientLive {
+public class SnowflakeClientLive implements SnowflakeClient {
     @Nullable
     private Connection connection;
 
@@ -33,8 +33,6 @@ public class SnowflakeClientLive {
         }
 
         final PrivateKey privateKey = getPrivateKeyFromPEM(pem);
-
-
         Properties properties = new Properties();
         properties.put("user", username);
         properties.put("authenticator", "SNOWFLAKE_JWT");
@@ -65,6 +63,7 @@ public class SnowflakeClientLive {
                 .get();
     }
 
+    @Override
     @SuppressWarnings("NullAway")
     public List<SnowflakeLicenseDetails> getLicenseDetails(final String id) {
         Preconditions.checkArgument(connection != null, "Connection must be established before querying");
@@ -83,6 +82,5 @@ public class SnowflakeClientLive {
                     return results;
                 })
                 .get();
-
     }
 }
