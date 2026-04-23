@@ -35,6 +35,7 @@ public class SnowflakeClientLive {
         properties.put("user", username);
         properties.put("authenticator", "SNOWFLAKE_JWT");
         properties.put("privateKey", privateKey);
+        properties.put("JDBC_QUERY_RESULT_FORMAT", "json");
 
         return Try.withResources(() -> DriverManager.getConnection(url, properties))
                 .of(connection -> {

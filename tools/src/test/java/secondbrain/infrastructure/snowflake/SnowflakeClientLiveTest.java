@@ -24,8 +24,9 @@ class SnowflakeClientLiveTest {
         final ResultSet rs = snowflakeClientLive.getLicenseDetails(
                 System.getenv("SB_SNOWFLAKE_USER"),
                 jwt,
-                "jdbc:snowflake://" + System.getenv("SB_SNOWFLAKE_URL"));
+                "jdbc:snowflake://" + System.getenv("SB_SNOWFLAKE_URL") + ".snowflakecomputing.com");
         assertNotNull(rs);
     }
 }
+
 
