@@ -207,7 +207,7 @@ public class SlackChannel implements Tool<SlackChannelResource> {
         // you can get this instance via ctx.client() in a Bolt app
         final AsyncMethodsClient client = Slack.getInstance().methodsAsync();
 
-        final Try<SlackChannelResource> result = Try.of(() -> slackClient.findChannelId(
+        final Try<List<RagDocumentContext<SlackChannelResource>>> result = Try.of(() -> slackClient.findChannelId(
                         client,
                         parsedArgs.getSecretAccessToken(),
                         parsedArgs.getChannel(),
@@ -220,17 +220,16 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                         parsedArgs.getSearchTTL(),
                         parsedArgs.getApiDelay())))
                 .map(c -> c.updateConversation(replaceUserIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)))
-                .map(c -> c.updateConversation(replaceChannelIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)));
+                .map(c -> c.updateConversation(replaceChannelIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)))
+                .filter( c-> StringUtils.length(c.generateText()) >= MINIMUM_MESSAGE_LENGTH)
+                .map(c -> dataToRagDoc.getDocumentContext(c, getName(), getContextLabel(), parsedArgs))
+                .map(List::of)
+                .recover(NoSuchElementException.class, ex -> {
+                    logger.info("Not enough messages found in channel " + parsedArgs.getChannel());
+                    return List.of();
+                });
 
-        final SlackChannelResource channel = exceptionMapping.map(result).get();
-
-        if (StringUtils.length(channel.generateText()) < MINIMUM_MESSAGE_LENGTH) {
-            throw new InternalFailure("Not enough messages found in channel " + parsedArgs.getChannel()
-                    + System.lineSeparator() + System.lineSeparator()
-                    + "* [Slack Channel](https://app.slack.com/client/" + channel.teamId() + "/" + channel.channelId() + ")");
-        }
-
-        final List<RagDocumentContext<SlackChannelResource>> ragDocs = List.of(dataToRagDoc.getDocumentContext(channel, getName(), getContextLabel(), parsedArgs));
+        final List<RagDocumentContext<SlackChannelResource>> ragDocs = exceptionMapping.map(result).get();
 
         // Combine preinitialization hooks with ragDocs
         final List<RagDocumentContext<SlackChannelResource>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
