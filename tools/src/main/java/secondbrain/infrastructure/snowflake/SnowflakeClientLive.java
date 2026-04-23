@@ -6,10 +6,12 @@ import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.commons.lang.StringUtils;
 import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 
 import java.io.StringReader;
@@ -17,29 +19,49 @@ import java.security.PrivateKey;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 @ApplicationScoped
 public class SnowflakeClientLive implements SnowflakeClient {
     @Nullable
     private Connection connection;
 
+    @Inject
+    @ConfigProperty(name = "sb.snowflake.user")
+    private Optional<String> username;
+
+    @Inject
+    @ConfigProperty(name = "sb.snowflake.url")
+    private Optional<String> url;
+
+    @Inject
+    @ConfigProperty(name = "sb.snowflake.jwt.base64")
+    private Optional<String> pem;
+
+    public SnowflakeClientLive() {
+
+    }
+
+    public SnowflakeClientLive(final String username, final String pem, final String url) {
+        this.username = Optional.of(username);
+        this.url = Optional.of(url);
+        this.pem = Optional.of(pem);
+    }
+
     @PostConstruct
-    public void openConnection(final String username, final String pem, final String url) {
-        if (connection != null) {
+    public void openConnection() {
+        if (connection != null || username.isEmpty() || url.isEmpty() || pem.isEmpty()) {
             return;
         }
 
-        final PrivateKey privateKey = getPrivateKeyFromPEM(pem);
+        final PrivateKey privateKey = getPrivateKeyFromPEM(new String(Base64.getDecoder().decode(pem.get())));
         Properties properties = new Properties();
-        properties.put("user", username);
+        properties.put("user", username.get());
         properties.put("authenticator", "SNOWFLAKE_JWT");
         properties.put("privateKey", privateKey);
         properties.put("JDBC_QUERY_RESULT_FORMAT", "json");
         properties.put("CLIENT_TELEMETRY_ENABLED", "false");
-        connection = Try.of(() -> DriverManager.getConnection(url, properties)).get();
+        connection = Try.of(() -> DriverManager.getConnection(url.get(), properties)).get();
     }
 
     @PreDestroy

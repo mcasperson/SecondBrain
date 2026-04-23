@@ -12,12 +12,11 @@ class SnowflakeClientLiveTest {
     @Test
     @Disabled
     void testConnection() {
-        final SnowflakeClientLive snowflakeClientLive = new SnowflakeClientLive();
-        final String jwt = new String(Base64.getDecoder().decode(System.getenv("SB_SNOWFLAKE_JWT_BASE64")));
-        snowflakeClientLive.openConnection(
+        final SnowflakeClientLive snowflakeClientLive = new SnowflakeClientLive(
                 System.getenv("SB_SNOWFLAKE_USER"),
-                jwt,
+                System.getenv("SB_SNOWFLAKE_JWT_BASE64"),
                 "jdbc:snowflake://" + System.getenv("SB_SNOWFLAKE_URL") + ".snowflakecomputing.com");
+        snowflakeClientLive.openConnection();
 
         final List<SnowflakeLicenseDetails> results = snowflakeClientLive.getLicenseDetails("001Qq00000YrmcPIAR");
         assertNotNull(results);
