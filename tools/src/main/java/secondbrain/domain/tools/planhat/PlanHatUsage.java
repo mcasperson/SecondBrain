@@ -215,7 +215,7 @@ class PlanHatUsageConfig {
     private Optional<String> configUrl;
 
     @Inject
-    @ConfigProperty(name = "sb.planhat.url2", defaultValue = "https://api.planhat.com")
+    @ConfigProperty(name = "sb.planhat.url2")
     private Optional<String> configUrl2;
 
     @Inject
