@@ -170,6 +170,11 @@ public class PlanHat implements Tool<Conversation> {
     public List<RagDocumentContext<Conversation>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        if (StringUtils.isBlank(parsedArgs.getCompany())) {
+            logger.info("Skipping Planhat context retrieval because no company has been specified");
+            return List.of();
+        }
+
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration()) {
             final boolean hasItems = Try.withResources(ClientBuilder::newClient)
