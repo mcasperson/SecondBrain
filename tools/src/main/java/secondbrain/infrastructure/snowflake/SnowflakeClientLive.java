@@ -17,6 +17,8 @@ import java.security.PrivateKey;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 @ApplicationScoped
@@ -64,7 +66,7 @@ public class SnowflakeClientLive {
     }
 
     @SuppressWarnings("NullAway")
-    public ResultSet getLicenseDetails(final String id) {
+    public List<SnowflakeLicenseDetails> getLicenseDetails(final String id) {
         Preconditions.checkArgument(connection != null, "Connection must be established before querying");
         Preconditions.checkArgument(StringUtils.isNotBlank(id), "Id must be provided");
 
@@ -73,7 +75,12 @@ public class SnowflakeClientLive {
                                 + " WHERE SFDC_ACCOUNT_SYSTEM_ID = ?"))
                 .mapTry(statement -> {
                     statement.setString(1, id);
-                    return statement.executeQuery();
+                    final ResultSet rs = statement.executeQuery();
+                    final List<SnowflakeLicenseDetails> results = new ArrayList<>();
+                    while (rs.next()) {
+                        results.add(SnowflakeLicenseDetails.fromResultSet(rs));
+                    }
+                    return results;
                 })
                 .get();
 
