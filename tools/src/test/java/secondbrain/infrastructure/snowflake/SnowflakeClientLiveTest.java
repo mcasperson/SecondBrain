@@ -1,5 +1,6 @@
 package secondbrain.infrastructure.snowflake;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.Base64;
@@ -9,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class SnowflakeClientLiveTest {
     @Test
+    @Disabled
     void testConnection() {
         final SnowflakeClientLive snowflakeClientLive = new SnowflakeClientLive();
         final String jwt = new String(Base64.getDecoder().decode(System.getenv("SB_SNOWFLAKE_JWT_BASE64")));
