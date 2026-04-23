@@ -25,7 +25,7 @@ class SnowflakeClientLiveTest {
                 System.getenv("SB_SNOWFLAKE_USER"),
                 jwt,
                 "jdbc:snowflake://" + System.getenv("SB_SNOWFLAKE_URL") + ".snowflakecomputing.com");
-        final ResultSet rs = snowflakeClientLive.getLicenseDetails();
+        final ResultSet rs = snowflakeClientLive.getLicenseDetails("001Qq00000YrmcPIAR");
         assertNotNull(rs);
 
         final int columnCount = rs.getMetaData().getColumnCount();

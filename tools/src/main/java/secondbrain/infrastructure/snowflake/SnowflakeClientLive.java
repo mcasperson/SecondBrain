@@ -52,7 +52,7 @@ public class SnowflakeClientLive {
         this.connection = null;
     }
 
-    public PrivateKey getPrivateKeyFromPEM(String pemString) {
+    public PrivateKey getPrivateKeyFromPEM(final String pemString) {
         return Try.of(() -> new PEMParser(new StringReader(pemString)))
                 .mapTry(PEMParser::readObject)
                 .filter(o -> o instanceof PEMKeyPair)
@@ -63,11 +63,11 @@ public class SnowflakeClientLive {
     }
 
     @SuppressWarnings("NullAway")
-    public ResultSet getLicenseDetails() {
+    public ResultSet getLicenseDetails(final String id) {
         Preconditions.checkArgument(connection != null, "Connection must be established before querying");
 
         return Try.of(() -> connection.createStatement())
-                .mapTry(statement -> statement.executeQuery("SELECT * from prod_model.integration.integration_account_usage_summary"))
+                .mapTry(statement -> statement.executeQuery("SELECT * from prod_model.integration.integration_account_usage_summary where SFDC_ACCOUNT_SYSTEM_ID = '" + id + "'"))
                 .get();
 
     }
