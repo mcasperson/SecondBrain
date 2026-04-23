@@ -68,8 +68,13 @@ public class SnowflakeClientLive {
         Preconditions.checkArgument(connection != null, "Connection must be established before querying");
         Preconditions.checkArgument(StringUtils.isNotBlank(id), "Id must be provided");
 
-        return Try.of(() -> connection.createStatement())
-                .mapTry(statement -> statement.executeQuery("SELECT * from prod_model.integration.integration_account_usage_summary where SFDC_ACCOUNT_SYSTEM_ID = '" + id + "'"))
+        return Try.of(() -> connection.prepareStatement(
+                        "SELECT * FROM prod_model.integration.integration_account_usage_summary"
+                                + " WHERE SFDC_ACCOUNT_SYSTEM_ID = ?"))
+                .mapTry(statement -> {
+                    statement.setString(1, id);
+                    return statement.executeQuery();
+                })
                 .get();
 
     }
