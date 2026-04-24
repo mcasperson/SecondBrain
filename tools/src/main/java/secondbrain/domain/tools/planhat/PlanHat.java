@@ -132,11 +132,23 @@ public class PlanHat implements Tool<Conversation> {
     }
 
     private String getContextLabelWithDate(@Nullable final Conversation conversation) {
-        if (conversation == null || conversation.date() == null) {
-            return getContextLabel();
+        final StringBuilder sb = new StringBuilder();
+
+        sb.append(getContextLabel());
+
+        if (conversation == null) {
+            return sb.toString();
         }
 
-        return getContextLabel() + " " + conversation.date();
+        if (StringUtils.isNotBlank(conversation.type())) {
+            sb.append(" Type: ").append(conversation.type()).append(" ");
+        }
+
+        if (StringUtils.isNotBlank(conversation.date())) {
+            sb.append(" Date: ").append(conversation.date());
+        }
+
+        return sb.toString();
     }
 
     @Override
@@ -246,7 +258,7 @@ public class PlanHat implements Tool<Conversation> {
                         htmlToText.getText(conversation.snippet()))
                 )
                 .map(conversation -> dataToRagDoc.getDocumentContext(conversation.updateUrl(publicUrl), getName(), getContextLabelWithDate(conversation), parsedArgs))
-                .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
+                .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 .toList();
 
         // Combine preinitialization hooks with ragDocs
