@@ -20,9 +20,10 @@ public record ZenDeskTicket(String id,
                             @Nullable String recipient,
                             @Nullable String comments,
                             @Nullable String url,
+                            @Nullable String status,
                             @Nullable @JsonProperty("created_at") String createdAt) implements TextData, IdData, UrlData {
     public ZenDeskTicket(final String id, final String subject) {
-        this(id, null, null, subject, null, null, null, null, null);
+        this(id, null, null, subject, null, null, null, null, null, null);
     }
 
     public String getSubject() {
@@ -46,11 +47,11 @@ public record ZenDeskTicket(String id,
     }
 
     public ZenDeskTicket updateComments(final String comments) {
-        return new ZenDeskTicket(id, submitterId, assigneeId, subject, organizationId, recipient, comments, url, createdAt);
+        return new ZenDeskTicket(id, submitterId, assigneeId, subject, organizationId, recipient, comments, url, status, createdAt);
     }
 
     public ZenDeskTicket updateUrl(final String url) {
-        return new ZenDeskTicket(id, submitterId, assigneeId, subject, organizationId, recipient, comments, url, createdAt);
+        return new ZenDeskTicket(id, submitterId, assigneeId, subject, organizationId, recipient, comments, url, status, createdAt);
     }
 
     public List<MetaObjectResult> toMetaObjectResult() {

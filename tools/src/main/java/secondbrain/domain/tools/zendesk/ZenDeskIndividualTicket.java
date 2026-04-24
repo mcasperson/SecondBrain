@@ -280,6 +280,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                                 "",
                                 null,
                                 null,
+                                null,
                                 parsedArgs.getCreatedAt())))
                 // Get the LLM context string as a RAG context, complete with vectorized sentences
                 .map(comments -> getDocumentContext(
