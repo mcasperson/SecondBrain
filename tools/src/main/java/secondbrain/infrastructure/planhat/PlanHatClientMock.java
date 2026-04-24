@@ -8,6 +8,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
+import secondbrain.infrastructure.planhat.api.Objective;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -62,7 +63,22 @@ public class PlanHatClientMock implements PlanHatClient {
         custom.put("contactPerson", llmClient.call("Generate a person's name. Return only the name, nothing else.", Map.of()));
         custom.put("tier", llmClient.call("Generate one of: Free, Standard, Premium, Enterprise. Return only the tier, nothing else.", Map.of()));
 
-        return new Company(companyId, companyName, usage, custom);
+        return new Company(companyId, companyName, null, usage, custom);
+    }
+
+    @Override
+    public List<Objective> getObjectives(final Client client, final String companyId, final String url, final String token, final int ttlSeconds) {
+        return List.of(
+                new Objective(
+                        UUID.randomUUID().toString(),
+                        companyId,
+                        llmClient.call("Generate a company name. Return only the name, nothing else.", Map.of()),
+                        llmClient.call("Generate a short business objective name. Return only the name, nothing else.", Map.of()),
+                        (int) (Math.random() * 10),
+                        false,
+                        Map.of("Use Case Status", "In Progress"),
+                        ZonedDateTime.now(ZoneOffset.UTC).minusDays(30).format(DateTimeFormatter.ISO_INSTANT),
+                        ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)));
     }
 
     private Conversation createMockConversation() {

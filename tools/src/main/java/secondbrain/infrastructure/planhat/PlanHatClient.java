@@ -4,6 +4,7 @@ import jakarta.ws.rs.client.Client;
 import org.jspecify.annotations.Nullable;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
+import secondbrain.infrastructure.planhat.api.Objective;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -30,6 +31,13 @@ public interface PlanHatClient {
     Company getCompany(
             Client client,
             String company,
+            String url,
+            String token,
+            int ttlSeconds);
+
+    List<Objective> getObjectives(
+            Client client,
+            String companyId,
             String url,
             String token,
             int ttlSeconds);
