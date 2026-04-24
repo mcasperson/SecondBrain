@@ -185,24 +185,11 @@ public class Meta implements Tool<Void> {
 
         logger.info(parsedArgs.toString());
 
-        final String cacheKey = generateCacheKey(parsedArgs, prompt);
-
-        return Try.of(() -> localStorage.getOrPutObject(
-                                getName(),
-                                getName(),
-                                cacheKey,
-                                parsedArgs.getCacheTtl(),
-                                RagMultiDocumentContext.class,
-                                () -> callPrivate(environmentSettings, prompt, arguments))
-                        .result())
+        return Try.of(() -> callPrivate(environmentSettings, prompt, arguments))
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to generate meta tool result: " + ex.getMessage()))
                 .get()
                 .convertToRagMultiDocumentContextVoid();
-    }
-
-    private String generateCacheKey(final MetaConfig.LocalArguments parsedArgs, final String prompt) {
-        return parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
     }
 
     private RagMultiDocumentContext<Void> callPrivate(
