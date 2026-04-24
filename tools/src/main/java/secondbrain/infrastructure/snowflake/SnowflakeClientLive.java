@@ -61,7 +61,10 @@ public class SnowflakeClientLive implements SnowflakeClient {
         properties.put("privateKey", privateKey);
         properties.put("JDBC_QUERY_RESULT_FORMAT", "json");
         properties.put("CLIENT_TELEMETRY_ENABLED", "false");
-        connection = Try.of(() -> DriverManager.getConnection(url.get(), properties)).get();
+
+        final String jdbc = "jdbc:snowflake://" + url.get() + ".snowflakecomputing.com";
+
+        connection = Try.of(() -> DriverManager.getConnection(jdbc, properties)).get();
     }
 
     @PreDestroy
