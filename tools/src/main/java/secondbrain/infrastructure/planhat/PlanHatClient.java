@@ -5,6 +5,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
 import secondbrain.infrastructure.planhat.api.Objective;
+import secondbrain.infrastructure.planhat.api.Opportunity;
 import secondbrain.infrastructure.planhat.api.PlanHatUser;
 
 import java.time.ZonedDateTime;
@@ -46,6 +47,13 @@ public interface PlanHatClient {
     PlanHatUser getUser(
             Client client,
             String userId,
+            String url,
+            String token,
+            int ttlSeconds);
+
+    List<Opportunity> getOpportunities(
+            Client client,
+            String companyId,
             String url,
             String token,
             int ttlSeconds);

@@ -9,6 +9,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
 import secondbrain.infrastructure.planhat.api.Objective;
+import secondbrain.infrastructure.planhat.api.Opportunity;
 import secondbrain.infrastructure.planhat.api.PlanHatUser;
 
 import java.time.ZoneOffset;
@@ -87,6 +88,29 @@ public class PlanHatClientMock implements PlanHatClient {
         final String firstName = llmClient.call("Generate a first name. Return only the first name, nothing else.", Map.of());
         final String lastName = llmClient.call("Generate a last name. Return only the last name, nothing else.", Map.of());
         return new PlanHatUser(userId, firstName, lastName);
+    }
+
+    @Override
+    public List<Opportunity> getOpportunities(final Client client, final String companyId, final String url, final String token, final int ttlSeconds) {
+        final String status = List.of("active", "won", "lost").get((int) (Math.random() * 3));
+        final String title = llmClient.call("Generate a short sales opportunity title. Return only the title, nothing else.", Map.of());
+        return List.of(
+                new Opportunity(
+                        UUID.randomUUID().toString(),
+                        status,
+                        companyId,
+                        llmClient.call("Generate a company name. Return only the name, nothing else.", Map.of()),
+                        title,
+                        UUID.randomUUID().toString(),
+                        UUID.randomUUID().toString(),
+                        Math.random() * 10000,
+                        Math.random() * 120000,
+                        status.equals("active") ? "New" : status.equals("won") ? "Closed Won" : "Closed Lost",
+                        ZonedDateTime.now(ZoneOffset.UTC).minusDays(30).format(DateTimeFormatter.ISO_INSTANT),
+                        status.equals("active") ? null : ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT),
+                        ZonedDateTime.now(ZoneOffset.UTC).minusDays(60).format(DateTimeFormatter.ISO_INSTANT),
+                        ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT),
+                        Map.of("Opportunity Name", title)));
     }
 
     private Conversation createMockConversation() {

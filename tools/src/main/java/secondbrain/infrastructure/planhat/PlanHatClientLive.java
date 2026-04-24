@@ -22,6 +22,7 @@ import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
 import secondbrain.infrastructure.planhat.api.Objective;
+import secondbrain.infrastructure.planhat.api.Opportunity;
 import secondbrain.infrastructure.planhat.api.PlanHatUser;
 
 import java.net.URLEncoder;
@@ -359,6 +360,72 @@ public class PlanHatClientLive implements PlanHatClient {
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("User not found for userId " + userId))
+                .get();
+    }
+
+    @Override
+    public List<Opportunity> getOpportunities(
+            final Client client,
+            final String companyId,
+            final String url,
+            final String token,
+            final int ttlSeconds) {
+        return Try.of(() -> localStorage.getOrPutObjectArray(
+                                PlanHatClientLive.class.getSimpleName(),
+                                "PlanHatAPIOpportunities",
+                                DigestUtils.sha256Hex(companyId + url),
+                                ttlSeconds,
+                                Opportunity.class,
+                                Opportunity[].class,
+                                () -> getOpportunitiesApi(client, companyId, url, token))
+                        .result())
+                .filter(Objects::nonNull)
+                .map(List::of)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Opportunities not found for companyId " + companyId))
+                .getOrElse(List.of());
+    }
+
+    private Opportunity[] getOpportunitiesApi(
+            final Client client,
+            final String companyId,
+            final String url,
+            final String token) {
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile,
+                () -> getOpportunitiesApiLocked(client, companyId, url, token));
+    }
+
+    private Opportunity[] getOpportunitiesApiLocked(
+            final Client client,
+            final String companyId,
+            final String url,
+            final String token) {
+        return Try.withResources(() -> new TimedOperation("Planhat API call for opportunities"))
+                .of(t -> getOpportunitiesApiTimed(client, companyId, url, token))
+                .get();
+    }
+
+    private Opportunity[] getOpportunitiesApiTimed(
+            final Client client,
+            final String companyId,
+            final String url,
+            final String token) {
+        logger.fine("Calling PlanHat Opportunities API for companyId " + companyId);
+
+        RATE_LIMITER.acquire();
+
+        final String target = url + "/opportunities";
+
+        return Try.withResources(() -> client.target(target)
+                        .queryParam("companyId", companyId)
+                        .request()
+                        .header("Authorization", "Bearer " + token)
+                        .header("Accept", MediaType.APPLICATION_JSON)
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(Opportunity[].class))
+                        .get())
                 .get();
     }
 
