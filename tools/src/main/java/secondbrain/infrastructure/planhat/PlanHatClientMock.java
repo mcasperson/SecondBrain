@@ -9,6 +9,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
 import secondbrain.infrastructure.planhat.api.Objective;
+import secondbrain.infrastructure.planhat.api.PlanHatUser;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -79,6 +80,13 @@ public class PlanHatClientMock implements PlanHatClient {
                         Map.of("Use Case Status", "In Progress"),
                         ZonedDateTime.now(ZoneOffset.UTC).minusDays(30).format(DateTimeFormatter.ISO_INSTANT),
                         ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)));
+    }
+
+    @Override
+    public PlanHatUser getUser(final Client client, final String userId, final String url, final String token, final int ttlSeconds) {
+        final String firstName = llmClient.call("Generate a first name. Return only the first name, nothing else.", Map.of());
+        final String lastName = llmClient.call("Generate a last name. Return only the last name, nothing else.", Map.of());
+        return new PlanHatUser(userId, firstName, lastName);
     }
 
     private Conversation createMockConversation() {

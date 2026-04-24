@@ -46,6 +46,11 @@ public class PlanHatUsage implements Tool<Company> {
     public static final String PLANHAT_USAGE_NAME_3_ARG = "usageName3";
     public static final String PLANHAT_USAGE_NAME_4_ARG = "usageName4";
     public static final String PLANHAT_USAGE_NAME_5_ARG = "usageName5";
+    public static final String PLANHAT_CUSTOM_PERSON_1_ARG = "customPerson1";
+    public static final String PLANHAT_CUSTOM_PERSON_2_ARG = "customPerson2";
+    public static final String PLANHAT_CUSTOM_PERSON_3_ARG = "customPerson3";
+    public static final String PLANHAT_CUSTOM_PERSON_4_ARG = "customPerson4";
+    public static final String PLANHAT_CUSTOM_PERSON_5_ARG = "customPerson5";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -178,7 +183,52 @@ public class PlanHatUsage implements Tool<Company> {
                         List.of()))
                 .toList();
 
-        return ListUtils.union(usageContext, customContext);
+        // Look up each custom person field by resolving the custom field key to a user ID, then fetching the user
+        final List<RagDocumentContext<Company>> customPersonContext = tokens.isEmpty()
+                ? List.of()
+                : Stream.of(
+                                parsedArgs.getCustomPerson1(),
+                                parsedArgs.getCustomPerson2(),
+                                parsedArgs.getCustomPerson3(),
+                                parsedArgs.getCustomPerson4(),
+                                parsedArgs.getCustomPerson5())
+                        .filter(StringUtils::isNotBlank)
+                        .flatMap(customFieldKey -> {
+                            // Step 1: resolve the custom field key to a user ID from the company's custom fields
+                            final Object rawUserId = company.custom() != null ? company.custom().get(customFieldKey) : null;
+                            if (rawUserId == null || StringUtils.isBlank(rawUserId.toString())) {
+                                return Stream.of();
+                            }
+                            final String userId = rawUserId.toString();
+                            // Step 2: fetch the user by the resolved ID
+                            return Try.withResources(ClientBuilder::newClient)
+                                    .of(client -> planHatClient.getUser(
+                                            client,
+                                            userId,
+                                            tokens.get(0).getLeft(),
+                                            tokens.get(0).getRight(),
+                                            parsedArgs.getSearchTTL()))
+                                    .map(user -> new RagDocumentContext<Company>(
+                                            getName(),
+                                            getContextLabel() + " " + company.name() + " " + customFieldKey,
+                                            user.getFullName(),
+                                            List.of(),
+                                            company.id() + ":" + customFieldKey,
+                                            company,
+                                            new MetaObjectResults(new MetaObjectResult(
+                                                    customFieldKey,
+                                                    user.getFullName(),
+                                                    company.id(),
+                                                    getName())),
+                                            null,
+                                            null,
+                                            List.of()))
+                                    .map(Stream::of)
+                                    .getOrElse(Stream.of());
+                        })
+                        .toList();
+
+        return ListUtils.union(ListUtils.union(usageContext, customContext), customPersonContext);
     }
 
     @Override
@@ -291,6 +341,26 @@ class PlanHatUsageConfig {
     private Optional<String> configUsageName5;
 
     @Inject
+    @ConfigProperty(name = "sb.planhat.customperson1")
+    private Optional<String> configCustomPerson1;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.customperson2")
+    private Optional<String> configCustomPerson2;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.customperson3")
+    private Optional<String> configCustomPerson3;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.customperson4")
+    private Optional<String> configCustomPerson4;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.customperson5")
+    private Optional<String> configCustomPerson5;
+
+    @Inject
     private ValidateString validateString;
 
     @Inject
@@ -386,6 +456,26 @@ class PlanHatUsageConfig {
 
     public Optional<String> getConfigUrl2() {
         return configUrl2;
+    }
+
+    public Optional<String> getConfigCustomPerson1() {
+        return configCustomPerson1;
+    }
+
+    public Optional<String> getConfigCustomPerson2() {
+        return configCustomPerson2;
+    }
+
+    public Optional<String> getConfigCustomPerson3() {
+        return configCustomPerson3;
+    }
+
+    public Optional<String> getConfigCustomPerson4() {
+        return configCustomPerson4;
+    }
+
+    public Optional<String> getConfigCustomPerson5() {
+        return configCustomPerson5;
     }
 
     public class LocalArguments {
@@ -608,6 +698,56 @@ class PlanHatUsageConfig {
                     context,
                     PlanHatUsage.PLANHAT_USAGE_NAME_5_ARG,
                     PlanHatUsage.PLANHAT_USAGE_NAME_5_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getCustomPerson1() {
+            return getArgsAccessor().getArgument(
+                    getConfigCustomPerson1()::get,
+                    arguments,
+                    context,
+                    PlanHatUsage.PLANHAT_CUSTOM_PERSON_1_ARG,
+                    PlanHatUsage.PLANHAT_CUSTOM_PERSON_1_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getCustomPerson2() {
+            return getArgsAccessor().getArgument(
+                    getConfigCustomPerson2()::get,
+                    arguments,
+                    context,
+                    PlanHatUsage.PLANHAT_CUSTOM_PERSON_2_ARG,
+                    PlanHatUsage.PLANHAT_CUSTOM_PERSON_2_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getCustomPerson3() {
+            return getArgsAccessor().getArgument(
+                    getConfigCustomPerson3()::get,
+                    arguments,
+                    context,
+                    PlanHatUsage.PLANHAT_CUSTOM_PERSON_3_ARG,
+                    PlanHatUsage.PLANHAT_CUSTOM_PERSON_3_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getCustomPerson4() {
+            return getArgsAccessor().getArgument(
+                    getConfigCustomPerson4()::get,
+                    arguments,
+                    context,
+                    PlanHatUsage.PLANHAT_CUSTOM_PERSON_4_ARG,
+                    PlanHatUsage.PLANHAT_CUSTOM_PERSON_4_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getCustomPerson5() {
+            return getArgsAccessor().getArgument(
+                    getConfigCustomPerson5()::get,
+                    arguments,
+                    context,
+                    PlanHatUsage.PLANHAT_CUSTOM_PERSON_5_ARG,
+                    PlanHatUsage.PLANHAT_CUSTOM_PERSON_5_ARG,
                     "").getSafeValue();
         }
     }

@@ -22,6 +22,7 @@ import secondbrain.domain.response.ResponseValidation;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
 import secondbrain.infrastructure.planhat.api.Objective;
+import secondbrain.infrastructure.planhat.api.PlanHatUser;
 
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
@@ -337,6 +338,69 @@ public class PlanHatClientLive implements PlanHatClient {
                         .get())
                 .of(response -> Try.of(() -> responseValidation.validate(response, target))
                         .map(r -> r.readEntity(Objective[].class))
+                        .get())
+                .get();
+    }
+
+    @Override
+    public PlanHatUser getUser(
+            final Client client,
+            final String userId,
+            final String url,
+            final String token,
+            final int ttlSeconds) {
+        return Try.of(() -> localStorage.getOrPutObject(
+                                PlanHatClientLive.class.getSimpleName(),
+                                "PlanHatAPIUser",
+                                DigestUtils.sha256Hex(userId + url),
+                                ttlSeconds,
+                                PlanHatUser.class,
+                                () -> getUserApi(client, userId, url, token))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("User not found for userId " + userId))
+                .get();
+    }
+
+    private PlanHatUser getUserApi(
+            final Client client,
+            final String userId,
+            final String url,
+            final String token) {
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile,
+                () -> getUserApiLocked(client, userId, url, token));
+    }
+
+    private PlanHatUser getUserApiLocked(
+            final Client client,
+            final String userId,
+            final String url,
+            final String token) {
+        return Try.withResources(() -> new TimedOperation("Planhat API call for user"))
+                .of(t -> getUserApiTimed(client, userId, url, token))
+                .get();
+    }
+
+    private PlanHatUser getUserApiTimed(
+            final Client client,
+            final String userId,
+            final String url,
+            final String token) {
+        logger.fine("Calling PlanHat User API for userId " + userId);
+
+        RATE_LIMITER.acquire();
+
+        final String target = url + "/users/" + userId;
+
+        return Try.withResources(() -> client.target(target)
+                        .request()
+                        .header("Authorization", "Bearer " + token)
+                        .header("Accept", MediaType.APPLICATION_JSON)
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(PlanHatUser.class))
                         .get())
                 .get();
     }
