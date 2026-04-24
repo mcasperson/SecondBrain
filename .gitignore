@@ -52,3 +52,5 @@ SecondBrain.log.*
 copilotDiffState.xml
 
 .playwright-mcp
+
+input.md

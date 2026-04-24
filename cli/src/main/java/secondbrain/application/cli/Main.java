@@ -36,6 +36,10 @@ public class Main {
     private JsonDeserializer jsonDeserializer;
 
     @Inject
+    @ConfigProperty(name = "sb.input.file")
+    private Optional<String> promptFile;
+
+    @Inject
     @ConfigProperty(name = "sb.output.file")
     private Optional<String> file;
 
@@ -98,6 +102,12 @@ public class Main {
     }
 
     private String getPrompt(final String[] args) {
+        if (promptFile.isPresent() && StringUtils.isNotBlank(promptFile.get())) {
+            return Try.of(() -> Files.readString(pathBuilder.getFilePath(directory, promptFile.get())))
+                    .onFailure(e -> logger.severe("Failed to read prompt from file: " + e.getMessage()))
+                    .get();
+        }
+
         if (args.length > 0 && !StringUtils.isBlank(args[0])) {
             logger.info("Prompt: " + args[0]);
             return args[0];
