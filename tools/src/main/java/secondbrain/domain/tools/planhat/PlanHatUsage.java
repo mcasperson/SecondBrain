@@ -88,7 +88,7 @@ public class PlanHatUsage implements Tool<Company> {
 
     @Override
     public String getContextLabel() {
-        return "PlanHat Platform Usage";
+        return "PlanHat Metadata";
     }
 
     @Override
