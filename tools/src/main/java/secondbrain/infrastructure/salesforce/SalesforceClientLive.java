@@ -44,6 +44,7 @@ import static com.google.common.base.Preconditions.checkState;
 
 @ApplicationScoped
 public class SalesforceClientLive implements SalesforceClient {
+    private static final int DEFAULT_LIMIT = 100;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(4);
     private static final int DEFAULT_CACHE_TTL_DAYS = 3;
     private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
@@ -122,7 +123,7 @@ public class SalesforceClientLive implements SalesforceClient {
                 .toList();
 
         final List<SalesforceEmailRecord> tasks = relatedToIds.stream()
-                .flatMap(r -> Arrays.stream(getEmails(token, r, startDate, endDate)))
+                .flatMap(r -> Arrays.stream(getEmails(token, r, startDate, endDate, 1)))
                 .toList();
         return !tasks.isEmpty();
     }
@@ -194,12 +195,17 @@ public class SalesforceClientLive implements SalesforceClient {
                 .get();
     }
 
-    @Override
-    public SalesforceEmailRecord[] getEmails(final String token, final String accountId, final String startDate, final String endDate) {
-        return getEmails(token, accountId, "SalesforceAPIEmails", startDate, endDate);
+
+    public SalesforceEmailRecord[] getEmails(final String token, final String accountId, final String startDate, final String endDate, final int limit) {
+        return getEmails(token, accountId, "SalesforceAPIEmails", startDate, endDate, limit);
     }
 
-    private SalesforceEmailRecord[] getEmails(final String token, final String accountId, final String source, final String startDate, final String endDate) {
+    @Override
+    public SalesforceEmailRecord[] getEmails(final String token, final String accountId, final String startDate, final String endDate) {
+        return getEmails(token, accountId, startDate, endDate, DEFAULT_LIMIT);
+    }
+
+    private SalesforceEmailRecord[] getEmails(final String token, final String accountId, final String source, final String startDate, final String endDate, final int limit) {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
 
         return Try.of(() -> localStorage.getOrPutObject(
@@ -208,21 +214,21 @@ public class SalesforceClientLive implements SalesforceClient {
                                 DigestUtils.sha256Hex(domain.get() + accountId),
                                 DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
                                 SalesforceEmailRecord[].class,
-                                () -> getEmailsApi(token, accountId, startDate, endDate))
+                                () -> getEmailsApi(token, accountId, startDate, endDate, limit))
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Emails not found for salesforce account " + accountId))
                 .get();
     }
 
-    private SalesforceEmailRecord[] getEmailsApi(final String token, final String accountId, final String startDate, final String endDate) {
+    private SalesforceEmailRecord[] getEmailsApi(final String token, final String accountId, final String startDate, final String endDate, final int limit) {
         return mutex.acquire(
                 MUTEX_TIMEOUT_MS,
                 lockFile,
-                () -> getEmailsApiLocked(token, accountId, startDate, endDate, 0));
+                () -> getEmailsApiLocked(token, accountId, startDate, endDate, limit, 0));
     }
 
-    private SalesforceEmailRecord[] getEmailsApiLocked(final String token, final String accountId, final String startDate, final String endDate, final int retryCount) {
+    private SalesforceEmailRecord[] getEmailsApiLocked(final String token, final String accountId, final String startDate, final String endDate, final int limit, final int retryCount) {
         logger.fine("Getting Salesforce emails for account " + accountId);
 
         if (retryCount > API_RETRIES) {
@@ -248,7 +254,7 @@ public class SalesforceClientLive implements SalesforceClient {
                     .onFailure(e -> logger.warning("Failed to parse end date " + endDate))
                     .onSuccess(date -> soql.append(" AND MessageDate<=").append(DateTimeFormatter.ISO_INSTANT.format(date)));
         }
-        soql.append(" ORDER BY MessageDate DESC Limit 100");
+        soql.append(" ORDER BY MessageDate DESC Limit ").append(limit);
 
         return Try.of(() -> httpClientCaller.call(
                         this::getClient,
@@ -273,7 +279,7 @@ public class SalesforceClientLive implements SalesforceClient {
                 .recover(InvalidResponse.class, ex -> {
                     if (ex.getCode() == 429) {
                         Try.run(() -> Thread.sleep(API_CALL_DELAY_SECONDS_DEFAULT * 1000));
-                        return getEmailsApiLocked(token, accountId, startDate, endDate, retryCount + 1);
+                        return getEmailsApiLocked(token, accountId, startDate, endDate, limit, retryCount + 1);
                     }
 
                     throw new ExternalFailure("Could not call salesforce query", ex);
