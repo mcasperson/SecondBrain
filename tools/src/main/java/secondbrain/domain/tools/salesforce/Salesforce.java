@@ -205,8 +205,9 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
         final String endDate = StringUtils.isNotBlank(parsedArgs.getEndPeriod()) ? parsedArgs.getEndPeriod() : parsedArgs.getEndDate();
 
         // Get emails related to the account and any opportunities associated with the account
-        final List<String> relatedToIds = new ArrayList<>(getOpportunities(parsedArgs));
-        relatedToIds.add(parsedArgs.getAccountId());
+        final List<String> relatedToIds = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
+                .map(token -> salesforceClient.getAccountAndOpportunityIds(token.accessToken(), parsedArgs.getAccountId()))
+                .get();
 
         final Try<List<RagDocumentContext<SalesforceEmailRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
                 .map(token -> relatedToIds
@@ -306,19 +307,6 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
                 .map(Optional::get)
                 .map(opp -> getMeta(opp, parsedArgs.getOpportunity1Name(), parsedArgs.getOpportunity1()))
                 .get();
-    }
-
-    private List<String> getOpportunities(final SalesforceConfig.LocalArguments parsedArgs) {
-        final List<Map<String, Object>> opps = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
-                .map(token -> salesforceClient.getOpportunityByAccountId(token.accessToken(), parsedArgs.getAccountId()))
-                .map(SalesforceOpportunityQuery::records)
-                .get();
-
-        return opps.stream()
-                .map(map -> map.getOrDefault("Id", ""))
-                .map(Object::toString)
-                .filter(StringUtils::isNotBlank)
-                .toList();
     }
 
     @Nullable

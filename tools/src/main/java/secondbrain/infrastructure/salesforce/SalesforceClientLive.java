@@ -112,20 +112,25 @@ public class SalesforceClientLive implements SalesforceClient {
         final String startDate = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault())
                 .minus(1, duration), duration).format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-        final List<Map<String, Object>> opps = Try.of(() -> getOpportunityByAccountId(token, accountId))
-                .map(SalesforceOpportunityQuery::records)
-                .get();
-
-        final List<String> relatedToIds = Stream.concat(Stream.of(accountId), opps.stream()
-                .map(map -> map.getOrDefault("Id", ""))
-                .map(Object::toString)
-                .filter(org.apache.commons.lang3.StringUtils::isNotBlank))
-                .toList();
+        final List<String> relatedToIds = getAccountAndOpportunityIds(token, accountId);
 
         final List<SalesforceEmailRecord> tasks = relatedToIds.stream()
                 .flatMap(r -> Arrays.stream(getEmails(token, r, startDate, endDate, 1)))
                 .toList();
         return !tasks.isEmpty();
+    }
+
+    @Override
+    public List<String> getAccountAndOpportunityIds(final String token, final String accountId) {
+        final List<Map<String, Object>> opps = Try.of(() -> getOpportunityByAccountId(token, accountId))
+                .map(SalesforceOpportunityQuery::records)
+                .get();
+
+        return Stream.concat(Stream.of(accountId), opps.stream()
+                        .map(map -> map.getOrDefault("Id", ""))
+                        .map(Object::toString)
+                        .filter(org.apache.commons.lang3.StringUtils::isNotBlank))
+                .toList();
     }
 
     @Override

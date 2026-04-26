@@ -6,6 +6,7 @@ import secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 public interface SalesforceClient {
     boolean anyItemsInDuration(String token, String accountId, ChronoUnit duration, ChronoUnit cached);
@@ -18,5 +19,5 @@ public interface SalesforceClient {
 
     SalesforceOpportunityQuery getOpportunityByAccountId(String token, String accountId);
 
-
+    List<String> getAccountAndOpportunityIds(String token, String accountId);
 }
