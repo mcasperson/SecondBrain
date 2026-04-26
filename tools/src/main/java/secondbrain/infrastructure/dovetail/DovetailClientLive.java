@@ -34,6 +34,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 @ApplicationScoped
 public class DovetailClientLive implements DovetailClient {
 
+    private static final int LIST_TTL = 60 * 60 * 24;
     private static final int TTL = 60 * 60 * 24 * 90;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
@@ -81,7 +82,7 @@ public class DovetailClientLive implements DovetailClient {
                         DovetailClientLive.class.getSimpleName(),
                         "DovetailAPIDataItemsV1",
                         DigestUtils.sha256Hex(fromDateTime + toDateTimeFinal),
-                        TTL,
+                        LIST_TTL,
                         DovetailDataItem.class,
                         DovetailDataItem[].class,
                         () -> getDataItemsApiLocked(apiKey, fromDateTime, toDateTimeFinal, null, 0))
@@ -103,6 +104,7 @@ public class DovetailClientLive implements DovetailClient {
                                 DovetailClientLive.class.getSimpleName(),
                                 "DovetailAPIMarkdownExportV1",
                                 id,
+                                TTL,
                                 DovetailDataExportResponse.class,
                                 () -> exportMarkdownApi(apiKey, id))
                         .result())
