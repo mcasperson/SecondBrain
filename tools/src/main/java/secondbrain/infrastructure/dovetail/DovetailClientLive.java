@@ -19,6 +19,7 @@ import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.persist.TimedOperation;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.dovetail.api.DovetailDataExportResponse;
 import secondbrain.infrastructure.dovetail.api.DovetailDataItem;
 import secondbrain.infrastructure.dovetail.api.DovetailDataList;
@@ -69,12 +70,8 @@ public class DovetailClientLive implements DovetailClient {
     @Preferred
     private Mutex mutex;
 
-    private Client getClient() {
-        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-        clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
-        clientBuilder.readTimeout(API_CALL_TIMEOUT_SECONDS_DEFAULT + CLIENT_TIMEOUT_BUFFER_SECONDS, TimeUnit.SECONDS);
-        return clientBuilder.build();
-    }
+    @Inject
+    private ClientConstructor clientConstructor;
 
     @Override
     public List<DovetailDataItem> getDataItems(
@@ -187,7 +184,7 @@ public class DovetailClientLive implements DovetailClient {
         final String target = url + "/api/v1/data";
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> {
                     jakarta.ws.rs.client.WebTarget filteredTarget = client.target(target);
                     if (StringUtils.isNotBlank(fromDateTime)) {
@@ -240,7 +237,7 @@ public class DovetailClientLive implements DovetailClient {
         final String target = url + "/api/v1/data/" + id + "/export/markdown";
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(target)
                         .request(MediaType.APPLICATION_JSON_TYPE)
                         .header("Authorization", "Bearer " + apiKey)
