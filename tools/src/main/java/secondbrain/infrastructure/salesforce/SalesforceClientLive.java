@@ -35,11 +35,10 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.NoSuchElementException;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -112,8 +111,20 @@ public class SalesforceClientLive implements SalesforceClient {
         final String startDate = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault())
                 .minus(1, duration), duration).format(DateTimeFormatter.ISO_LOCAL_DATE);
 
-        final SalesforceEmailRecord[] tasks = getEmails(token, accountId, startDate, endDate);
-        return tasks != null && tasks.length > 0;
+        final List<Map<String, Object>> opps = Try.of(() -> getOpportunityByAccountId(token, accountId))
+                .map(SalesforceOpportunityQuery::records)
+                .get();
+
+        final List<String> relatedToIds = Stream.concat(Stream.of(accountId), opps.stream()
+                .map(map -> map.getOrDefault("Id", ""))
+                .map(Object::toString)
+                .filter(org.apache.commons.lang3.StringUtils::isNotBlank))
+                .toList();
+
+        final List<SalesforceEmailRecord> tasks = relatedToIds.stream()
+                .flatMap(r -> Arrays.stream(getEmails(token, r, startDate, endDate)))
+                .toList();
+        return !tasks.isEmpty();
     }
 
     @Override
