@@ -8,9 +8,9 @@ import java.util.concurrent.TimeUnit;
 @ApplicationScoped
 public class ClientConstructorDefault implements ClientConstructor {
 
-    private static final int API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 30; // Placeholder value
-    private static final int API_CALL_TIMEOUT_SECONDS_DEFAULT = 60; // Placeholder value
-    private static final int CLIENT_TIMEOUT_BUFFER_SECONDS = 5; // Placeholder value
+    private static final int API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 30;
+    private static final int API_CALL_TIMEOUT_SECONDS_DEFAULT = 60;
+    private static final int CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
 
     @Override
     public Client getClient() {
