@@ -4,8 +4,6 @@ import com.google.common.util.concurrent.RateLimiter;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
@@ -29,7 +27,6 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
@@ -39,9 +36,6 @@ public class DovetailClientLive implements DovetailClient {
 
     private static final int TTL = 60 * 60 * 24 * 90;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
-    private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
-    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
-    private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final int MAX_PAGES = 100;
 

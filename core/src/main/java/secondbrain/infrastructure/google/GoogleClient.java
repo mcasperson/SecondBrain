@@ -4,8 +4,6 @@ import com.google.common.util.concurrent.RateLimiter;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -13,6 +11,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.constants.Constants;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
@@ -25,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -39,10 +37,8 @@ public class GoogleClient implements LlmClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
     private static final String DEFAULT_MODEL = "gemini-2.0-flash";
     private static final int DEFAULT_CACHE_TTL_DAYS = 90;
-    private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
-    private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final int API_RETRIES = 3;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
 
@@ -84,13 +80,8 @@ public class GoogleClient implements LlmClient {
     @Inject
     private TimeoutHttpClientCaller httpClientCaller;
 
-    private Client getClient() {
-        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-        clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
-        // We want to use the timeoutService to handle timeouts, so we set the client timeout slightly longer.
-        clientBuilder.readTimeout(API_CALL_TIMEOUT_SECONDS_DEFAULT + CLIENT_TIMEOUT_BUFFER_SECONDS, TimeUnit.SECONDS);
-        return clientBuilder.build();
-    }
+    @Inject
+    private ClientConstructor clientConstructor;
 
     @Override
     public String call(final String prompt, final Map<String, String> environmentSettings) {
@@ -173,7 +164,7 @@ public class GoogleClient implements LlmClient {
         RATE_LIMITER.acquire();
 
         final String result = httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(resolvedUrl + resolvedModel + ":generateContent")
                         .request()
                         .header("Content-Type", "application/json")

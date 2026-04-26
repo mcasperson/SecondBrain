@@ -4,11 +4,10 @@ import com.google.common.util.concurrent.RateLimiter;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.exceptions.Timeout;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
@@ -23,17 +22,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 @ApplicationScoped
 public class GitHubIssuesClientLive implements GitHubIssuesClient {
     private static final int TTL_SECONDS = 60 * 60 * 24 * 90;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
-    private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
-    private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final int API_RETRIES = 3;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
 
@@ -50,14 +46,8 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
     @Inject
     private TimeoutHttpClientCaller httpClientCaller;
 
-    private Client getClient() {
-        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-        clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
-        // We want to use the timeoutService to handle timeouts, so we set the client timeout slightly longer.
-        clientBuilder.readTimeout(API_CALL_TIMEOUT_SECONDS_DEFAULT + CLIENT_TIMEOUT_BUFFER_SECONDS, TimeUnit.SECONDS);
-        return clientBuilder.build();
-    }
-
+    @Inject
+    private ClientConstructor clientConstructor;
 
     @Override
     public List<GitHubIssue> getIssues(final String token, final String organisation, final String repo, @Nullable final String since, @Nullable final String to, final List<String> labels, final String state) {
@@ -91,7 +81,7 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
         logger.fine("Fetching GitHub issues from: " + target);
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(target)
                         .request("application/vnd.github+json")
                         .header("Authorization", "Bearer " + token)

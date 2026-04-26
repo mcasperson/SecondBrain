@@ -1,12 +1,9 @@
 package secondbrain.infrastructure.salesforce;
 
 import com.google.common.util.concurrent.RateLimiter;
-import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.MultivaluedHashMap;
@@ -24,6 +21,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.salesforce.api.SalesforceEmailQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceEmailRecord;
 import secondbrain.infrastructure.salesforce.api.SalesforceOauthTokenResponse;
@@ -36,7 +34,6 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -47,10 +44,8 @@ public class SalesforceClientLive implements SalesforceClient {
     private static final int DEFAULT_LIMIT = 100;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(4);
     private static final int DEFAULT_CACHE_TTL_DAYS = 3;
-    private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
-    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
+    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2;
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
-    private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final int API_RETRIES = 3;
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
@@ -85,16 +80,10 @@ public class SalesforceClientLive implements SalesforceClient {
     private Mutex mutex;
 
     @Inject
-    @Identifier("everything")
     private DateParser dateParser;
 
-    private Client getClient() {
-        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-        clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
-        // We want to use the timeoutService to handle timeouts, so we set the client timeout slightly longer.
-        clientBuilder.readTimeout(API_CALL_TIMEOUT_SECONDS_DEFAULT + CLIENT_TIMEOUT_BUFFER_SECONDS, TimeUnit.SECONDS);
-        return clientBuilder.build();
-    }
+    @Inject
+    private ClientConstructor clientConstructor;
 
     private String getUrl() {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
@@ -161,7 +150,7 @@ public class SalesforceClientLive implements SalesforceClient {
         body.add("grant_type", "client_credentials");
 
         return Try.of(() -> httpClientCaller.call(
-                        this::getClient,
+                        clientConstructor::getClient,
                         client -> client.target(url)
                                 .request(MediaType.APPLICATION_JSON_TYPE)
                                 .post(Entity.entity(body, MediaType.APPLICATION_FORM_URLENCODED)),
@@ -262,7 +251,7 @@ public class SalesforceClientLive implements SalesforceClient {
         soql.append(" ORDER BY MessageDate DESC Limit ").append(limit);
 
         return Try.of(() -> httpClientCaller.call(
-                        this::getClient,
+                        clientConstructor::getClient,
                         client -> client.target(url)
                                 .queryParam("q", soql)
                                 .request()
@@ -330,7 +319,7 @@ public class SalesforceClientLive implements SalesforceClient {
         final String opportunitySoql = "SELECT FIELDS(ALL) FROM Opportunity WHERE AccountId='" + accountId + "' ORDER BY CloseDate DESC Limit 200";
 
         return Try.of(() -> httpClientCaller.call(
-                        this::getClient,
+                        clientConstructor::getClient,
                         client -> client.target(url)
                                 .queryParam("q", opportunitySoql)
                                 .request()
@@ -388,7 +377,7 @@ public class SalesforceClientLive implements SalesforceClient {
         soql.append(" ORDER BY ActivityDate DESC Limit 100");
 
         return Try.of(() -> httpClientCaller.call(
-                        this::getClient,
+                        clientConstructor::getClient,
                         client -> client.target(url)
                                 .queryParam("q", soql)
                                 .request()

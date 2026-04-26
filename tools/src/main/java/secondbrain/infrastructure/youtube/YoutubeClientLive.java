@@ -9,11 +9,11 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.domain.httpclient.HttpClientCaller;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
@@ -28,7 +28,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,9 +35,6 @@ import java.util.logging.Logger;
 public class YoutubeClientLive implements YoutubeClient {
     // Youtube rate limits heavily, so we limit to 1 request every 30 seconds
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(0.03);
-    private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
-    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
-    private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
     @Inject
@@ -62,13 +58,8 @@ public class YoutubeClientLive implements YoutubeClient {
     @Preferred
     private Mutex mutex;
 
-    private Client getClient() {
-        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-        clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
-        // We want to use the timeoutService to handle timeouts, so we set the client timeout slightly longer.
-        clientBuilder.readTimeout(API_CALL_TIMEOUT_SECONDS_DEFAULT + CLIENT_TIMEOUT_BUFFER_SECONDS, TimeUnit.SECONDS);
-        return clientBuilder.build();
-    }
+    @Inject
+    private ClientConstructor clientConstructor;
 
     @Override
     public List<YoutubePlaylistsItem> getPlaylistItems(final String playlistId, final String pageToken, final String key) {
@@ -111,7 +102,7 @@ public class YoutubeClientLive implements YoutubeClient {
                 + (StringUtils.isNotBlank(pageToken) ? "&pageToken=" + pageToken : "");
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(target)
                         .request()
                         .header("Accept", MediaType.APPLICATION_JSON)
@@ -186,7 +177,7 @@ public class YoutubeClientLive implements YoutubeClient {
                 + (StringUtils.isNotBlank(pageToken) ? "&pageToken=" + pageToken : "");
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(target)
                         .request()
                         .header("Accept", MediaType.APPLICATION_JSON)
