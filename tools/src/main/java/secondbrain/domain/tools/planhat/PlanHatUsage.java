@@ -5,11 +5,9 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.ClientBuilder;
-import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import secondbrain.domain.annotations.PropertyLabel;
 import secondbrain.domain.annotations.PropertyLabelDescriptionValue;
 import secondbrain.domain.annotations.PropertyValueReader;
 import secondbrain.domain.args.ArgsAccessor;
@@ -146,13 +144,8 @@ public class PlanHatUsage implements Tool<Company> {
 
         final Company company = firstCompany.get();
 
-        final List<RagDocumentContext<Company>> usageContext = Stream.of(
-                        Pair.of(parsedArgs.getUsageName1(), parsedArgs.getUsageId1()),
-                        Pair.of(parsedArgs.getUsageName2(), parsedArgs.getUsageId2()),
-                        Pair.of(parsedArgs.getUsageName3(), parsedArgs.getUsageId3()),
-                        Pair.of(parsedArgs.getUsageName4(), parsedArgs.getUsageId4()),
-                        Pair.of(parsedArgs.getUsageName5(), parsedArgs.getUsageId5()))
-                .filter(pair -> StringUtils.isNotBlank(pair.getLeft()) && StringUtils.isNotBlank(pair.getRight()))
+        final List<RagDocumentContext<Company>> usageContext = parsedArgs.getUsagePairs()
+                 .filter(pair -> StringUtils.isNotBlank(pair.getLeft()) && StringUtils.isNotBlank(pair.getRight()))
                 .map(pair -> new RagDocumentContext<>(
                         getName(),
                         getContextLabel() + " " + company.name() + " " + pair.getLeft(),
@@ -170,13 +163,7 @@ public class PlanHatUsage implements Tool<Company> {
                         List.of()))
                 .toList();
 
-        final List<RagDocumentContext<Company>> customContext = Stream.of(
-                        parsedArgs.getCustom1(),
-                        parsedArgs.getCustom2(),
-                        parsedArgs.getCustom3(),
-                        parsedArgs.getCustom4(),
-                        parsedArgs.getCustom5()
-                )
+        final List<RagDocumentContext<Company>> customContext = parsedArgs.getCustoms().stream()
                 .filter(StringUtils::isNotBlank)
                 .map(custom -> new RagDocumentContext<>(
                         getName(),
@@ -264,7 +251,6 @@ public class PlanHatUsage implements Tool<Company> {
                 .flatMap(List::stream)
                 .toList();
     }
-
     @Override
     public RagMultiDocumentContext<Company> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final List<RagDocumentContext<Company>> contextList = getContext(environmentSettings, prompt, arguments);
@@ -635,6 +621,16 @@ class PlanHatUsageConfig {
                     "").getSafeValue();
         }
 
+        public List<String> getCustoms() {
+            return List.of(
+                    getCustom1(),
+                    getCustom2(),
+                    getCustom3(),
+                    getCustom4(),
+                    getCustom5()
+             );
+        }
+
         public String getUsageId1() {
             return getArgsAccessor().getArgument(
                     getConfigUsageId1()::get,
@@ -793,5 +789,14 @@ class PlanHatUsageConfig {
                     getCustomPerson4(),
                     getCustomPerson5());
         }
+
+         public Stream<Pair<String, String>> getUsagePairs() {
+             return Stream.of(
+                     Pair.of(getUsageName1(), getUsageId1()),
+                     Pair.of(getUsageName2(), getUsageId2()),
+                     Pair.of(getUsageName3(), getUsageId3()),
+                     Pair.of(getUsageName4(), getUsageId4()),
+                     Pair.of(getUsageName5(), getUsageId5()));
+         }
     }
 }
