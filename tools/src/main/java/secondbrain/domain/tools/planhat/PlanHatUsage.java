@@ -211,8 +211,9 @@ public class PlanHatUsage implements Tool<Company> {
                                      .of(client -> planHatClient.getUser(
                                              client,
                                              company.getCustomStringKey(customFieldKey),
-                                             tokens.get(0).getLeft(),
-                                             tokens.get(0).getRight(),
+                                             // TODO: work out a way to identify planhat instances with custom fields. This logic assumes one planhat instance.
+                                             tokens.getFirst().getLeft(),
+                                             tokens.getFirst().getRight(),
                                              parsedArgs.getSearchTTL()))
                                      .map(PlanHatUser::getFullName)
                                      .getOrElse("");
