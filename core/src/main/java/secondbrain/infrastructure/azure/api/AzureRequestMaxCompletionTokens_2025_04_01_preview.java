@@ -30,6 +30,7 @@ public record AzureRequestMaxCompletionTokens_2025_04_01_preview(
     public String generatePromptText() {
         return getMessages().stream()
                 .map(AzureRequestMessage::content)
+                .filter(Objects::nonNull)
                 .map(String::trim)
                 .collect(Collectors.joining("\n\n"));
     }
