@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 public class ClientConstructorDefault implements ClientConstructor {
 
     private static final int API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 30;
-    private static final int API_CALL_TIMEOUT_SECONDS_DEFAULT = 10;
+    private static final int API_CALL_TIMEOUT_SECONDS_DEFAULT = 120;
 
     @Override
     public Client getClient() {
