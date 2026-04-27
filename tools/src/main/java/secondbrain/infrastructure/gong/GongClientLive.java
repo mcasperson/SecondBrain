@@ -23,6 +23,7 @@ import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.persist.TimedOperation;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.gong.api.*;
 
 import java.time.OffsetDateTime;
@@ -68,16 +69,9 @@ public class GongClientLive implements GongClient {
     @Inject
     @Preferred
     private Mutex mutex;
-    @Inject
-    private JsonDeserializerJackson jsonDeserializerJackson;
 
-    private Client getClient() {
-        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-        clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
-        // We want to use the timeoutService to handle timeouts, so we set the client timeout slightly longer.
-        clientBuilder.readTimeout(API_CALL_TIMEOUT_SECONDS_DEFAULT + CLIENT_TIMEOUT_BUFFER_SECONDS, TimeUnit.SECONDS);
-        return clientBuilder.build();
-    }
+    @Inject
+    private ClientConstructor clientConstructor;
 
     @Override
     public List<GongCallExtensive> getCallsExtensive(
@@ -281,7 +275,7 @@ public class GongClientLive implements GongClient {
         final String target = url + "/v2/calls/extensive";
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(target)
                         .request(MediaType.APPLICATION_JSON_TYPE)
                         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))
@@ -321,7 +315,7 @@ public class GongClientLive implements GongClient {
         );
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(target)
                         .request()
                         .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes()))

@@ -17,6 +17,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.zendesk.api.*;
 
 import java.time.OffsetDateTime;
@@ -74,13 +75,8 @@ public class ZenDeskClientLive implements ZenDeskClient {
     @Inject
     private Logger logger;
 
-    private Client getClient() {
-        final ClientBuilder clientBuilder = ClientBuilder.newBuilder();
-        clientBuilder.connectTimeout(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, TimeUnit.SECONDS);
-        // We want to use the timeoutService to handle timeouts, so we set the client timeout slightly longer.
-        clientBuilder.readTimeout(API_CALL_TIMEOUT_SECONDS_DEFAULT + CLIENT_TIMEOUT_BUFFER_SECONDS, TimeUnit.SECONDS);
-        return clientBuilder.build();
-    }
+    @Inject
+    private ClientConstructor clientConstructor;
 
     /**
      * Checks if any tickets exist within the last complete duration period.
@@ -203,7 +199,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         final String target = url + "/api/v2/search.json";
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(target)
                         .queryParam("query", query)
                         .queryParam("sort_by", "created_at")
@@ -261,7 +257,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         final String target = url + "/api/v2/tickets/" + id + ".json";
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
@@ -329,7 +325,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         final String target = url + "/api/v2/tickets/" + ticketId + "/comments";
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
@@ -378,7 +374,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         final String target = url + "/api/v2/organizations/" + orgId;
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
@@ -460,7 +456,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
         final String target = url + "/api/v2/users/" + userId;
 
         return httpClientCaller.call(
-                this::getClient,
+                clientConstructor::getClient,
                 client -> client.target(target)
                         .request()
                         .header("Authorization", authorization)
