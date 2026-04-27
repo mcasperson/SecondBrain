@@ -33,10 +33,8 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 public class ZenDeskClientLive implements ZenDeskClient {
 
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
-    private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
-    private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final int API_RETRIES = 3;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
 

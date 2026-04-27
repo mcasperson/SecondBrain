@@ -23,4 +23,9 @@ public class ClientConstructorDefault implements ClientConstructor {
         clientBuilder.readTimeout(readTimeout, TimeUnit.SECONDS);
         return clientBuilder.build();
     }
+
+    @Override
+    public Client getClient(final int readTimeout) {
+        return getClient(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, readTimeout);
+    }
 }
