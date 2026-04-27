@@ -66,7 +66,7 @@ public class AzureClient implements LlmClient {
      */
     private static final String DEFAULT_MODEL = "Phi-4";
     private static final int DEFAULT_CACHE_TTL_DAYS = 90;
-    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
+    private static final int API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
     private static final long TIMEOUT_API_CALL_DELAY_SECONDS_DEFAULT = 30;
     private static final float TIME_IF_TOO_LONG_FRACTION = 0.6f;
     private static final int TIMEOUT_API_RETRIES = 3;
@@ -74,6 +74,7 @@ public class AzureClient implements LlmClient {
     private static final long RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT = 90;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+    private static final int API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 30;
 
     // Default rate is around 250 requests per minute.
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(4);
@@ -336,7 +337,7 @@ public class AzureClient implements LlmClient {
         RATE_LIMITER.acquire();
 
         return Try.of(() -> httpClientCaller.call(
-                        clientConstructor::getClient,
+                        () -> clientConstructor.getClient(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, API_CALL_TIMEOUT_SECONDS_DEFAULT),
                         client -> client.target(resolvedUrl)
                                 .request()
                                 .header("Content-Type", "application/json")
