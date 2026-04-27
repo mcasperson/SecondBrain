@@ -3,13 +3,27 @@ package secondbrain.infrastructure.planhat.api;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.annotations.PropertyLabel;
 
 import java.util.Map;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record Company(@JsonProperty("_id") String id,
                       String name,
-                      @Nullable String renewalDate,
+                      @PropertyLabel(description = "Renewal Date") @Nullable String renewalDate,
+                      @PropertyLabel(description = "Health Score") @JsonProperty("h") @Nullable Integer health,
                       Map<String, Integer> usage,
                       Map<String, Object> custom) {
+
+    public Object getCustomKey(final String key) {
+        return custom != null ? custom.get(key) : null;
+    }
+
+    public String getCustomStringKey(final String key) {
+        return custom != null ? custom.get(key).toString() : "";
+    }
+
+    public Company updateCustom(final Map<String, Object> custom) {
+        return new Company(this.id, this.name, this.renewalDate, this.health, this.usage, custom);
+    }
 }

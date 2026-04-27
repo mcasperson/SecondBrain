@@ -9,6 +9,9 @@ import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import secondbrain.domain.annotations.PropertyLabel;
+import secondbrain.domain.annotations.PropertyLabelDescriptionValue;
+import secondbrain.domain.annotations.PropertyValueReader;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.context.RagDocumentContext;
@@ -18,13 +21,16 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.validate.ValidateString;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.api.Company;
+import secondbrain.infrastructure.planhat.api.PlanHatUser;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @ApplicationScoped
@@ -75,6 +81,12 @@ public class PlanHatUsage implements Tool<Company> {
 
     @Inject
     private ExceptionMapping exceptionMapping;
+
+    @Inject
+    private ClientConstructor clientConstructor;
+
+    @Inject
+    private PropertyValueReader propertyValueReader;
 
     @Override
     public String getName() {
@@ -184,51 +196,72 @@ public class PlanHatUsage implements Tool<Company> {
                 .toList();
 
         // Look up each custom person field by resolving the custom field key to a user ID, then fetching the user
-        final List<RagDocumentContext<Company>> customPersonContext = tokens.isEmpty()
-                ? List.of()
-                : Stream.of(
-                                parsedArgs.getCustomPerson1(),
-                                parsedArgs.getCustomPerson2(),
-                                parsedArgs.getCustomPerson3(),
-                                parsedArgs.getCustomPerson4(),
-                                parsedArgs.getCustomPerson5())
-                        .filter(StringUtils::isNotBlank)
-                        .flatMap(customFieldKey -> {
-                            // Step 1: resolve the custom field key to a user ID from the company's custom fields
-                            final Object rawUserId = company.custom() != null ? company.custom().get(customFieldKey) : null;
-                            if (rawUserId == null || StringUtils.isBlank(rawUserId.toString())) {
-                                return Stream.of();
-                            }
-                            final String userId = rawUserId.toString();
-                            // Step 2: fetch the user by the resolved ID
-                            return Try.withResources(ClientBuilder::newClient)
-                                    .of(client -> planHatClient.getUser(
-                                            client,
-                                            userId,
-                                            tokens.get(0).getLeft(),
-                                            tokens.get(0).getRight(),
-                                            parsedArgs.getSearchTTL()))
-                                    .map(user -> new RagDocumentContext<Company>(
-                                            getName(),
-                                            getContextLabel() + " " + company.name() + " " + customFieldKey,
-                                            user.getFullName(),
-                                            List.of(),
-                                            company.id() + ":" + customFieldKey,
-                                            company,
-                                            new MetaObjectResults(new MetaObjectResult(
-                                                    customFieldKey,
-                                                    user.getFullName(),
-                                                    company.id(),
-                                                    getName())),
-                                            null,
-                                            null,
-                                            List.of()))
-                                    .map(Stream::of)
-                                    .getOrElse(Stream.of());
-                        })
-                        .toList();
+        final Map<String, String> people = tokens.isEmpty()
+                ? Map.of()
+                : parsedArgs.getCustomPersons()
+                  .filter(StringUtils::isNotBlank)
+                  .collect(Collectors.toMap(
+                          customFieldKey -> customFieldKey,
+                          customFieldKey -> {
+                              if (StringUtils.isBlank(company.getCustomStringKey(customFieldKey))) {
+                                  return "";
+                              }
+                              // Step 2: fetch the user by the resolved ID
+                              return Try.withResources(clientConstructor::getClient)
+                                     .of(client -> planHatClient.getUser(
+                                             client,
+                                             company.getCustomStringKey(customFieldKey),
+                                             tokens.get(0).getLeft(),
+                                             tokens.get(0).getRight(),
+                                             parsedArgs.getSearchTTL()))
+                                     .map(PlanHatUser::getFullName)
+                                     .getOrElse("");
+                          }));
 
-        return ListUtils.union(ListUtils.union(usageContext, customContext), customPersonContext);
+        final List<RagDocumentContext<Company>> customPersonContext = people.entrySet().stream()
+                .filter(entry -> StringUtils.isNotBlank(entry.getValue()))
+                .map(entry -> new RagDocumentContext<Company>(
+                        getName(),
+                        getContextLabel() + " " + company.name() + " " + entry.getKey(),
+                        entry.getValue(),
+                        List.of(),
+                        company.id() + ":" + entry.getKey(),
+                        company,
+                        new MetaObjectResults(new MetaObjectResult(
+                                entry.getKey(),
+                                entry.getValue(),
+                                company.id(),
+                                getName())),
+                        null,
+                        null,
+                        List.of()))
+                .toList();
+
+        final List<PropertyLabelDescriptionValue> propertyLabelDescriptionValues = propertyValueReader.getValues(company);
+
+        // Iterate over every property in the company object and add a RagDocumentContext for each
+        final List<RagDocumentContext<Company>> companyPropertyContext = propertyLabelDescriptionValues
+                .stream()
+                .map(p -> new RagDocumentContext<Company>(
+                                getName(),
+                                getContextLabel() + " " + company.name() + " " + p.description(),
+                                p.value().toString(),
+                                List.of(),
+                                company.id() + ":" + p.description(),
+                                company,
+                                new MetaObjectResults(new MetaObjectResult(
+                                        p.description(),
+                                        p.value().toString(),
+                                        company.id(),
+                                        getName())),
+                                null,
+                                null,
+                                List.of()))
+                .toList();
+
+        return Stream.of(usageContext, customContext, customPersonContext)
+                .flatMap(List::stream)
+                .toList();
     }
 
     @Override
@@ -749,6 +782,15 @@ class PlanHatUsageConfig {
                     PlanHatUsage.PLANHAT_CUSTOM_PERSON_5_ARG,
                     PlanHatUsage.PLANHAT_CUSTOM_PERSON_5_ARG,
                     "").getSafeValue();
+        }
+
+        public Stream<String> getCustomPersons() {
+            return Stream.of(
+                    getCustomPerson1(),
+                    getCustomPerson2(),
+                    getCustomPerson3(),
+                    getCustomPerson4(),
+                    getCustomPerson5());
         }
     }
 }
