@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.annotations.PropertyLabel;
 
 import java.util.Map;
+import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record Company(@JsonProperty("_id") String id,
@@ -15,12 +16,18 @@ public record Company(@JsonProperty("_id") String id,
                       Map<String, Integer> usage,
                       Map<String, Object> custom) {
 
-    public Object getCustomKey(final String key) {
+    @Nullable public Object getCustomKey(final String key) {
         return custom != null ? custom.get(key) : null;
     }
 
     public String getCustomStringKey(final String key) {
-        return custom != null ? custom.get(key).toString() : "";
+        final Object value = getCustomKey(key);
+
+        if (value == null) {
+            return "";
+        }
+
+        return value.toString();
     }
 
     public Company updateCustom(final Map<String, Object> custom) {
