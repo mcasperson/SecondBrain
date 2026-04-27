@@ -247,7 +247,7 @@ public class PlanHatUsage implements Tool<Company> {
                                 List.of()))
                 .toList();
 
-        return Stream.of(usageContext, customContext, customPersonContext)
+        return Stream.of(usageContext, customContext, customPersonContext, companyPropertyContext)
                 .flatMap(List::stream)
                 .toList();
     }
