@@ -2,7 +2,9 @@ package secondbrain.domain.response;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.core.Request;
 import jakarta.ws.rs.core.Response;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
 import secondbrain.domain.exceptions.UnauthorizedResponse;
@@ -12,6 +14,11 @@ import org.apache.commons.lang3.StringUtils;
 public class OkResponseValidation implements ResponseValidation {
     @Override
     public Response validate(final Response response, final String uri) {
+        return validate(response, uri, null);
+    }
+
+    @Override
+    public Response validate(final Response response, final String uri, @Nullable final String requestBody) {
         if (response.getStatus() == 404) {
             throw new MissingResponse("Expected status code 200, but got 404. This likely indicates the requested resource was not found.");
         }
@@ -26,7 +33,10 @@ public class OkResponseValidation implements ResponseValidation {
             throw new InvalidResponse("Expected status code 200, but got "
                     + response.getStatus()
                     + " from URI " + uri + "\n"
-                    + fixedResponseBody,
+                    + "with response body\n"
+                    + fixedResponseBody + "\n"
+                    +"with request body\n"
+                    + requestBody,
                     fixedResponseBody,
                     response.getStatus());
         }

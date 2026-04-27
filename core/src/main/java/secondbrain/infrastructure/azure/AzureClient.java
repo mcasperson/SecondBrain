@@ -343,7 +343,7 @@ public class AzureClient implements LlmClient {
                                 .header("Accept", "application/json")
                                 .header("Authorization", "Bearer " + apiKey.get())
                                 .post(Entity.entity(request, MediaType.APPLICATION_JSON)),
-                        response -> Try.of(() -> responseValidation.validate(response, resolvedUrl))
+                        response -> Try.of(() -> responseValidation.validate(response, resolvedUrl, jsonDeserializerJackson.serialize(request)))
                                 .map(r -> r.readEntity(String.class))
                                 .peek(r -> logger.fine(r))
                                 .map(r -> jsonDeserializerJackson.deserialize(r, AzureResponse.class))
