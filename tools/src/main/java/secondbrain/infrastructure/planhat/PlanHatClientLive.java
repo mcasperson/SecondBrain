@@ -156,7 +156,7 @@ public class PlanHatClientLive implements PlanHatClient {
             final int ttlSeconds) {
         return Try.of(() -> localStorage.getOrPutObject(
                                 PlanHatClientLive.class.getSimpleName(),
-                                "PlanHatAPICompany",
+                                "PlanHatAPICompanyV2",
                                 DigestUtils.sha256Hex(company + url),
                                 ttlSeconds,
                                 Company.class,
