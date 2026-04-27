@@ -37,7 +37,8 @@ public class GoogleClient implements LlmClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
     private static final String DEFAULT_MODEL = "gemini-2.0-flash";
     private static final int DEFAULT_CACHE_TTL_DAYS = 90;
-    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
+    private static final int API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
+    private static final int API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 30;
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
     private static final int API_RETRIES = 3;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
@@ -164,7 +165,7 @@ public class GoogleClient implements LlmClient {
         RATE_LIMITER.acquire();
 
         final String result = httpClientCaller.call(
-                clientConstructor::getClient,
+                () -> clientConstructor.getClient(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, API_CALL_TIMEOUT_SECONDS_DEFAULT),
                 client -> client.target(resolvedUrl + resolvedModel + ":generateContent")
                         .request()
                         .header("Content-Type", "application/json")
