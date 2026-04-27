@@ -25,7 +25,8 @@ public class OkResponseValidation implements ResponseValidation {
             final String fixedResponseBody = StringUtils.isNotBlank(responseBody) ? responseBody : "No response body available";
             throw new InvalidResponse("Expected status code 200, but got "
                     + response.getStatus()
-                    + " from URI " + uri + ". " + fixedResponseBody,
+                    + " from URI " + uri + "\n"
+                    + fixedResponseBody,
                     fixedResponseBody,
                     response.getStatus());
         }
