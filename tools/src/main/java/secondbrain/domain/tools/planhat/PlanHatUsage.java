@@ -123,7 +123,7 @@ public class PlanHatUsage implements Tool<Company> {
                 .toList();
 
         // Find the first Planhat instance to return company details
-        final Optional<Company> firstCompany = Try.withResources(ClientBuilder::newClient)
+        final Optional<Company> firstCompany = Try.withResources(clientConstructor::getClient)
                 .of(client -> tokens
                         .stream()
                         .map(pair -> Try.of(() -> planHatClient.getCompany(

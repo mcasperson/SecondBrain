@@ -10,6 +10,7 @@ import secondbrain.domain.concurrency.SemaphoreLender;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.web.ClientConstructor;
 
 @ApplicationScoped
 public class UrlReadingStrategy implements FileReadingStrategy {
@@ -19,6 +20,9 @@ public class UrlReadingStrategy implements FileReadingStrategy {
 
     @Inject
     private ResponseValidation responseValidation;
+
+    @Inject
+    private ClientConstructor clientConstructor;
 
     private String downloadDocument(final Client client, final String url) {
         return SEMAPHORE_LENDER.lendAutoClose()
@@ -44,7 +48,7 @@ public class UrlReadingStrategy implements FileReadingStrategy {
 
     @Override
     public String read(final String pathOrUrl) {
-        return Try.withResources(ClientBuilder::newClient)
+        return Try.withResources(clientConstructor::getClient)
                 .of(client -> downloadDocument(client, pathOrUrl))
                 .get();
     }

@@ -42,6 +42,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateString;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.api.Conversation;
@@ -101,9 +102,6 @@ public class PlanHat implements Tool<Conversation> {
     private HtmlToText htmlToText;
 
     @Inject
-    private ValidateString validateString;
-
-    @Inject
     private Logger logger;
 
     @Inject
@@ -115,6 +113,9 @@ public class PlanHat implements Tool<Conversation> {
     @Inject
     @Preferred
     private LocalStorage localStorage;
+
+    @Inject
+    private ClientConstructor clientConstructor;
 
     @Override
     public String getName() {
@@ -185,7 +186,7 @@ public class PlanHat implements Tool<Conversation> {
 
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration()) {
-            final boolean hasItems = Try.withResources(ClientBuilder::newClient)
+            final boolean hasItems = Try.withResources(clientConstructor::getClient)
                     .of(client -> planHatClient.anyItemsInDuration(client, parsedArgs.getCompany(), parsedArgs.getUrl(), parsedArgs.getSecretToken(), ChronoUnit.YEARS, ChronoUnit.MONTHS))
                     .getOrElse(true);
             if (!hasItems) {
@@ -233,7 +234,7 @@ public class PlanHat implements Tool<Conversation> {
 
         final List<Conversation> conversations = tokens
                 .stream()
-                .flatMap(pair -> Try.withResources(ClientBuilder::newClient)
+                .flatMap(pair -> Try.withResources(clientConstructor::getClient)
                         .of(client -> planHatClient.getConversations(
                                 client,
                                 parsedArgs.getCompany(),

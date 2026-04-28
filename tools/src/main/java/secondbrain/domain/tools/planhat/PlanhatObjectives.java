@@ -19,6 +19,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateString;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.api.Objective;
@@ -58,6 +59,9 @@ public class PlanhatObjectives implements Tool<Objective> {
 
     @Inject
     private ExceptionMapping exceptionMapping;
+
+    @Inject
+    private ClientConstructor clientConstructor;
 
     @Override
     public String getName() {
@@ -99,7 +103,7 @@ public class PlanhatObjectives implements Tool<Objective> {
             throw new InternalFailure("PlanHat URL and access token must be configured");
         }
 
-        final List<Objective> objectives = Try.withResources(ClientBuilder::newClient)
+        final List<Objective> objectives = Try.withResources(clientConstructor::getClient)
                 .of(client -> planHatClient.getObjectives(
                         client,
                         parsedArgs.getCompanyId(),

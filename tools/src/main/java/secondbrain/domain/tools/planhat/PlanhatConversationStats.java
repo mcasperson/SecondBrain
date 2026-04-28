@@ -21,6 +21,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateString;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.api.Conversation;
@@ -69,6 +70,9 @@ public class PlanhatConversationStats implements Tool<Conversation> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private ClientConstructor clientConstructor;
+
     @Override
     public String getName() {
         return PlanhatConversationStats.class.getSimpleName();
@@ -116,7 +120,7 @@ public class PlanhatConversationStats implements Tool<Conversation> {
         final ZonedDateTime startDate = parsedArgs.getStartZonedDateTime();
         final ZonedDateTime endDate = parsedArgs.getEndZonedDateTime();
 
-        final List<Conversation> conversations = Try.withResources(ClientBuilder::newClient)
+        final List<Conversation> conversations = Try.withResources(clientConstructor::getClient)
                 .of(client -> planHatClient.getConversations(
                         client,
                         parsedArgs.getCompanyId(),

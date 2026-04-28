@@ -17,6 +17,7 @@ import secondbrain.domain.tooldefs.ToolCall;
 import secondbrain.domain.tooldefs.ToolDefinition;
 import secondbrain.domain.tooldefs.ToolDefinitionFallback;
 import secondbrain.domain.validate.ValidateList;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.Arrays;
@@ -58,6 +59,9 @@ public class ToolSelector {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private ClientConstructor clientConstructor;
 
     public List<Tool<?>> getAvailableTools() {
         return tools.stream().toList();
@@ -122,7 +126,7 @@ public class ToolSelector {
     }
 
     private String callOllama(final String llmPrompt) {
-        return Try.withResources(ClientBuilder::newClient)
+        return Try.withResources(clientConstructor::getClient)
                 .of(client ->
                         llmClient.call(llmPrompt, toolModel.get(), Map.of()))
                 .get();

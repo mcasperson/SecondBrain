@@ -26,6 +26,7 @@ import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateString;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.api.GitHubCommitAndDiff;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -94,6 +95,9 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     @Inject
     private HooksContainer hooksContainer;
 
+    @Inject
+    private ClientConstructor clientConstructor;
+
     @Override
     public String getName() {
         return GitHubDiffs.class.getSimpleName();
@@ -146,7 +150,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
         // If we have a sha, then we are only interested in a single commit
         if (StringUtils.isNotBlank(parsedArgs.getSha())) {
             final List<RagDocumentContext<GitHubCommitAndDiff>> ragDocs = convertCommitsToDiffSummaries(
-                    Try.withResources(ClientBuilder::newClient)
+                    Try.withResources(clientConstructor::getClient)
                             .of(client ->
                                     Try
                                             .of(() -> List.of(parsedArgs.getSha().split(",")))
@@ -278,7 +282,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
             final String until,
             final String authorization) {
 
-        return Try.withResources(ClientBuilder::newClient)
+        return Try.withResources(clientConstructor::getClient)
                 .of(client ->
                         gitHubClient.getCommitsInRange(client, owner, repo, branch, until, since, authorization)
                                 .stream().map(commit -> new GitHubCommitAndDiff(
@@ -294,7 +298,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
             final String sha,
             final String authorization) {
 
-        return Try.withResources(ClientBuilder::newClient)
+        return Try.withResources(clientConstructor::getClient)
                 .of(client -> gitHubClient.getDiff(client, owner, repo, sha, authorization)).get();
     }
 }
