@@ -14,10 +14,10 @@ class SnowflakeClientLiveTest {
         final SnowflakeClientLive snowflakeClientLive = new SnowflakeClientLive(
                 System.getenv("SB_SNOWFLAKE_USER"),
                 System.getenv("SB_SNOWFLAKE_JWT_BASE64"),
-                "jdbc:snowflake://" + System.getenv("SB_SNOWFLAKE_URL") + ".snowflakecomputing.com");
+                System.getenv("SB_SNOWFLAKE_URL"));
         snowflakeClientLive.openConnection();
 
-        final List<SnowflakeLicenseDetails> results = snowflakeClientLive.getLicenseDetails("001Qq00000YrmcPIAR");
+        final List<SnowflakeLicenseDetails> results = snowflakeClientLive.getLicenseDetails("0017V000024lHNiQAM");
         assertNotNull(results);
 
         results.forEach(System.out::println);
