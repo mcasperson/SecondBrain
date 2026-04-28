@@ -28,8 +28,12 @@ import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 
 /**
  * This tool combines many sub-tools to allow a single prompt to be answered by multiple different
@@ -48,6 +52,7 @@ import java.util.stream.Stream;
  */
 @ApplicationScoped
 public class Meta implements Tool<Void> {
+    private static final int BATCH_SIZE = 10;
     public static final String META_TOOL_NAMES_ARG = "toolNames";
     public static final String META_TTL_SECONDS_ARG = "ttlSeconds";
     public static final String META_DISABLE_PROMPT_ARG = "disablePrompt";
@@ -162,10 +167,18 @@ public class Meta implements Tool<Void> {
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         // Get the rag docs from each tool
-        final List<RagDocumentContext<Void>> ragDocs = filteredTools.stream()
-                .flatMap(tool -> Try.of(() -> tool.getContext(environmentSettings, prompt, toolArgs).stream())
-                        .onFailure(ex -> logger.severe("Failed to get context for tool " + tool.getName() + ": " + ex.toString()))
-                        .getOrElse(Stream.of()))
+        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
+        final List<RagDocumentContext<Void>> ragDocs = filteredTools
+                .stream()
+                // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
+                // We batch here to interleave API requests to the various external data sources
+                .collect(parallelToStream(tool -> Try.of(() -> tool.getContext(environmentSettings, prompt, toolArgs))
+                                .map(List::stream)
+                                .onFailure(ex -> logger.warning("Failed to get context for " + tool.getName()))
+                                .get(),
+                        executor,
+                        BATCH_SIZE))
+                .flatMap(stream -> stream)
                 .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
 
