@@ -183,7 +183,7 @@ public class Meta implements Tool<Void> {
 
         final MetaConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        logger.info(parsedArgs.toString());
+        logger.fine(parsedArgs.toString());
 
         return Try.of(() -> callPrivate(environmentSettings, prompt, arguments))
                 .filter(Objects::nonNull)
