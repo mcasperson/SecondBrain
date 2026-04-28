@@ -37,11 +37,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.HashSet;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Logger;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
@@ -149,8 +145,12 @@ public class SlackClientLive implements SlackClient {
                 .get();
     }
 
-    private String conversationsToText(final ConversationsHistoryResponse conversation) {
-        return conversation.getMessages()
+    private String conversationsToText(final @Nullable ConversationsHistoryResponse conversation) {
+        if (conversation == null) {
+            return "";
+        }
+
+        return Objects.requireNonNullElse(conversation.getMessages(), List.<Message>of())
                 .stream()
                 .map(Message::getText)
                 .reduce("", (a, b) -> a + "\n" + b);
