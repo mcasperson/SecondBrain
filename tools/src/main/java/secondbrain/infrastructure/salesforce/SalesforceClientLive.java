@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.salesforce;
 
 import com.google.common.util.concurrent.RateLimiter;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -80,6 +81,7 @@ public class SalesforceClientLive implements SalesforceClient {
     private Mutex mutex;
 
     @Inject
+    @Identifier("everything")
     private DateParser dateParser;
 
     @Inject
