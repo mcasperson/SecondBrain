@@ -65,7 +65,7 @@ public class PlanHatClientMock implements PlanHatClient {
         custom.put("contactPerson", llmClient.call("Generate a person's name. Return only the name, nothing else.", Map.of()));
         custom.put("tier", llmClient.call("Generate one of: Free, Standard, Premium, Enterprise. Return only the tier, nothing else.", Map.of()));
 
-        return new Company(companyId, companyName, null, 10, usage, custom);
+        return new Company(companyId, companyName, null, null, 10, usage, custom);
     }
 
     @Override

@@ -27,6 +27,7 @@ import secondbrain.infrastructure.planhat.api.PlanHatUser;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -230,6 +231,7 @@ public class PlanHatUsage implements Tool<Company> {
         // Iterate over every property in the company object and add a RagDocumentContext for each
         final List<RagDocumentContext<Company>> companyPropertyContext = propertyLabelDescriptionValues
                 .stream()
+                .filter(p -> StringUtils.isBlank(p.type()))
                 .map(p -> new RagDocumentContext<Company>(
                                 getName(),
                                 getContextLabel() + " " + company.name() + " " + p.description(),
@@ -247,7 +249,40 @@ public class PlanHatUsage implements Tool<Company> {
                                 List.of()))
                 .toList();
 
-        return Stream.of(usageContext, customContext, customPersonContext, companyPropertyContext)
+        // Find all properties that represent people and resolve them to the person's name
+        final List<RagDocumentContext<Company>> companyPeopleContext = propertyLabelDescriptionValues
+                .stream()
+                .filter(p -> "Person".equalsIgnoreCase(p.type()))
+                .map(p ->
+                        Try.withResources(clientConstructor::getClient)
+                            .of(client -> planHatClient.getUser(
+                                    client,
+                                    p.value().toString(),
+                                    // TODO: work out a way to identify planhat instances with custom fields. This logic assumes one planhat instance.
+                                    tokens.getFirst().getLeft(),
+                                    tokens.getFirst().getRight(),
+                                    parsedArgs.getSearchTTL()))
+                                .map(person -> Pair.of(p.description(), person.getFullName()))
+                                .getOrElse(() -> null))
+                .filter(Objects::nonNull)
+                .map(p -> new RagDocumentContext<Company>(
+                        getName(),
+                        getContextLabel() + " " + company.name() + " " + p.getLeft(),
+                        p.getRight(),
+                        List.of(),
+                        company.id() + ":" + p.getLeft(),
+                        company,
+                        new MetaObjectResults(new MetaObjectResult(
+                                p.getLeft(),
+                                p.getRight(),
+                                company.id(),
+                                getName())),
+                        null,
+                        null,
+                        List.of()))
+                .toList();
+
+        return Stream.of(usageContext, customContext, customPersonContext, companyPropertyContext, companyPeopleContext)
                 .flatMap(List::stream)
                 .toList();
     }

@@ -26,7 +26,7 @@ public class PropertyLabelReaderNullOnFailure implements PropertyValueReader {
                     .filter(ac -> ac.label != null)
                     .map(ac -> new AnnotationValue(ac.label, Try.of(() -> ac.component.getAccessor().invoke(object)).getOrNull()))
                     .filter(vc -> vc.value != null)
-                    .map(vc -> new PropertyLabelDescriptionValue(vc.label.description(), vc.value))
+                    .map(vc -> new PropertyLabelDescriptionValue(vc.label.description(), vc.label.type(), vc.value))
                     .forEach(results::add);
         } else {
             // Handle getters and fields on non-record objects
@@ -56,7 +56,7 @@ public class PropertyLabelReaderNullOnFailure implements PropertyValueReader {
                 if (label != null) {
                     final Object value = Try.of(() -> method.invoke(object)).getOrNull();
                     if (value != null) {
-                        results.add(new PropertyLabelDescriptionValue(label.description(), value));
+                        results.add(new PropertyLabelDescriptionValue(label.description(), label.type(), value));
                     }
                 }
             }
@@ -77,7 +77,7 @@ public class PropertyLabelReaderNullOnFailure implements PropertyValueReader {
                 if (label != null) {
                     final Object value = Try.of(() -> field.get(object)).getOrNull();
                     if (value != null) {
-                        results.add(new PropertyLabelDescriptionValue(label.description(), value));
+                        results.add(new PropertyLabelDescriptionValue(label.description(), label.type(), value));
                     }
                 }
             }
