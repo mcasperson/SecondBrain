@@ -117,6 +117,7 @@ public class Gong implements Tool<GongCallDetails> {
     private HooksContainer hooksContainer;
 
     @Inject
+    @Identifier("everything")
     private DateParser dateParser;
 
     @Inject

@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.planhat;
 
 import com.google.common.util.concurrent.RateLimiter;
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -75,6 +76,7 @@ public class PlanHatClientLive implements PlanHatClient {
     private Mutex mutex;
 
     @Inject
+    @Identifier("everything")
     private DateParser dateParser;
 
     @Inject
