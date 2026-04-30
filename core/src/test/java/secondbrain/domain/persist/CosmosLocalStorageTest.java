@@ -50,7 +50,7 @@ public class CosmosLocalStorageTest {
      * docker run --platform linux/amd64 --publish 9081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach --restart unless-stopped mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
      * <p>
      * On macos:
-     * docker run --publish 9081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach --restart unless-stopped mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview
+     * docker run --publish 9081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach --restart unless-stopped mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-preview --protocol https
      * <p>
      * Get the self signed certificate
      * curl --insecure https://localhost:9081/_explorer/emulator.pem > ~/emulatorcert.crt
@@ -60,14 +60,15 @@ public class CosmosLocalStorageTest {
      * <p>
      * Do this on a mac:
      * <p>
-     * containerId=$(docker ps -aqf "name=linux-emulator")
-     * docker cp ${containerId}:/scripts/certs/domain.crt .
-     * docker cp ${containerId}:/scripts/certs/rootCA.crt .
-     * keytool -import -trustcacerts -alias cosmosdb_cert1 -file domain.crt -keystore ~/Library/Java/JavaVirtualMachines/azul-25.0.3/Contents/Home/lib/security/cacerts
-     * keytool -import -trustcacerts -alias cosmosdb_cert2 -file rootCA.crt -keystore ~/Library/Java/JavaVirtualMachines/azul-25.0.3/Contents/Home/lib/security/cacerts
+     * EMULATOR_HOST=localhost
+     * EMULATOR_PORT=9081
+     * EMULATOR_CERT_PATH=/tmp/cosmos_emulator.cert
+     * openssl s_client -connect ${EMULATOR_HOST}:${EMULATOR_PORT} </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > $EMULATOR_CERT_PATH
+     * keytool -cacerts -delete -alias cosmos_emulator
+     * keytool -import -trustcacerts -alias cosmos_emulator -file /tmp/cosmos_emulator.cert -keystore ~/Library/Java/JavaVirtualMachines/azul-25.0.3/Contents/Home/lib/security/cacerts
      * <p>
      * Or for the system Java JDK:
-     * sudo keytool -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore /Library/Java/JavaVirtualMachines/zulu-25.jdk/Contents/Home/lib/security/cacerts
+     * sudo keytool -import -trustcacerts -alias cosmosdb_domain -file domain.crt -keystore /Library/Java/JavaVirtualMachines/zulu-25.jdk/Contents/Home/lib/security/cacerts
      */
     @BeforeEach
     void updateConfig() {
@@ -109,8 +110,9 @@ public class CosmosLocalStorageTest {
 
     @Test
     public void testSave() {
+        final String randomValue = UUID.randomUUID().toString();
         for (int i = 0; i < 10; i++) {
-            final String randomValue = UUID.randomUUID().toString();
+
             System.out.println("test" + i + ": " + randomValue);
             Assertions.assertEquals(randomValue, cosmosLocalStorage.getOrPutString(
                             CosmosLocalStorageTest.class.getSimpleName(),
@@ -118,9 +120,11 @@ public class CosmosLocalStorageTest {
                             randomValue,
                             () -> randomValue)
                     .result());
+        }
 
-            cosmosLocalStorage.flush();
+        cosmosLocalStorage.flush();
 
+        for (int i = 0; i < 10; i++) {
             Assertions.assertEquals(randomValue, cosmosLocalStorage.getString(
                             CosmosLocalStorageTest.class.getSimpleName(),
                             "test" + i,

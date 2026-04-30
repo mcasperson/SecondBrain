@@ -163,6 +163,7 @@ public class CosmosLocalStorage implements LocalStorage {
         synchronized (CosmosLocalStorage.class) {
             logger.warning("Resetting Cosmos DB connection");
             totalFailures.set(0);
+            flush();
             preDestroy();
             postConstruct();
         }
@@ -188,6 +189,8 @@ public class CosmosLocalStorage implements LocalStorage {
                 .key(cosmosKey.get())
                 .consistencyLevel(ConsistencyLevel.SESSION)
                 .clientTelemetryConfig(telemetryOptions)
+                .endpointDiscoveryEnabled(false)
+                .gatewayMode()
                 .buildClient();
 
         cosmosClient.createDatabaseIfNotExists(databaseName.orElse(DATABASE_NAME));
