@@ -13,7 +13,6 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.answer.AnswerFormatterService;
-import secondbrain.domain.web.ClientConstructor;
 import secondbrain.domain.collections.MapUtils;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -28,9 +27,14 @@ import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseInspector;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.url.UrlUtils;
 import secondbrain.domain.validate.ValidateString;
-import secondbrain.infrastructure.azure.api.*;
+import secondbrain.domain.web.ClientConstructor;
+import secondbrain.infrastructure.azure.api.AzureRequestMaxCompletionTokensFactory;
+import secondbrain.infrastructure.azure.api.AzureRequestMessage;
+import secondbrain.infrastructure.azure.api.AzureResponse;
+import secondbrain.infrastructure.azure.api.PromptTextGenerator;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.ArrayList;
@@ -183,6 +187,10 @@ public class AzureClient implements LlmClient {
     @Inject
     private ClientConstructor clientConstructor;
 
+    @Inject
+    @Identifier("financialLocationContactRedaction")
+    private SanitizeDocument sanitizeDocument;
+
     @Override
     public String call(final String prompt, final Map<String, String> environmentSettings) {
         checkArgument(StringUtils.isNotBlank(prompt));
@@ -197,10 +205,13 @@ public class AzureClient implements LlmClient {
 
         final String resolvedUrl = getResolvedUrl(environmentSettings);
 
+        // Remove unnecessary PII
+        final String sanitizedContext = sanitizeDocument.sanitize(prompt);
+
         final PromptTextGenerator request = AzureRequestMaxCompletionTokensFactory.generateRequest(
                 List.of(new AzureRequestMessage(
                         "user",
-                        prompt
+                        sanitizedContext
                 )),
                 model,
                 UrlUtils.getQueryString(resolvedUrl, "api-version")
@@ -400,7 +411,8 @@ public class AzureClient implements LlmClient {
         return stringToList.convert(fixedString);
     }
 
-    @Nullable private Integer getMaxOutputTokens() {
+    @Nullable
+    private Integer getMaxOutputTokens() {
         return outputTokens
                 .map(t -> Try.of(() -> Integer.parseInt(t)).getOrNull())
                 .orElse(null);
@@ -426,7 +438,8 @@ public class AzureClient implements LlmClient {
                 this.url.orElse(""));
     }
 
-    @Nullable private String getResolvedReasoningEffort(final Map<String, String> environmentSettings) {
+    @Nullable
+    private String getResolvedReasoningEffort(final Map<String, String> environmentSettings) {
         return MapUtils.getOrDefaultIfBlank(
                 environmentSettings,
                 REASONING_EFFORT_OVERRIDE_ENV,
