@@ -121,8 +121,7 @@ public class CosmosLocalStorageTest {
                             () -> randomValue)
                     .result());
         }
-
-        System.out.println("flush");
+        
         cosmosLocalStorage.flush();
 
         for (int i = 0; i < 10; i++) {

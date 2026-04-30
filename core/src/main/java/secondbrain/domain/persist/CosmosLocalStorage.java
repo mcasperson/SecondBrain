@@ -148,6 +148,7 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     public void flush() {
+        Try.run(() -> Thread.sleep(0));
         synchronized (CosmosLocalStorage.class) {
             logger.fine("Waiting for pending background writes to complete");
             pendingWrites.removeIf(Future::isDone);
