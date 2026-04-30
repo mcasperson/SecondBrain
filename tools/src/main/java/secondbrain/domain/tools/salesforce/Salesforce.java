@@ -48,9 +48,12 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 
 /**
@@ -213,9 +216,12 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
         final List<String> relatedToIds = Try.of(() -> salesforceClient.getAccountAndOpportunityIds(token.accessToken(), parsedArgs.getAccountId()))
                 .get();
 
-        final Try<List<RagDocumentContext<SalesforceEmailRecord>>> context = Try.of(() -> relatedToIds
+
+        final Try<List<RagDocumentContext<SalesforceEmailRecord>>> context = Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
+                .of(executor -> relatedToIds
                         .stream()
-                        .flatMap(id -> Arrays.stream(salesforceClient.getEmails(token.accessToken(), id, startDate, endDate)))
+                        .collect(parallelToStream(id -> salesforceClient.getEmails(token.accessToken(), id, startDate, endDate), executor, 3))
+                        .flatMap(Arrays::stream)
                         .toList())
                 .map(emails -> emails.stream()
                         .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabelWithDate(email), parsedArgs))
