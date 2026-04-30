@@ -148,15 +148,19 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     public void flush() {
-        Try.run(() -> Thread.sleep(0));
+        // Collect and clear pending futures under the lock, then wait outside it.
+        // Waiting inside the lock would deadlock: putStringSync also needs the same lock,
+        // so it can never complete while flush() holds it and blocks on f.get().
+        final List<Future<?>> toWait;
         synchronized (CosmosLocalStorage.class) {
-            logger.fine("Waiting for pending background writes to complete");
             pendingWrites.removeIf(Future::isDone);
-            for (final Future<?> f : List.copyOf(pendingWrites)) {
-                Try.run(() -> f.get(30, TimeUnit.SECONDS))
-                        .onFailure(ex -> logger.warning("Error waiting for pending write: " + exceptionHandler.getExceptionMessage(ex)));
-            }
+            toWait = List.copyOf(pendingWrites);
             pendingWrites.clear();
+        }
+        logger.fine("Waiting for " + toWait.size() + " pending background writes to complete");
+        for (final Future<?> f : toWait) {
+            Try.run(() -> f.get(30, TimeUnit.SECONDS))
+                    .onFailure(ex -> logger.warning("Error waiting for pending write: " + exceptionHandler.getExceptionMessage(ex)));
         }
     }
 
