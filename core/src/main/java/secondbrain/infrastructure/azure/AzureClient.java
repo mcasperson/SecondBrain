@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -77,7 +78,7 @@ public class AzureClient implements LlmClient {
     private static final int API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 30;
 
     // Default rate is around 250 requests per minute.
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(4);
+    private static final Map<String, RateLimiter> RATE_LIMITERS = new ConcurrentHashMap<>();
 
     @Inject
     @ConfigProperty(name = "sb.azurellm.apikey")
@@ -334,7 +335,8 @@ public class AzureClient implements LlmClient {
             throw new RateLimit("Exceeded max retries for rate limited Azure LLM calls");
         }
 
-        RATE_LIMITER.acquire();
+        // We limit per model
+        RATE_LIMITERS.getOrDefault(request.getModel(), RateLimiter.create(4)).acquire();
 
         return Try.of(() -> httpClientCaller.call(
                         () -> clientConstructor.getClient(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, API_CALL_TIMEOUT_SECONDS_DEFAULT),

@@ -38,4 +38,8 @@ public record AzureRequestMaxCompletionTokens_2025_04_01_preview(
     public PromptTextGenerator updateMessages(List<AzureRequestMessage> newMessages) {
         return new AzureRequestMaxCompletionTokens_2025_04_01_preview(newMessages, this.maxOutputTokens, this.reasoning, this.model);
     }
+
+    public String getModel() {
+        return model;
+    }
 }
