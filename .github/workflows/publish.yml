@@ -112,7 +112,7 @@ jobs:
 
       # Once the certs are imported we can run the tests.
       - name: Test with Maven
-        run: mvn --batch-mode test
+        run: mvn -Djava.util.logging.config.file=logging.properties --batch-mode test
 
   publish:
     needs: [ build, version ] # rely on build to run tests and version to determine the version
