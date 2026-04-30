@@ -28,11 +28,16 @@ import secondbrain.domain.reader.FileReadingStrategy;
 import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
@@ -56,6 +61,8 @@ public class CosmosLocalStorage implements LocalStorage {
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
     private final AtomicInteger totalFailures = new AtomicInteger();
+    private final ExecutorService writeExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private final List<Future<?>> pendingWrites = Collections.synchronizedList(new ArrayList<>());
 
     @Inject
     private LocalStorageDisableTool localStorageDisableTool;
@@ -133,6 +140,14 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @PreDestroy
     public void preDestroy() {
+        logger.fine("Waiting for pending background writes to complete");
+        pendingWrites.removeIf(Future::isDone);
+        for (final Future<?> f : List.copyOf(pendingWrites)) {
+            Try.run(() -> f.get(30, TimeUnit.SECONDS))
+                    .onFailure(ex -> logger.warning("Error waiting for pending write: " + exceptionHandler.getExceptionMessage(ex)));
+        }
+        pendingWrites.clear();
+
         synchronized (CosmosLocalStorage.class) {
             if (cosmosClient != null) {
                 Try.run(cosmosClient::close)
@@ -667,6 +682,14 @@ public class CosmosLocalStorage implements LocalStorage {
     @SuppressWarnings("NullAway")
     @Override
     public void putString(final String tool, final String source, final String promptHash, final long ttlSeconds, final String value) {
+        final Future<?> future = writeExecutor.submit(() -> putStringSync(tool, source, promptHash, ttlSeconds, value));
+        pendingWrites.add(future);
+        // Eagerly remove completed futures to avoid unbounded growth
+        pendingWrites.removeIf(Future::isDone);
+    }
+
+    @SuppressWarnings("NullAway")
+    private void putStringSync(final String tool, final String source, final String promptHash, final long ttlSeconds, final String value) {
         synchronized (CosmosLocalStorage.class) {
             if (localStorageCacheDisable.isDisabled() || localStorageCacheReadOnly.isReadOnly() || container == null) {
                 return;
@@ -710,12 +733,12 @@ public class CosmosLocalStorage implements LocalStorage {
         final int totalChunks = (int) Math.ceil((double) valueBytes.length / SPLIT_ITEM_SIZE_BYTES);
         logger.fine("Splitting item of " + valueBytes.length + " bytes into " + totalChunks + " chunks for tool " + tool + " source " + source);
         // Save the total chunk count so reassembly can look it up directly
-        putString(tool, source, promptHash + "_chunked_size", ttlSeconds, String.valueOf(totalChunks));
+        putStringSync(tool, source, promptHash + "_chunked_size", ttlSeconds, String.valueOf(totalChunks));
         for (int chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
             final int start = chunkIndex * SPLIT_ITEM_SIZE_BYTES;
             final int end = Math.min(start + SPLIT_ITEM_SIZE_BYTES, valueBytes.length);
             final String chunk = new String(valueBytes, start, end - start, java.nio.charset.StandardCharsets.UTF_8);
-            putString(tool, source, promptHash + "_chunk_" + chunkIndex, ttlSeconds, chunk);
+            putStringSync(tool, source, promptHash + "_chunk_" + chunkIndex, ttlSeconds, chunk);
         }
     }
 
