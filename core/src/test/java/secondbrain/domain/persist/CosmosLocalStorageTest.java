@@ -113,7 +113,7 @@ public class CosmosLocalStorageTest {
         final String randomValue = UUID.randomUUID().toString();
         for (int i = 0; i < 10; i++) {
 
-            System.out.println("write" + i + ": " + randomValue);
+            System.out.println("generate" + i + ": " + randomValue);
             Assertions.assertEquals(randomValue, cosmosLocalStorage.getOrPutString(
                             CosmosLocalStorageTest.class.getSimpleName(),
                             "test" + i,
@@ -122,6 +122,7 @@ public class CosmosLocalStorageTest {
                     .result());
         }
 
+        System.out.println("flush");
         cosmosLocalStorage.flush();
 
         for (int i = 0; i < 10; i++) {
