@@ -131,13 +131,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @PreDestroy
     public void preDestroy() {
-        logger.fine("Waiting for pending background writes to complete");
-        pendingWrites.removeIf(Future::isDone);
-        for (final Future<?> f : List.copyOf(pendingWrites)) {
-            Try.run(() -> f.get(30, TimeUnit.SECONDS))
-                    .onFailure(ex -> logger.warning("Error waiting for pending write: " + exceptionHandler.getExceptionMessage(ex)));
-        }
-        pendingWrites.clear();
+        flush();
 
         synchronized (CosmosLocalStorage.class) {
             if (cosmosClient != null) {
@@ -150,6 +144,18 @@ public class CosmosLocalStorage implements LocalStorage {
 
         if (totalReads.get() > 0) {
             logger.info("Cache hits percentage: " + getCacheHitsPercentage() + "%");
+        }
+    }
+
+    public void flush() {
+        synchronized (CosmosLocalStorage.class) {
+            logger.fine("Waiting for pending background writes to complete");
+            pendingWrites.removeIf(Future::isDone);
+            for (final Future<?> f : List.copyOf(pendingWrites)) {
+                Try.run(() -> f.get(30, TimeUnit.SECONDS))
+                        .onFailure(ex -> logger.warning("Error waiting for pending write: " + exceptionHandler.getExceptionMessage(ex)));
+            }
+            pendingWrites.clear();
         }
     }
 

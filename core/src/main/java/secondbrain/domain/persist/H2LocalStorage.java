@@ -504,6 +504,11 @@ public class H2LocalStorage implements LocalStorage {
         return new CacheResult<T[]>(value, false);
     }
 
+    @Override
+    public void flush() {
+
+    }
+
     @SuppressWarnings("NullAway")
     @Override
     public void putString(final String tool, final String source, final String promptHash, final long ttlSeconds, final String response) {
@@ -528,9 +533,9 @@ public class H2LocalStorage implements LocalStorage {
                         preparedStatement.setTimestamp(5, ttlSeconds == 0
                                 ? null
                                 : Timestamp.from(ZonedDateTime
-                                .now(ZoneOffset.UTC)
-                                .plusSeconds(ttlSeconds)
-                                .toInstant()));
+                                                 .now(ZoneOffset.UTC)
+                                                 .plusSeconds(ttlSeconds)
+                                                 .toInstant()));
                         preparedStatement.executeUpdate();
                         return preparedStatement;
                     })
