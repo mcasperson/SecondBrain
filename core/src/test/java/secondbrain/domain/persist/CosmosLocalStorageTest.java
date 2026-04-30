@@ -52,12 +52,13 @@ public class CosmosLocalStorageTest {
      * Get the self signed certificate
      * curl --insecure https://localhost:9081/_explorer/emulator.pem > ~/emulatorcert.crt
      * <p>
-     * Import it into the java keystore. You might need to chaneg the path to your JAVA_HOME to be something like /home/matthew/.jdks/azul-25
+     * Import it into the java keystore. You might need to change the path to your JAVA_HOME to be something like /home/matthew/.jdks/azul-25
      * keytool -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore $JAVA_HOME/lib/security/cacerts
      * <p>
      * Do this on a mac:
      * <p>
      * sudo keytool -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore /Library/Java/JavaVirtualMachines/zulu-25.jdk/Contents/Home/lib/security/cacerts
+     * sudo keytool -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore ~/Library/Java/JavaVirtualMachines/azul-25.0.3/Contents/Home/lib/security/cacerts
      */
     @BeforeEach
     void updateConfig() {
