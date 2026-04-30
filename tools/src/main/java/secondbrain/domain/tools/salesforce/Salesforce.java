@@ -39,6 +39,7 @@ import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.salesforce.SalesforceClient;
 import secondbrain.infrastructure.salesforce.api.SalesforceEmailRecord;
+import secondbrain.infrastructure.salesforce.api.SalesforceOauthTokenResponse;
 import secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
@@ -162,10 +163,13 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
             return List.of();
         }
 
+        final SalesforceOauthTokenResponse token = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
+                .onFailure(ex -> logger.warning("Failed to retrieve Salesforce access token: " + ex.getMessage()))
+                .get();
+
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration()) {
-            final boolean hasItems = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
-                    .map(token -> salesforceClient.anyItemsInDuration(token.accessToken(), parsedArgs.getAccountId(), ChronoUnit.YEARS, ChronoUnit.MONTHS))
+            final boolean hasItems = Try.of(() -> salesforceClient.anyItemsInDuration(token.accessToken(), parsedArgs.getAccountId(), ChronoUnit.YEARS, ChronoUnit.MONTHS))
                     .getOrElse(true);
             if (!hasItems) {
                 logger.info("Skipping Salesforce context retrieval because skipEmptyInLastDuration is set and there are no Salesforce emails in the specified duration");
@@ -182,7 +186,7 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
                                 List.class,
                                 RagDocumentContext.class,
                                 SalesforceEmailRecord.class,
-                                () -> getContextPrivate(environmentSettings, prompt, arguments))
+                                () -> getContextPrivate(environmentSettings, prompt, arguments, token))
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get Salesforce context from cache: " + ex.getMessage()))
@@ -192,7 +196,8 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
     private List<RagDocumentContext<SalesforceEmailRecord>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
-            final List<ToolArgs> arguments) {
+            final List<ToolArgs> arguments,
+            final SalesforceOauthTokenResponse token) {
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         logger.info("Getting context for " + getName() + " with account ID " + parsedArgs.getAccountId());
@@ -205,12 +210,10 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
         final String endDate = StringUtils.isNotBlank(parsedArgs.getEndPeriod()) ? parsedArgs.getEndPeriod() : parsedArgs.getEndDate();
 
         // Get emails related to the account and any opportunities associated with the account
-        final List<String> relatedToIds = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
-                .map(token -> salesforceClient.getAccountAndOpportunityIds(token.accessToken(), parsedArgs.getAccountId()))
+        final List<String> relatedToIds = Try.of(() -> salesforceClient.getAccountAndOpportunityIds(token.accessToken(), parsedArgs.getAccountId()))
                 .get();
 
-        final Try<List<RagDocumentContext<SalesforceEmailRecord>>> context = Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
-                .map(token -> relatedToIds
+        final Try<List<RagDocumentContext<SalesforceEmailRecord>>> context = Try.of(() -> relatedToIds
                         .stream()
                         .flatMap(id -> Arrays.stream(salesforceClient.getEmails(token.accessToken(), id, startDate, endDate)))
                         .toList())
@@ -233,14 +236,14 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
             throw new InsufficientContext("No Salesforce emails found.");
         }
 
-        // Only do the post processing after the hooks
+        // Only do the post-processing after the hooks
         final List<RagDocumentContext<SalesforceEmailRecord>> records = filteredDocs.stream()
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc -> ragDoc.addMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-Salesforce-" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
-                .map(ragDoc -> ragDoc.addMetadata(getOpportunityMeta(parsedArgs)))
+                .map(ragDoc -> ragDoc.addMetadata(getOpportunityMeta(parsedArgs, token)))
                 .map(doc -> parsedArgs.getSummarizeDocument()
                         ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(doc.source()), "SalesforceEmail", doc, environmentSettings, parsedArgs)
                         : doc)
@@ -299,9 +302,9 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
         return getContextLabel() + " " + record.messageDate();
     }
 
-    private MetaObjectResult getOpportunityMeta(final SalesforceConfig.LocalArguments parsedArgs) {
-        return Try.of(() -> salesforceClient.getToken(parsedArgs.getClientId(), parsedArgs.getSecretClientSecret()))
-                .map(token -> salesforceClient.getOpportunityByAccountId(token.accessToken(), parsedArgs.getAccountId()))
+    private MetaObjectResult getOpportunityMeta(final SalesforceConfig.LocalArguments parsedArgs,
+                                                final SalesforceOauthTokenResponse token) {
+        return Try.of(() -> salesforceClient.getOpportunityByAccountId(token.accessToken(), parsedArgs.getAccountId()))
                 .map(opportunities -> opportunities.records().stream().findFirst())
                 .filter(Optional::isPresent)
                 .map(Optional::get)
