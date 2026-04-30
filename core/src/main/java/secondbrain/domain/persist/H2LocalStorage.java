@@ -1,5 +1,6 @@
 package secondbrain.domain.persist;
 
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
@@ -19,6 +20,7 @@ import secondbrain.domain.persist.config.LocalStorageCacheDisable;
 import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
 import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
 import secondbrain.domain.persist.config.LocalStorageDisableTool;
+import secondbrain.domain.sanitize.SanitizeDocument;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -75,12 +77,19 @@ public class H2LocalStorage implements LocalStorage {
     @Inject
     @ConfigProperty(name = "sb.h2cache.path")
     private Optional<String> path;
+
     @Inject
     private JsonDeserializer jsonDeserializer;
+
     @Inject
     private ExceptionHandler exceptionHandler;
+
     @Inject
     private Logger logger;
+
+    @Inject
+    @Identifier("financialLocationContactRedaction")
+    private SanitizeDocument sanitizeDocument;
 
     @Nullable
     private Connection connection;
@@ -521,6 +530,7 @@ public class H2LocalStorage implements LocalStorage {
                 resetConnection();
             }
 
+            final String redactedValue = sanitizeDocument.sanitize(response);
 
             final Try<PreparedStatement> result = Try.withResources(() -> connection.prepareStatement("""
                             INSERT INTO LOCAL_STORAGE (tool, source, prompt_hash, response, timestamp)
@@ -529,7 +539,7 @@ public class H2LocalStorage implements LocalStorage {
                         preparedStatement.setString(1, tool);
                         preparedStatement.setString(2, source);
                         preparedStatement.setString(3, promptHash);
-                        preparedStatement.setString(4, response);
+                        preparedStatement.setString(4, redactedValue);
                         preparedStatement.setTimestamp(5, ttlSeconds == 0
                                 ? null
                                 : Timestamp.from(ZonedDateTime

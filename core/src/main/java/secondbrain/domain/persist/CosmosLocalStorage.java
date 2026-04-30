@@ -24,6 +24,7 @@ import secondbrain.domain.persist.config.LocalStorageCacheDisable;
 import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
 import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
 import secondbrain.domain.persist.config.LocalStorageDisableTool;
+import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
@@ -116,6 +117,10 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Nullable
     private CosmosContainer container;
+
+    @Inject
+    @Identifier("financialLocationContactRedaction")
+    private SanitizeDocument sanitizeDocument;
 
     @PostConstruct
     public void postConstruct() {
@@ -705,14 +710,16 @@ public class CosmosLocalStorage implements LocalStorage {
                 resetConnection();
             }
 
+            final String redactedValue = Objects.requireNonNullElse(sanitizeDocument.sanitize(value), "");
+
             // If value exceeds SPLIT_ITEM_SIZE_BYTES, split into chunks and persist each separately
-            final byte[] valueBytes = value.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            final byte[] valueBytes = redactedValue.getBytes(java.nio.charset.StandardCharsets.UTF_8);
             if (valueBytes.length > SPLIT_ITEM_SIZE_BYTES) {
                 putStringChunked(tool, source, promptHash, ttlSeconds, valueBytes);
                 return;
             }
 
-            final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(value))
+            final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(redactedValue))
                     .map(encryptor::encrypt)
                     .map(encrypted -> localStorageReadWrite.putString(tool, source, promptHash, getTimestamp(ttlSeconds), encrypted))
                     .map(encrypted -> new CacheItem(
