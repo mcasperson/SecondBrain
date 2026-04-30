@@ -1,5 +1,6 @@
 package secondbrain.application.cli;
 
+import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
@@ -14,8 +15,8 @@ import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.LocalStorageReadWrite;
+import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.toolbuilder.ToolSelector;
-import secondbrain.domain.tooldefs.Tool;
 
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
@@ -75,6 +76,10 @@ public class Main {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    @Identifier("financialLocationContactRedaction")
+    private SanitizeDocument sanitizeDocument;
 
     /**
      * This is included here to force the service to initialise as early as possible.
@@ -158,11 +163,13 @@ public class Main {
     }
 
     private void printOutput(final PromptHandlerResponse content) {
-        System.out.println(content.getResponseText());
+        final String redactedOutput = Objects.requireNonNullElse(sanitizeDocument.sanitize(content.getResponseText()), "");
+
+        System.out.println(redactedOutput);
 
         if (printAnnotations) {
             if (StringUtils.isNotBlank(content.getAnnotations())) {
-                System.out.println(content.getAnnotations());
+                System.out.println(sanitizeDocument.sanitize(content.getAnnotations()));
             }
             if (StringUtils.isNotBlank(content.getLinks())) {
                 System.out.println("Links:");
@@ -179,7 +186,7 @@ public class Main {
             return;
         }
 
-        final String annotations = content.getAnnotations() + content.getDebugInfo();
+        final String annotations = Objects.requireNonNullElse(sanitizeDocument.sanitize(content.getAnnotations() + content.getDebugInfo()), "");
 
         if (StringUtils.isNotBlank(annotations)) {
             Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, annotationsFile.get()), annotations, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
@@ -222,7 +229,9 @@ public class Main {
                 ? StandardOpenOption.APPEND
                 : StandardOpenOption.TRUNCATE_EXISTING;
 
-        Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, file.get()), content.getResponseText(), StandardOpenOption.CREATE, option))
+        final String redactedOutput = Objects.requireNonNullElse(sanitizeDocument.sanitize(content.getResponseText()), "");
+
+        Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, file.get()), redactedOutput, StandardOpenOption.CREATE, option))
                 .onFailure(e -> logger.severe("Failed to write output to file: " + e.getMessage()));
     }
 
@@ -250,7 +259,7 @@ public class Main {
                 .peek(meta -> logger.info("Saving intermediate result: " + pathBuilder.getFilePath(directory, meta.filename())))
                 .forEach(meta -> Try.of(() -> Files.write(
                                 pathBuilder.getFilePath(directory, meta.filename()),
-                                meta.content().getBytes(),
+                                Objects.requireNonNullElse(sanitizeDocument.sanitize(meta.content()), "").getBytes(),
                                 StandardOpenOption.CREATE,
                                 StandardOpenOption.TRUNCATE_EXISTING))
                         .onFailure(e -> logger.severe("Failed to write intermediate result to files: " + e.getMessage())));
