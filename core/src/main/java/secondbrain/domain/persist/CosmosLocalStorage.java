@@ -24,20 +24,11 @@ import secondbrain.domain.persist.config.LocalStorageCacheDisable;
 import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
 import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
 import secondbrain.domain.persist.config.LocalStorageDisableTool;
-import secondbrain.domain.reader.FileReadingStrategy;
 import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
@@ -227,7 +218,7 @@ public class CosmosLocalStorage implements LocalStorage {
             if (totalFailures.get() > MAX_FAILURES) {
                 resetConnection();
             }
-            
+
             totalReads.incrementAndGet();
 
             final Try<CacheResult<String>> result = Try
@@ -658,22 +649,23 @@ public class CosmosLocalStorage implements LocalStorage {
                     value.length + "");
 
             // each item is persisted with an index suffix
-            final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
-            IntStream.range(0, value.length)
-                    .boxed()
-                    .collect(parallelToStream(index -> {
-                                        putString(
-                                                tool,
-                                                source,
-                                                promptHash + "_" + index,
-                                                ttlSeconds,
-                                                jsonDeserializer.serialize(value[index]));
+            try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                IntStream.range(0, value.length)
+                        .boxed()
+                        .collect(parallelToStream(index -> {
+                                            putString(
+                                                    tool,
+                                                    source,
+                                                    promptHash + "_" + index,
+                                                    ttlSeconds,
+                                                    jsonDeserializer.serialize(value[index]));
 
-                                        return index;
-                                    },
-                                    executor,
-                                    BATCH_SIZE)
-                    );
+                                            return index;
+                                        },
+                                        executor,
+                                        BATCH_SIZE)
+                        );
+            }
         }
 
         return new CacheResult<T[]>(value, false);

@@ -48,7 +48,6 @@ import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -233,8 +232,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
                 .getOrElseThrow(ex -> new ExternalFailure("Failed to download or parse the entity directory", ex));
 
-        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
-
         /*
             We want to randomize the order of the entities to allow multiple concurrent instances of this tool
             to process different entities. If the list is processed in the same order, we risk each instance
@@ -246,15 +243,17 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .toList());
         Collections.shuffle(shuffledList);
 
-        final List<RagDocumentContext<Void>> ragContext = shuffledList
-                .stream()
-                // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
-                // We batch here to interleave API requests to the various external data sources
-                .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))
-                .flatMap(stream -> stream)
-                // We want the context sorted back into a predictable order to avoid a cache miss due to the contents of the system prompt changing
-                .sorted(Comparator.comparing(RagDocumentContext::tool))
-                .toList();
+        final List<RagDocumentContext<Void>> ragContext = Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
+                .of(executor -> shuffledList
+                        .stream()
+                        // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
+                        // We batch here to interleave API requests to the various external data sources
+                        .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))
+                        .flatMap(stream -> stream)
+                        // We want the context sorted back into a predictable order to avoid a cache miss due to the contents of the system prompt changing
+                        .sorted(Comparator.comparing(RagDocumentContext::tool))
+                        .toList())
+                .get();
 
         if (ragContext.isEmpty()) {
             throw new InsufficientContext("No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found.");
@@ -505,19 +504,20 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .toList()
         );
 
-        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
-        final List<RagDocumentContext<Void>> retValue = contextCalls
-                .stream()
-                // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
-                // We batch here to interleave API requests to the various external data sources
-                .collect(parallelToStream(call -> Try.of(call::call)
-                                .map(List::stream)
-                                .onFailure(ex -> logger.warning("Failed to get context for " + positionalEntity.entity().name() + ": " + exceptionHandler.getExceptionMessage(ex)))
-                                .get(),
-                        executor,
-                        BATCH_SIZE))
-                .flatMap(stream -> stream)
-                .toList();
+        final List<RagDocumentContext<Void>> retValue = Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
+                .of(executor -> contextCalls
+                        .stream()
+                        // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
+                        // We batch here to interleave API requests to the various external data sources
+                        .collect(parallelToStream(call -> Try.of(call::call)
+                                        .map(List::stream)
+                                        .onFailure(ex -> logger.warning("Failed to get context for " + positionalEntity.entity().name() + ": " + exceptionHandler.getExceptionMessage(ex)))
+                                        .get(),
+                                executor,
+                                BATCH_SIZE))
+                        .flatMap(stream -> stream)
+                        .toList())
+                .get();
 
         return validateSufficientContext(retValue, parsedArgs);
     }

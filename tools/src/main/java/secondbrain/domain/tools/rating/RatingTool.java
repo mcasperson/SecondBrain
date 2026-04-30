@@ -17,10 +17,10 @@ import secondbrain.domain.exceptions.InvalidAnswer;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
@@ -138,18 +137,19 @@ public class RatingTool implements Tool<Void> {
         // For example, I have seen chatgpt-5-mini return a rating of 10 for content that is clearly not a 10.
         // We also need to account for the case where other models return invalid responses, such as a text
         // description rather than a number. I have seen this a lot with Phi-4.
-        // If we have a additional models and we are ignoring invalid responses, then we simply filter out
+        // If we have additional models, and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
-        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
-        final List<Integer> results = Stream.of(
-                        LLMServerDetails.fromEnvironment(),
-                        LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow(), parsedArgs.getSecondReasoningEffort(), parsedArgs.getSecondUrl()),
-                        LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort(), parsedArgs.getThirdUrl())
-                )
-                .filter(server -> server.type() != LLMServerType.UNDEFINED)
-                .map(server -> getEnvironmentOverrides(server, environmentSettings))
-                .collect(parallelToStream(config -> getRating(config, prompt, arguments), executor, 3))
-                .toList();
+        final List<Integer> results = Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
+                .of(executor -> Stream.of(
+                                LLMServerDetails.fromEnvironment(),
+                                LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow(), parsedArgs.getSecondReasoningEffort(), parsedArgs.getSecondUrl()),
+                                LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort(), parsedArgs.getThirdUrl())
+                        )
+                        .filter(server -> server.type() != LLMServerType.UNDEFINED)
+                        .map(server -> getEnvironmentOverrides(server, environmentSettings))
+                        .collect(parallelToStream(config -> getRating(config, prompt, arguments), executor, 3))
+                        .toList())
+                .get();
 
 
         if (!parsedArgs.ignoreInvalidResponses()) {

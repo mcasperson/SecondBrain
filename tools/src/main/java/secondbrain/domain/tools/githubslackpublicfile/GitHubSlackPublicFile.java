@@ -29,7 +29,6 @@ import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.*;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
@@ -107,18 +106,18 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
                 .getOrElseThrow(ex -> new ExternalFailure("Failed to download or parse the entity directory", ex));
 
-        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
-
-        final List<RagDocumentContext<Void>> ragContext = entityDirectory.getEntities()
-                .stream()
-                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.getName().toLowerCase(Locale.ROOT)))
-                // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
-                // We batch here to interleave API requests to the various external data sources
-                .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))
-                .flatMap(stream -> stream)
-                // We want the context sorted back into a predictable order to avoid a cache miss due to the contents of the system prompt changing
-                .sorted(Comparator.comparing(RagDocumentContext::tool))
-                .toList();
+        final List<RagDocumentContext<Void>> ragContext = Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
+                .of(executor -> entityDirectory.getEntities()
+                        .stream()
+                        .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.getName().toLowerCase(Locale.ROOT)))
+                        // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
+                        // We batch here to interleave API requests to the various external data sources
+                        .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))
+                        .flatMap(stream -> stream)
+                        // We want the context sorted back into a predictable order to avoid a cache miss due to the contents of the system prompt changing
+                        .sorted(Comparator.comparing(RagDocumentContext::tool))
+                        .toList())
+                .get();
 
         if (ragContext.isEmpty()) {
             throw new InsufficientContext("No GitHub issues, GitHub diffs, or Slack messages found.");
