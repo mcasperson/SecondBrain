@@ -10,6 +10,7 @@ import org.jboss.weld.environment.se.WeldContainer;
 import secondbrain.Marker;
 import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.converter.StringConverterSelector;
+import secondbrain.domain.files.FileWriter;
 import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerResponse;
@@ -19,7 +20,6 @@ import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.toolbuilder.ToolSelector;
 
 import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -80,6 +80,9 @@ public class Main {
     @Inject
     @Identifier("financialLocationContactRedaction")
     private SanitizeDocument sanitizeDocument;
+
+    @Inject
+    private FileWriter fileWriter;
 
     /**
      * This is included here to force the service to initialise as early as possible.
@@ -189,7 +192,7 @@ public class Main {
         final String annotations = Objects.requireNonNullElse(sanitizeDocument.sanitize(content.getAnnotations() + content.getDebugInfo()), "");
 
         if (StringUtils.isNotBlank(annotations)) {
-            Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, annotationsFile.get()), annotations, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+            Try.run(() -> fileWriter.write(pathBuilder.getFilePath(directory, annotationsFile.get()), annotations))
                     .onFailure(e -> logger.severe("Failed to write annotations to file: " + e.getMessage()));
         }
     }
@@ -200,11 +203,9 @@ public class Main {
         }
 
         if (StringUtils.isNotBlank(content.getLinks())) {
-            Try.run(() -> Files.writeString(
+            Try.run(() -> fileWriter.write(
                             pathBuilder.getFilePath(directory, linksFile.get()),
-                            "Links:" + System.lineSeparator() + content.getLinks(),
-                            StandardOpenOption.CREATE,
-                            StandardOpenOption.TRUNCATE_EXISTING))
+                            "Links:" + System.lineSeparator() + content.getLinks()))
                     .onFailure(e -> logger.severe("Failed to write links to file: " + e.getMessage()));
         }
     }
@@ -215,7 +216,7 @@ public class Main {
         }
 
         if (StringUtils.isNotBlank(content.getDebugInfo())) {
-            Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, debugFile.get()), content.getDebugInfo(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING))
+            Try.run(() -> fileWriter.write(pathBuilder.getFilePath(directory, debugFile.get()), content.getDebugInfo()))
                     .onFailure(e -> logger.severe("Failed to write debug to file: " + e.getMessage()));
         }
     }
@@ -225,14 +226,13 @@ public class Main {
             return;
         }
 
-        final StandardOpenOption option = appendToOutputFile
-                ? StandardOpenOption.APPEND
-                : StandardOpenOption.TRUNCATE_EXISTING;
-
         final String redactedOutput = Objects.requireNonNullElse(sanitizeDocument.sanitize(content.getResponseText()), "");
 
-        Try.run(() -> Files.writeString(pathBuilder.getFilePath(directory, file.get()), redactedOutput, StandardOpenOption.CREATE, option))
-                .onFailure(e -> logger.severe("Failed to write output to file: " + e.getMessage()));
+        if (appendToOutputFile) {
+            fileWriter.append(pathBuilder.getFilePath(directory, file.get()), redactedOutput);
+        } else {
+            fileWriter.write(pathBuilder.getFilePath(directory, file.get()), redactedOutput);
+        }
     }
 
     private void saveMetadata(final PromptHandlerResponse content) {
@@ -242,11 +242,9 @@ public class Main {
                 .filter(Objects::nonNull)
                 .filter(meta -> StringUtils.isNotBlank(meta.getFilename()))
                 .peek(meta -> logger.info("Saving metadata: " + pathBuilder.getFilePath(directory, meta.getFilename())))
-                .forEach(meta -> Try.of(() -> Files.write(
+                .forEach(meta -> Try.run(() -> fileWriter.write(
                                 pathBuilder.getFilePath(directory, meta.getFilename()),
-                                jsonDeserializer.serialize(meta).getBytes(),
-                                StandardOpenOption.CREATE,
-                                StandardOpenOption.TRUNCATE_EXISTING))
+                                jsonDeserializer.serialize(meta)))
                         .onFailure(e -> logger.severe("Failed to write metadata to files: " + e.getMessage())));
     }
 
@@ -257,11 +255,9 @@ public class Main {
                 .filter(Objects::nonNull)
                 .filter(meta -> StringUtils.isNotBlank(meta.filename()) && meta.content() != null)
                 .peek(meta -> logger.info("Saving intermediate result: " + pathBuilder.getFilePath(directory, meta.filename())))
-                .forEach(meta -> Try.of(() -> Files.write(
+                .forEach(meta -> Try.run(() -> fileWriter.write(
                                 pathBuilder.getFilePath(directory, meta.filename()),
-                                Objects.requireNonNullElse(sanitizeDocument.sanitize(meta.content()), "").getBytes(),
-                                StandardOpenOption.CREATE,
-                                StandardOpenOption.TRUNCATE_EXISTING))
+                                Objects.requireNonNullElse(sanitizeDocument.sanitize(meta.content()), "")))
                         .onFailure(e -> logger.severe("Failed to write intermediate result to files: " + e.getMessage())));
     }
 }
