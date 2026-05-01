@@ -30,6 +30,7 @@ import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.persist.H2LocalStorage;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.response.OkResponseValidation;
+import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.sanitize.RemoveSpacing;
 import secondbrain.domain.sanitize.SanitizeEmail;
 import secondbrain.domain.toolbuilder.ToolBuilderLlama3;
@@ -107,6 +108,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(PlanHatClientProducer.class)
 @AddBeanClasses(GongClientProducer.class)
 @AddBeanClasses(GitHubClientProducer.class)
+@AddBeanClasses(FinancialLocationContactRedaction.class)
 public class ToolSelectionTest {
 
     final @Container
