@@ -216,17 +216,17 @@ public class CosmosMutex implements Mutex {
                 .filter(lockDoc -> lockDoc.isLockStale(getLockTtlSeconds()))
                 // If the existing lock was not found, we create a new lock
                 .recover(NotFoundException.class, ex -> new LockDocument(lockName, LOCK_PARTITION_VALUE, Instant.now(), getLockTtlSeconds()))
-                // NoSuchElementException means the lock exists and is not stale.
-                // We failed to obtain the lock.
-                .recover(NoSuchElementException.class, ex -> {
-                    throw new LockFail("Failed to obtain lock - lock " + lockName + " is currently held", ex);
-                })
                 // The newer cosmos client throws a 404 error rather than NoSuchElementException
                 .recover(CosmosException.class, ex -> {
                     if (ex.getStatusCode() == 404) {
                         return new LockDocument(lockName, LOCK_PARTITION_VALUE, Instant.now(), getLockTtlSeconds());
                     }
                     throw ex;
+                })
+                // NoSuchElementException means the lock exists and is not stale.
+                // We failed to obtain the lock.
+                .recover(NoSuchElementException.class, ex -> {
+                    throw new LockFail("Failed to obtain lock - lock " + lockName + " is currently held", ex);
                 })
                 // Get a new etag for a stale lock, or the first etag for a new lock.
                 // If we have two processes trying to acquire the same lock at the same time,
@@ -249,7 +249,10 @@ public class CosmosMutex implements Mutex {
 
     private void logReadItemFailure(final String lockName, final Throwable ex) {
         // We ignore not found exceptions as they are expected when the lock does not exist
-        if (!(ex instanceof NotFoundException)) {
+        final boolean isNotFound = ex instanceof NotFoundException;
+        final boolean is404 = ex instanceof CosmosException cosmosEx && cosmosEx.getStatusCode() == 404;
+
+        if (!(isNotFound || is404)) {
             logger.warning("Failed to read lock item: " + lockName + " - " + exceptionHandler.getExceptionMessage(ex));
         }
     }
