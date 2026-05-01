@@ -116,6 +116,8 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
 
         return Try.of(() -> service.filter(createPolicy(), "llm", document))
                 .map(TextFilterResult::getFilteredText)
+                // In the event of a failure, return the original document
+                .recover(ex -> document)
                 .get();
     }
 }
