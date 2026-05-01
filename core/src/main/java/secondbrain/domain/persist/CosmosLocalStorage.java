@@ -29,7 +29,10 @@ import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
@@ -593,8 +596,6 @@ public class CosmosLocalStorage implements LocalStorage {
 
         logger.fine("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
 
-        final Executor executor = Executors.newVirtualThreadPerTaskExecutor();
-
         // Start by trying to load the full result from the local storage.
         // We assume local storage can save the complete array as a single item. Loading the full array is much more efficient.
         // The remote storage may not have this capability, so we fall back to loading each item individually.
@@ -611,35 +612,38 @@ public class CosmosLocalStorage implements LocalStorage {
             return localCacheTry.get();
         }
 
-        return Try.of(() -> getString(tool, source, promptHash))
-                .filter(result -> result != null && StringUtils.isNotBlank(result.result()))
-                .onSuccess(v -> logger.fine("Remote cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
-                .mapTry(r -> NumberUtils.toInt(r.result(), 0))
-                // The cached result is the number of items in the array.
-                // We then loop over each index to get the individual items.
-                .map(count -> IntStream.range(0, count)
-                        .boxed()
-                        .collect(parallelToStream(index -> getString(tool, source, promptHash + "_" + index), executor, BATCH_SIZE))
-                        .map(r -> jsonDeserializer.deserialize(r.result(), clazz))
-                        .toList()
-                )
-                // The list becomes an array
-                .map(list -> list.toArray(ArrayUtils.newInstance(clazz, list.size())))
-                // Persist the full array in local storage for next time
-                .peek(array -> persistArrayResultLocal(tool, source, promptHash, ttlSeconds, array))
-                // The array is wrapped in a CacheResult
-                .map(array -> new CacheResult<T[]>(array, true))
-                .recoverWith(ex -> Try.of(() -> {
-                            logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                            logger.fine("Exception: " + exceptionHandler.getExceptionMessage(ex));
-                            return persistArrayResult(tool, source, promptHash, ttlSeconds, generateValue);
-                        })
-                )
-                .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
-                .recover(LocalStorageFailure.class, ex -> {
-                    logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                    return new CacheResult<T[]>(generateValue.generate(), false);
-                })
+        return Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
+                .of(executor -> Try.of(() -> getString(tool, source, promptHash))
+                        .filter(result -> result != null && StringUtils.isNotBlank(result.result()))
+                        .onSuccess(v -> logger.fine("Remote cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
+                        .mapTry(r -> NumberUtils.toInt(r.result(), 0))
+                        // The cached result is the number of items in the array.
+                        // We then loop over each index to get the individual items.
+                        .map(count -> IntStream.range(0, count)
+                                .boxed()
+                                .collect(parallelToStream(index -> getString(tool, source, promptHash + "_" + index), executor, BATCH_SIZE))
+                                .map(r -> jsonDeserializer.deserialize(r.result(), clazz))
+                                .toList()
+                        )
+                        // The list becomes an array
+                        .map(list -> list.toArray(ArrayUtils.newInstance(clazz, list.size())))
+                        // Persist the full array in local storage for next time
+                        .peek(array -> persistArrayResultLocal(tool, source, promptHash, ttlSeconds, array))
+                        // The array is wrapped in a CacheResult
+                        .map(array -> new CacheResult<T[]>(array, true))
+                        .recoverWith(ex -> Try.of(() -> {
+                                    logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                                    logger.fine("Exception: " + exceptionHandler.getExceptionMessage(ex));
+                                    return persistArrayResult(tool, source, promptHash, ttlSeconds, generateValue);
+                                })
+                        )
+                        .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
+                        .recover(LocalStorageFailure.class, ex -> {
+                                    logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
+                                    return new CacheResult<T[]>(generateValue.generate(), false);
+                                }
+                        )
+                        .get())
                 .get();
     }
 
