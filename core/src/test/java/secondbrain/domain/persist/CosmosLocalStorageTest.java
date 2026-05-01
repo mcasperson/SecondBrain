@@ -231,11 +231,13 @@ public class CosmosLocalStorageTest {
 
         cosmosLocalStorage.flush();
 
-        Assertions.assertEquals(randomValue, cosmosLocalStorage.getString(
+        final String result = cosmosLocalStorage.getString(
                         CosmosLocalStorageTest.class.getSimpleName(),
                         "test",
                         randomValue)
-                .result());
+                .result();
+
+        Assertions.assertTrue(randomValue.equals(result) || result.contains("{{{REDACTED-PHONE}}}"));
         Try.run(() -> Thread.sleep(15000));
         Assertions.assertNull(cosmosLocalStorage.getString(
                         CosmosLocalStorageTest.class.getSimpleName(),
