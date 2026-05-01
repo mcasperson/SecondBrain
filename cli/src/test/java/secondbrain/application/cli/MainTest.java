@@ -1,43 +1,55 @@
 package secondbrain.application.cli;
 
+import io.smallrye.config.inject.ConfigExtension;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
+import jakarta.enterprise.inject.spi.InjectionPoint;
+import jakarta.inject.Inject;
+import org.jboss.weld.junit5.WeldInitiator;
+import org.jboss.weld.junit5.WeldJunit5Extension;
+import org.jboss.weld.junit5.WeldSetup;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.converter.StringConverterSelector;
 import secondbrain.domain.files.FileWriter;
 import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerResponse;
+import secondbrain.domain.handler.PromptResponseSimple;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.LocalStorageReadWrite;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.IntermediateResult;
-import secondbrain.domain.tooldefs.Tool;
-import secondbrain.domain.handler.PromptResponseSimple;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Tests that Main correctly sanitizes PII before writing to any files.
+ *
+ * <p>Uses an explicit Weld CDI container (discovery disabled via
+ * {@link WeldInitiator#createWeld()}) so that only the three registered bean
+ * classes are present: {@link Main}, {@link FinancialLocationContactRedaction},
+ * and {@link MockBeans}.  All other dependencies of {@link Main} are satisfied
+ * by Mockito mocks produced by {@link MockBeans}.
+ *
+ * <p>The real {@link FinancialLocationContactRedaction} is wired in so that the
+ * PII-sanitization logic is exercised end-to-end rather than stubbed away.
+ *
+ * <p>Config properties are read from {@code META-INF/microprofile-config.properties}
+ * in test resources so that {@code @ConfigProperty} injection into {@link Main} is
+ * satisfied before the CDI container starts injecting beans.
  */
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(WeldJunit5Extension.class)
 @SuppressWarnings("NullAway")
 class MainTest {
 
@@ -46,130 +58,99 @@ class MainTest {
     private static final String PII_CREDIT_CARD = "4111111111111111";
     private static final String PII_ANNOTATION_EMAIL = "jane.smith@company.org";
 
-    @Mock
-    private PromptHandler promptHandler;
+    /**
+     * Explicit Weld container with discovery disabled.  Only the three listed
+     * bean classes are registered; everything else is supplied as mocks via
+     * {@link MockBeans}'.  The SmallRye {@link ConfigExtension} is added so that
+     * {@code @ConfigProperty} injection in {@link Main} is resolved from the
+     * {@code META-INF/microprofile-config.properties} test resource.
+     */
+    @WeldSetup
+    private final WeldInitiator weld = WeldInitiator
+            .from(WeldInitiator.createWeld()
+                    .beanClasses(Main.class, FinancialLocationContactRedaction.class, MockBeans.class)
+                    .addExtension(new ConfigExtension()))
+            .activate(ApplicationScoped.class)
+            .build();
 
     /**
-     * Stub selector that always returns the no-op converter without requiring CDI injection.
+     * CDI-managed Main instance with dependencies injected from the container.
      */
-    private final StringConverterSelector converterSelector = new StringConverterSelector() {
-        @Override
-        public StringConverter getStringConverter(final String format) {
-            return noOpConverter();
-        }
-    };
-
-    /**
-     * Stub ToolSelector that returns an empty list; only called when --help is requested.
-     */
-    private final ToolSelector stubToolSelector = new ToolSelector() {
-        @Override
-        public List<Tool<?>> getAvailableTools() {
-            return List.of();
-        }
-    };
-
-    @Mock
-    private JsonDeserializer jsonDeserializer;
-
-    @Mock
-    private PathBuilder pathBuilder;
-
-    @Mock
-    private FileWriter fileWriter;
-
-    @Mock
-    private LocalStorageReadWrite localStorageReadWrite;
-
-    @InjectMocks
+    @Inject
     private Main main;
 
-    /** Real sanitizer so we can verify it actually strips PII from what's written to files. */
-    private final FinancialLocationContactRedaction sanitizeDocument = new FinancialLocationContactRedaction();
-
     @BeforeEach
-    void setUp() throws Exception {
-        final Method construct = FinancialLocationContactRedaction.class.getDeclaredMethod("construct");
-        construct.setAccessible(true);
-        construct.invoke(sanitizeDocument);
+    void resetMocks() {
+        // Reset all Mockito mock state between tests to avoid interaction bleed-over.
+        reset(
+                MockBeans.promptHandlerMock,
+                MockBeans.fileWriterMock,
+                MockBeans.pathBuilderMock,
+                MockBeans.localStorageMock,
+                MockBeans.jsonDeserializerMock);
 
-        setField(main, "sanitizeDocument", sanitizeDocument);
-        setField(main, "stringConverterSelector", converterSelector);
-        setField(main, "toolSelector", stubToolSelector);
-        setField(main, "logger", Logger.getLogger(MainTest.class.getName()));
-        setField(main, "promptFile", Optional.empty());
-        setField(main, "file", Optional.of("output.txt"));
-        setField(main, "appendToOutputFile", Boolean.FALSE);
-        setField(main, "annotationsFile", Optional.of("annotations.txt"));
-        setField(main, "linksFile", Optional.empty());
-        setField(main, "debugFile", Optional.empty());
-        setField(main, "printAnnotations", Boolean.FALSE);
-        setField(main, "directory", ".");
+        // Stub the path builder to simply concatenate directory + filename.
+        when(MockBeans.pathBuilderMock.getFilePath(any(String.class), any(String.class)))
+                .thenAnswer(inv -> Path.of(
+                        inv.getArgument(0, String.class),
+                        inv.getArgument(1, String.class)));
     }
+
+    // -------------------------------------------------------------------------
+    // Tests
+    // -------------------------------------------------------------------------
 
     @Test
     void testNoPiiWrittenToOutputFile() {
-        final PromptHandlerResponse response = buildPiiResponse();
-
-        when(promptHandler.handlePrompt(any(), any())).thenReturn(response);
-        when(pathBuilder.getFilePath(any(), any()))
-                .thenAnswer(inv -> Path.of(inv.getArgument(0).toString(), inv.getArgument(1).toString()));
+        when(MockBeans.promptHandlerMock.handlePrompt(any(), any()))
+                .thenReturn(buildPiiResponse());
 
         main.entry(new String[]{"Tell me about the customer"});
 
-        final ArgumentCaptor<String> contentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(fileWriter, atLeastOnce()).write(any(Path.class), contentCaptor.capture());
+        final ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(MockBeans.fileWriterMock, atLeastOnce()).write(any(Path.class), captor.capture());
 
-        for (final String written : contentCaptor.getAllValues()) {
+        for (final String written : captor.getAllValues()) {
             assertFalse(written.contains(PII_EMAIL),
-                    "Email PII '" + PII_EMAIL + "' must not appear in file output, but found in: " + written);
+                    "Email PII must not appear in any file write; found in: " + written);
             assertFalse(written.contains(PII_CREDIT_CARD),
-                    "Credit card PII '" + PII_CREDIT_CARD + "' must not appear in file output, but found in: " + written);
+                    "Credit-card PII must not appear in any file write; found in: " + written);
         }
     }
 
     @Test
     void testNoPiiWrittenToAnnotationsFile() {
-        final PromptHandlerResponse response = buildPiiResponse();
-
-        when(promptHandler.handlePrompt(any(), any())).thenReturn(response);
-        when(pathBuilder.getFilePath(any(), any()))
-                .thenAnswer(inv -> Path.of(inv.getArgument(0).toString(), inv.getArgument(1).toString()));
+        when(MockBeans.promptHandlerMock.handlePrompt(any(), any()))
+                .thenReturn(buildPiiResponse());
 
         main.entry(new String[]{"Tell me about the customer"});
 
-        final ArgumentCaptor<String> contentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(fileWriter, atLeastOnce()).write(any(Path.class), contentCaptor.capture());
+        final ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(MockBeans.fileWriterMock, atLeastOnce()).write(any(Path.class), captor.capture());
 
-        // Annotations file will be one of the captured writes; ensure none contain annotation PII
-        for (final String written : contentCaptor.getAllValues()) {
+        for (final String written : captor.getAllValues()) {
             assertFalse(written.contains(PII_ANNOTATION_EMAIL),
-                    "Email PII '" + PII_ANNOTATION_EMAIL + "' must not appear in annotations file, but found in: " + written);
+                    "Annotation email PII must not appear in any file write; found in: " + written);
         }
     }
 
     @Test
-    void testNoPiiWrittenToIntermediateResultFiles() throws Exception {
-        // Override: use an intermediate result file so saveIntermediateResults is exercised
-        setField(main, "file", Optional.empty());
-        setField(main, "annotationsFile", Optional.empty());
-
-        final PromptHandlerResponse response = buildPiiResponse();
-
-        when(promptHandler.handlePrompt(any(), any())).thenReturn(response);
-        when(pathBuilder.getFilePath(any(), any()))
-                .thenAnswer(inv -> Path.of(inv.getArgument(0).toString(), inv.getArgument(1).toString()));
+    void testNoPiiWrittenToIntermediateResultFiles() {
+        // Intermediate results are always written regardless of file/annotationsFile config,
+        // so no config override is needed – the write will be captured below.
+        when(MockBeans.promptHandlerMock.handlePrompt(any(), any()))
+                .thenReturn(buildPiiResponse());
 
         main.entry(new String[]{"Tell me about the customer"});
 
-        final ArgumentCaptor<String> contentCaptor = ArgumentCaptor.forClass(String.class);
-        verify(fileWriter, atLeastOnce()).write(any(Path.class), contentCaptor.capture());
+        final ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(MockBeans.fileWriterMock, atLeastOnce()).write(any(Path.class), captor.capture());
 
-        for (final String written : contentCaptor.getAllValues()) {
+        for (final String written : captor.getAllValues()) {
             assertFalse(written.contains(PII_CREDIT_CARD),
-                    "Credit card PII '" + PII_CREDIT_CARD + "' must not appear in intermediate result file, but found in: " + written);
+                    "Credit-card PII must not appear in intermediate result file; found in: " + written);
             assertFalse(written.contains(PII_PHONE),
-                    "Phone PII '" + PII_PHONE + "' must not appear in intermediate result file, but found in: " + written);
+                    "Phone PII must not appear in intermediate result file; found in: " + written);
         }
     }
 
@@ -178,12 +159,16 @@ class MainTest {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds a PromptHandlerResponse whose text fields contain several PII values.
+     * Builds a {@link PromptHandlerResponse} whose text fields deliberately contain
+     * several categories of PII so that tests can verify they are all redacted before
+     * being persisted.
      */
     private PromptHandlerResponse buildPiiResponse() {
-        final String responseText = "Contact " + PII_EMAIL + " or call " + PII_PHONE + " for assistance.";
+        final String responseText =
+                "Contact " + PII_EMAIL + " or call " + PII_PHONE + " for assistance.";
         final String annotations = "Follow-up address: " + PII_ANNOTATION_EMAIL;
-        final String intermediateContent = "Payment via card " + PII_CREDIT_CARD + ", phone " + PII_PHONE;
+        final String intermediateContent =
+                "Payment via card " + PII_CREDIT_CARD + ", phone " + PII_PHONE;
 
         return new PromptResponseSimple(
                 responseText,
@@ -191,8 +176,7 @@ class MainTest {
                 /*links=*/ "",
                 /*debug=*/ "",
                 List.of(),
-                List.of(new IntermediateResult(intermediateContent, "intermediate.txt"))
-        );
+                List.of(new IntermediateResult(intermediateContent, "intermediate.txt")));
     }
 
     private static StringConverter noOpConverter() {
@@ -209,10 +193,103 @@ class MainTest {
         };
     }
 
-    private static void setField(final Object target, final String fieldName, final Object value) throws Exception {
-        final Field field = target.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
+    // -------------------------------------------------------------------------
+    // CDI mock producer bean
+    // -------------------------------------------------------------------------
+
+    /**
+     * CDI producer bean registered with the Weld test container.  Each injection
+     * point in {@link Main} is satisfied here.
+     * <ul>
+     *   <li>Interface types ({@link PromptHandler}, {@link FileWriter}, {@link PathBuilder},
+     *       {@link LocalStorageReadWrite}, {@link JsonDeserializer}) use Mockito mocks so that
+     *       individual tests can stub and verify them.</li>
+     *   <li>Concrete CDI classes ({@link ToolSelector}, {@link StringConverterSelector}) are
+     *       replaced by minimal anonymous stubs to avoid Mockito inline-mock limitations on
+     *       Java 25; neither class is exercised in these tests.</li>
+     * </ul>
+     * Static mock instances are used so that test methods can reference them as
+     * {@code MockBeans.fileWriterMock}.  All Mockito mocks are reset before each
+     * test in {@link MainTest#resetMocks()}.
+     */
+    @ApplicationScoped
+    static class MockBeans {
+
+        // ---- Mockito mocks (interfaces) ----
+        static final PromptHandler promptHandlerMock = mock(PromptHandler.class);
+        static final FileWriter fileWriterMock = mock(FileWriter.class);
+        static final PathBuilder pathBuilderMock = mock(PathBuilder.class);
+        static final LocalStorageReadWrite localStorageMock = mock(LocalStorageReadWrite.class);
+        static final JsonDeserializer jsonDeserializerMock = mock(JsonDeserializer.class);
+
+        // ---- Plain stubs (concrete CDI classes not directly exercised in tests) ----
+
+        /**
+         * Stub selector that always returns a no-op converter; never verified.
+         */
+        static final StringConverterSelector stringConverterSelectorStub =
+                new StringConverterSelector() {
+                    @Override
+                    public StringConverter getStringConverter(final String format) {
+                        return noOpConverter();
+                    }
+                };
+
+        /**
+         * Stub selector that exposes no tools; only reached via {@code --help}.
+         */
+        static final ToolSelector toolSelectorStub = new ToolSelector() {
+            @Override
+            public java.util.List<secondbrain.domain.tooldefs.Tool<?>> getAvailableTools() {
+                return java.util.List.of();
+            }
+        };
+
+        @Produces
+        public PromptHandler promptHandler() {
+            return promptHandlerMock;
+        }
+
+        @Produces
+        public FileWriter fileWriter() {
+            return fileWriterMock;
+        }
+
+        @Produces
+        public PathBuilder pathBuilder() {
+            return pathBuilderMock;
+        }
+
+        @Produces
+        public LocalStorageReadWrite localStorageReadWrite() {
+            return localStorageMock;
+        }
+
+        @Produces
+        public JsonDeserializer jsonDeserializer() {
+            return jsonDeserializerMock;
+        }
+
+        @Produces
+        public StringConverterSelector stringConverterSelector() {
+            return stringConverterSelectorStub;
+        }
+
+        @Produces
+        public ToolSelector toolSelector() {
+            return toolSelectorStub;
+        }
+
+        /**
+         * Produces a named {@link Logger} for any injection point, mirroring the
+         * behaviour of {@code secondbrain.domain.logger.Loggers} without requiring
+         * file-system access.
+         */
+        @Produces
+        public Logger logger(final InjectionPoint ip) {
+            return Logger.getLogger(ip.getMember().getDeclaringClass().getName());
+        }
     }
+
 }
 
