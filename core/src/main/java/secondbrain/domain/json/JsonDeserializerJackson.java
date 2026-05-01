@@ -10,6 +10,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import org.apache.commons.lang.StringUtils;
 import secondbrain.domain.exceptions.DeserializationFailed;
 import secondbrain.domain.exceptions.SerializationFailed;
 import secondbrain.domain.persist.TimedOperation;
@@ -17,6 +18,9 @@ import secondbrain.domain.persist.TimedOperation;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A service for serializing and deserializing JSON.
@@ -40,12 +44,16 @@ public class JsonDeserializerJackson implements JsonDeserializer {
 
     @Override
     public <T> T deserialize(final String json, final Class<T> clazz) {
+        checkArgument(StringUtils.isNotBlank(json), "JSON string cannot be blank");
+
         return Try.withResources(() -> new TimedOperation("Deserialize string " + clazz.getSimpleName()))
                 .of(t -> deserializeTimed(json, clazz))
                 .get();
     }
 
     private <T> T deserializeTimed(final String json, final Class<T> clazz) {
+        checkArgument(StringUtils.isNotBlank(json), "JSON string cannot be blank");
+
         return Try.of(this::createObjectMapper)
                 .mapTry(objectMapper -> objectMapper.readValue(json, clazz))
                 .onFailure(ex -> logger.warning("Failed to deserialize object of type " + clazz.getSimpleName() + "\n" + json + "\n" + ex.getMessage()))
@@ -54,6 +62,8 @@ public class JsonDeserializerJackson implements JsonDeserializer {
 
     @Override
     public <U, V> Map<U, V> deserializeMap(final String json, final Class<U> key, final Class<V> value) {
+        checkArgument(StringUtils.isNotBlank(json), "JSON string cannot be blank");
+
         return Try.of(this::createObjectMapper)
                 .mapTry(objectMapper -> objectMapper.<Map<U, V>>readValue(
                         json,
@@ -64,6 +74,8 @@ public class JsonDeserializerJackson implements JsonDeserializer {
 
     @Override
     public <U> List<U> deserializeCollection(final String json, final Class<U> value) {
+        checkArgument(StringUtils.isNotBlank(json), "JSON string cannot be blank");
+
         return Try.of(this::createObjectMapper)
                 .mapTry(objectMapper -> objectMapper.<List<U>>readValue(
                         json,
@@ -73,6 +85,8 @@ public class JsonDeserializerJackson implements JsonDeserializer {
 
     @Override
     public <T, U> T deserializeGeneric(final String json, final Class<T> container, final Class<U> contained) {
+        checkArgument(StringUtils.isNotBlank(json), "JSON string cannot be blank");
+
         return Try.of(this::createObjectMapper)
                 .mapTry(objectMapper -> objectMapper.<T>readValue(
                         json,
@@ -83,6 +97,8 @@ public class JsonDeserializerJackson implements JsonDeserializer {
 
     @Override
     public <T, U, V> T deserializeGeneric(final String json, final Class<T> container, final Class<U> contained, final Class<V> contained2) {
+        checkArgument(StringUtils.isNotBlank(json), "JSON string cannot be blank");
+
         return Try.of(this::createObjectMapper)
                 .mapTry(objectMapper -> objectMapper.<T>readValue(
                         json,
