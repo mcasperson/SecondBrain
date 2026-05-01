@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
 /**
@@ -87,8 +88,29 @@ public class CosmosMutex implements Mutex {
         logger.fine("Initializing Cosmos DB local storage");
         synchronized (CosmosMutex.class) {
             if (cosmosClient == null) {
-                Try.run(this::initializeCosmosClient)
-                        .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+                /*
+                 * CosmosClientBuilder.buildClient() internally uses Project Reactor and calls
+                 * .block(). When this @PostConstruct is triggered lazily by a CDI proxy on a
+                 * virtual thread, the blocking call can be interrupted. Running the
+                 * initialization on a platform thread avoids this problem.
+                 */
+                final AtomicReference<Throwable> initFailure = new AtomicReference<>();
+                try {
+                    final Thread platformThread = Thread.ofPlatform().start(() -> {
+                        try {
+                            initializeCosmosClient();
+                        } catch (final Throwable ex) {
+                            initFailure.set(ex);
+                        }
+                    });
+                    platformThread.join();
+                } catch (final InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    logger.warning("Interrupted while waiting for Cosmos DB client initialization");
+                }
+                if (initFailure.get() != null) {
+                    logger.warning(exceptionHandler.getExceptionMessage(initFailure.get()));
+                }
             }
         }
         logger.fine("Initialized Cosmos DB local storage");

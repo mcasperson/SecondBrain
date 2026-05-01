@@ -34,6 +34,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
@@ -130,8 +131,29 @@ public class CosmosLocalStorage implements LocalStorage {
         logger.fine("Initializing Cosmos DB local storage");
         synchronized (CosmosLocalStorage.class) {
             if (cosmosClient == null) {
-                Try.run(this::initializeCosmosClient)
-                        .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+                /*
+                 * CosmosClientBuilder.buildClient() internally uses Project Reactor and calls
+                 * .block(). When this @PostConstruct is triggered lazily by a CDI proxy on a
+                 * virtual thread, the blocking call can be interrupted. Running the
+                 * initialization on a platform thread avoids this problem.
+                 */
+                final AtomicReference<Throwable> initFailure = new AtomicReference<>();
+                try {
+                    final Thread platformThread = Thread.ofPlatform().start(() -> {
+                        try {
+                            initializeCosmosClient();
+                        } catch (final Throwable ex) {
+                            initFailure.set(ex);
+                        }
+                    });
+                    platformThread.join();
+                } catch (final InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    logger.warning("Interrupted while waiting for Cosmos DB client initialization");
+                }
+                if (initFailure.get() != null) {
+                    logger.warning(exceptionHandler.getExceptionMessage(initFailure.get()));
+                }
             }
         }
         logger.fine("Initialized Cosmos DB local storage");
