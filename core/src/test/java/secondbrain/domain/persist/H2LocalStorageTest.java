@@ -76,11 +76,14 @@ public class H2LocalStorageTest {
                         randomValue,
                         () -> randomValue)
                 .result());
-        Assertions.assertEquals(randomValue, h2LocalStorage.getString(
+
+        final String result = h2LocalStorage.getString(
                         H2LocalStorageTest.class.getSimpleName(),
                         "test",
                         randomValue)
-                .result());
+                .result();
+
+        Assertions.assertTrue(randomValue.equals(result) || result.contains("{{{REDACTED-PHONE}}}"));
     }
 
     @Test
@@ -105,11 +108,14 @@ public class H2LocalStorageTest {
                         10,
                         () -> randomValue)
                 .result());
-        Assertions.assertEquals(randomValue, h2LocalStorage.getString(
+
+        final String result = h2LocalStorage.getString(
                         H2LocalStorageTest.class.getSimpleName(),
                         "test",
                         randomValue)
-                .result());
+                .result();
+
+        Assertions.assertTrue(randomValue.equals(result) || result.contains("{{{REDACTED-PHONE}}}"));
         Try.run(() -> Thread.sleep(15000));
         Assertions.assertNull(h2LocalStorage.getString(
                         H2LocalStorageTest.class.getSimpleName(),
