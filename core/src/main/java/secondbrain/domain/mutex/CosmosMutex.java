@@ -221,6 +221,13 @@ public class CosmosMutex implements Mutex {
                 .recover(NoSuchElementException.class, ex -> {
                     throw new LockFail("Failed to obtain lock - lock " + lockName + " is currently held", ex);
                 })
+                // The newer cosmos client throws a 404 error rather than NoSuchElementException
+                .recover(CosmosException.class, ex -> {
+                    if (ex.getStatusCode() == 404) {
+                        throw new LockFail("Failed to obtain lock - lock " + lockName + " is currently held", ex);
+                    }
+                    throw ex;
+                })
                 // Get a new etag for a stale lock, or the first etag for a new lock.
                 // If we have two processes trying to acquire the same lock at the same time,
                 // one of them will fail here due to the etag mismatch.

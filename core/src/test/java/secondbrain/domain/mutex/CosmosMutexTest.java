@@ -78,7 +78,7 @@ public class CosmosMutexTest {
     @Test
     public void testFailedLocking() {
         // start a thread that locks the mutex for 60 seconds
-        new Thread(() -> cosmosMutex.acquire(5000, "testFailedLocking4", () -> Try.run(() -> Thread.sleep(60000))))
+        new Thread(() -> cosmosMutex.acquire(5000, "testFailedLocking4", () -> Try.run(() -> Thread.sleep(600000))))
                 .start();
 
         // wait a bit to ensure the other thread has acquired the lock
