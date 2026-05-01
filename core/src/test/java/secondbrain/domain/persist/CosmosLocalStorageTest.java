@@ -228,6 +228,9 @@ public class CosmosLocalStorageTest {
                         10,
                         () -> randomValue)
                 .result());
+
+        cosmosLocalStorage.flush();
+
         Assertions.assertEquals(randomValue, cosmosLocalStorage.getString(
                         CosmosLocalStorageTest.class.getSimpleName(),
                         "test",
