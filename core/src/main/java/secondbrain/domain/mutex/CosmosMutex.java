@@ -159,6 +159,8 @@ public class CosmosMutex implements Mutex {
                 .key(cosmosKey.get())
                 .consistencyLevel(ConsistencyLevel.SESSION)
                 .clientTelemetryConfig(telemetryOptions)
+                .endpointDiscoveryEnabled(false)
+                .gatewayMode()
                 .buildClient();
 
         cosmosClient.createDatabaseIfNotExists(databaseName);
