@@ -9,12 +9,9 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptions.InternalFailure;
-import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.persist.LocalStorage;
 
 import java.util.Arrays;
 import java.util.List;
@@ -36,10 +33,6 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
 
     @Inject
     private Logger logger;
-
-    @Inject
-    @Preferred
-    private LocalStorage localStorage;
 
     @PostConstruct
     private void init() {
@@ -72,14 +65,9 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
             return List.of();
         }
 
-        return Arrays.stream(Try.of(() -> localStorage.getOrPutObject(JdlSentenceVectorizer.class.getSimpleName(),
-                                "vectorize",
-                                DigestUtils.sha256Hex(String.join("|", text) + DJL_PATH),
-                                TTL_SECONDS,
-                                RagStringContext[].class,
-                                () -> text.stream()
-                                        .map(this::vectorize)
-                                        .toArray(RagStringContext[]::new)).result())
+        return Arrays.stream(Try.of(() -> text.stream()
+                                .map(this::vectorize)
+                                .toArray(RagStringContext[]::new))
                         .filter(Objects::nonNull)
                         .onFailure(ex -> logger.warning("Error while vectorizing sentences, annotations are not available: " + ExceptionUtils.getRootCause(ex)))
                         .get())
@@ -91,12 +79,7 @@ public class JdlSentenceVectorizer implements SentenceVectorizer, AutoCloseable 
             throw new InternalFailure("Predictor is not initialized");
         }
 
-        return Try.of(() -> localStorage.getOrPutObject(JdlSentenceVectorizer.class.getSimpleName(),
-                        "vectorize",
-                        DigestUtils.sha256Hex(text + hiddenText + DJL_PATH),
-                        TTL_SECONDS,
-                        RagStringContext.class,
-                        () -> vectorizeApi(text, hiddenText)).result())
+        return Try.of(() -> vectorizeApi(text, hiddenText))
                 .filter(Objects::nonNull)
                 .onFailure(ex -> logger.warning("Error while vectorizing sentences, annotations are not available: " + ExceptionUtils.getRootCause(ex)))
                 .get();
