@@ -19,6 +19,7 @@ import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
 
@@ -39,6 +40,7 @@ import java.util.UUID;
 @AddBeanClasses(AesEncryptor.class)
 @AddBeanClasses(ApacheCompressZipper.class)
 @AddBeanClasses(ApacheCommonsZStdZipper.class)
+@AddBeanClasses(FinancialLocationContactRedaction.class)
 public class CosmosLocalStorageTest {
 
     @Inject
@@ -121,7 +123,7 @@ public class CosmosLocalStorageTest {
                             () -> randomValue)
                     .result());
         }
-        
+
         cosmosLocalStorage.flush();
 
         for (int i = 0; i < 10; i++) {

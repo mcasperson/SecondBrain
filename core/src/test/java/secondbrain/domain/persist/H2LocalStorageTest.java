@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 
 import java.util.Map;
 import java.util.UUID;
@@ -27,6 +28,7 @@ import java.util.UUID;
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
+@AddBeanClasses(FinancialLocationContactRedaction.class)
 public class H2LocalStorageTest {
 
     @Inject
