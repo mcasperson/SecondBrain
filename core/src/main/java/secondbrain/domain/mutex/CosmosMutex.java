@@ -224,7 +224,7 @@ public class CosmosMutex implements Mutex {
                 // The newer cosmos client throws a 404 error rather than NoSuchElementException
                 .recover(CosmosException.class, ex -> {
                     if (ex.getStatusCode() == 404) {
-                        throw new LockFail("Failed to obtain lock - lock " + lockName + " is currently held", ex);
+                        return new LockDocument(lockName, LOCK_PARTITION_VALUE, Instant.now(), getLockTtlSeconds());
                     }
                     throw ex;
                 })
