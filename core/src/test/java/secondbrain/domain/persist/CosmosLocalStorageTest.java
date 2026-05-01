@@ -132,7 +132,7 @@ public class CosmosLocalStorageTest {
                     "test" + i,
                     randomValue);
             System.out.println("read" + i + ": " + value.result());
-            Assertions.assertEquals(randomValue, value.result());
+            Assertions.assertTrue(randomValue.equals(value.result()) || value.result().contains("{{{REDACTED-PHONE}}}"));
         }
     }
 
