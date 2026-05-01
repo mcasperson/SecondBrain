@@ -28,6 +28,7 @@ import secondbrain.domain.persist.CosmosLocalStorage;
 import secondbrain.domain.persist.FileLocalStorageReadWrite;
 import secondbrain.domain.persist.H2LocalStorage;
 import secondbrain.domain.persist.LocalStorageProducer;
+import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
 
@@ -55,6 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(AesEncryptor.class)
 @AddBeanClasses(ApacheCompressZipper.class)
 @AddBeanClasses(ApacheCommonsZStdZipper.class)
+@AddBeanClasses(FinancialLocationContactRedaction.class)
 class SentenceVectorizerDataToRagDocTest {
 
     @Inject
@@ -92,18 +94,18 @@ class SentenceVectorizerDataToRagDocTest {
                 "https://example.com",
                 "Example");
         final LocalConfigKeywordsEntity parsedArgs = new LocalConfigKeywordsEntity() {
-        @Override
-        public List<String> getKeywords() {
+            @Override
+            public List<String> getKeywords() {
                 return List.of("keyword");
             }
 
-        @Override
-        public int getKeywordWindow() {
+            @Override
+            public int getKeywordWindow() {
                 return 50;
             }
 
-        @Override
-        public String getEntity() {
+            @Override
+            public String getEntity() {
                 return "test-entity";
             }
         };
