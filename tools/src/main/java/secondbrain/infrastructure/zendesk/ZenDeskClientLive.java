@@ -18,6 +18,7 @@ import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.web.ClientConstructor;
+import secondbrain.infrastructure.planhat.api.Conversation;
 import secondbrain.infrastructure.zendesk.api.*;
 
 import java.time.OffsetDateTime;
@@ -188,6 +189,11 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         if (StringUtils.isBlank(query)) {
             throw new IllegalArgumentException("Query is required");
+        }
+
+        if (page >= maxPage) {
+            logger.warning("Reached maximum offset of " + maxPage + " when fetching Zendesk conversations");
+            return new ZenDeskTicket[]{};
         }
 
         logger.fine("Getting ZenDesk tickets, page " + page + " for query: " + query);
