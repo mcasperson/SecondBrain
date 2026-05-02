@@ -102,7 +102,7 @@ public class CosmosMutex implements Mutex {
 
     @PostConstruct
     public void postConstruct() {
-        logger.fine("Initializing Cosmos DB local storage");
+        logger.fine("Initializing Cosmos DB mutex");
         synchronized (CosmosMutex.class) {
             if (cosmosClient == null) {
                 /*
@@ -130,7 +130,7 @@ public class CosmosMutex implements Mutex {
                 }
             }
         }
-        logger.fine("Initialized Cosmos DB local storage");
+        logger.fine("Initialized Cosmos DB mutex");
 
         clearLocksOnStartup();
     }
