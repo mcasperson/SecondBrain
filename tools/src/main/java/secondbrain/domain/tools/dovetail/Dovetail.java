@@ -51,6 +51,7 @@ public class Dovetail implements Tool<DovetailDataDetails> {
     public static final String DOVETAIL_API_KEY_ARG = "apiKey";
     public static final String DOVETAIL_BASE_URL_ARG = "dovetailBaseUrl";
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
+    public static final String MINIMUM_CONTENT_LENGTH_ARG = "minimumContentLength";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -130,7 +131,8 @@ public class Dovetail implements Tool<DovetailDataDetails> {
                 new ToolArguments(CommonArguments.PREINITIALIZATION_HOOKS_ARG, "The names of pre-initialization hooks to apply before collecting data", ""),
                 new ToolArguments(CommonArguments.PREPROCESSOR_HOOKS_ARG, "The names of pre-processor hooks to apply before processing the data items", ""),
                 new ToolArguments(CommonArguments.POSTINFERENCE_HOOKS_ARG, "The names of post-inference hooks to apply after the LLM has processed the data items", ""),
-                new ToolArguments(TTL_SECONDS_ARG, "The number of seconds to cache the Dovetail results", "86400")
+                new ToolArguments(TTL_SECONDS_ARG, "The number of seconds to cache the Dovetail results", "86400"),
+                new ToolArguments(MINIMUM_CONTENT_LENGTH_ARG, "The minimum number of characters a data item's content must have to be included (0 = no minimum)", "0")
         );
     }
 
@@ -203,6 +205,8 @@ public class Dovetail implements Tool<DovetailDataDetails> {
         final List<RagDocumentContext<DovetailDataDetails>> ragDocs = dataItems.stream()
                 .map(item -> dataToRagDoc.getDocumentContext(item, getName(), getContextLabelWithMeta(item), parsedArgs))
                 .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
+                .filter(ragDoc -> parsedArgs.getMinimumContentLength() == 0
+                        || ragDoc.document().length() >= parsedArgs.getMinimumContentLength())
                 .toList();
 
         // Combine preinitialization hooks with ragDocs
@@ -359,6 +363,10 @@ class DovetailConfig {
     @ConfigProperty(name = "sb.dovetail.ttlSeconds")
     private Optional<String> configTtlSeconds;
 
+    @Inject
+    @ConfigProperty(name = "sb.dovetail.minimumContentLength", defaultValue = "0")
+    private Optional<String> configMinimumContentLength;
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -449,6 +457,10 @@ class DovetailConfig {
 
     public Optional<String> getConfigTtlSeconds() {
         return configTtlSeconds;
+    }
+
+    public Optional<String> getConfigMinimumContentLength() {
+        return configMinimumContentLength;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
@@ -712,6 +724,23 @@ class DovetailConfig {
                     DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), DEFAULT_TTL_SECONDS));
+        }
+
+        /**
+         * The minimum number of characters a data item's content must have to be included.
+         * Items whose document is shorter than this value are dropped before any further processing.
+         * A value of 0 (the default) means no minimum is enforced.
+         */
+        public int getMinimumContentLength() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigMinimumContentLength()::get,
+                    arguments,
+                    context,
+                    Dovetail.MINIMUM_CONTENT_LENGTH_ARG,
+                    Dovetail.MINIMUM_CONTENT_LENGTH_ARG,
+                    "0");
+
+            return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), 0));
         }
     }
 }
