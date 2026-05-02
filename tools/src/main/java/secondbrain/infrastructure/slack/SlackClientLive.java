@@ -8,10 +8,7 @@ import com.slack.api.methods.response.conversations.ConversationsInfoResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
 import com.slack.api.methods.response.search.SearchAllResponse;
 import com.slack.api.methods.response.users.UsersInfoResponse;
-import com.slack.api.model.Conversation;
-import com.slack.api.model.ConversationType;
-import com.slack.api.model.Message;
-import com.slack.api.model.User;
+import com.slack.api.model.*;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -409,8 +406,7 @@ public class SlackClientLive implements SlackClient {
                                 SearchAllResponse.class,
                                 () -> searchFromApi(client, accessToken, keywords, apiDelay))
                         .result())
-                .map(s -> s.getMessages()
-                        .getMatches()
+                .map(s -> (s == null || s.getMessages() == null ? List.<MatchedItem>of() : s.getMessages().getMatches())
                         .stream()
                         .map(m -> new SlackSearchResultResource(
                                 m.getId(),
