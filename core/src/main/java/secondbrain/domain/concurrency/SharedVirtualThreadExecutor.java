@@ -24,10 +24,5 @@ public class SharedVirtualThreadExecutor {
     public ExecutorService getExecutor() {
         return executor;
     }
-
-    @PreDestroy
-    void shutdown() {
-        executor.close();
-    }
 }
 
