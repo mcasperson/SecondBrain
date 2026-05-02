@@ -5,6 +5,7 @@ import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import io.vavr.control.Try;
 import jakarta.inject.Inject;
+import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
@@ -74,6 +75,9 @@ public class CosmosLocalStorageTest {
      */
     @BeforeEach
     void updateConfig() {
+        final String autodiscovery = System.getenv("SB_COSMOS_AUTODISCOVERY");
+        final String gatewayMode = System.getenv("SB_COSMOS_GATEWAYMODE");
+
         final var configSource = new PropertiesConfigSource(
                 Map.of(
                         "sb.cache.disable", "false",
@@ -82,7 +86,9 @@ public class CosmosLocalStorageTest {
                         "sb.cosmos.database", "testdb",
                         "sb.cosmos.container", "testcontainer",
                         "sb.encryption.password", "1234567890",
-                        "sb.encryption.salt", "1234567890"
+                        "sb.encryption.salt", "1234567890",
+                        "sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery,
+                        "sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode
                 ),
                 "TestConfig",
                 Integer.MAX_VALUE
