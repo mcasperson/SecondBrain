@@ -267,7 +267,7 @@ public class CosmosLocalStorage implements LocalStorage {
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
         synchronized (CosmosLocalStorage.class) {
             if (localStorageCacheDisable.isDisabled() || localStorageDisableTool.isToolDisabled(tool) || localStorageCacheWriteOnly.isWriteOnly() || container == null) {
-                return null;
+                return new CacheResult<String>(null, false);
             }
 
             if (totalFailures.get() > MAX_FAILURES) {
