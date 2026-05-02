@@ -30,8 +30,6 @@ import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -58,7 +56,6 @@ public class CosmosLocalStorage implements LocalStorage {
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
     private final AtomicInteger totalFailures = new AtomicInteger();
-    private final ExecutorService writeExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final List<Future<?>> pendingWrites = Collections.synchronizedList(new ArrayList<>());
 
     @Inject
@@ -129,6 +126,9 @@ public class CosmosLocalStorage implements LocalStorage {
     @Inject
     @Identifier("financialLocationContactRedaction")
     private SanitizeDocument sanitizeDocument;
+
+    @Inject
+    private SharedVirtualThreadExecutor sharedVirtualThreadExecutor;
 
     @PostConstruct
     public void postConstruct() {
@@ -696,23 +696,21 @@ public class CosmosLocalStorage implements LocalStorage {
                     value.length + "");
 
             // each item is persisted with an index suffix
-            try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-                IntStream.range(0, value.length)
-                        .boxed()
-                        .collect(parallelToStream(index -> {
-                                            putString(
-                                                    tool,
-                                                    source,
-                                                    promptHash + "_" + index,
-                                                    ttlSeconds,
-                                                    jsonDeserializer.serialize(value[index]));
+            IntStream.range(0, value.length)
+                    .boxed()
+                    .collect(parallelToStream(index -> {
+                                        putString(
+                                                tool,
+                                                source,
+                                                promptHash + "_" + index,
+                                                ttlSeconds,
+                                                jsonDeserializer.serialize(value[index]));
 
-                                            return index;
-                                        },
-                                        executor,
-                                        BATCH_SIZE)
-                        );
-            }
+                                        return index;
+                                    },
+                                    sharedVirtualThreadExecutor.getExecutor(),
+                                    BATCH_SIZE)
+                    );
         }
 
         return new CacheResult<T[]>(value, false);
@@ -721,7 +719,7 @@ public class CosmosLocalStorage implements LocalStorage {
     @SuppressWarnings("NullAway")
     @Override
     public void putString(final String tool, final String source, final String promptHash, final long ttlSeconds, final String value) {
-        final Future<?> future = writeExecutor.submit(() -> putStringSync(tool, source, promptHash, ttlSeconds, value));
+        final Future<?> future = sharedVirtualThreadExecutor.getExecutor().submit(() -> putStringSync(tool, source, promptHash, ttlSeconds, value));
         pendingWrites.add(future);
         // Eagerly remove completed futures to avoid unbounded growth
         pendingWrites.removeIf(Future::isDone);
