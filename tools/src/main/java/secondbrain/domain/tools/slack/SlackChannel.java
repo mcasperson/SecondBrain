@@ -56,6 +56,8 @@ public class SlackChannel implements Tool<SlackChannelResource> {
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
 
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
+    private static final Pattern USER_PATTERN = Pattern.compile("<@(?<username>\\w+)>");
+    private static final Pattern CHANNEL_PATTERN = Pattern.compile("<#(?<channelname>\\w+)\\|?>");
     private static final String INSTRUCTIONS = """
             You are professional agent that understands Slack conversations.
             You are given the history of a Slack channel and asked to answer questions based on the messages provided.
@@ -140,18 +142,20 @@ public class SlackChannel implements Tool<SlackChannelResource> {
             final List<ToolArgs> arguments) {
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        // Create the client once and reuse it across the early-out check and the main retrieval
+        final AsyncMethodsClient client = Slack.getInstance().methodsAsync();
+
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration()) {
-            final AsyncMethodsClient earlyOutClient = Slack.getInstance().methodsAsync();
             final String channelId = Try.of(() -> slackClient.findChannelId(
-                            earlyOutClient,
+                            client,
                             parsedArgs.getSecretAccessToken(),
                             parsedArgs.getChannel(),
                             parsedArgs.getApiDelay()))
                     .map(c -> c.channelId())
                     .getOrElse("");
             if (org.apache.commons.lang3.StringUtils.isNotBlank(channelId)
-                    && !slackClient.anyItemsInDuration(earlyOutClient, parsedArgs.getSecretAccessToken(), channelId, parsedArgs.getApiDelay(), ChronoUnit.YEARS, ChronoUnit.MONTHS)) {
+                    && !slackClient.anyItemsInDuration(client, parsedArgs.getSecretAccessToken(), channelId, parsedArgs.getApiDelay(), ChronoUnit.YEARS, ChronoUnit.MONTHS)) {
                 logger.info("Skipping SlackChannel context retrieval because skipEmptyInLastDuration is set and there are no Slack messages in the specified duration");
                 return List.of();
             }
@@ -166,7 +170,7 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                                 List.class,
                                 RagDocumentContext.class,
                                 Void.class,
-                                () -> getContextPrivate(environmentSettings, prompt, arguments))
+                                () -> getContextPrivate(environmentSettings, client, parsedArgs))
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Error while getting Slack channel context: " + ExceptionUtils.getRootCauseMessage(ex)))
@@ -175,10 +179,8 @@ public class SlackChannel implements Tool<SlackChannelResource> {
 
     private List<RagDocumentContext<SlackChannelResource>> getContextPrivate(
             final Map<String, String> environmentSettings,
-            final String prompt,
-            final List<ToolArgs> arguments) {
-
-        final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+            final AsyncMethodsClient client,
+            final SlackChannelConfig.LocalArguments parsedArgs) {
 
         if (StringUtils.isBlank(parsedArgs.getChannel())) {
             logger.fine("No channel provided for " + this.getName() + " so returning no results");
@@ -205,7 +207,6 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                 .toString();
 
         // you can get this instance via ctx.client() in a Bolt app
-        final AsyncMethodsClient client = Slack.getInstance().methodsAsync();
 
         final Try<List<RagDocumentContext<SlackChannelResource>>> result = Try.of(() -> slackClient.findChannelId(
                         client,
@@ -274,12 +275,10 @@ public class SlackChannel implements Tool<SlackChannelResource> {
     }
 
     private String replaceUserIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
-        final Pattern userPattern = Pattern.compile("<@(?<username>\\w+)>");
-
         /*
             Start with a pairing of the original messages the results of the regex matching for user IDs.
          */
-        return Try.of(() -> userPattern.matcher(messages).results())
+        return Try.of(() -> USER_PATTERN.matcher(messages).results())
                 /*
                 We map the original message and the list of regex matches for user IDs to a string with
                 the user IDs replaced with their usernames.
@@ -299,12 +298,10 @@ public class SlackChannel implements Tool<SlackChannelResource> {
     }
 
     private String replaceChannelIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
-        final Pattern channelPattern = Pattern.compile("<#(?<channelname>\\w+)\\|?>");
-
         /*
             Start with a pairing of the original messages the results of the regex matching for user IDs.
          */
-        return Try.of(() -> channelPattern.matcher(messages).results())
+        return Try.of(() -> CHANNEL_PATTERN.matcher(messages).results())
                 /*
                 We map the original message and the list of regex matches for user IDs to a string with
                 the user IDs replaced with their usernames.
