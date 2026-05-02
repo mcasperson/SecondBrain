@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.Executors;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -95,6 +95,9 @@ public class RatingTool implements Tool<Void> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private SharedVirtualThreadExecutor sharedExecutor;
+
     @Override
     public String getName() {
         return RatingTool.class.getSimpleName();
@@ -139,17 +142,15 @@ public class RatingTool implements Tool<Void> {
         // description rather than a number. I have seen this a lot with Phi-4.
         // If we have additional models, and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
-        final List<Integer> results = Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
-                .of(executor -> Stream.of(
+        final List<Integer> results = Stream.of(
                                 LLMServerDetails.fromEnvironment(),
                                 LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow(), parsedArgs.getSecondReasoningEffort(), parsedArgs.getSecondUrl()),
                                 LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort(), parsedArgs.getThirdUrl())
                         )
                         .filter(server -> server.type() != LLMServerType.UNDEFINED)
                         .map(server -> getEnvironmentOverrides(server, environmentSettings))
-                        .collect(parallelToStream(config -> getRating(config, prompt, arguments), executor, 3))
-                        .toList())
-                .get();
+                        .collect(parallelToStream(config -> getRating(config, prompt, arguments), sharedExecutor.getExecutor(), 3))
+                        .toList();
 
 
         if (!parsedArgs.ignoreInvalidResponses()) {

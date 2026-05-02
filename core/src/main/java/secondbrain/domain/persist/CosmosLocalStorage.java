@@ -25,6 +25,7 @@ import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
 import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
 import secondbrain.domain.persist.config.LocalStorageDisableTool;
 import secondbrain.domain.sanitize.SanitizeDocument;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
@@ -115,6 +116,9 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Inject
     private LocalStorageReadWrite localStorageReadWrite;
+
+    @Inject
+    private SharedVirtualThreadExecutor sharedExecutor;
 
     @Nullable
     private CosmosClient cosmosClient;
@@ -634,8 +638,7 @@ public class CosmosLocalStorage implements LocalStorage {
             return localCacheTry.get();
         }
 
-        return Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
-                .of(executor -> Try.of(() -> getString(tool, source, promptHash))
+        return Try.of(() -> getString(tool, source, promptHash))
                         .filter(result -> result != null && StringUtils.isNotBlank(result.result()))
                         .onSuccess(v -> logger.fine("Remote cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                         .mapTry(r -> NumberUtils.toInt(r.result(), 0))
@@ -643,7 +646,7 @@ public class CosmosLocalStorage implements LocalStorage {
                         // We then loop over each index to get the individual items.
                         .map(count -> IntStream.range(0, count)
                                 .boxed()
-                                .collect(parallelToStream(index -> getString(tool, source, promptHash + "_" + index), executor, BATCH_SIZE))
+                                .collect(parallelToStream(index -> getString(tool, source, promptHash + "_" + index), sharedExecutor.getExecutor(), BATCH_SIZE))
                                 .map(r -> jsonDeserializer.deserialize(r.result(), clazz))
                                 .toList()
                         )
@@ -665,8 +668,7 @@ public class CosmosLocalStorage implements LocalStorage {
                                     return new CacheResult<T[]>(generateValue.generate(), false);
                                 }
                         )
-                        .get())
-                .get();
+                        .get();
     }
 
     private <T> void persistArrayResultLocal(final String tool, final String source, final String promptHash, final long ttlSeconds, final T[] value) {

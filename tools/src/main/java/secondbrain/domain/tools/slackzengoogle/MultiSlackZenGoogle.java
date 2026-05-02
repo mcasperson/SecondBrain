@@ -48,7 +48,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.*;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -191,6 +191,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     @Preferred
     private LocalStorage localStorage;
 
+    @Inject
+    private SharedVirtualThreadExecutor sharedExecutor;
+
     @Override
     public String getName() {
         return MultiSlackZenGoogle.class.getSimpleName();
@@ -243,17 +246,15 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .toList());
         Collections.shuffle(shuffledList);
 
-        final List<RagDocumentContext<Void>> ragContext = Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
-                .of(executor -> shuffledList
+        final List<RagDocumentContext<Void>> ragContext = shuffledList
                         .stream()
                         // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
                         // We batch here to interleave API requests to the various external data sources
-                        .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))
+                        .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), sharedExecutor.getExecutor(), BATCH_SIZE))
                         .flatMap(stream -> stream)
                         // We want the context sorted back into a predictable order to avoid a cache miss due to the contents of the system prompt changing
                         .sorted(Comparator.comparing(RagDocumentContext::tool))
-                        .toList())
-                .get();
+                        .toList();
 
         if (ragContext.isEmpty()) {
             throw new InsufficientContext("No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found.");
@@ -504,8 +505,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         .toList()
         );
 
-        final List<RagDocumentContext<Void>> retValue = Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
-                .of(executor -> contextCalls
+        final List<RagDocumentContext<Void>> retValue = contextCalls
                         .stream()
                         // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
                         // We batch here to interleave API requests to the various external data sources
@@ -513,11 +513,10 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                         .map(List::stream)
                                         .onFailure(ex -> logger.warning("Failed to get context for " + positionalEntity.entity().name() + ": " + exceptionHandler.getExceptionMessage(ex)))
                                         .get(),
-                                executor,
+                                sharedExecutor.getExecutor(),
                                 BATCH_SIZE))
                         .flatMap(stream -> stream)
-                        .toList())
-                .get();
+                        .toList();
 
         return validateSufficientContext(retValue, parsedArgs);
     }

@@ -48,8 +48,7 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 import java.util.*;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -115,6 +114,9 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
     @Inject
     @Preferred
     private LocalStorage localStorage;
+
+    @Inject
+    private SharedVirtualThreadExecutor sharedExecutor;
 
     @Override
     public String getName() {
@@ -217,10 +219,9 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
                 .get();
 
 
-        final Try<List<RagDocumentContext<SalesforceEmailRecord>>> context = Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
-                .of(executor -> relatedToIds
+        final Try<List<RagDocumentContext<SalesforceEmailRecord>>> context = Try.of(() -> relatedToIds
                         .stream()
-                        .collect(parallelToStream(id -> salesforceClient.getEmails(token.accessToken(), id, startDate, endDate), executor, 3))
+                        .collect(parallelToStream(id -> salesforceClient.getEmails(token.accessToken(), id, startDate, endDate), sharedExecutor.getExecutor(), 3))
                         .flatMap(Arrays::stream)
                         .toList())
                 .map(emails -> emails.stream()

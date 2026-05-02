@@ -24,7 +24,7 @@ import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.yaml.YamlDeserializer;
 
 import java.util.*;
-import java.util.concurrent.Executors;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
@@ -59,6 +59,9 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
 
     @Inject
     private ExceptionHandler exceptionHandler;
+
+    @Inject
+    private SharedVirtualThreadExecutor sharedExecutor;
 
     @Inject
     private Logger log;
@@ -97,14 +100,12 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
                 .getOrElseThrow(ex -> new ExternalFailure("Failed to download or parse the entity directory", ex));
 
-        return Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
-                .of(executor -> entityDirectory.getPositionalEntities()
+        return entityDirectory.getPositionalEntities()
                         .stream()
                         .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
-                        .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), executor, BATCH_SIZE))
+                        .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), sharedExecutor.getExecutor(), BATCH_SIZE))
                         .flatMap(stream -> stream)
-                        .toList())
-                .get();
+                        .toList();
     }
 
     @Override
