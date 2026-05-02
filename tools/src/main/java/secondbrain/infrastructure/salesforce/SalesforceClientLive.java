@@ -132,7 +132,7 @@ public class SalesforceClientLive implements SalesforceClient {
                                 SalesforceClientLive.class.getSimpleName(),
                                 "SalesforceAPIToken",
                                 DigestUtils.sha256Hex(domain.get()),
-                                60, // There is little harm in getting new tokens, but we'll cache for 1 minute to avoid spamming the API
+                                60 * 60, // Access tokens last 2 hours, we cache for 1
                                 SalesforceOauthTokenResponse.class,
                                 () -> getTokenApi(clientId, clientSecret, 0))
                         .result())
