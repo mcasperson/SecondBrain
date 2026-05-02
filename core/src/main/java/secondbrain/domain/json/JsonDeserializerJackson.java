@@ -57,7 +57,7 @@ public class JsonDeserializerJackson implements JsonDeserializer {
         return Try.of(this::createObjectMapper)
                 .mapTry(objectMapper -> objectMapper.readValue(json, clazz))
                 .onFailure(ex -> logger.warning("Failed to deserialize object of type " + clazz.getSimpleName() + "\n" + json + "\n" + ex.getMessage()))
-                .getOrElseThrow(ex -> new SerializationFailed(ex));
+                .getOrElseThrow(ex -> new DeserializationFailed(ex));
     }
 
     @Override
