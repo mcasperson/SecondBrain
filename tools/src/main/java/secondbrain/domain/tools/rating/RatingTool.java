@@ -51,6 +51,7 @@ enum LLMServerType {
 public class RatingTool implements Tool<Void> {
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "ratingDocument";
     public static final String RATING_FIRST_MODEL_ARG = "firstModel";
+    public static final String RATING_FIRST_CONTEXT_WINDOW_ARG = "firstContextWindow";
     public static final String RATING_FIRST_REASONING_EFFORT_ARG = "firstReasoningEffort";
     public static final String RATING_FIRST_URL_ARG = "firstUrl";
     public static final String RATING_SECOND_MODEL_ARG = "secondModel";
@@ -148,7 +149,7 @@ public class RatingTool implements Tool<Void> {
         final List<Integer> results = Stream.of(
                                 StringUtils.isBlank(parsedArgs.getFirstModel())
                                         ? LLMServerDetails.fromEnvironment()
-                                        : LLMServerDetails.custom(parsedArgs.getFirstModel(), "", parsedArgs.getFirstReasoningEffort(), parsedArgs.getFirstUrl()),
+                                        : LLMServerDetails.custom(parsedArgs.getFirstModel(), parsedArgs.getFirstContextWindow(), parsedArgs.getFirstReasoningEffort(), parsedArgs.getFirstUrl()),
                                 LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow(), parsedArgs.getSecondReasoningEffort(), parsedArgs.getSecondUrl()),
                                 LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort(), parsedArgs.getThirdUrl())
                         )
@@ -251,6 +252,10 @@ class RatingConfig {
     private Optional<String> configFirstModel;
 
     @Inject
+    @ConfigProperty(name = "sb.rating.firstContextWindow", defaultValue = "")
+    private Optional<String> configFirstContextWindow;
+
+    @Inject
     @ConfigProperty(name = "sb.rating.firstReasoningEffort", defaultValue = "")
     private Optional<String> configFirstReasoningEffort;
 
@@ -318,6 +323,10 @@ class RatingConfig {
 
     public Optional<String> getConfigFirstModel() {
         return configFirstModel;
+    }
+
+    public Optional<String> getConfigFirstContextWindow() {
+        return configFirstContextWindow;
     }
 
     public Optional<String> getConfigFirstReasoningEffort() {
@@ -412,6 +421,16 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.RATING_FIRST_MODEL_ARG,
                     RatingTool.RATING_FIRST_MODEL_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getFirstContextWindow() {
+            return getArgsAccessor().getArgument(
+                    getConfigFirstContextWindow()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_FIRST_CONTEXT_WINDOW_ARG,
+                    RatingTool.RATING_FIRST_CONTEXT_WINDOW_ARG,
                     "").getSafeValue();
         }
 
