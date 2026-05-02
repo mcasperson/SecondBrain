@@ -34,6 +34,7 @@ import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.dovetail.model.DovetailDataDetails;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.dovetail.DovetailClient;
+import secondbrain.infrastructure.dovetail.api.DovetailDataItem;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.time.OffsetDateTime;
@@ -176,12 +177,17 @@ public class Dovetail implements Tool<DovetailDataDetails> {
                 Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                         .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
-        final List<DovetailDataDetails> dataItems = Try.of(() ->
-                        dovetailClient.getDataItems(
-                                parsedArgs.getSecretApiKey(),
-                                parsedArgs.getStartDate(),
-                                parsedArgs.getEndDate()))
-                .map(items -> items.stream()
+        final List<DovetailDataItem> items = Try.of(() ->
+                dovetailClient.getDataItems(
+                        parsedArgs.getSecretApiKey(),
+                        parsedArgs.getStartDate(),
+                        parsedArgs.getEndDate()))
+                .onFailure(ex -> logger.severe("Failed to get Dovetail data items: " + ExceptionUtils.getRootCauseMessage(ex)))
+                .get();
+
+        logger.fine("Retrieved " + items.size() + " data items from Dovetail");
+
+        final List<DovetailDataDetails> dataItems = Try.of(() -> items.stream()
                         .filter(item -> !item.deleted())
                         .map(item -> new DovetailDataDetails(
                                 item.id(),
@@ -191,7 +197,7 @@ public class Dovetail implements Tool<DovetailDataDetails> {
                                 dovetailClient.exportDataItemAsMarkdown(parsedArgs.getSecretApiKey(), item.id()),
                                 parsedArgs.getDovetailBaseUrl()))
                         .toList())
-                .onFailure(ex -> logger.severe("Failed to get Dovetail data items: " + ExceptionUtils.getRootCauseMessage(ex)))
+                .onFailure(ex -> logger.severe("Failed to get Dovetail details: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
 
         final List<RagDocumentContext<DovetailDataDetails>> ragDocs = dataItems.stream()
