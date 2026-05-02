@@ -69,13 +69,20 @@ public class CosmosMutex implements Mutex {
     @ConfigProperty(name = "sb.cosmos.lockscontainer", defaultValue = CONTAINER_NAME)
     private Optional<String> containerName;
 
+    /**
+     * Set to false when using vnext cosmosdb docker image
+     */
     @Inject
     @ConfigProperty(name = "sb.cosmos.autodiscovery", defaultValue = "true")
     private boolean autoDiscovery;
 
+    /**
+     * Set to true when using vnext cosmosdb docker image
+     */
     @Inject
     @ConfigProperty(name = "sb.cosmos.gatewayMode", defaultValue = "false")
     private boolean gatewayMode;
+
 
     @Inject
     private ExceptionHandler exceptionHandler;
