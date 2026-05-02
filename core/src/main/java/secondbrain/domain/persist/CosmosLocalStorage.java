@@ -140,11 +140,6 @@ public class CosmosLocalStorage implements LocalStorage {
     @Inject
     private SharedVirtualThreadExecutor sharedVirtualThreadExecutor;
 
-    // This observer forces the container to instantiate the bean at startup
-    public void onStartup(@Observes final Startup event) {
-        logger.info("Received startup event, initializing CosmosLocalStorage");
-    }
-
     @PostConstruct
     public void postConstruct() {
         logger.fine("Initializing Cosmos DB local storage");
