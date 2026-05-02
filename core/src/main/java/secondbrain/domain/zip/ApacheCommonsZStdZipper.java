@@ -25,7 +25,7 @@ import java.util.logging.Logger;
 @Identifier("ApacheCommonsZStdZipper")
 public class ApacheCommonsZStdZipper implements Zipper {
     private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
-    private static final int ZSTD_COMPRESSION_LEVEL = 22;
+    private static final int ZSTD_COMPRESSION_LEVEL = 1;
 
     @Inject
     private Logger logger;
