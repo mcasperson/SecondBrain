@@ -209,7 +209,7 @@ public class CosmosLocalStorage implements LocalStorage {
         }
         logger.fine("Waiting for " + toWait.size() + " pending background writes to complete");
         for (final Future<?> f : toWait) {
-            Try.run(() -> f.get(30, TimeUnit.SECONDS))
+            Try.run(() -> f.get(2, TimeUnit.MINUTES))
                     .onFailure(ex -> logger.warning("Error waiting for pending write: " + exceptionHandler.getExceptionMessage(ex)));
         }
     }
