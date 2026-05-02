@@ -12,11 +12,14 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.json.JsonDeserializer;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 @ApplicationScoped
@@ -25,6 +28,9 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
 
     @Nullable
     private PlainTextFilterService filterService;
+
+    @Inject
+    private JsonDeserializer jsonDeserializer;
 
     @PostConstruct
     void construct() {
@@ -114,10 +120,40 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
             return document;
         }
 
-        return Try.of(() -> service.filter(createPolicy(), "llm", document))
+        // Try to parse the document as a JSON object; if successful, filter strings recursively
+        return Try.of(() -> jsonDeserializer.deserializeMap(document, String.class, Object.class))
+                .map(map -> filterMap(map, service))
+                .map(jsonDeserializer::serialize)
+                .recover(ex -> filterPlainText(document, service))
+                .get();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object filterValue(final Object value, final PlainTextFilterService service) {
+        if (value instanceof String s) {
+            return filterPlainText(s, service);
+        } else if (value instanceof Map<?, ?> map) {
+            return filterMap((Map<String, Object>) map, service);
+        } else if (value instanceof List<?> list) {
+            return list.stream()
+                    .map(item -> filterValue(item, service))
+                    .toList();
+        }
+        return value;
+    }
+
+    private Map<String, Object> filterMap(final Map<String, Object> map, final PlainTextFilterService service) {
+        final java.util.LinkedHashMap<String, Object> result = new java.util.LinkedHashMap<>();
+        for (final Map.Entry<String, Object> entry : map.entrySet()) {
+            result.put(entry.getKey(), filterValue(entry.getValue(), service));
+        }
+        return result;
+    }
+
+    private String filterPlainText(final String text, final PlainTextFilterService service) {
+        return Try.of(() -> service.filter(createPolicy(), "llm", text))
                 .map(TextFilterResult::getFilteredText)
-                // In the event of a failure, return the original document
-                .recover(ex -> document)
+                .recover(ex -> text)
                 .get();
     }
 }
