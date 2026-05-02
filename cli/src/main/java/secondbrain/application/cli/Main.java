@@ -142,9 +142,6 @@ public class Main {
         logger.info("Links: " + linksFile.orElse(""));
         logger.info("Debug: " + debugFile.orElse(""));
 
-        // Force initialization of local storage
-        localStorageReadWrite.toString();
-
         Try.of(() -> promptHandler.handlePrompt(Map.of(), getPrompt(args)))
                 .map(response -> response.updateResponseText(converter))
                 .onSuccess(this::printOutput)

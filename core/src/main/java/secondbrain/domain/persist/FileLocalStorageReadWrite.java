@@ -4,6 +4,8 @@ import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.event.Startup;
 import jakarta.inject.Inject;
 import org.apache.commons.io.output.LockableFileWriter;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -59,6 +61,11 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     @Inject
     private LocalStorageMemoryCacheFileLimit localStorageMemoryCacheFileLimit;
+
+    // This observer forces the container to instantiate the bean at startup
+    public void onStartup(@Observes Startup event) {
+        // Initialization logic here
+    }
 
     @PreDestroy
     private void shutdown() {
