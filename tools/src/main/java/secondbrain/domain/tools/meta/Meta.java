@@ -168,11 +168,9 @@ public class Meta implements Tool<Void> {
         final List<RagDocumentContext<Void>> ragDocs = Try.withResources(Executors::newVirtualThreadPerTaskExecutor)
                 .of(executor -> filteredTools
                         .stream()
-                        // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
-                        // We batch here to interleave API requests to the various external data sources
                         .collect(parallelToStream(tool -> Try.of(() -> tool.getContext(environmentSettings, prompt, toolArgs))
                                         .map(List::stream)
-                                        .onFailure(ex -> logger.warning("Failed to get context for " + tool.getName()))
+                                        .onFailure(ex -> logger.warning("Failed to get context for " + tool.getName() + " with error: " + ex.getMessage()))
                                         .get(),
                                 executor,
                                 BATCH_SIZE))
