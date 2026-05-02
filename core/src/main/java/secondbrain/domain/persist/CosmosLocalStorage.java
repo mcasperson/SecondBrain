@@ -88,10 +88,16 @@ public class CosmosLocalStorage implements LocalStorage {
     @ConfigProperty(name = "sb.cosmos.container", defaultValue = CONTAINER_NAME)
     private Optional<String> containerName;
 
+    /**
+     * Set to false when using vnext cosmosdb docker image
+     */
     @Inject
     @ConfigProperty(name = "sb.cosmos.autodiscovery", defaultValue = "true")
     private boolean autoDiscovery;
 
+    /**
+     * Set to true when using vnext cosmosdb docker image
+     */
     @Inject
     @ConfigProperty(name = "sb.cosmos.gatewayMode", defaultValue = "false")
     private boolean gatewayMode;
