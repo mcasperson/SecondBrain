@@ -89,6 +89,10 @@ public class CosmosLocalStorage implements LocalStorage {
     private Optional<String> containerName;
 
     @Inject
+    @ConfigProperty(name = "sb.cosmos.autodiscovery", defaultValue = "true")
+    private boolean autoDiscovery;
+
+    @Inject
     private JsonDeserializer jsonDeserializer;
 
     @Inject
@@ -235,7 +239,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .key(cosmosKey.get())
                 .consistencyLevel(ConsistencyLevel.SESSION)
                 .clientTelemetryConfig(telemetryOptions)
-                .endpointDiscoveryEnabled(false)
+                .endpointDiscoveryEnabled(autoDiscovery)
                 .gatewayMode()
                 .buildClient();
 

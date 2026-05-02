@@ -70,6 +70,10 @@ public class CosmosMutex implements Mutex {
     private Optional<String> containerName;
 
     @Inject
+    @ConfigProperty(name = "sb.cosmos.autodiscovery", defaultValue = "true")
+    private boolean autoDiscovery;
+
+    @Inject
     private ExceptionHandler exceptionHandler;
 
     @Inject
@@ -188,7 +192,7 @@ public class CosmosMutex implements Mutex {
                 .key(cosmosKey.get())
                 .consistencyLevel(ConsistencyLevel.SESSION)
                 .clientTelemetryConfig(telemetryOptions)
-                .endpointDiscoveryEnabled(false)
+                .endpointDiscoveryEnabled(autoDiscovery)
                 .gatewayMode()
                 .buildClient();
 
