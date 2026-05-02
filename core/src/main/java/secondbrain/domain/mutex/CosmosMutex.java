@@ -74,6 +74,10 @@ public class CosmosMutex implements Mutex {
     private boolean autoDiscovery;
 
     @Inject
+    @ConfigProperty(name = "sb.cosmos.gatewayMode", defaultValue = "false")
+    private boolean gatewayMode;
+
+    @Inject
     private ExceptionHandler exceptionHandler;
 
     @Inject
@@ -187,13 +191,14 @@ public class CosmosMutex implements Mutex {
         final CosmosClientTelemetryConfig telemetryOptions = new CosmosClientTelemetryConfig();
         telemetryOptions.metricsOptions(metricsOptions);
 
-        cosmosClient = new CosmosClientBuilder()
+        final CosmosClientBuilder builder = new CosmosClientBuilder()
                 .endpoint(cosmosEndpoint.get())
                 .key(cosmosKey.get())
                 .consistencyLevel(ConsistencyLevel.SESSION)
                 .clientTelemetryConfig(telemetryOptions)
-                .endpointDiscoveryEnabled(autoDiscovery)
-                .gatewayMode()
+                .endpointDiscoveryEnabled(autoDiscovery);
+
+        cosmosClient = (gatewayMode ? builder.gatewayMode() : builder)
                 .buildClient();
 
         cosmosClient.createDatabaseIfNotExists(databaseName);

@@ -93,6 +93,10 @@ public class CosmosLocalStorage implements LocalStorage {
     private boolean autoDiscovery;
 
     @Inject
+    @ConfigProperty(name = "sb.cosmos.gatewayMode", defaultValue = "false")
+    private boolean gatewayMode;
+
+    @Inject
     private JsonDeserializer jsonDeserializer;
 
     @Inject
@@ -234,13 +238,17 @@ public class CosmosLocalStorage implements LocalStorage {
         final CosmosClientTelemetryConfig telemetryOptions = new CosmosClientTelemetryConfig();
         telemetryOptions.metricsOptions(metricsOptions);
 
-        cosmosClient = new CosmosClientBuilder()
+        // Different versions of the cosmos DB need different options.
+        // The vnext version (which is the version of the docker image used on a mac) disables auto discovery and enables gateway mode.
+        // The latest version (used on Linux and in production) enables discovery and disables gateway mode.
+        final CosmosClientBuilder builder = new CosmosClientBuilder()
                 .endpoint(cosmosEndpoint.get())
                 .key(cosmosKey.get())
                 .consistencyLevel(ConsistencyLevel.SESSION)
                 .clientTelemetryConfig(telemetryOptions)
-                .endpointDiscoveryEnabled(autoDiscovery)
-                .gatewayMode()
+                .endpointDiscoveryEnabled(autoDiscovery);
+
+        cosmosClient = (gatewayMode ? builder.gatewayMode() : builder)
                 .buildClient();
 
         cosmosClient.createDatabaseIfNotExists(databaseName.orElse(DATABASE_NAME));
