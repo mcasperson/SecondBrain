@@ -755,37 +755,38 @@ public class CosmosLocalStorage implements LocalStorage {
             if (totalFailures.get() > MAX_FAILURES) {
                 resetConnection();
             }
-
-            final String redactedValue = Objects.requireNonNullElse(sanitizeDocument.sanitize(value), "");
-
-            // If value exceeds SPLIT_ITEM_SIZE_BYTES, split into chunks and persist each separately
-            final byte[] valueBytes = redactedValue.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-            if (valueBytes.length > SPLIT_ITEM_SIZE_BYTES) {
-                putStringChunked(tool, source, promptHash, ttlSeconds, valueBytes);
-                return;
-            }
-
-            final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(redactedValue))
-                    .map(encryptor::encrypt)
-                    .map(encrypted -> localStorageReadWrite.putString(tool, source, promptHash, getTimestamp(ttlSeconds), encrypted))
-                    .map(encrypted -> new CacheItem(
-                            generateId(tool, source, promptHash),
-                            tool,
-                            source,
-                            promptHash,
-                            encrypted,
-                            getTimestamp(ttlSeconds),
-                            sanitizeTtl(ttlSeconds)))
-                    .map(item -> container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions()))
-                    .onFailure(ex -> totalFailures.incrementAndGet())
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
-
-            result
-                    .mapFailure(
-                            API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
-                    )
-                    .get();
         }
+
+        final String redactedValue = Objects.requireNonNullElse(sanitizeDocument.sanitize(value), "");
+
+        // If value exceeds SPLIT_ITEM_SIZE_BYTES, split into chunks and persist each separately
+        final byte[] valueBytes = redactedValue.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        if (valueBytes.length > SPLIT_ITEM_SIZE_BYTES) {
+            putStringChunked(tool, source, promptHash, ttlSeconds, valueBytes);
+            return;
+        }
+
+        final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(redactedValue))
+                .map(encryptor::encrypt)
+                .map(encrypted -> localStorageReadWrite.putString(tool, source, promptHash, getTimestamp(ttlSeconds), encrypted))
+                .map(encrypted -> new CacheItem(
+                        generateId(tool, source, promptHash),
+                        tool,
+                        source,
+                        promptHash,
+                        encrypted,
+                        getTimestamp(ttlSeconds),
+                        sanitizeTtl(ttlSeconds)))
+                .map(item -> container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions()))
+                .onFailure(ex -> totalFailures.incrementAndGet())
+                .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+
+        result
+                .mapFailure(
+                        API.Case(API.$(), ex -> new LocalStorageFailure("Failed to create record for tool " + tool, ex))
+                )
+                .get();
+
     }
 
     private void putStringChunked(final String tool, final String source, final String promptHash, final long ttlSeconds, final byte[] valueBytes) {
