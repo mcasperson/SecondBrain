@@ -198,15 +198,14 @@ public class Gong implements Tool<GongCallDetails> {
                         List.class,
                         RagDocumentContext.class,
                         GongCallDetails.class,
-                        () -> getContextPrivate(environmentSettings, prompt, arguments)).result())
+                        () -> getContextPrivate(environmentSettings, prompt, parsedArgs)).result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to generate Gong context: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
     }
 
     private List<RagDocumentContext<GongCallDetails>> getContextPrivate(
-            final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+            final Map<String, String> environmentSettings, final String prompt, final GongConfig.LocalArguments parsedArgs) {
 
         logger.info("Getting context for " + getName() + " for company " + parsedArgs.getCompany() + " with call ID " + parsedArgs.getCallId());
 
@@ -230,16 +229,16 @@ public class Gong implements Tool<GongCallDetails> {
                                 gong.parties(),
                                 gongClient.getCallTranscript(parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), gong),
                                 dateParser.parseDate(gong.metaData().started()),
-                                getMeta(gong, parsedArgs.getObject1Name(), parsedArgs.getObject1System(), parsedArgs.getObject1Type(), parsedArgs.getObject1Field()),
-                                getMeta(gong, parsedArgs.getObject2Name(), parsedArgs.getObject2System(), parsedArgs.getObject2Type(), parsedArgs.getObject2Field()),
-                                getMeta(gong, parsedArgs.getObject3Name(), parsedArgs.getObject3System(), parsedArgs.getObject3Type(), parsedArgs.getObject3Field()),
-                                getMeta(gong, parsedArgs.getObject4Name(), parsedArgs.getObject4System(), parsedArgs.getObject4Type(), parsedArgs.getObject4Field()),
-                                getMeta(gong, parsedArgs.getObject5Name(), parsedArgs.getObject5System(), parsedArgs.getObject5Type(), parsedArgs.getObject5Field()),
-                                getMeta(gong, parsedArgs.getObject6Name(), parsedArgs.getObject6System(), parsedArgs.getObject6Type(), parsedArgs.getObject6Field()),
-                                getMeta(gong, parsedArgs.getObject7Name(), parsedArgs.getObject7System(), parsedArgs.getObject7Type(), parsedArgs.getObject7Field()),
-                                getMeta(gong, parsedArgs.getObject8Name(), parsedArgs.getObject8System(), parsedArgs.getObject8Type(), parsedArgs.getObject8Field()),
-                                getMeta(gong, parsedArgs.getObject9Name(), parsedArgs.getObject9System(), parsedArgs.getObject9Type(), parsedArgs.getObject9Field()),
-                                getMeta(gong, parsedArgs.getObject10Name(), parsedArgs.getObject10System(), parsedArgs.getObject10Type(), parsedArgs.getObject10Field())))
+                                getMeta(gong, parsedArgs.getObject1Name(), parsedArgs.getObject1()),
+                                getMeta(gong, parsedArgs.getObject2Name(), parsedArgs.getObject2()),
+                                getMeta(gong, parsedArgs.getObject3Name(), parsedArgs.getObject3()),
+                                getMeta(gong, parsedArgs.getObject4Name(), parsedArgs.getObject4()),
+                                getMeta(gong, parsedArgs.getObject5Name(), parsedArgs.getObject5()),
+                                getMeta(gong, parsedArgs.getObject6Name(), parsedArgs.getObject6()),
+                                getMeta(gong, parsedArgs.getObject7Name(), parsedArgs.getObject7()),
+                                getMeta(gong, parsedArgs.getObject8Name(), parsedArgs.getObject8()),
+                                getMeta(gong, parsedArgs.getObject9Name(), parsedArgs.getObject9()),
+                                getMeta(gong, parsedArgs.getObject10Name(), parsedArgs.getObject10())))
                         .toList())
                 .onFailure(ex -> logger.severe("Failed to get Gong calls: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
@@ -279,14 +278,14 @@ public class Gong implements Tool<GongCallDetails> {
     }
 
     @Nullable
-    private MetaObjectResult getMeta(final GongCallExtensive gong, final String name, final String system, final String type, final String field) {
-        if (StringUtils.isAnyBlank(system, type, field)) {
+    private MetaObjectResult getMeta(final GongCallExtensive gong, final String name, final String objectDefinition) {
+        final String[] parts = objectDefinition.split(":");
+        if (parts.length != 3) {
             return null;
         }
-
         return new MetaObjectResult(
                 name,
-                gong.getSystemContextValue(system, type, field, "Unknown"),
+                gong.getSystemContextValue(parts[0], parts[1], parts[2], "Unknown"),
                 gong.metaData().id(),
                 getName());
     }
@@ -743,9 +742,7 @@ class GongConfig {
 
     public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
-
         private final String prompt;
-
         private final Map<String, String> context;
 
         public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
@@ -1045,29 +1042,6 @@ class GongConfig {
                     "").getSafeValue();
         }
 
-        public String getObject1System() {
-            final String[] object1 = getObject1().split(":");
-            if (object1.length == 3) {
-                return object1[0];
-            }
-            return "";
-        }
-
-        public String getObject1Type() {
-            final String[] object1 = getObject1().split(":");
-            if (object1.length == 3) {
-                return object1[1];
-            }
-            return "";
-        }
-
-        public String getObject1Field() {
-            final String[] object1 = getObject1().split(":");
-            if (object1.length == 3) {
-                return object1[2];
-            }
-            return "";
-        }
 
         public String getObject2Name() {
             return getArgsAccessor().getArgument(
@@ -1089,29 +1063,6 @@ class GongConfig {
                     "").getSafeValue();
         }
 
-        public String getObject2System() {
-            final String[] object2 = getObject2().split(":");
-            if (object2.length == 3) {
-                return object2[0];
-            }
-            return "";
-        }
-
-        public String getObject2Type() {
-            final String[] object2 = getObject2().split(":");
-            if (object2.length == 3) {
-                return object2[1];
-            }
-            return "";
-        }
-
-        public String getObject2Field() {
-            final String[] object2 = getObject2().split(":");
-            if (object2.length == 3) {
-                return object2[2];
-            }
-            return "";
-        }
 
         public String getObject3Name() {
             return getArgsAccessor().getArgument(
@@ -1133,29 +1084,6 @@ class GongConfig {
                     "").getSafeValue();
         }
 
-        public String getObject3System() {
-            final String[] object3 = getObject3().split(":");
-            if (object3.length == 3) {
-                return object3[0];
-            }
-            return "";
-        }
-
-        public String getObject3Type() {
-            final String[] object3 = getObject3().split(":");
-            if (object3.length == 3) {
-                return object3[1];
-            }
-            return "";
-        }
-
-        public String getObject3Field() {
-            final String[] object3 = getObject3().split(":");
-            if (object3.length == 3) {
-                return object3[2];
-            }
-            return "";
-        }
 
         public String getObject4Name() {
             return getArgsAccessor().getArgument(
@@ -1177,29 +1105,6 @@ class GongConfig {
                     "").getSafeValue();
         }
 
-        public String getObject4System() {
-            final String[] object4 = getObject4().split(":");
-            if (object4.length == 3) {
-                return object4[0];
-            }
-            return "";
-        }
-
-        public String getObject4Type() {
-            final String[] object4 = getObject4().split(":");
-            if (object4.length == 3) {
-                return object4[1];
-            }
-            return "";
-        }
-
-        public String getObject4Field() {
-            final String[] object4 = getObject4().split(":");
-            if (object4.length == 3) {
-                return object4[2];
-            }
-            return "";
-        }
 
         public String getObject5Name() {
             return getArgsAccessor().getArgument(
@@ -1221,29 +1126,6 @@ class GongConfig {
                     "").getSafeValue();
         }
 
-        public String getObject5System() {
-            final String[] object5 = getObject5().split(":");
-            if (object5.length == 3) {
-                return object5[0];
-            }
-            return "";
-        }
-
-        public String getObject5Type() {
-            final String[] object5 = getObject5().split(":");
-            if (object5.length == 3) {
-                return object5[1];
-            }
-            return "";
-        }
-
-        public String getObject5Field() {
-            final String[] object5 = getObject5().split(":");
-            if (object5.length == 3) {
-                return object5[2];
-            }
-            return "";
-        }
 
         public String getObject6Name() {
             return getArgsAccessor().getArgument(
@@ -1265,29 +1147,6 @@ class GongConfig {
                     "").getSafeValue();
         }
 
-        public String getObject6System() {
-            final String[] object6 = getObject6().split(":");
-            if (object6.length == 3) {
-                return object6[0];
-            }
-            return "";
-        }
-
-        public String getObject6Type() {
-            final String[] object6 = getObject6().split(":");
-            if (object6.length == 3) {
-                return object6[1];
-            }
-            return "";
-        }
-
-        public String getObject6Field() {
-            final String[] object6 = getObject6().split(":");
-            if (object6.length == 3) {
-                return object6[2];
-            }
-            return "";
-        }
 
         public String getObject7Name() {
             return getArgsAccessor().getArgument(
@@ -1309,29 +1168,6 @@ class GongConfig {
                     "").getSafeValue();
         }
 
-        public String getObject7System() {
-            final String[] object7 = getObject7().split(":");
-            if (object7.length == 3) {
-                return object7[0];
-            }
-            return "";
-        }
-
-        public String getObject7Type() {
-            final String[] object7 = getObject7().split(":");
-            if (object7.length == 3) {
-                return object7[1];
-            }
-            return "";
-        }
-
-        public String getObject7Field() {
-            final String[] object7 = getObject7().split(":");
-            if (object7.length == 3) {
-                return object7[2];
-            }
-            return "";
-        }
 
         public String getObject8Name() {
             return getArgsAccessor().getArgument(
@@ -1353,29 +1189,6 @@ class GongConfig {
                     "").getSafeValue();
         }
 
-        public String getObject8System() {
-            final String[] object8 = getObject8().split(":");
-            if (object8.length == 3) {
-                return object8[0];
-            }
-            return "";
-        }
-
-        public String getObject8Type() {
-            final String[] object8 = getObject8().split(":");
-            if (object8.length == 3) {
-                return object8[1];
-            }
-            return "";
-        }
-
-        public String getObject8Field() {
-            final String[] object8 = getObject8().split(":");
-            if (object8.length == 3) {
-                return object8[2];
-            }
-            return "";
-        }
 
         public String getObject9Name() {
             return getArgsAccessor().getArgument(
@@ -1397,29 +1210,6 @@ class GongConfig {
                     "").getSafeValue();
         }
 
-        public String getObject9System() {
-            final String[] object9 = getObject9().split(":");
-            if (object9.length == 3) {
-                return object9[0];
-            }
-            return "";
-        }
-
-        public String getObject9Type() {
-            final String[] object9 = getObject9().split(":");
-            if (object9.length == 3) {
-                return object9[1];
-            }
-            return "";
-        }
-
-        public String getObject9Field() {
-            final String[] object9 = getObject9().split(":");
-            if (object9.length == 3) {
-                return object9[2];
-            }
-            return "";
-        }
 
         public String getObject10Name() {
             return getArgsAccessor().getArgument(
@@ -1441,29 +1231,6 @@ class GongConfig {
                     "").getSafeValue();
         }
 
-        public String getObject10System() {
-            final String[] object10 = getObject10().split(":");
-            if (object10.length == 3) {
-                return object10[0];
-            }
-            return "";
-        }
-
-        public String getObject10Type() {
-            final String[] object10 = getObject10().split(":");
-            if (object10.length == 3) {
-                return object10[1];
-            }
-            return "";
-        }
-
-        public String getObject10Field() {
-            final String[] object10 = getObject10().split(":");
-            if (object10.length == 3) {
-                return object10[2];
-            }
-            return "";
-        }
 
         public int getCacheTtl() {
             final Argument argument = getArgsAccessor().getArgument(
