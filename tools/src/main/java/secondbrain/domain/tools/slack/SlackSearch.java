@@ -134,9 +134,12 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
             final List<ToolArgs> arguments) {
         final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        // Create the client once and reuse it across the early-out check and the main retrieval
+        final com.slack.api.methods.AsyncMethodsClient client = Slack.getInstance().methodsAsync();
+
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration() && !slackClient.anyItemsInDuration(
-                Slack.getInstance().methodsAsync(),
+                client,
                 parsedArgs.getSecretAccessToken(),
                 parsedArgs.getSearchKeywords(),
                 parsedArgs.getApiDelay(),
@@ -155,7 +158,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                                 List.class,
                                 RagDocumentContext.class,
                                 SlackSearchResultResource.class,
-                                () -> getContextPrivate(environmentSettings, prompt, arguments))
+                                () -> getContextPrivate(environmentSettings, client, parsedArgs))
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get context from cache: " + ex.getMessage()))
@@ -164,10 +167,8 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
     private List<RagDocumentContext<SlackSearchResultResource>> getContextPrivate(
             final Map<String, String> environmentSettings,
-            final String prompt,
-            final List<ToolArgs> arguments) {
-
-        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+            final com.slack.api.methods.AsyncMethodsClient client,
+            final SlackSearchConfig.LocalArguments parsedArgs) {
 
         if (parsedArgs.getKeywords().isEmpty()) {
             logger.info("No keywords found for " + getName() + ", returning empty context");
@@ -186,7 +187,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         final List<SlackSearchResultResource> searchResult = Try.of(() -> slackClient.search(
-                        Slack.getInstance().methodsAsync(),
+                        client,
                         parsedArgs.getSecretAccessToken(),
                         parsedArgs.getSearchKeywords(),
                         parsedArgs.getSearchTTL(),
@@ -464,9 +465,7 @@ class SlackSearchConfig {
 
     public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
-
         private final String prompt;
-
         private final Map<String, String> context;
 
         public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
