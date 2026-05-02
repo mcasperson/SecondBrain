@@ -50,6 +50,9 @@ enum LLMServerType {
 @ApplicationScoped
 public class RatingTool implements Tool<Void> {
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "ratingDocument";
+    public static final String RATING_FIRST_MODEL_ARG = "firstModel";
+    public static final String RATING_FIRST_REASONING_EFFORT_ARG = "firstReasoningEffort";
+    public static final String RATING_FIRST_URL_ARG = "firstUrl";
     public static final String RATING_SECOND_MODEL_ARG = "secondModel";
     public static final String RATING_SECOND_CONTEXT_WINDOW_ARG = "secondContextWindow";
     public static final String RATING_SECOND_REASONING_EFFORT_ARG = "secondReasoningEffort";
@@ -143,7 +146,9 @@ public class RatingTool implements Tool<Void> {
         // If we have additional models, and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
         final List<Integer> results = Stream.of(
-                                LLMServerDetails.fromEnvironment(),
+                                StringUtils.isBlank(parsedArgs.getFirstModel())
+                                        ? LLMServerDetails.fromEnvironment()
+                                        : LLMServerDetails.custom(parsedArgs.getFirstModel(), "", parsedArgs.getFirstReasoningEffort(), parsedArgs.getFirstUrl()),
                                 LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow(), parsedArgs.getSecondReasoningEffort(), parsedArgs.getSecondUrl()),
                                 LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort(), parsedArgs.getThirdUrl())
                         )
@@ -242,6 +247,18 @@ class RatingConfig {
     private ArgsAccessor argsAccessor;
 
     @Inject
+    @ConfigProperty(name = "sb.rating.firstModel", defaultValue = "")
+    private Optional<String> configFirstModel;
+
+    @Inject
+    @ConfigProperty(name = "sb.rating.firstReasoningEffort", defaultValue = "")
+    private Optional<String> configFirstReasoningEffort;
+
+    @Inject
+    @ConfigProperty(name = "sb.rating.firstUrl", defaultValue = "")
+    private Optional<String> configFirstUrl;
+
+    @Inject
     @ConfigProperty(name = "sb.rating.secondModel", defaultValue = "")
     private Optional<String> configSecondModel;
 
@@ -297,6 +314,18 @@ class RatingConfig {
 
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
+    }
+
+    public Optional<String> getConfigFirstModel() {
+        return configFirstModel;
+    }
+
+    public Optional<String> getConfigFirstReasoningEffort() {
+        return configFirstReasoningEffort;
+    }
+
+    public Optional<String> getConfigFirstUrl() {
+        return configFirstUrl;
     }
 
     /**
@@ -373,6 +402,36 @@ class RatingConfig {
                     environmentSettings,
                     null,
                     RatingTool.RATING_DOCUMENT_CONTEXT_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getFirstModel() {
+            return getArgsAccessor().getArgument(
+                    getConfigFirstModel()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_FIRST_MODEL_ARG,
+                    RatingTool.RATING_FIRST_MODEL_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getFirstReasoningEffort() {
+            return getArgsAccessor().getArgument(
+                    getConfigFirstReasoningEffort()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_FIRST_REASONING_EFFORT_ARG,
+                    RatingTool.RATING_FIRST_REASONING_EFFORT_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getFirstUrl() {
+            return getArgsAccessor().getArgument(
+                    getConfigFirstUrl()::get,
+                    arguments,
+                    environmentSettings,
+                    RatingTool.RATING_FIRST_URL_ARG,
+                    RatingTool.RATING_FIRST_URL_ARG,
                     "").getSafeValue();
         }
 
