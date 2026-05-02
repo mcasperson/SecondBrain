@@ -100,18 +100,32 @@ public class DovetailClientLive implements DovetailClient {
             final String apiKey,
             final String id) {
 
-        return Try.of(() -> localStorage.getOrPutObject(
+        /*
+         * We cache the plain content_markdown string directly (via getOrPutString) rather than the
+         * full DovetailDataExportResponse object (via getOrPutObject).
+         *
+         * The reason: CosmosLocalStorage applies its PII sanitizer to the raw string before
+         * persisting it. When the full response object is serialized to JSON first and THEN
+         * sanitized, the URL regex inside FinancialLocationContactRedaction can greedily consume
+         * content beyond the actual URL (e.g. the closing " and }} of the JSON structure),
+         * producing truncated/invalid JSON that fails to deserialize on the next read.
+         *
+         * Storing the plain string avoids the JSON-serialization step entirely, so the sanitizer
+         * only ever sees the markdown text – safe to redact without corrupting any structure.
+         */
+        return Try.of(() -> localStorage.getOrPutString(
                                 DovetailClientLive.class.getSimpleName(),
-                                "DovetailAPIMarkdownExportV1",
+                                "DovetailAPIMarkdownExportV2",
                                 id,
                                 TTL,
-                                DovetailDataExportResponse.class,
-                                () -> exportMarkdownApi(apiKey, id))
+                                () -> {
+                                    final DovetailDataExportResponse response = exportMarkdownApi(apiKey, id);
+                                    return response != null && response.data() != null
+                                            ? Objects.requireNonNullElse(response.data().contentMarkdown(), "")
+                                            : "";
+                                })
                         .result())
                 .filter(Objects::nonNull)
-                .map(response -> response.data() != null
-                        ? Objects.requireNonNullElse(response.data().contentMarkdown(), "")
-                        : "")
                 .getOrElse("");
     }
 
