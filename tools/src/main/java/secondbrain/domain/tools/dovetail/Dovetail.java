@@ -47,7 +47,7 @@ import java.util.stream.Stream;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
-public class Dovetail implements Tool<DovetailDataDetails> {
+public class Dovetail implements Tool<Void> {
     public static final String DOVETAIL_API_KEY_ARG = "apiKey";
     public static final String DOVETAIL_BASE_URL_ARG = "dovetailBaseUrl";
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
@@ -137,7 +137,7 @@ public class Dovetail implements Tool<DovetailDataDetails> {
     }
 
     @Override
-    public List<RagDocumentContext<DovetailDataDetails>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -158,7 +158,7 @@ public class Dovetail implements Tool<DovetailDataDetails> {
                 .get();
     }
 
-    private List<RagDocumentContext<DovetailDataDetails>> getContextPrivate(
+    private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -230,23 +230,25 @@ public class Dovetail implements Tool<DovetailDataDetails> {
 
         logger.info("Found " + context.size() + " Dovetail data items");
 
-        return context;
+        return context.stream()
+                .map(c -> c.convertToRagDocumentContextVoid())
+                .toList();
     }
 
     @Override
-    public RagMultiDocumentContext<DovetailDataDetails> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final List<RagDocumentContext<DovetailDataDetails>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<DovetailDataDetails>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        final RagMultiDocumentContext<DovetailDataDetails> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
         final DovetailConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 

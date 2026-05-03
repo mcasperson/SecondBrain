@@ -60,4 +60,11 @@ public record GongCallDetails(String id,
     public MetaObjectResults generateMetaObjectResults() {
         return new MetaObjectResults(Stream.of(meta1, meta2, meta3, meta4, meta5, meta6, meta7, meta8, meta9, meta10).filter(Objects::nonNull).toList());
     }
+
+    /**
+     * If we don't need to carry the full transcript any more, clear it out to save some memory.
+     */
+    public GongCallDetails clearTranscript() {
+        return new GongCallDetails(id, url, company, parties, "", started, meta1, meta2, meta3, meta4, meta5, meta6, meta7, meta8, meta9, meta10);
+    }
 }

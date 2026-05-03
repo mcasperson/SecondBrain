@@ -47,7 +47,7 @@ import java.util.stream.Stream;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
-public class Gong implements Tool<GongCallDetails> {
+public class Gong implements Tool<Void> {
     public static final String COMPANY_ARG = "company";
     public static final String CALLID_ARG = "callId";
     public static final String GONG_OBJECT_1_ARG = "object1";
@@ -179,7 +179,7 @@ public class Gong implements Tool<GongCallDetails> {
     }
 
     @Override
-    public List<RagDocumentContext<GongCallDetails>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -204,7 +204,7 @@ public class Gong implements Tool<GongCallDetails> {
                 .get();
     }
 
-    private List<RagDocumentContext<GongCallDetails>> getContextPrivate(
+    private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings, final String prompt, final GongConfig.LocalArguments parsedArgs) {
 
         logger.info("Getting context for " + getName() + " for company " + parsedArgs.getCompany() + " with call ID " + parsedArgs.getCallId());
@@ -272,9 +272,14 @@ public class Gong implements Tool<GongCallDetails> {
                         : ragDoc)
                 .toList();
 
-        logger.info("Found " + context.size() + " Gong calls");
+        // Save some memory by not retaining the source object (records are immutable, so we must collect a new list)
+        final List<RagDocumentContext<Void>> result = context.stream()
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
+                .toList();
 
-        return context;
+        logger.info("Found " + result.size() + " Gong calls");
+
+        return result;
     }
 
     @Nullable
@@ -291,10 +296,10 @@ public class Gong implements Tool<GongCallDetails> {
     }
 
     @Override
-    public RagMultiDocumentContext<GongCallDetails> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final List<RagDocumentContext<GongCallDetails>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -302,14 +307,14 @@ public class Gong implements Tool<GongCallDetails> {
             throw new InternalFailure("You must provide a company or call ID to query");
         }
 
-        final Try<RagMultiDocumentContext<GongCallDetails>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
 
-        final RagMultiDocumentContext<GongCallDetails> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))

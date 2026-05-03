@@ -101,6 +101,10 @@ public record RagDocumentContext<T>(String tool,
         return new RagDocumentContext<>(tool, contextLabel, trimResult.document(), sentences, id, source, metadata, intermediateResults, link, trimResult.keywordMatches());
     }
 
+    public RagDocumentContext<T> updateSource(final T source) {
+        return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metadata, intermediateResults, link, keywordMatches);
+    }
+
     public RagDocumentContext<T> updateTool(final String tool) {
         return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metadata, intermediateResults, link, keywordMatches);
     }

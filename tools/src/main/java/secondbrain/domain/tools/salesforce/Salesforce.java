@@ -59,7 +59,7 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
  * A tool that answers a query based on the emails associated with a Salesforce account.
  */
 @ApplicationScoped
-public class Salesforce implements Tool<SalesforceEmailRecord> {
+public class Salesforce implements Tool<Void> {
     public static final String DOMAIN = "domain";
     public static final String ACCOUNT_ID = "accountId";
     public static final String CLIENT_SECRET = "clientSecret";
@@ -156,7 +156,7 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
     }
 
     @Override
-    public List<RagDocumentContext<SalesforceEmailRecord>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -198,7 +198,7 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
                 .get();
     }
 
-    private List<RagDocumentContext<SalesforceEmailRecord>> getContextPrivate(
+    private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments,
@@ -258,11 +258,14 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
 
         logger.info("Found " + records.size() + " Salesforce records");
 
-        return records;
+        return records
+                .stream()
+                .map(r -> r.convertToRagDocumentContextVoid())
+                .toList();
     }
 
     @Override
-    public RagMultiDocumentContext<SalesforceEmailRecord> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -275,13 +278,13 @@ public class Salesforce implements Tool<SalesforceEmailRecord> {
             throw new InternalFailure("You must provide an account ID to query");
         }
 
-        final List<RagDocumentContext<SalesforceEmailRecord>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<SalesforceEmailRecord>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        final RagMultiDocumentContext<SalesforceEmailRecord> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
