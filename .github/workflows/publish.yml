@@ -87,12 +87,6 @@ jobs:
           java-version: '25'
           cache: 'maven'
 
-#      - name: Run Cosmos DB
-#        run: |
-#          docker rm -f linux-emulator 2>/dev/null || true
-#          docker run --publish 9081:8081 --publish 10250-10255:10250-10255 --name linux-emulator --detach mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:stable
-#        shell: bash
-
       - name: Run Cosmos DB
         run: |
           docker rm -f linux-emulator 2>/dev/null || true
@@ -101,23 +95,6 @@ jobs:
 
       - name: Build with Maven
         run: mvn --batch-mode clean install -DskipTests
-
-      # Import the certificate after we downloaded the dependencies. This gives the emulator time to start up.
-#      - name: Import self signed cert
-#        run: |
-#          # Wait for emulator to be ready (max 5 minutes)
-#          for i in {1..30}; do
-#            if curl --insecure --silent --fail https://localhost:9081/_explorer/emulator.pem > ~/emulatorcert.crt 2>/dev/null; then
-#              echo "Successfully downloaded certificate"
-#              keytool -noprompt -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit
-#              exit 0
-#            fi
-#            echo "Waiting for Cosmos DB emulator to be ready... (attempt $i/30)"
-#            docker logs linux-emulator || true
-#            sleep 10
-#          done
-#          echo "Cosmos DB emulator failed to start within 5 minutes"
-#          exit 1
 
       - name: Import self signed cert
         run: |
