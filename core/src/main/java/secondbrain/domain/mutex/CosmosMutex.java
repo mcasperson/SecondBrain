@@ -176,7 +176,8 @@ public class CosmosMutex implements Mutex {
                 .key(cosmosKey.get())
                 .consistencyLevel(ConsistencyLevel.SESSION)
                 .clientTelemetryConfig(telemetryOptions)
-                .endpointDiscoveryEnabled(autoDiscovery);
+                .endpointDiscoveryEnabled(autoDiscovery)
+                .contentResponseOnWriteEnabled(false);
 
         cosmosClient = (gatewayMode ? builder.gatewayMode() : builder)
                 .buildClient();
