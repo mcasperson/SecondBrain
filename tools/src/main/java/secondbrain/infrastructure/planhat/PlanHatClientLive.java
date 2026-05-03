@@ -9,7 +9,6 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
@@ -199,59 +198,58 @@ public class PlanHatClientLive implements PlanHatClient {
             final int ttlSeconds,
             @Nullable final ZonedDateTime startDate,
             @Nullable final ZonedDateTime endDate,
-            final int offset) {
-        return getConversationsApi(client, company, url, token, ttlSeconds, startDate, endDate, offset, getMaxOffset());
-    }
-
-    private Conversation[] getConversationsApi(
-            final Client client,
-            final String company,
-            final String url,
-            final String token,
-            final int ttlSeconds,
-            @Nullable final ZonedDateTime startDate,
-            @Nullable final ZonedDateTime endDate,
             final int offset,
             final int maxOffset) {
-        if (offset >= maxOffset) {
-            logger.warning("Reached maximum offset of " + maxOffset + " when fetching PlanHat conversations for company " + company);
-            return new Conversation[]{};
-        }
-
-        logger.fine("Fetching PlanHat conversations for company " + company + " with offset " + offset);
 
         // We need to embed the current day in the cache key to ensure that we refresh the cache at least once per day.
         final String end = endDate == null ? "" : endDate.format(ISO_OFFSET_DATE_TIME);
         final String start = startDate == null ? "" : startDate.format(ISO_OFFSET_DATE_TIME);
-
-        // Each conversation is cached individually because some local storage implementations
-        // have limits on the size of each cached object.
-        final Conversation[] conversations = localStorage.getOrPutObjectArray(
-                        PlanHatClientLive.class.getSimpleName(),
-                        "PlanHatAPIConversation",
-                        DigestUtils.sha256Hex(company + url + start + end + offset),
-                        ttlSeconds,
-                        Conversation.class,
-                        Conversation[].class,
-                        () -> callApi(client, company, url, token, offset))
-                .result();
+        final int pageSizeValue = getPageSize();
 
         /*
+         Use an iterative approach instead of recursion to avoid O(N²) memory from
+         stacked ArrayUtils.addAll intermediate arrays and deep recursion stack frames.
          There is no way to select a date range with the Planhat API,
-         so instead we keep recursing over the API until all the conversations
+         so instead we keep iterating over the API until all the conversations
          are before the start date.
          See https://www.planhat.com/developers/api/conversation#get-conversations-list-item
          */
-        final Conversation[] filtered = Stream.of(Objects.requireNonNullElse(conversations, new Conversation[]{}))
-                .filter(c -> startDate == null || dateParser.parseDate(c.date()).isAfter(startDate))
-                .filter(c -> endDate == null || dateParser.parseDate(c.date()).isBefore(endDate))
-                .toArray(Conversation[]::new);
+        final List<Conversation> result = new java.util.ArrayList<>();
 
-        return ArrayUtils.addAll(
-                filtered,
-                filtered.length != 0
-                        ? getConversationsApi(client, company, url, token, ttlSeconds, startDate, endDate, offset + getPageSize())
-                        : new Conversation[]{});
+        for (int currentOffset = offset; currentOffset < maxOffset; currentOffset += pageSizeValue) {
+            logger.fine("Fetching PlanHat conversations for company " + company + " with offset " + currentOffset);
+
+            final int capturedOffset = currentOffset;
+
+            // Each conversation is cached individually because some local storage implementations
+            // have limits on the size of each cached object.
+            final Conversation[] conversations = localStorage.getOrPutObjectArray(
+                            PlanHatClientLive.class.getSimpleName(),
+                            "PlanHatAPIConversation",
+                            DigestUtils.sha256Hex(company + url + start + end + capturedOffset),
+                            ttlSeconds,
+                            Conversation.class,
+                            Conversation[].class,
+                            () -> callApi(client, company, url, token, capturedOffset))
+                    .result();
+
+            final List<Conversation> filtered = Stream.of(Objects.requireNonNullElse(conversations, new Conversation[]{}))
+                    .filter(c -> startDate == null || dateParser.parseDate(c.date()).isAfter(startDate))
+                    .filter(c -> endDate == null || dateParser.parseDate(c.date()).isBefore(endDate))
+                    .toList();
+
+            if (filtered.isEmpty()) {
+                break;
+            }
+
+            result.addAll(filtered);
+        }
+
+        if (offset >= maxOffset) {
+            logger.warning("Reached maximum offset of " + maxOffset + " when fetching PlanHat conversations for company " + company);
+        }
+
+        return result.toArray(Conversation[]::new);
     }
 
     private Conversation[] callApi(final Client client, final String company, final String url, final String token, final int offset) {

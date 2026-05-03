@@ -9,7 +9,6 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
@@ -211,43 +210,58 @@ public class GongClientLive implements GongClient {
             final String cursor,
             final int page,
             final int maxPages) {
-        if (page >= maxPages) {
-            logger.warning("Reached maximum pages of " + MAX_PAGES + " when fetching Gong calls extensive");
-            return new GongCallExtensive[]{};
-        }
-
-        logger.fine("Getting Gong calls extensive with IDs " + callId + " from " + fromDateTime + " to " + toDateTime + " with cursor " + cursor);
 
         final List<String> callIds = StringUtils.isBlank(callId) ? null : Arrays.stream(callId.split(",")).toList();
         final String nullableFromDateTime = StringUtils.isBlank(fromDateTime) ? null : fromDateTime;
         final String nullableToDateTime = StringUtils.isBlank(toDateTime) ? null : toDateTime;
 
-        final GongCallExtensiveQuery body = new GongCallExtensiveQuery(
-                new GongCallExtensiveQueryFiler(nullableFromDateTime, nullableToDateTime, null, callIds),
-                new GongCallExtensiveQueryContentSelector(
-                        "Extended",
-                        List.of("Now", "TimeOfCall"),
-                        new GongCallExtensiveQueryExposedFields(true)),
-                cursor
-        );
+        /*
+         Use an iterative approach instead of recursion to avoid O(N²) memory from
+         stacked ArrayUtils.addAll intermediate arrays and deep recursion stack frames.
+         */
+        final List<GongCallExtensive> result = new ArrayList<>();
+        String currentCursor = cursor;
 
-        // Cache at the level of each page of results. This reduces the size of each cached result.
-        // CosmoDB especially has a limit on the size of each cached object.
-        final GongCallsExtensive calls = localStorage.getOrPutObject(
-                        GongClientLive.class.getSimpleName(),
-                        "GongAPICallsExtensiveV2",
-                        DigestUtils.sha256Hex(fromDateTime + toDateTime + callId + cursor),
-                        TTL,
-                        GongCallsExtensive.class,
-                        () -> callApi(body, username, password))
-                .result();
+        for (int currentPage = page; currentPage < maxPages; currentPage++) {
+            logger.fine("Getting Gong calls extensive with IDs " + callId + " from " + fromDateTime + " to " + toDateTime + " with cursor " + currentCursor);
 
-        final GongCallExtensive[] callsArray = calls != null ? calls.getCallsArray() : new GongCallExtensive[]{};
-        final GongCallExtensive[] nextCallsArray = calls != null && StringUtils.isNotBlank(calls.records().cursor())
-                ? getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, calls.records().cursor(), page + 1, maxPages)
-                : new GongCallExtensive[]{};
+            final GongCallExtensiveQuery body = new GongCallExtensiveQuery(
+                    new GongCallExtensiveQueryFiler(nullableFromDateTime, nullableToDateTime, null, callIds),
+                    new GongCallExtensiveQueryContentSelector(
+                            "Extended",
+                            List.of("Now", "TimeOfCall"),
+                            new GongCallExtensiveQueryExposedFields(true)),
+                    currentCursor
+            );
 
-        return ArrayUtils.addAll(callsArray, nextCallsArray);
+            // Cache at the level of each page of results. This reduces the size of each cached result.
+            // CosmoDB especially has a limit on the size of each cached object.
+            final String cacheKeyCursor = currentCursor;
+            final GongCallsExtensive calls = localStorage.getOrPutObject(
+                            GongClientLive.class.getSimpleName(),
+                            "GongAPICallsExtensiveV2",
+                            DigestUtils.sha256Hex(fromDateTime + toDateTime + callId + cacheKeyCursor),
+                            TTL,
+                            GongCallsExtensive.class,
+                            () -> callApi(body, username, password))
+                    .result();
+
+            if (calls != null) {
+                Collections.addAll(result, calls.getCallsArray());
+            }
+
+            if (calls == null || StringUtils.isBlank(calls.records().cursor())) {
+                break;
+            }
+
+            currentCursor = calls.records().cursor();
+        }
+
+        if (result.isEmpty() && page >= maxPages) {
+            logger.warning("Reached maximum pages of " + MAX_PAGES + " when fetching Gong calls extensive");
+        }
+
+        return result.toArray(GongCallExtensive[]::new);
     }
 
     private GongCallsExtensive callApi(final GongCallExtensiveQuery body,
