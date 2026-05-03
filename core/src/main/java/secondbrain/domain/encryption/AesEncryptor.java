@@ -6,6 +6,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptions.InternalFailure;
 
 import javax.crypto.Cipher;
@@ -37,13 +38,35 @@ public class AesEncryptor implements Encryptor {
     @ConfigProperty(name = "sb.encryption.salt")
     private Optional<String> salt;
 
+    /**
+     * Cache the derived key to avoid running PBKDF2 (65,536 iterations) on every encrypt/decrypt call.
+     * The password and salt are immutable config properties, so the key never changes.
+     */
+    @Nullable
+    private volatile SecretKey cachedKey;
+
+    private SecretKey getCachedKey() {
+        SecretKey key = cachedKey;
+        if (key == null) {
+            synchronized (this) {
+                key = cachedKey;
+                if (key == null) {
+                    key = getKeyFromPassword(encryptionPassword.get(), salt.get());
+                    cachedKey = key;
+                }
+            }
+        }
+        return key;
+    }
+
     @Override
     public String encrypt(final String text) {
         final GCMParameterSpec iv = generateIv();
+        final SecretKey key = getCachedKey();
 
         return Try.of(() -> Cipher.getInstance(ALGORITHM))
             .mapTry(cipher -> {
-                cipher.init(Cipher.ENCRYPT_MODE, getKeyFromPassword(encryptionPassword.get(), salt.get()), iv);
+                cipher.init(Cipher.ENCRYPT_MODE, key, iv);
                 return cipher;
             })
             .mapTry(cipher -> cipher.doFinal(text.getBytes()))
@@ -62,10 +85,11 @@ public class AesEncryptor implements Encryptor {
 
         final GCMParameterSpec iv = generateIv(Arrays.copyOfRange(ivAndEncrypted, 0, IV_LENGTH));
         final byte[] encrypted = Arrays.copyOfRange(ivAndEncrypted, IV_LENGTH, ivAndEncrypted.length);
+        final SecretKey key = getCachedKey();
 
         return Try.of(() -> Cipher.getInstance(ALGORITHM))
             .mapTry(cipher -> {
-                cipher.init(Cipher.DECRYPT_MODE, getKeyFromPassword(encryptionPassword.get(), salt.get()), iv);
+                cipher.init(Cipher.DECRYPT_MODE, key, iv);
                 return cipher;
             })
             .mapTry(cipher -> cipher.doFinal(encrypted))

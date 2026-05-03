@@ -38,6 +38,7 @@ import java.util.regex.Pattern;
 public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
     private static final List<String> IGNORED_FILES = List.of("localstoragev2.mv.db", "localstoragev2.trace.db");
+    private static final int LARGE_OBJECT_WARNING_BYTES = 2 * 1024 * 1024;
 
     private static final Map<Path, String> MEMORY_CACHE = new ConcurrentHashMap<>();
     private static final AtomicInteger TOTAL_READS = new AtomicInteger();
@@ -164,14 +165,26 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private String readFile(final Path path) {
         if (localStorageMemoryCacheEnabled.isMemoryCacheEnabled()) {
             MEMORY_READS.incrementAndGet();
-            return MEMORY_CACHE.computeIfAbsent(path, this::readFileSilentFail);
+            final String result = MEMORY_CACHE.computeIfAbsent(path, this::readFileSilentFail);
+            warnIfLarge(path, result);
+            return result;
         }
         final String result = readFileSilentFail(path);
 
         if (result != null) {
             FILE_READS.incrementAndGet();
+            warnIfLarge(path, result);
         }
         return result;
+    }
+
+    private void warnIfLarge(@Nullable final Path path, @Nullable final String value) {
+        if (value != null) {
+            final int size = value.length() * 2; // approximate byte size for UTF-16 chars
+            if (size > LARGE_OBJECT_WARNING_BYTES) {
+                logger.warning("Large cached object loaded (" + (size / 1024 / 1024) + " MB) from " + path);
+            }
+        }
     }
 
     private String readFileSilentFail(final Path path) {

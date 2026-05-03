@@ -35,7 +35,6 @@ import java.util.*;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
@@ -48,12 +47,13 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
 @ApplicationScoped
 public class CosmosLocalStorage implements LocalStorage {
 
-    private static final int BATCH_SIZE = 100;
+    private static final int BATCH_SIZE = 5;
     private static final String CONTAINER_NAME = "localstoragezipped";
     private static final String DATABASE_NAME = "secondbrain";
     private static final int DEFAULT_TTL_SECONDS = 86400;
     private static final int MAX_FAILURES = 5; // 2 MB
     private static final int SPLIT_ITEM_SIZE_BYTES = 1024 * 1024;
+    private static final int LARGE_OBJECT_WARNING_BYTES = 2 * 1024 * 1024;
 
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
@@ -333,6 +333,10 @@ public class CosmosLocalStorage implements LocalStorage {
             return new CacheResult<String>(null, false);
         }
 
+        if (total > 2) {
+            logger.warning("Reassembling " + total + " chunks for tool " + tool + " source " + source + " prompt " + promptHash + ". Consider reducing the size of cached objects.");
+        }
+
         final StringBuilder sb = new StringBuilder();
         for (int i = 0; i < total; i++) {
             final String key = promptHash + "_chunk_" + i;
@@ -576,6 +580,12 @@ public class CosmosLocalStorage implements LocalStorage {
         return Try.of(() -> getString(tool, source, promptHash))
                 .filter(result -> result != null && StringUtils.isNotBlank(result.result()))
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
+                .peek(r -> {
+                    final int size = r.result().length() * 2; // approximate byte size for UTF-16 chars
+                    if (size > LARGE_OBJECT_WARNING_BYTES) {
+                        logger.warning("Large cached object loaded (" + (size / 1024 / 1024) + " MB) for tool " + tool + " source " + source + " prompt " + promptHash);
+                    }
+                })
                 .mapTry(r -> new CacheResult<T>(deserializer.deserialize(r.result()), true))
                 .onFailure(DeserializationFailed.class, ex -> logger.warning("Failed to deserialize cached object: " + exceptionHandler.getExceptionMessage(ex)))
                 .recoverWith(ex -> Try.of(() -> {

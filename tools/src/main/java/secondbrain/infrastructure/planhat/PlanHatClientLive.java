@@ -19,6 +19,7 @@ import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.persist.TimedOperation;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.zip.Zipper;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
 import secondbrain.infrastructure.planhat.api.Objective;
@@ -46,6 +47,7 @@ public class PlanHatClientLive implements PlanHatClient {
     private static final int DEFAULT_PAGE_SIZE = 5;
     private static final int DEFAULT_MAX_OFFSET = 2000;
     private static final int MAX_LENGTH = 524288; // About 1MB for 2 byte characters.
+    private static final int DEFAULT_MAX_RESULTS = 200;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.lock", defaultValue = "sb_planhat.lock")
@@ -64,6 +66,10 @@ public class PlanHatClientLive implements PlanHatClient {
     private String maxLength;
 
     @Inject
+    @ConfigProperty(name = "sb.planhat.maxresults", defaultValue = DEFAULT_MAX_RESULTS + "")
+    private String maxResults;
+
+    @Inject
     private ResponseValidation responseValidation;
 
     @Inject
@@ -80,6 +86,9 @@ public class PlanHatClientLive implements PlanHatClient {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private Zipper zipper;
 
     @Override
     public boolean anyItemsInDuration(
@@ -215,6 +224,7 @@ public class PlanHatClientLive implements PlanHatClient {
          See https://www.planhat.com/developers/api/conversation#get-conversations-list-item
          */
         final List<Conversation> result = new java.util.ArrayList<>();
+        final int maxResultsValue = getMaxResults();
 
         for (int currentOffset = offset; currentOffset < maxOffset; currentOffset += pageSizeValue) {
             logger.fine("Fetching PlanHat conversations for company " + company + " with offset " + currentOffset);
@@ -243,6 +253,14 @@ public class PlanHatClientLive implements PlanHatClient {
             }
 
             result.addAll(filtered);
+
+            // Cap the total number of results to prevent unbounded memory growth.
+            // Each conversation can hold up to ~1MB of text (description + snippet),
+            // so 2000 conversations could consume ~2GB of heap.
+            if (result.size() >= maxResultsValue) {
+                logger.info("Reached maximum results of " + maxResultsValue + " when fetching PlanHat conversations for company " + company);
+                break;
+            }
         }
 
         if (offset >= maxOffset) {
@@ -531,5 +549,11 @@ public class PlanHatClientLive implements PlanHatClient {
         return Try.of(() -> Integer.parseInt(maxLength))
                 .filter(size -> size > 0)
                 .getOrElse(() -> MAX_LENGTH);
+    }
+
+    private int getMaxResults() {
+        return Try.of(() -> Integer.parseInt(maxResults))
+                .filter(size -> size > 0)
+                .getOrElse(() -> DEFAULT_MAX_RESULTS);
     }
 }
