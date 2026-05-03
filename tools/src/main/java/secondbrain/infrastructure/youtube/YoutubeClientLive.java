@@ -11,7 +11,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.web.ClientConstructor;
 import secondbrain.domain.httpclient.HttpClientCaller;
@@ -88,36 +87,50 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private YoutubeSearchItem[] searchVideosApi(final String query, final String channelId, final String pageToken, final String key) {
-        logger.fine("Getting Youtube API search " + query + ", channelId: " + channelId + ", pageToken: " + pageToken);
+        /*
+         Use an iterative approach instead of recursion to avoid O(N²) memory from
+         stacked ArrayUtils.addAll intermediate arrays and deep recursion stack frames.
+         */
+        final List<YoutubeSearchItem> result = new java.util.ArrayList<>();
+        String currentPageToken = pageToken;
 
-        RATE_LIMITER.acquire();
+        while (true) {
+            logger.fine("Getting Youtube API search " + query + ", channelId: " + channelId + ", pageToken: " + currentPageToken);
 
-        final String target = "https://www.googleapis.com/youtube/v3/search?"
-                + "part=snippet"
-                + "&maxResults=50"
-                + "&channelId=" + channelId
-                + "&q=" + query
-                + "&type=video"
-                + "&key=" + key
-                + (StringUtils.isNotBlank(pageToken) ? "&pageToken=" + pageToken : "");
+            RATE_LIMITER.acquire();
 
-        return httpClientCaller.call(
-                clientConstructor::getClient,
-                client -> client.target(target)
-                        .request()
-                        .header("Accept", MediaType.APPLICATION_JSON)
-                        .get(),
-                response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(YoutubeSearch.class))
-                        // Recurse if there is a next page, and we have not gone too far
-                        .map(r -> ArrayUtils.addAll(
-                                r.getItemsArray(),
-                                StringUtils.isNotBlank(r.nextPageToken())
-                                        ? searchVideosApi(query, channelId, r.nextPageToken(), key)
-                                        : new YoutubeSearchItem[]{}))
-                        .get(),
-                cause -> new RuntimeException("Failed to get Youtube playlist", cause)
-        );
+            final String capturedToken = currentPageToken;
+            final String target = "https://www.googleapis.com/youtube/v3/search?"
+                    + "part=snippet"
+                    + "&maxResults=50"
+                    + "&channelId=" + channelId
+                    + "&q=" + query
+                    + "&type=video"
+                    + "&key=" + key
+                    + (StringUtils.isNotBlank(capturedToken) ? "&pageToken=" + capturedToken : "");
+
+            final YoutubeSearch response = httpClientCaller.call(
+                    clientConstructor::getClient,
+                    client -> client.target(target)
+                            .request()
+                            .header("Accept", MediaType.APPLICATION_JSON)
+                            .get(),
+                    r -> Try.of(() -> responseValidation.validate(r, target))
+                            .map(v -> v.readEntity(YoutubeSearch.class))
+                            .get(),
+                    cause -> new RuntimeException("Failed to get Youtube search results", cause)
+            );
+
+            java.util.Collections.addAll(result, response.getItemsArray());
+
+            if (StringUtils.isBlank(response.nextPageToken())) {
+                break;
+            }
+
+            currentPageToken = response.nextPageToken();
+        }
+
+        return result.toArray(YoutubeSearchItem[]::new);
     }
 
     @Override
@@ -165,33 +178,47 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private YoutubePlaylistsItem[] getPlaylistItemsApi(final String playlistId, final String pageToken, final String key) {
-        logger.fine("Getting Youtube API playlist " + playlistId + ", pageToken: " + pageToken);
+        /*
+         Use an iterative approach instead of recursion to avoid O(N²) memory from
+         stacked ArrayUtils.addAll intermediate arrays and deep recursion stack frames.
+         */
+        final List<YoutubePlaylistsItem> result = new java.util.ArrayList<>();
+        String currentPageToken = pageToken;
 
-        RATE_LIMITER.acquire();
+        while (true) {
+            logger.fine("Getting Youtube API playlist " + playlistId + ", pageToken: " + currentPageToken);
 
-        final String target = "https://www.googleapis.com/youtube/v3/playlistItems?"
-                + "part=snippet"
-                + "&maxResults=50"
-                + "&playlistId=" + playlistId
-                + "&key=" + key
-                + (StringUtils.isNotBlank(pageToken) ? "&pageToken=" + pageToken : "");
+            RATE_LIMITER.acquire();
 
-        return httpClientCaller.call(
-                clientConstructor::getClient,
-                client -> client.target(target)
-                        .request()
-                        .header("Accept", MediaType.APPLICATION_JSON)
-                        .get(),
-                response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(YoutubePlaylists.class))
-                        // Recurse if there is a next page, and we have not gone too far
-                        .map(r -> ArrayUtils.addAll(
-                                r.getItemsArray(),
-                                StringUtils.isNotBlank(r.nextPageToken())
-                                        ? getPlaylistItemsApi(playlistId, r.nextPageToken(), key)
-                                        : new YoutubePlaylistsItem[]{}))
-                        .get(),
-                cause -> new RuntimeException("Failed to get Youtube playlist", cause)
-        );
+            final String capturedToken = currentPageToken;
+            final String target = "https://www.googleapis.com/youtube/v3/playlistItems?"
+                    + "part=snippet"
+                    + "&maxResults=50"
+                    + "&playlistId=" + playlistId
+                    + "&key=" + key
+                    + (StringUtils.isNotBlank(capturedToken) ? "&pageToken=" + capturedToken : "");
+
+            final YoutubePlaylists response = httpClientCaller.call(
+                    clientConstructor::getClient,
+                    client -> client.target(target)
+                            .request()
+                            .header("Accept", MediaType.APPLICATION_JSON)
+                            .get(),
+                    r -> Try.of(() -> responseValidation.validate(r, target))
+                            .map(v -> v.readEntity(YoutubePlaylists.class))
+                            .get(),
+                    cause -> new RuntimeException("Failed to get Youtube playlist", cause)
+            );
+
+            java.util.Collections.addAll(result, response.getItemsArray());
+
+            if (StringUtils.isBlank(response.nextPageToken())) {
+                break;
+            }
+
+            currentPageToken = response.nextPageToken();
+        }
+
+        return result.toArray(YoutubePlaylistsItem[]::new);
     }
 }

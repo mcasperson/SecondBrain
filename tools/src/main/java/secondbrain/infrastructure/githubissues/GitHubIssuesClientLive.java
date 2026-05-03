@@ -5,7 +5,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.web.ClientConstructor;
 import secondbrain.domain.constants.Constants;
@@ -67,40 +66,51 @@ public class GitHubIssuesClientLive implements GitHubIssuesClient {
     }
 
     private GitHubIssue[] getIssuesApi(final String token, final String organisation, final String repo, @Nullable final String since, @Nullable final String to, final List<String> labels, final String state, final int page) {
-        RATE_LIMITER.acquire();
+        /*
+         Use an iterative approach instead of recursion to avoid O(N²) memory from
+         stacked ArrayUtils.addAll intermediate arrays and deep recursion stack frames.
+         */
+        final java.util.List<GitHubIssue> result = new java.util.ArrayList<>();
 
-        final String target = "https://api.github.com/repos/"
-                + URLEncoder.encode(organisation, StandardCharsets.UTF_8) + "/"
-                + URLEncoder.encode(repo, StandardCharsets.UTF_8) + "/issues" +
-                "?page=" + page +
-                "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8) +
-                "&since=" + URLEncoder.encode(Objects.requireNonNullElse(since, ""), StandardCharsets.UTF_8) +
-                "&labels=" + URLEncoder.encode(String.join(",", labels), StandardCharsets.UTF_8) +
-                "&per_page=100";
+        for (int currentPage = page; ; currentPage++) {
+            RATE_LIMITER.acquire();
 
-        logger.fine("Fetching GitHub issues from: " + target);
+            final String target = "https://api.github.com/repos/"
+                    + URLEncoder.encode(organisation, StandardCharsets.UTF_8) + "/"
+                    + URLEncoder.encode(repo, StandardCharsets.UTF_8) + "/issues" +
+                    "?page=" + currentPage +
+                    "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8) +
+                    "&since=" + URLEncoder.encode(Objects.requireNonNullElse(since, ""), StandardCharsets.UTF_8) +
+                    "&labels=" + URLEncoder.encode(String.join(",", labels), StandardCharsets.UTF_8) +
+                    "&per_page=100";
 
-        return httpClientCaller.call(
-                clientConstructor::getClient,
-                client -> client.target(target)
-                        .request("application/vnd.github+json")
-                        .header("Authorization", "Bearer " + token)
-                        .get(),
-                response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(GitHubIssue[].class))
-                        // Recurse if there is a next page, and we have not gone too far
-                        .map(r -> ArrayUtils.addAll(
-                                r,
-                                r.length == 100
-                                        ? getIssuesApi(token, organisation, repo, since, to, labels, state, page + 1)
-                                        : new GitHubIssue[]{}))
-                        .get(),
-                e -> new RuntimeException("Failed to get issues from GitHub API", e),
-                () -> {
-                    throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
-                },
-                API_CALL_TIMEOUT_SECONDS_DEFAULT,
-                API_CALL_DELAY_SECONDS_DEFAULT,
-                API_RETRIES);
+            logger.fine("Fetching GitHub issues from: " + target);
+
+            final GitHubIssue[] pageResults = httpClientCaller.call(
+                    clientConstructor::getClient,
+                    client -> client.target(target)
+                            .request("application/vnd.github+json")
+                            .header("Authorization", "Bearer " + token)
+                            .get(),
+                    response -> Try.of(() -> responseValidation.validate(response, target))
+                            .map(r -> r.readEntity(GitHubIssue[].class))
+                            .get(),
+                    e -> new RuntimeException("Failed to get issues from GitHub API", e),
+                    () -> {
+                        throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                    },
+                    API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                    API_CALL_DELAY_SECONDS_DEFAULT,
+                    API_RETRIES);
+
+            java.util.Collections.addAll(result, pageResults);
+
+            // If we got fewer than 100 results, there are no more pages
+            if (pageResults.length < 100) {
+                break;
+            }
+        }
+
+        return result.toArray(GitHubIssue[]::new);
     }
 }

@@ -6,7 +6,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
@@ -136,31 +135,45 @@ public class DovetailClientLive implements DovetailClient {
             @Nullable final String cursor,
             final int page) {
 
-        if (page >= MAX_PAGES) {
-            logger.warning("Reached maximum pages of " + MAX_PAGES + " when fetching Dovetail data items");
-            return new DovetailDataItem[]{};
+        /*
+         Use an iterative approach instead of recursion to avoid O(N²) memory from
+         stacked ArrayUtils.addAll intermediate arrays and deep recursion stack frames.
+         */
+        final List<DovetailDataItem> result = new java.util.ArrayList<>();
+        String currentCursor = cursor;
+
+        for (int currentPage = page; currentPage < MAX_PAGES; currentPage++) {
+            logger.fine("Getting Dovetail data items from " + fromDateTime + " to " + toDateTime + " with cursor " + currentCursor);
+
+            final String cacheCursor = currentCursor;
+            final DovetailDataList pageResult = localStorage.getOrPutObject(
+                            DovetailClientLive.class.getSimpleName(),
+                            "DovetailAPIDataListPageV1",
+                            DigestUtils.sha256Hex(fromDateTime + toDateTime + Objects.requireNonNullElse(cacheCursor, "")),
+                            TTL,
+                            DovetailDataList.class,
+                            () -> callDataListApi(apiKey, fromDateTime, toDateTime, cacheCursor))
+                    .result();
+
+            if (pageResult != null) {
+                java.util.Collections.addAll(result, pageResult.getDataArray());
+            }
+
+            if (pageResult == null
+                    || pageResult.page() == null
+                    || !pageResult.page().hasMore()
+                    || StringUtils.isBlank(pageResult.page().nextCursor())) {
+                break;
+            }
+
+            currentCursor = pageResult.page().nextCursor();
         }
 
-        logger.fine("Getting Dovetail data items from " + fromDateTime + " to " + toDateTime + " with cursor " + cursor);
+        if (page >= MAX_PAGES) {
+            logger.warning("Reached maximum pages of " + MAX_PAGES + " when fetching Dovetail data items");
+        }
 
-        final DovetailDataList result = localStorage.getOrPutObject(
-                        DovetailClientLive.class.getSimpleName(),
-                        "DovetailAPIDataListPageV1",
-                        DigestUtils.sha256Hex(fromDateTime + toDateTime + Objects.requireNonNullElse(cursor, "")),
-                        TTL,
-                        DovetailDataList.class,
-                        () -> callDataListApi(apiKey, fromDateTime, toDateTime, cursor))
-                .result();
-
-        final DovetailDataItem[] itemsArray = result != null ? result.getDataArray() : new DovetailDataItem[]{};
-        final DovetailDataItem[] nextItemsArray = (result != null
-                && result.page() != null
-                && result.page().hasMore()
-                && StringUtils.isNotBlank(result.page().nextCursor()))
-                ? getDataItemsApiLocked(apiKey, fromDateTime, toDateTime, result.page().nextCursor(), page + 1)
-                : new DovetailDataItem[]{};
-
-        return ArrayUtils.addAll(itemsArray, nextItemsArray);
+        return result.toArray(DovetailDataItem[]::new);
     }
 
     private DovetailDataList callDataListApi(

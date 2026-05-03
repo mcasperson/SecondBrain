@@ -7,7 +7,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.date.DateTruncate;
@@ -179,6 +178,9 @@ public class ZenDeskClientLive implements ZenDeskClient {
     /**
      * ZenDesk has API rate limits measured in requests per minute, so we
      * attempt to retry a few times with a delay.
+     *
+     * Uses an iterative approach instead of recursion to avoid O(N²) memory from
+     * stacked ArrayUtils.addAll intermediate arrays and deep recursion stack frames.
      */
     private ZenDeskTicket[] getTicketsApiLocked(
             final String authorization,
@@ -191,44 +193,50 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Query is required");
         }
 
-        if (page >= maxPage) {
-            logger.warning("Reached maximum offset of " + maxPage + " when fetching Zendesk conversations");
-            return new ZenDeskTicket[]{};
+        final List<ZenDeskTicket> result = new ArrayList<>();
+
+        for (int currentPage = page; currentPage < maxPage; currentPage++) {
+            logger.fine("Getting ZenDesk tickets, page " + currentPage + " for query: " + query);
+
+            RATE_LIMITER.acquire();
+
+            final String target = url + "/api/v2/search.json";
+            final int capturedPage = currentPage;
+
+            final ZenDeskResponse response = httpClientCaller.call(
+                    clientConstructor::getClient,
+                    client -> client.target(target)
+                            .queryParam("query", query)
+                            .queryParam("sort_by", "created_at")
+                            .queryParam("sort_order", "desc")
+                            .queryParam("page", capturedPage)
+                            .request()
+                            .header("Authorization", authorization)
+                            .header("Accept", "application/json")
+                            .get(),
+                    r -> Try.of(() -> responseValidation.validate(r, target))
+                            .map(v -> v.readEntity(ZenDeskResponse.class))
+                            .get(),
+                    e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
+                    () -> {
+                        throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                    },
+                    API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                    API_CALL_DELAY_SECONDS_DEFAULT,
+                    API_RETRIES);
+
+            Collections.addAll(result, response.getResultsArray());
+
+            if (response.next_page() == null) {
+                break;
+            }
         }
 
-        logger.fine("Getting ZenDesk tickets, page " + page + " for query: " + query);
+        if (page >= maxPage) {
+            logger.warning("Reached maximum offset of " + maxPage + " when fetching Zendesk conversations");
+        }
 
-        RATE_LIMITER.acquire();
-
-        final String target = url + "/api/v2/search.json";
-
-        return httpClientCaller.call(
-                clientConstructor::getClient,
-                client -> client.target(target)
-                        .queryParam("query", query)
-                        .queryParam("sort_by", "created_at")
-                        .queryParam("sort_order", "desc")
-                        .queryParam("page", page)
-                        .request()
-                        .header("Authorization", authorization)
-                        .header("Accept", "application/json")
-                        .get(),
-                response -> Try.of(() -> responseValidation.validate(response, target))
-                        .map(r -> r.readEntity(ZenDeskResponse.class))
-                        // Recurse if there is a next page, and we have not gone too far
-                        .map(r -> ArrayUtils.addAll(
-                                r.getResultsArray(),
-                                r.next_page() != null && page < maxPage
-                                        ? getTicketsApiLocked(authorization, url, query, page + 1, maxPage)
-                                        : new ZenDeskTicket[]{}))
-                        .get(),
-                e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
-                () -> {
-                    throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
-                },
-                API_CALL_TIMEOUT_SECONDS_DEFAULT,
-                API_CALL_DELAY_SECONDS_DEFAULT,
-                API_RETRIES);
+        return result.toArray(ZenDeskTicket[]::new);
     }
 
     private ZenDeskTicketResponse getTicketApi(
