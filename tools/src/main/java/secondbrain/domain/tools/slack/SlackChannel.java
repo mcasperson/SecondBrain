@@ -49,7 +49,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 @ApplicationScoped
-public class SlackChannel implements Tool<SlackChannelResource> {
+public class SlackChannel implements Tool<Void> {
     public static final String SLACK_CHANEL_ARG = "slackChannel";
     public static final String API_DELAY_ARG = "apiDelay";
     public static final String HISTORY_TTL_ARG = "historyTtl";
@@ -136,7 +136,7 @@ public class SlackChannel implements Tool<SlackChannelResource> {
     }
 
     @Override
-    public List<RagDocumentContext<SlackChannelResource>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -177,7 +177,7 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                 .get();
     }
 
-    private List<RagDocumentContext<SlackChannelResource>> getContextPrivate(
+    private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final AsyncMethodsClient client,
             final SlackChannelConfig.LocalArguments parsedArgs) {
@@ -236,7 +236,7 @@ public class SlackChannel implements Tool<SlackChannelResource> {
         final List<RagDocumentContext<SlackChannelResource>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
         // Apply preprocessing hooks
-        final List<RagDocumentContext<SlackChannelResource>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+        final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
                 // Get the metadata, which includes a rating against the filter question if present
@@ -244,6 +244,7 @@ public class SlackChannel implements Tool<SlackChannelResource> {
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-SlackChannel-" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
 
         logger.info("Found " + context.size() + " Slack channel messages");
@@ -252,7 +253,7 @@ public class SlackChannel implements Tool<SlackChannelResource> {
     }
 
     @Override
-    public RagMultiDocumentContext<SlackChannelResource> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -260,14 +261,14 @@ public class SlackChannel implements Tool<SlackChannelResource> {
 
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<RagMultiDocumentContext<SlackChannelResource>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
 
-        final RagMultiDocumentContext<SlackChannelResource> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))

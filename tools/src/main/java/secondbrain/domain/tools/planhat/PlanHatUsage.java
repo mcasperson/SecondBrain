@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @ApplicationScoped
-public class PlanHatUsage implements Tool<Company> {
+public class PlanHatUsage implements Tool<Void> {
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String COMPANY_ID_ARGS = "companyId";
     public static final String PLANHAT_CUSTOM_1_ARG = "custom1";
@@ -109,7 +109,7 @@ public class PlanHatUsage implements Tool<Company> {
     }
 
     @Override
-    public List<RagDocumentContext<Company>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
@@ -284,11 +284,12 @@ public class PlanHatUsage implements Tool<Company> {
 
         return Stream.of(usageContext, customContext, customPersonContext, companyPropertyContext, companyPeopleContext)
                 .flatMap(List::stream)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
     @Override
-    public RagMultiDocumentContext<Company> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final List<RagDocumentContext<Company>> contextList = getContext(environmentSettings, prompt, arguments);
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -296,7 +297,7 @@ public class PlanHatUsage implements Tool<Company> {
             throw new InternalFailure("You must provide a company to query");
         }
 
-        final Try<RagMultiDocumentContext<Company>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,

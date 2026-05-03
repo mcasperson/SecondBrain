@@ -40,7 +40,7 @@ import java.util.stream.Stream;
  * and uses it as the context for a query.
  */
 @ApplicationScoped
-public class PublicFile implements Tool<FileContents> {
+public class PublicFile implements Tool<Void> {
 
     public static final String PUBLICWEB_URL_ARG = "url";
 
@@ -105,7 +105,7 @@ public class PublicFile implements Tool<FileContents> {
     }
 
     @Override
-    public List<RagDocumentContext<FileContents>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -135,16 +135,19 @@ public class PublicFile implements Tool<FileContents> {
 
         // Apply preprocessing hooks
         return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
-                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
+                .stream()
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
+                .toList();
     }
 
     @Override
-    public RagMultiDocumentContext<FileContents> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<FileContents>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final PublicWebConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -152,14 +155,14 @@ public class PublicFile implements Tool<FileContents> {
             throw new InternalFailure("You must provide a URL to download");
         }
 
-        final Try<RagMultiDocumentContext<FileContents>> result = Try.of(() -> contextList)
-                .map(ragDoc -> new RagMultiDocumentContext<FileContents>(prompt, INSTRUCTIONS, ragDoc))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
 
-        final RagMultiDocumentContext<FileContents> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))

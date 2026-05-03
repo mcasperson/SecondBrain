@@ -201,6 +201,11 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
         return value;
     }
 
+    @Override
+    public void purge() {
+        MEMORY_CACHE.clear();
+    }
+
 
     private void clearExpiredEntries(final String cacheDir) {
         // Clear expired cache files

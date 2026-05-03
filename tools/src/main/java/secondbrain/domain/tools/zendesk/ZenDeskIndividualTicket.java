@@ -46,7 +46,7 @@ import java.util.stream.Stream;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 @ApplicationScoped
-public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
+public class ZenDeskIndividualTicket implements Tool<Void> {
     public static final String ZENDESK_RATING_QUESTION_ARG = "ticketRatingQuestion";
     public static final String ZENDESK_DEFAULT_RATING_ARG = "ticketDefaultRating";
     public static final String ZENDESK_ENTITY_NAME_CONTEXT_ARG = "entity";
@@ -127,14 +127,14 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     }
 
     @Override
-    public List<RagDocumentContext<ZenDeskTicket>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
         final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.of(() -> ticketToComments(
+        final Try<List<RagDocumentContext<Void>>> result = Try.of(() -> ticketToComments(
                         parsedArgs.getSecretAuthHeader(),
                         parsedArgs.getNumComments(),
                         parsedArgs))
@@ -142,6 +142,7 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
                 .map(ticket -> ticket.addMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ticket, parsedArgs)))
                 .map(ticket -> ticket.addIntermediateResult(
                         new IntermediateResult(ticket.document(), ticketToFileName(ticket, parsedArgs.getEntity()))))
+                .map(ticket -> ticket.convertToRagDocumentContextVoid())
                 .map(List::of)
                 // deal with the filter failing
                 .recover(NoSuchElementException.class, ex -> List.of());
@@ -154,16 +155,16 @@ public class ZenDeskIndividualTicket implements Tool<ZenDeskTicket> {
     }
 
     @Override
-    public RagMultiDocumentContext<ZenDeskTicket> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
 
         final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final Try<RagMultiDocumentContext<ZenDeskTicket>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(validateList::throwIfEmpty)
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                .map(tickets -> new RagMultiDocumentContext<ZenDeskTicket>(prompt, INSTRUCTIONS, tickets))
+                .map(tickets -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, tickets))
                 // Call Ollama with the final prompt
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
                 // Clean up the response

@@ -48,7 +48,7 @@ import java.util.stream.Stream;
  * I couldn't find a single LLM supported by Ollama that could process a large collection of diffs in a single prompt.
  */
 @ApplicationScoped
-public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
+public class GitHubDiffs implements Tool<Void> {
     public static final String GITHUB_DIFF_OWNER_ARG = "owner";
     public static final String GITHUB_DIFF_REPO_ARG = "repo";
     public static final String GITHUB_DIFF_BRANCH_ARG = "branch";
@@ -134,7 +134,7 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
     }
 
     @Override
-    public List<RagDocumentContext<GitHubCommitAndDiff>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -165,7 +165,10 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
             // Apply preprocessing hooks
             return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
-                    .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
+                    .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
+                    .stream()
+                    .map(RagDocumentContext::convertToRagDocumentContextVoid)
+                    .toList();
         }
 
         // Otherwise, we are interested in a range of commits
@@ -190,11 +193,14 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
         // Apply preprocessing hooks
         return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
-                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
+                .stream()
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
+                .toList();
     }
 
     @Override
-    public RagMultiDocumentContext<GitHubCommitAndDiff> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -203,12 +209,12 @@ public class GitHubDiffs implements Tool<GitHubCommitAndDiff> {
 
         final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<RagMultiDocumentContext<GitHubCommitAndDiff>> result = Try
+        final Try<RagMultiDocumentContext<Void>> result = Try
                 .of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragDocs -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDocs, debugArgs))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        final RagMultiDocumentContext<GitHubCommitAndDiff> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))

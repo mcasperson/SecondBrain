@@ -161,11 +161,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
                 .onFailure(InternalFailure.class, ex -> log.info("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                 .onFailure(ExternalFailure.class, ex -> log.warning("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                 // If anything fails, get an empty list
-                .getOrElse(List::of)
-                // Post-process the rag context
-                .stream()
-                .map(RagDocumentContext::convertToRagDocumentContextVoid)
-                .toList();
+                .getOrElse(List::of);
     }
 
     private Map<String, String> addItemToMap(@Nullable final Map<String, String> map, final String key, final String value) {

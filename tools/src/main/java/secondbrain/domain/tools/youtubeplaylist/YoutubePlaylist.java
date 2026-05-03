@@ -39,7 +39,7 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 @ApplicationScoped
-public class YoutubePlaylist implements Tool<YoutubeVideo> {
+public class YoutubePlaylist implements Tool<Void> {
     public static final String YOUTUBE_FILTER_RATING_META = "FilterRating";
     public static final String YOUTUBE_API_KEY = "apiKey";
     public static final String YOUTUBE_PLAYLIST_ID_ARG = "playlistId";
@@ -134,7 +134,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     }
 
     @Override
-    public List<RagDocumentContext<YoutubeVideo>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (parsedArgs.getPlaylistId().isEmpty() && StringUtils.isBlank(parsedArgs.getChannelId()) && StringUtils.isBlank(parsedArgs.getQuery())) {
@@ -205,6 +205,7 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
                         ragDoc)
                 // A failure results in a null value, which is filtered out
                 .filter(Objects::nonNull)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 
@@ -239,10 +240,10 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
     }
 
     @Override
-    public RagMultiDocumentContext<YoutubeVideo> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final List<RagDocumentContext<YoutubeVideo>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -252,14 +253,14 @@ public class YoutubePlaylist implements Tool<YoutubeVideo> {
 
         final String instructions = parsedArgs.getSummarizeTranscript() ? SUMMARY_INSTRUCTIONS : INSTRUCTIONS;
 
-        final Try<RagMultiDocumentContext<YoutubeVideo>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, instructions, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()));
 
-        final RagMultiDocumentContext<YoutubeVideo> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))

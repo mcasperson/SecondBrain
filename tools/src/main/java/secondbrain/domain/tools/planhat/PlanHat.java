@@ -56,7 +56,7 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 @ApplicationScoped
-public class PlanHat implements Tool<Conversation> {
+public class PlanHat implements Tool<Void> {
     public static final String COMPANY_ID_ARGS = "companyId";
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String PLANHAT_TTL_SECONDS_ARG = "ttlSeconds";
@@ -176,7 +176,7 @@ public class PlanHat implements Tool<Conversation> {
     }
 
     @Override
-    public List<RagDocumentContext<Conversation>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
@@ -203,7 +203,7 @@ public class PlanHat implements Tool<Conversation> {
                                 parsedArgs.getCacheTtl(),
                                 List.class,
                                 RagDocumentContext.class,
-                                Conversation.class,
+                                Void.class,
                                 () -> getContextPrivate(environmentSettings, prompt, arguments))
                         .result())
                 .filter(Objects::nonNull)
@@ -211,7 +211,7 @@ public class PlanHat implements Tool<Conversation> {
                 .get();
     }
 
-    private List<RagDocumentContext<Conversation>> getContextPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    private List<RagDocumentContext<Void>> getContextPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         logger.fine("Getting context for " + getName() + " for company " + parsedArgs.getCompany());
@@ -266,7 +266,7 @@ public class PlanHat implements Tool<Conversation> {
         final List<RagDocumentContext<Conversation>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
         // Apply preprocessing hooks
-        final List<RagDocumentContext<Conversation>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+        final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
                 // Get the metadata, which includes a rating against the filter question if present
@@ -277,6 +277,7 @@ public class PlanHat implements Tool<Conversation> {
                 .map(doc -> parsedArgs.getSummarizeDocument()
                         ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(doc.source()), "PlanHat", doc, environmentSettings, parsedArgs)
                         : doc)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
 
         logger.info("Found " + context.size() + " PlanHat conversations");
@@ -285,10 +286,10 @@ public class PlanHat implements Tool<Conversation> {
     }
 
     @Override
-    public RagMultiDocumentContext<Conversation> call(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(Map<String, String> environmentSettings, String prompt, List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final List<RagDocumentContext<Conversation>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -296,11 +297,11 @@ public class PlanHat implements Tool<Conversation> {
             throw new InternalFailure("You must provide a company to query");
         }
 
-        final Try<RagMultiDocumentContext<Conversation>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        final RagMultiDocumentContext<Conversation> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))

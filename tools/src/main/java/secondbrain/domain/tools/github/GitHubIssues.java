@@ -44,7 +44,7 @@ import java.util.stream.Stream;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
-public class GitHubIssues implements Tool<GitHubIssue> {
+public class GitHubIssues implements Tool<Void> {
     public static final String GITHUB_ISSUE_FILTER_RATING_META = "FilterRating";
     public static final String GITHUB_ORGANIZATION_ARG = "githubOrganization";
     public static final String GITHUB_REPO_ARG = "githubRepo";
@@ -108,7 +108,7 @@ public class GitHubIssues implements Tool<GitHubIssue> {
     }
 
     @Override
-    public List<RagDocumentContext<GitHubIssue>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         // Get preinitialization hooks before ragdocs
@@ -134,7 +134,10 @@ public class GitHubIssues implements Tool<GitHubIssue> {
 
         // Apply preprocessing hooks
         return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
-                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
+                .stream()
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
+                .toList();
     }
 
     private List<RagDocumentContext<GitHubIssue>> convertIssueToRagDoc(
@@ -156,12 +159,12 @@ public class GitHubIssues implements Tool<GitHubIssue> {
     }
 
     @Override
-    public RagMultiDocumentContext<GitHubIssue> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
         final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<RagMultiDocumentContext<GitHubIssue>> result = Try
+        final Try<RagMultiDocumentContext<Void>> result = Try
                 .of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(ragDocs -> new RagMultiDocumentContext<>(
                         prompt,
@@ -173,7 +176,7 @@ public class GitHubIssues implements Tool<GitHubIssue> {
                         environmentSettings,
                         getName()));
 
-        final RagMultiDocumentContext<GitHubIssue> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))

@@ -11,4 +11,6 @@ public interface LocalStorageReadWrite {
     Optional<String> getString(String tool, String source, String promptHash);
 
     String putString(String tool, String source, String promptHash, @Nullable Long timestamp, String value);
+
+    void purge();
 }

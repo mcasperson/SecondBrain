@@ -30,6 +30,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.persist.LocalStorageReadWrite;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
@@ -194,6 +195,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     @Inject
     private SharedVirtualThreadExecutor sharedExecutor;
 
+    @Inject
+    LocalStorageReadWrite localStorageReadWrite;
+
     @Override
     public String getName() {
         return MultiSlackZenGoogle.class.getSimpleName();
@@ -259,6 +263,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         if (ragContext.isEmpty()) {
             throw new InsufficientContext("No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found.");
         }
+
+        // We don't need this cache anymore, so save some memory and clear it
+        localStorageReadWrite.purge();
 
         return ragContext;
     }

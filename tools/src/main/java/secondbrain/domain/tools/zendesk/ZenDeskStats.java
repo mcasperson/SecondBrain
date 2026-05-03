@@ -44,7 +44,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
  * A tool that returns a summary of ZenDesk ticket counts grouped by status for a given organisation.
  */
 @ApplicationScoped
-public class ZenDeskStats implements Tool<ZenDeskTicket> {
+public class ZenDeskStats implements Tool<Void> {
 
     public static final String ZENDESK_ORGANIZATION_ARG = "zenDeskOrganization";
     public static final String ZENDESK_HISTORY_TTL_ARG = "historyTtl";
@@ -97,7 +97,7 @@ public class ZenDeskStats implements Tool<ZenDeskTicket> {
     }
 
     @Override
-    public List<RagDocumentContext<ZenDeskTicket>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -137,7 +137,7 @@ public class ZenDeskStats implements Tool<ZenDeskTicket> {
 
         final String document = buildDocument(organization, countsByStatus, total);
 
-        return List.of(new RagDocumentContext<>(
+        return List.of(new RagDocumentContext<Void>(
                 getName(),
                 getContextLabel(),
                 document,
@@ -149,14 +149,14 @@ public class ZenDeskStats implements Tool<ZenDeskTicket> {
     }
 
     @Override
-    public RagMultiDocumentContext<ZenDeskTicket> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<ZenDeskTicket>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<ZenDeskTicket>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 

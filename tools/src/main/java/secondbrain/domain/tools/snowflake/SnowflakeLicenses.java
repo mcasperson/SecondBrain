@@ -28,7 +28,7 @@ import java.util.Optional;
  * A tool that returns Snowflake license details for a given Salesforce account ID.
  */
 @ApplicationScoped
-public class SnowflakeLicenses implements Tool<SnowflakeLicenseDetails> {
+public class SnowflakeLicenses implements Tool<Void> {
 
     public static final String COMPANY_ID_ARG = "companyId";
 
@@ -75,7 +75,7 @@ public class SnowflakeLicenses implements Tool<SnowflakeLicenseDetails> {
     }
 
     @Override
-    public List<RagDocumentContext<SnowflakeLicenseDetails>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -98,19 +98,20 @@ public class SnowflakeLicenses implements Tool<SnowflakeLicenseDetails> {
                         details,
                         null,
                         List.of()))
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
 
     }
 
     @Override
-    public RagMultiDocumentContext<SnowflakeLicenseDetails> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<SnowflakeLicenseDetails>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<SnowflakeLicenseDetails>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
@@ -195,4 +196,3 @@ class SnowflakeLicensesConfig {
         }
     }
 }
-

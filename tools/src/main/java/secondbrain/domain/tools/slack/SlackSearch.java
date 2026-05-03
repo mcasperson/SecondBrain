@@ -55,7 +55,7 @@ import java.util.stream.Stream;
 import static com.google.common.base.Predicates.instanceOf;
 
 @ApplicationScoped
-public class SlackSearch implements Tool<SlackSearchResultResource> {
+public class SlackSearch implements Tool<Void> {
     public static final String SLACK_SEARCH_KEYWORDS_ARG = "searchKeywords";
     public static final String SLACK_IGNORE_CHANNELS_ARG = "ignoreChannels";
     public static final String API_DELAY_ARG = "apiDelay";
@@ -128,7 +128,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     }
 
     @Override
-    public List<RagDocumentContext<SlackSearchResultResource>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -157,7 +157,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                                 parsedArgs.getCacheTtl(),
                                 List.class,
                                 RagDocumentContext.class,
-                                SlackSearchResultResource.class,
+                                Void.class,
                                 () -> getContextPrivate(environmentSettings, client, parsedArgs))
                         .result())
                 .filter(Objects::nonNull)
@@ -165,7 +165,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                 .get();
     }
 
-    private List<RagDocumentContext<SlackSearchResultResource>> getContextPrivate(
+    private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final com.slack.api.methods.AsyncMethodsClient client,
             final SlackSearchConfig.LocalArguments parsedArgs) {
@@ -213,7 +213,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
         final List<RagDocumentContext<SlackSearchResultResource>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
         // Apply preprocessing hooks
-        final List<RagDocumentContext<SlackSearchResultResource>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+        final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
                 // Get the metadata, which includes a rating against the filter question if present
@@ -221,6 +221,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-SlackSearch-" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
 
         logger.info("Found " + context.size() + " Slack from search");
@@ -229,18 +230,18 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
     }
 
     @Override
-    public RagMultiDocumentContext<SlackSearchResultResource> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
         logger.fine("Calling " + getName());
 
-        final List<RagDocumentContext<SlackSearchResultResource>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
         final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        final Try<RagMultiDocumentContext<SlackSearchResultResource>> result = Try.of(() -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, contextList))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, contextList))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
@@ -248,7 +249,7 @@ public class SlackSearch implements Tool<SlackSearchResultResource> {
 
         // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
         // https://github.com/vavr-io/vavr/issues/2411
-        final RagMultiDocumentContext<SlackSearchResultResource> mappedResult = result
+        final RagMultiDocumentContext<Void> mappedResult = result
                 .mapFailure(
                         API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Slack channel had no matching messages")),
                         API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),

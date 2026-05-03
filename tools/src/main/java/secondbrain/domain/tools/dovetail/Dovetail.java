@@ -231,7 +231,7 @@ public class Dovetail implements Tool<Void> {
         logger.info("Found " + context.size() + " Dovetail data items");
 
         return context.stream()
-                .map(c -> c.convertToRagDocumentContextVoid())
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 

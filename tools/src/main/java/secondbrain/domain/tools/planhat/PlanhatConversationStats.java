@@ -43,7 +43,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
  * A tool that returns a summary of PlanHat conversation counts grouped by type for a given company.
  */
 @ApplicationScoped
-public class PlanhatConversationStats implements Tool<Conversation> {
+public class PlanhatConversationStats implements Tool<Void> {
 
     public static final String COMPANY_ID_ARG = "companyId";
     public static final String SEARCH_TTL_ARG = "searchTtl";
@@ -99,7 +99,7 @@ public class PlanhatConversationStats implements Tool<Conversation> {
     }
 
     @Override
-    public List<RagDocumentContext<Conversation>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -140,7 +140,7 @@ public class PlanhatConversationStats implements Tool<Conversation> {
 
         final String document = buildDocument(parsedArgs.getCompanyId(), countsByType, total);
 
-        return List.of(new RagDocumentContext<>(
+        return List.of(new RagDocumentContext<Void>(
                 getName(),
                 getContextLabel(),
                 document,
@@ -152,14 +152,14 @@ public class PlanhatConversationStats implements Tool<Conversation> {
     }
 
     @Override
-    public RagMultiDocumentContext<Conversation> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<Conversation>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<Conversation>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
@@ -472,6 +472,8 @@ class PlanhatConversationStatsConfig {
         }
     }
 }
+
+
 
 
 

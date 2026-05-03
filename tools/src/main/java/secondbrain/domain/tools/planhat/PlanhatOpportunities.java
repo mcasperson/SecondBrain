@@ -33,7 +33,7 @@ import java.util.Optional;
  * A tool that returns PlanHat opportunities for a given company ID.
  */
 @ApplicationScoped
-public class PlanhatOpportunities implements Tool<Opportunity> {
+public class PlanhatOpportunities implements Tool<Void> {
 
     public static final String COMPANY_ID_ARG = "companyId";
     public static final String SEARCH_TTL_ARG = "searchTtl";
@@ -85,7 +85,7 @@ public class PlanhatOpportunities implements Tool<Opportunity> {
     }
 
     @Override
-    public List<RagDocumentContext<Opportunity>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -122,18 +122,19 @@ public class PlanhatOpportunities implements Tool<Opportunity> {
                         opportunity,
                         null,
                         List.of()))
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
 
     @Override
-    public RagMultiDocumentContext<Opportunity> call(
+    public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<Opportunity>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
 
-        final Try<RagMultiDocumentContext<Opportunity>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
@@ -287,4 +288,3 @@ class PlanhatOpportunitiesConfig {
         }
     }
 }
-

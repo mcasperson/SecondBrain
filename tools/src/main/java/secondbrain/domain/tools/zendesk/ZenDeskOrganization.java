@@ -60,7 +60,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
-public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
+public class ZenDeskOrganization implements Tool<Void> {
     public static final String TTL_SECONDS = "ttlSeconds";
     public static final String ZENDESK_ORGANIZATION_ARG = "zenDeskOrganization";
     public static final String EXCLUDE_ORGANIZATION_ARG = "excludeOrganization";
@@ -178,7 +178,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     }
 
     @Override
-    public List<RagDocumentContext<ZenDeskTicket>> getContext(
+    public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -202,7 +202,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                                 parsedArgs.getCacheTtl(),
                                 List.class,
                                 RagDocumentContext.class,
-                                ZenDeskTicket.class,
+                                Void.class,
                                 () -> getContextPrivate(environmentSettings, prompt, arguments))
                         .result())
                 .filter(Objects::nonNull)
@@ -210,7 +210,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .get();
     }
 
-    private List<RagDocumentContext<ZenDeskTicket>> getContextPrivate(
+    private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
@@ -219,7 +219,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         logger.fine("Getting context for " + getName() + " for organization " + parsedArgs.getOrganization());
 
         // Get preinitialization hooks before ragdocs
-        final List<RagDocumentContext<ZenDeskTicket>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+        final List<RagDocumentContext<Void>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         final String query = buildTicketQuery(parsedArgs);
@@ -240,7 +240,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .filter(ZenDeskCreds::isValid)
                 .toList();
 
-        final Try<List<RagDocumentContext<ZenDeskTicket>>> result = Try.of(() -> zenDeskCreds
+        final Try<List<RagDocumentContext<Void>>> result = Try.of(() -> zenDeskCreds
                 .stream()
                 .flatMap(zenDeskCred -> getContext(
                         parsedArgs,
@@ -249,13 +249,13 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         query).stream())
                 .toList());
 
-        final List<RagDocumentContext<ZenDeskTicket>> ragDocs = exceptionMapping.map(result).get();
+        final List<RagDocumentContext<Void>> ragDocs = exceptionMapping.map(result).get();
 
         // Combine preinitialization hooks with ragDocs
-        final List<RagDocumentContext<ZenDeskTicket>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+        final List<RagDocumentContext<Void>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
         // Apply preprocessing hooks
-        final List<RagDocumentContext<ZenDeskTicket>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
+        final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
 
         logger.info("Found " + context.size() + " ZenDesk emails");
@@ -291,12 +291,12 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
         return String.join(" ", query);
     }
 
-    private List<RagDocumentContext<ZenDeskTicket>> getContext(
+    private List<RagDocumentContext<Void>> getContext(
             final ZenDeskConfig.LocalArguments parsedArgs,
             final Map<String, String> environmentSettings,
             final ZenDeskCreds creds,
             final String query) {
-        final List<RagDocumentContext<ZenDeskTicket>> context = Try.of(() ->
+        final List<RagDocumentContext<Void>> context = Try.of(() ->
                         zenDeskClient.getTickets(
                                 creds.auth(),
                                 creds.url(),
@@ -335,7 +335,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                     one a small number of tickets.
                  */
                 .map(tickets -> parsedArgs.getSummarizeTicket()
-                        ? ragDocSummarizer.getDocumentSummary(getName(), this::getContextLabelWithDate, "ZenDesk", tickets, environmentSettings, parsedArgs)
+                        ? ragDocSummarizer.getDocumentSummary(getName(), (item) -> getContextLabel(), "ZenDesk", tickets, environmentSettings, parsedArgs)
                         : tickets)
                 // Don't let one failed instance block the others
                 .onFailure(throwable -> logger.warning("Failed to get tickets: " + ExceptionUtils.getRootCauseMessage(throwable)))
@@ -346,17 +346,17 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
     }
 
     @Override
-    public RagMultiDocumentContext<ZenDeskTicket> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final Try<RagMultiDocumentContext<ZenDeskTicket>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
                 .map(validateList::throwIfEmpty)
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                .map(tickets -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, tickets))
+                .map(tickets -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, tickets))
                 // Call Ollama with the final prompt
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
                 // Clean up the response
@@ -370,7 +370,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                         null,
                         null));
 
-        final RagMultiDocumentContext<ZenDeskTicket> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
@@ -397,7 +397,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .collect(Collectors.toList());
     }
 
-    private List<RagDocumentContext<ZenDeskTicket>> trimTickets(final List<RagDocumentContext<ZenDeskTicket>> tickets, final ZenDeskConfig.LocalArguments parsedArgs) {
+    private List<RagDocumentContext<Void>> trimTickets(final List<RagDocumentContext<Void>> tickets, final ZenDeskConfig.LocalArguments parsedArgs) {
         return tickets.stream()
                 .map(ticket -> ticket.updateDocument(
                         documentTrimmer.trimDocumentToKeywords(
@@ -408,7 +408,7 @@ public class ZenDeskOrganization implements Tool<ZenDeskTicket> {
                 .collect(Collectors.toList());
     }
 
-    private List<RagDocumentContext<ZenDeskTicket>> ticketToComments(final List<ZenDeskTicket> tickets,
+    private List<RagDocumentContext<Void>> ticketToComments(final List<ZenDeskTicket> tickets,
                                                                      final Map<String, String> environmentSettings,
                                                                      final String url,
                                                                      final String email,
