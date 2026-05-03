@@ -84,15 +84,15 @@ public class AesEncryptor implements Encryptor {
         final byte[] ivAndEncrypted = Base64.getDecoder().decode(text);
 
         final GCMParameterSpec iv = generateIv(Arrays.copyOfRange(ivAndEncrypted, 0, IV_LENGTH));
-        final byte[] encrypted = Arrays.copyOfRange(ivAndEncrypted, IV_LENGTH, ivAndEncrypted.length);
         final SecretKey key = getCachedKey();
 
+        // Use doFinal with offset/length to avoid allocating a separate copy of the encrypted portion
         return Try.of(() -> Cipher.getInstance(ALGORITHM))
             .mapTry(cipher -> {
                 cipher.init(Cipher.DECRYPT_MODE, key, iv);
                 return cipher;
             })
-            .mapTry(cipher -> cipher.doFinal(encrypted))
+            .mapTry(cipher -> cipher.doFinal(ivAndEncrypted, IV_LENGTH, ivAndEncrypted.length - IV_LENGTH))
             .map(String::new)
             .mapFailure(API.Case(API.$(), ex -> new InternalFailure("Failed to decrypt text", ex)))
             .get();
