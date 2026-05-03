@@ -177,6 +177,7 @@ public class CosmosMutex implements Mutex {
                 .consistencyLevel(ConsistencyLevel.SESSION)
                 .clientTelemetryConfig(telemetryOptions)
                 .endpointDiscoveryEnabled(autoDiscovery)
+                .connectionSharingAcrossClientsEnabled(true)
                 .contentResponseOnWriteEnabled(false);
 
         cosmosClient = (gatewayMode ? builder.gatewayMode() : builder)

@@ -226,6 +226,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .consistencyLevel(ConsistencyLevel.SESSION)
                 .clientTelemetryConfig(telemetryOptions)
                 .endpointDiscoveryEnabled(autoDiscovery)
+                .connectionSharingAcrossClientsEnabled(true)
                 .contentResponseOnWriteEnabled(false);
 
         cosmosClient = (gatewayMode ? builder.gatewayMode() : builder)
