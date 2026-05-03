@@ -125,7 +125,7 @@ jobs:
           for i in {1..30}; do
             if openssl s_client -connect ${EMULATOR_HOST}:${EMULATOR_PORT} </dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > $EMULATOR_CERT_PATH; then
               echo "Successfully downloaded certificate"
-              keytool -noprompt -import -trustcacerts -alias cosmosdb_cert -file $$EMULATOR_CERT_PATH -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit
+              keytool -noprompt -import -trustcacerts -alias cosmosdb_cert -file $EMULATOR_CERT_PATH -keystore $JAVA_HOME/lib/security/cacerts -storepass changeit
               exit 0
             fi
             echo "Waiting for Cosmos DB emulator to be ready... (attempt $i/30)"
