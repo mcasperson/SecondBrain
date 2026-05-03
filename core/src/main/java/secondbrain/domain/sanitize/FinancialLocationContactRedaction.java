@@ -29,6 +29,9 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
     @Nullable
     private PlainTextFilterService filterService;
 
+    @Nullable
+    private Policy cachedPolicy;
+
     @Inject
     private JsonDeserializer jsonDeserializer;
 
@@ -39,6 +42,7 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
                 new DefaultContextService(),
                 null,
                 null);
+        this.cachedPolicy = createPolicy();
     }
 
     private Policy createPolicy() {
@@ -151,7 +155,7 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
     }
 
     private String filterPlainText(final String text, final PlainTextFilterService service) {
-        return Try.of(() -> service.filter(createPolicy(), "llm", text))
+        return Try.of(() -> service.filter(cachedPolicy, "llm", text))
                 .map(TextFilterResult::getFilteredText)
                 .recover(ex -> text)
                 .get();

@@ -703,22 +703,17 @@ public class CosmosLocalStorage implements LocalStorage {
                     ttlSeconds,
                     value.length + "");
 
-            // each item is persisted with an index suffix
-            IntStream.range(0, value.length)
-                    .boxed()
-                    .collect(parallelToStream(index -> {
-                                        putString(
-                                                tool,
-                                                source,
-                                                promptHash + "_" + index,
-                                                ttlSeconds,
-                                                jsonDeserializer.serialize(value[index]));
-
-                                        return index;
-                                    },
-                                    sharedVirtualThreadExecutor.getExecutor(),
-                                    BATCH_SIZE)
-                    );
+            // Serialize and persist each item sequentially to reduce peak memory.
+            // Parallel writes would hold multiple large serialized strings in flight
+            // simultaneously (each item can be ~1MB), risking OOM under load.
+            for (int index = 0; index < value.length; index++) {
+                putString(
+                        tool,
+                        source,
+                        promptHash + "_" + index,
+                        ttlSeconds,
+                        jsonDeserializer.serialize(value[index]));
+            }
         }
 
         return new CacheResult<T[]>(value, false);
