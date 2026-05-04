@@ -21,6 +21,7 @@ import secondbrain.domain.exceptions.LockFail;
 import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
@@ -115,7 +116,7 @@ public class CosmosMutex implements Mutex {
 
     @PreDestroy
     public void preDestroy() {
-        final long waited = totalWaitMs.get();
+        final long waited = Objects.requireNonNullElse(totalWaitMs.get(), 0L);
         logger.info("Total time spent waiting to acquire Cosmos locks: "
                 + String.format("%.2f", waited / 1000.0) + "s");
 
