@@ -3,9 +3,7 @@ package secondbrain.domain.context;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -26,14 +24,15 @@ public class HashMapEnvironmentSettings extends HashMap<String, String> implemen
     }
 
     @Override
-    public EnvironmentSettings addToolCall(final String value) {
-        checkArgument(StringUtils.isNoneBlank(value));
+    public EnvironmentSettings addToolCall(final String tool, final String id) {
+        checkArgument(StringUtils.isNoneBlank(tool));
+        checkArgument(StringUtils.isNoneBlank(id));
 
         final String existing = Objects.requireNonNullElse(this.get(TOOL_CALLS), "");
         if (existing.isEmpty()) {
-            this.put(TOOL_CALLS, value);
+            this.put(TOOL_CALLS, tool + "[" + id + "]");
         } else {
-            this.put(TOOL_CALLS, existing + "->" + value);
+            this.put(TOOL_CALLS, existing + "->" + tool + "[" + id + "]");
         }
 
         return this;

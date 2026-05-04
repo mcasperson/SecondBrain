@@ -10,13 +10,16 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import jakarta.validation.constraints.Null;
 import org.apache.commons.lang.StringUtils;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptions.DeserializationFailed;
 import secondbrain.domain.exceptions.SerializationFailed;
 import secondbrain.domain.persist.TimedOperation;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -70,6 +73,19 @@ public class JsonDeserializerJackson implements JsonDeserializer {
                         objectMapper.getTypeFactory().constructMapType(Map.class, key, value)))
                 .onFailure(ex -> logger.warning("Failed to deserialize map of type " + key.getSimpleName() + ": " + ex.getMessage()))
                 .getOrElseThrow(ex -> new DeserializationFailed(ex));
+    }
+
+    @Override
+    public <U, V> Optional<Map<U, V>> tryDeserializeMap(final String json, final Class<U> key, final Class<V> value) {
+        checkArgument(StringUtils.isNotBlank(json), "JSON string cannot be blank");
+
+        return Try.of(this::createObjectMapper)
+                .mapTry(objectMapper -> objectMapper.<Map<U, V>>readValue(
+                        json,
+                        objectMapper.getTypeFactory().constructMapType(Map.class, key, value)))
+                .map(Optional::of)
+                .recover(ex -> Optional.empty())
+                .get();
     }
 
     @Override

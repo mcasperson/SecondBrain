@@ -344,7 +344,7 @@ public class GoogleDocs implements Tool<Void> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
                 .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, document.document())
-                .addToolCall(getName() + "[" + document.id() + "]");
+                .addToolCall(getName(), Objects.requireNonNullElse(document.id(), "unknownId"));
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())

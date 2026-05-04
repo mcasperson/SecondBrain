@@ -17,6 +17,7 @@ import secondbrain.domain.exceptions.InvalidAnswer;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.sanitize.SanitizeDocument;
+import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -24,15 +25,15 @@ import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.infrastructure.llm.LlmClient;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+
 import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
+
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
+import static secondbrain.infrastructure.llm.LlmClient.MODEL_OVERRIDE_ENV;
 
 /**
  * The type of LLM server definition.
@@ -49,6 +50,8 @@ enum LLMServerType {
  */
 @ApplicationScoped
 public class RatingTool implements Tool<Void> {
+    public static final String RATING_TOOL_CONTEXT_ARG = "ratingTool";
+    public static final String RATING_ID_CONTEXT_ARG = "ratingId";
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "ratingDocument";
     public static final String RATING_FIRST_MODEL_ARG = "firstModel";
     public static final String RATING_FIRST_CONTEXT_WINDOW_ARG = "firstContextWindow";
@@ -68,8 +71,7 @@ public class RatingTool implements Tool<Void> {
             You are a helpful assistant.
             You are given a question and the contents of a document related to the question.
             You must rate the document on a scale of 0 to 10 based on how well it answers the question.
-            The response must be a single number between 0 and 10.
-            You will be penalized for returning any additional text or markup in the response.
+            The response must start with a single number between 0 and 10, followed by a new line, followed by your reasoning.
             """.stripLeading();
 
     @Inject
@@ -146,53 +148,66 @@ public class RatingTool implements Tool<Void> {
         // description rather than a number. I have seen this a lot with Phi-4.
         // If we have additional models, and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
-        final List<Integer> results = Stream.of(
-                                StringUtils.isBlank(parsedArgs.getFirstModel())
-                                        ? LLMServerDetails.fromEnvironment()
-                                        : LLMServerDetails.custom(parsedArgs.getFirstModel(), parsedArgs.getFirstContextWindow(), parsedArgs.getFirstReasoningEffort(), parsedArgs.getFirstUrl()),
-                                LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow(), parsedArgs.getSecondReasoningEffort(), parsedArgs.getSecondUrl()),
-                                LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort(), parsedArgs.getThirdUrl())
-                        )
-                        .filter(server -> server.type() != LLMServerType.UNDEFINED)
-                        .map(server -> getEnvironmentOverrides(server, environmentSettings))
-                        .collect(parallelToStream(config -> getRating(config, prompt, arguments), sharedExecutor.getExecutor(), 3))
-                        .toList();
+        final List<RatingDetails> results = Stream.of(
+                        StringUtils.isBlank(parsedArgs.getFirstModel())
+                                ? LLMServerDetails.fromEnvironment()
+                                : LLMServerDetails.custom(parsedArgs.getFirstModel(), parsedArgs.getFirstContextWindow(), parsedArgs.getFirstReasoningEffort(), parsedArgs.getFirstUrl()),
+                        LLMServerDetails.custom(parsedArgs.getSecondModel(), parsedArgs.getSecondContextWindow(), parsedArgs.getSecondReasoningEffort(), parsedArgs.getSecondUrl()),
+                        LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort(), parsedArgs.getThirdUrl())
+                )
+                .filter(server -> server.type() != LLMServerType.UNDEFINED)
+                .map(server -> getEnvironmentOverrides(server, environmentSettings))
+                .collect(parallelToStream(config -> getRating(config, prompt, arguments), sharedExecutor.getExecutor(), 3))
+                .toList();
 
 
         if (!parsedArgs.ignoreInvalidResponses()) {
-            final List<String> invalidResponses = results.stream().filter(i -> i < 0 || i > 10).map(Object::toString).toList();
+            final List<String> invalidResponses = results.stream().filter(i -> i.rating() < 0 || i.rating() > 10).map(Object::toString).toList();
             if (!invalidResponses.isEmpty()) {
                 throw new InvalidAnswer("The following responses were invalid: " + String.join(", ", invalidResponses) + ". " + myEnvironmentSettings.getToolCall());
             }
         }
 
-        final List<Integer> filteredResults = results.stream()
-                .filter(i -> i >= 0 && i <= 10)
+        final List<RatingDetails> filteredResults = results.stream()
+                .filter(i -> i.rating() >= 0 && i.rating() <= 10)
                 .toList();
 
         if (filteredResults.isEmpty()) {
             throw new InvalidAnswer("All models returned invalid responses. " + myEnvironmentSettings.getToolCall());
         }
 
-        final int average = (int) filteredResults.stream()
+        // This is the overall result of the tool call
+        final int average = (int) filteredResults
+                .stream()
+                .map(RatingDetails::rating)
                 .mapToInt(Integer::intValue)
                 .average()
                 .orElse(0.0);
 
         logger.fine("RatingTool: Values = " + String.join(",", results.stream().map(Object::toString).toList()) + ", Average = " + average + ". " + myEnvironmentSettings.getToolCall());
 
+        /*
+             Build the result, with the average as the response, the prompt, the instructions, and
+             the results of each individual rating call as an intermediate result.
+         */
         final RagMultiDocumentContext<Void> retvalue = new RagMultiDocumentContext<Void>(
                 prompt,
                 INSTRUCTIONS,
-                List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of())))
+                filteredResults
+                        .stream()
+                        .map(result -> new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of())
+                                .addIntermediateResult(new IntermediateResult(
+                                        result.result(),
+                                        "Rating-" + parsedArgs.getRatingTool() + "-" + parsedArgs.getRatingId() + "-" + result.model() + ".txt")))
+                        .toList())
                 .updateResponse(average + "");
 
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
                 .foldLeft(retvalue, (docs, hook) -> hook.process(getName(), docs));
     }
 
-    private int getRating(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        return resultToInt(callLLM(environmentSettings, prompt, arguments));
+    private RatingDetails getRating(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        return resultToRatingDetails(callLLM(environmentSettings, prompt, arguments), environmentSettings);
     }
 
     private Map<String, String> getEnvironmentOverrides(final LLMServerDetails server, final Map<String, String> environmentSettings) {
@@ -200,7 +215,7 @@ public class RatingTool implements Tool<Void> {
         if (server.type() != LLMServerType.CUSTOM) {
             return newEnvironmentSettings;
         }
-        newEnvironmentSettings.put(LlmClient.MODEL_OVERRIDE_ENV, server.model());
+        newEnvironmentSettings.put(MODEL_OVERRIDE_ENV, server.model());
         if (StringUtils.isNotBlank(server.contextWindow())) {
             newEnvironmentSettings.put(LlmClient.CONTEXT_WINDOW_OVERRIDE_ENV, server.contextWindow());
         }
@@ -213,9 +228,17 @@ public class RatingTool implements Tool<Void> {
         return newEnvironmentSettings;
     }
 
-    private int resultToInt(final Try<RagMultiDocumentContext<Void>> result) {
-        return result.map(doc -> Integer.parseInt(doc.getResponse()))
-                .recover(ex -> -1)
+    private RatingDetails resultToRatingDetails(final Try<RagMultiDocumentContext<Void>> result, final Map<String, String> environmentSettings) {
+        final String model = Objects.requireNonNullElse(environmentSettings.get(MODEL_OVERRIDE_ENV), "default-model");
+
+        return result.map(doc -> new RatingDetails(
+                    // Extract just the number, which is the rating
+                    Integer.parseInt(getRatingFromResponse(doc.getResponse())),
+                    // Capture the full response, which may include an explanation
+                    doc.getResponse(),
+                    // Note the model that generated the result
+                    model))
+                .recover(ex -> new RatingDetails(-1, "", model))
                 .get();
     }
 
@@ -224,16 +247,18 @@ public class RatingTool implements Tool<Void> {
                 .map(list -> validateList.throwIfEmpty(list, RagDocumentContext::document))
                 .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
-                /*
-                 We expect a single value, but might get some whitespace from a thinking model that had the
-                 thinking response removed.
-                 */
-                .map(ragDoc -> ragDoc.updateResponse(
-                        StringUtils.trim(getFirstDigits.sanitize(
-                                findFirstMarkdownBlock.sanitize(ragDoc.getResponse())))))
                 .onFailure(ex -> logger.warning("Failed to get rating for document: " + ex.getMessage()));
 
         return exceptionMapping.map(result);
+    }
+
+    /**
+     * The result is expected to be a number, possibly followed by an explanation. This
+     * returns just the number.
+     */
+    private String getRatingFromResponse(final String response) {
+        return StringUtils.trim(getFirstDigits.sanitize(
+                findFirstMarkdownBlock.sanitize(response)));
     }
 
     @Override
@@ -411,6 +436,26 @@ class RatingConfig {
                     environmentSettings,
                     null,
                     RatingTool.RATING_DOCUMENT_CONTEXT_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getRatingTool() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    environmentSettings,
+                    null,
+                    RatingTool.RATING_TOOL_CONTEXT_ARG,
+                    "").getSafeValue();
+        }
+
+        public String getRatingId() {
+            return getArgsAccessor().getArgument(
+                    null,
+                    null,
+                    environmentSettings,
+                    null,
+                    RatingTool.RATING_ID_CONTEXT_ARG,
                     "").getSafeValue();
         }
 
@@ -603,4 +648,7 @@ record LLMServerDetails(String model, String contextWindow, String reasoningEffo
 
         return new LLMServerDetails(model, contextWindow, reasoningEffort, url, LLMServerType.CUSTOM);
     }
+}
+
+record RatingDetails(Integer rating, String result, String model) {
 }

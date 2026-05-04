@@ -617,7 +617,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName(), positionalEntity.entity().name());
 
         return Try
                 // Combine all the keywords we are going to search for
@@ -651,7 +651,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName(), positionalEntity.entity().name());
 
         return Objects.requireNonNullElse(positionalEntity.entity().salesforce(), List.<String>of())
                 .stream()
@@ -687,7 +687,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName(), positionalEntity.entity().name());
 
         return Objects.requireNonNullElse(positionalEntity.entity().salesforce(), List.<String>of())
                 .stream()
@@ -722,7 +722,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName(), positionalEntity.entity().name());
 
         return Objects.requireNonNullElse(positionalEntity.entity().getPlanHat(), List.<String>of())
                 .stream()
@@ -756,7 +756,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         logger.fine("Getting PlanHat usage for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
-                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName(), positionalEntity.entity().name());
 
         return Objects.requireNonNullElse(positionalEntity.entity().getPlanHat(), List.<String>of())
                 .stream()
@@ -779,7 +779,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName(), positionalEntity.entity().name());
 
         return Objects.requireNonNullElse(positionalEntity.entity().getGoogleDcos(), List.<String>of())
                 .stream()
@@ -808,7 +808,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName(), positionalEntity.entity().name());
 
         return Objects.requireNonNullElse(positionalEntity.entity().getSlack(), List.<String>of())
                 .stream()
@@ -844,7 +844,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
                 .add(CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name())
-                .addToolCall(getName() + "[" + positionalEntity.entity().name() + "]");
+                .addToolCall(getName(), positionalEntity.entity().name());
 
         return Objects.requireNonNullElse(positionalEntity.entity().getZenDesk(), List.<String>of())
                 .stream()

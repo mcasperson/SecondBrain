@@ -113,15 +113,19 @@ public record RagDocumentContext<T>(String tool,
         return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metadata, intermediateResults, link, keywordMatches);
     }
 
-    public RagDocumentContext<T> addMetadata(final MetaObjectResults metadata) {
+    public RagDocumentContext<T> addMetadata(@Nullable final MetaObjectResults metadata) {
         final MetaObjectResults metaObjectResults = getMetadata();
-        metaObjectResults.addAll(metadata.stream().filter(Objects::nonNull).toList());
+        if (metadata != null) {
+            metaObjectResults.addAll(metadata.stream().filter(Objects::nonNull).toList());
+        }
         return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metaObjectResults, intermediateResults, link, keywordMatches);
     }
 
-    public RagDocumentContext<T> addMetadata(final MetaObjectResult metadata) {
+    public RagDocumentContext<T> addMetadata(@Nullable final MetaObjectResult metadata) {
         final MetaObjectResults metaObjectResults = getMetadata();
-        metaObjectResults.add(metadata);
+        if (metadata != null) {
+            metaObjectResults.add(metadata);
+        }
         return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metaObjectResults, intermediateResults, link, keywordMatches);
     }
 
@@ -133,9 +137,19 @@ public record RagDocumentContext<T>(String tool,
         return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metadata, intermediateResults, link, keywordMatches);
     }
 
+    public RagDocumentContext<T> addIntermediateResults(@Nullable final List<IntermediateResult> additionalIntermediateResults) {
+        final ArrayList<IntermediateResult> newIntermediateResults = new ArrayList<>(Objects.requireNonNullElse(intermediateResults, List.of()));
+        if (additionalIntermediateResults != null) {
+            newIntermediateResults.addAll(additionalIntermediateResults);
+        }
+        return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metadata, newIntermediateResults, link, keywordMatches);
+    }
+
     public RagDocumentContext<T> addIntermediateResult(@Nullable final IntermediateResult intermediateResult) {
         final ArrayList<IntermediateResult> newIntermediateResults = new ArrayList<>(Objects.requireNonNullElse(intermediateResults, List.of()));
-        newIntermediateResults.add(intermediateResult);
+        if (intermediateResult != null) {
+            newIntermediateResults.add(intermediateResult);
+        }
         return new RagDocumentContext<>(tool, contextLabel, document, sentences, id, source, metadata, newIntermediateResults, link, keywordMatches);
     }
 

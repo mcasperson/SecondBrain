@@ -17,10 +17,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.json.JsonDeserializer;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 @ApplicationScoped
 @Identifier("financialLocationContactRedaction")
@@ -125,8 +122,9 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
         }
 
         // Try to parse the document as a JSON object; if successful, filter strings recursively
-        return Try.of(() -> jsonDeserializer.deserializeMap(document, String.class, Object.class))
-                .map(map -> filterMap(map, service))
+        return Try.of(() -> jsonDeserializer.tryDeserializeMap(document, String.class, Object.class))
+                .filter(Optional::isPresent)
+                .map(map -> filterMap(map.get(), service))
                 .map(jsonDeserializer::serialize)
                 .recover(ex -> filterPlainText(document, service))
                 .get();

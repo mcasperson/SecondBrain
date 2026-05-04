@@ -316,7 +316,7 @@ public class YoutubePlaylist implements Tool<Void> {
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(environmentSettings)
                 .add(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, youtubeVideo.document())
-                .addToolCall(getName() + "[" + youtubeVideo.getId() + "]");
+                .addToolCall(getName(), youtubeVideo.getId());
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())

@@ -1,7 +1,10 @@
 package secondbrain.domain.json;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public interface JsonDeserializer {
     String serialize(Object object);
@@ -9,6 +12,8 @@ public interface JsonDeserializer {
     <T> T deserialize(String json, Class<T> clazz);
 
     <U, V> Map<U, V> deserializeMap(String json, Class<U> key, Class<V> value);
+
+    <U, V> Optional<Map<U, V>> tryDeserializeMap(String json, Class<U> key, Class<V> value);
 
     <U> List<U> deserializeCollection(String json, Class<U> value);
 

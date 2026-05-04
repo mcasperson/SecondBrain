@@ -246,7 +246,13 @@ public class Salesforce implements Tool<Void> {
         // Only do the post-processing after the hooks
         final List<RagDocumentContext<SalesforceEmailRecord>> records = filteredDocs.stream()
                 // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc -> ragDoc.addMetadata(ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)))
+                .map(ragDoc ->
+                    ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
+                            .map(results -> ragDoc
+                                    .addMetadata(results.metadata())
+                                    .addIntermediateResults(results.intermediateResults()))
+                            .orElse(ragDoc)
+                )
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
                 .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-Salesforce-" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
