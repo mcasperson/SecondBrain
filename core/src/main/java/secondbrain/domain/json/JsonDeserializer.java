@@ -11,13 +11,21 @@ public interface JsonDeserializer {
 
     <T> T deserialize(String json, Class<T> clazz);
 
+    <T> Optional<T> tryDeserialize(String json, Class<T> clazz);
+
     <U, V> Map<U, V> deserializeMap(String json, Class<U> key, Class<V> value);
 
     <U, V> Optional<Map<U, V>> tryDeserializeMap(String json, Class<U> key, Class<V> value);
 
     <U> List<U> deserializeCollection(String json, Class<U> value);
 
+    <U> Optional<List<U>> tryDeserializeCollection(String json, Class<U> value);
+
     <T, U> T deserializeGeneric(String json, Class<T> container, Class<U> contained);
 
+    <T, U> Optional<T> tryDeserializeGeneric(String json, Class<T> container, Class<U> contained);
+
     <T, U, V> T deserializeGeneric(String json, Class<T> container, Class<U> contained, Class<V> contained2);
+
+    <T, U, V> Optional<T> tryDeserializeGeneric(String json, Class<T> container, Class<U> contained, Class<V> contained2);
 }

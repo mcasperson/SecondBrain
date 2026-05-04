@@ -54,6 +54,19 @@ public class JsonDeserializerJackson implements JsonDeserializer {
                 .get();
     }
 
+    @Override
+    public <T> Optional<T> tryDeserialize(final String json, final Class<T> clazz) {
+        if (StringUtils.isBlank(json)) {
+            return Optional.empty();
+        }
+
+        return Try.of(this::createObjectMapper)
+                .mapTry(objectMapper -> objectMapper.readValue(json, clazz))
+                .map(Optional::of)
+                .recover(ex -> Optional.empty())
+                .get();
+    }
+
     private <T> T deserializeTimed(final String json, final Class<T> clazz) {
         checkArgument(StringUtils.isNotBlank(json), "JSON string cannot be blank");
 
@@ -100,6 +113,21 @@ public class JsonDeserializerJackson implements JsonDeserializer {
     }
 
     @Override
+    public <U> Optional<List<U>> tryDeserializeCollection(final String json, final Class<U> value) {
+        if (StringUtils.isBlank(json)) {
+            return Optional.empty();
+        }
+
+        return Try.of(this::createObjectMapper)
+                .mapTry(objectMapper -> objectMapper.<List<U>>readValue(
+                        json,
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, value)))
+                .map(Optional::of)
+                .recover(ex -> Optional.empty())
+                .get();
+    }
+
+    @Override
     public <T, U> T deserializeGeneric(final String json, final Class<T> container, final Class<U> contained) {
         checkArgument(StringUtils.isNotBlank(json), "JSON string cannot be blank");
 
@@ -112,6 +140,21 @@ public class JsonDeserializerJackson implements JsonDeserializer {
     }
 
     @Override
+    public <T, U> Optional<T> tryDeserializeGeneric(final String json, final Class<T> container, final Class<U> contained) {
+        if (StringUtils.isBlank(json)) {
+            return Optional.empty();
+        }
+
+        return Try.of(this::createObjectMapper)
+                .mapTry(objectMapper -> objectMapper.<T>readValue(
+                        json,
+                        objectMapper.getTypeFactory().constructParametricType(container, contained)))
+                .map(Optional::of)
+                .recover(ex -> Optional.empty())
+                .get();
+    }
+
+    @Override
     public <T, U, V> T deserializeGeneric(final String json, final Class<T> container, final Class<U> contained, final Class<V> contained2) {
         checkArgument(StringUtils.isNotBlank(json), "JSON string cannot be blank");
 
@@ -121,6 +164,21 @@ public class JsonDeserializerJackson implements JsonDeserializer {
                         constructParametricType(objectMapper, container, contained, contained2)))
                 .onFailure(ex -> logger.warning("Failed to deserialize object of type " + container.getSimpleName() + " containing type " + contained.getSimpleName() + " containing type " + contained2.getSimpleName() + ": " + ex.getMessage()))
                 .getOrElseThrow(ex -> new DeserializationFailed(ex));
+    }
+
+    @Override
+    public <T, U, V> Optional<T> tryDeserializeGeneric(final String json, final Class<T> container, final Class<U> contained, final Class<V> contained2) {
+        if (StringUtils.isBlank(json)) {
+            return Optional.empty();
+        }
+
+        return Try.of(this::createObjectMapper)
+                .mapTry(objectMapper -> objectMapper.<T>readValue(
+                        json,
+                        constructParametricType(objectMapper, container, contained, contained2)))
+                .map(Optional::of)
+                .recover(ex -> Optional.empty())
+                .get();
     }
 
     private <T, U, V> JavaType constructParametricType(final ObjectMapper objectMapper, final Class<T> container, final Class<U> contained, final Class<V> contained2) {
