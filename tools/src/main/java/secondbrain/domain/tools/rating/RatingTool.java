@@ -156,8 +156,7 @@ public class RatingTool implements Tool<Void> {
                         LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort(), parsedArgs.getThirdUrl())
                 )
                 .filter(server -> server.type() != LLMServerType.UNDEFINED)
-                .map(server -> getEnvironmentOverrides(server, environmentSettings))
-                .collect(parallelToStream(config -> getRating(config, prompt, arguments), sharedExecutor.getExecutor(), 3))
+                .collect(parallelToStream(server -> getRating(server, environmentSettings, prompt, arguments), sharedExecutor.getExecutor(), 3))
                 .toList();
 
 
@@ -206,8 +205,9 @@ public class RatingTool implements Tool<Void> {
                 .foldLeft(retvalue, (docs, hook) -> hook.process(getName(), docs));
     }
 
-    private RatingDetails getRating(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        return resultToRatingDetails(callLLM(environmentSettings, prompt, arguments), environmentSettings);
+    private RatingDetails getRating(final LLMServerDetails server, final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final Try<RagMultiDocumentContext<Void>> result = callLLM(getEnvironmentOverrides(server, environmentSettings), prompt, arguments);
+        return resultToRatingDetails(server, result);
     }
 
     private Map<String, String> getEnvironmentOverrides(final LLMServerDetails server, final Map<String, String> environmentSettings) {
@@ -228,17 +228,15 @@ public class RatingTool implements Tool<Void> {
         return newEnvironmentSettings;
     }
 
-    private RatingDetails resultToRatingDetails(final Try<RagMultiDocumentContext<Void>> result, final Map<String, String> environmentSettings) {
-        final String model = Objects.requireNonNullElse(environmentSettings.get(MODEL_OVERRIDE_ENV), "default-model");
-
+    private RatingDetails resultToRatingDetails(final LLMServerDetails server, final Try<RagMultiDocumentContext<Void>> result) {
         return result.map(doc -> new RatingDetails(
-                    // Extract just the number, which is the rating
-                    Integer.parseInt(getRatingFromResponse(doc.getResponse())),
-                    // Capture the full response, which may include an explanation
-                    doc.getResponse(),
-                    // Note the model that generated the result
-                    model))
-                .recover(ex -> new RatingDetails(-1, "", model))
+                        // Extract just the number, which is the rating
+                        Integer.parseInt(getRatingFromResponse(doc.getResponse())),
+                        // Capture the full response, which may include an explanation
+                        doc.getResponse(),
+                        // Note the model that generated the result
+                        server.model()))
+                .recover(ex -> new RatingDetails(-1, "", server.model()))
                 .get();
     }
 
