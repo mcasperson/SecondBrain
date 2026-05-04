@@ -588,7 +588,7 @@ class RatingConfig {
                     environmentSettings,
                     RatingTool.IGNORE_INVALID_RESPONSES_ARG,
                     RatingTool.IGNORE_INVALID_RESPONSES_ARG,
-                    "").getSafeValue();
+                    "true").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
         }
