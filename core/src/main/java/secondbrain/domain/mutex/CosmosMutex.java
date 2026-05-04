@@ -10,8 +10,6 @@ import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
-import jakarta.enterprise.event.Startup;
 import jakarta.inject.Inject;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -96,6 +94,8 @@ public class CosmosMutex implements Mutex {
     @Nullable
     private CosmosContainer container;
 
+    private final AtomicReference<Long> totalWaitMs = new AtomicReference<>(0L);
+
     private int getLockTtlSeconds() {
         return Try.of(() -> Integer.parseInt(lockTtl.get())).getOrElse(DEFAULT_TTL);
     }
@@ -115,6 +115,10 @@ public class CosmosMutex implements Mutex {
 
     @PreDestroy
     public void preDestroy() {
+        final long waited = totalWaitMs.get();
+        logger.info("Total time spent waiting to acquire Cosmos locks: "
+                + String.format("%.2f", waited / 1000.0) + "s");
+
         synchronized (CosmosMutex.class) {
             if (cosmosClient != null) {
                 Try.run(cosmosClient::close)
@@ -220,7 +224,9 @@ public class CosmosMutex implements Mutex {
             }
 
             // Sleep before retrying
-            Try.run(() -> Thread.sleep(Math.min(SLEEP_MS, timeout - elapsed)));
+            final long sleepMs = Math.min(SLEEP_MS, timeout - elapsed);
+            Try.run(() -> Thread.sleep(sleepMs));
+            totalWaitMs.accumulateAndGet(sleepMs, Long::sum);
         }
     }
 
