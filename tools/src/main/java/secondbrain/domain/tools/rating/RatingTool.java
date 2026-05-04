@@ -72,6 +72,7 @@ public class RatingTool implements Tool<Void> {
             You are given a question and the contents of a document related to the question.
             You must rate the document on a scale of 0 to 10 based on how well it answers the question.
             The response must start with a single number between 0 and 10, followed by a new line, followed by your reasoning.
+            You will be penalized for reporting the rating as a ratio like 8/10.
             """.stripLeading();
 
     @Inject
