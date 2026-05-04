@@ -183,7 +183,7 @@ public class RatingTool implements Tool<Void> {
                 .average()
                 .orElse(0.0);
 
-        logger.fine("RatingTool: Values = " + String.join(",", results.stream().map(Object::toString).toList()) + ", Average = " + average + ". " + myEnvironmentSettings.getToolCall());
+        logger.fine("RatingTool: Values = " + String.join(",", results.stream().map(RatingDetails::rating).map(Object::toString).toList()) + ", Average = " + average + ". " + myEnvironmentSettings.getToolCall());
 
         /*
              Build the result, with the average as the response, the prompt, the instructions, and
