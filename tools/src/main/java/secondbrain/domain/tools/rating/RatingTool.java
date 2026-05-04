@@ -161,7 +161,11 @@ public class RatingTool implements Tool<Void> {
 
 
         if (!parsedArgs.ignoreInvalidResponses()) {
-            final List<String> invalidResponses = results.stream().filter(i -> i.rating() < 0 || i.rating() > 10).map(Object::toString).toList();
+            final List<String> invalidResponses = results
+                    .stream()
+                    .filter(i -> i.rating() < 0 || i.rating() > 10)
+                    .map(Object::toString)
+                    .toList();
             if (!invalidResponses.isEmpty()) {
                 throw new InvalidAnswer("The following responses were invalid: " + String.join(", ", invalidResponses) + ". " + myEnvironmentSettings.getToolCall());
             }
