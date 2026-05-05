@@ -325,12 +325,20 @@ public class AzureClient implements LlmClient {
                 () -> call(request, resolvedUrl));
     }
 
+    private String getModelLockFile(final PromptTextGenerator request) {
+        if (StringUtils.isBlank(request.getModel())) {
+            return lockFile;
+        }
+
+        return lockFile + "." + request.getModel();
+    }
+
     private String call(final PromptTextGenerator request) {
         checkState(apiKey.isPresent(), "Azure LLM API Key is not configured. Please set sb.azurellm.apikey");
         checkState(url.isPresent(), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> callLocked(request, url.get(), 0));
+        return mutex.acquire(MUTEX_TIMEOUT_MS, getModelLockFile(request), () -> callLocked(request, url.get(), 0));
     }
 
     private String call(final PromptTextGenerator request, final String resolvedUrl) {
@@ -338,7 +346,7 @@ public class AzureClient implements LlmClient {
         checkState(org.apache.commons.lang3.StringUtils.isNotBlank(resolvedUrl), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> callLocked(request, resolvedUrl, 0));
+        return mutex.acquire(MUTEX_TIMEOUT_MS, getModelLockFile(request), () -> callLocked(request, resolvedUrl, 0));
     }
 
     private String callLocked(final PromptTextGenerator request, final String resolvedUrl, int retry) {
