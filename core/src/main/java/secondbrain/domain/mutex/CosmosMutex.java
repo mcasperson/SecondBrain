@@ -114,11 +114,25 @@ public class CosmosMutex implements Mutex {
         clearLocksOnStartup();
     }
 
+    private String formatWaitTime(final long ms) {
+        if (ms >= 3_600_000) {
+            final long hours = ms / 3_600_000;
+            final long minutes = (ms % 3_600_000) / 60_000;
+            final long seconds = (ms % 60_000) / 1000;
+            return String.format("%dh %dm %ds (%,dms)", hours, minutes, seconds, ms);
+        } else if (ms >= 60_000) {
+            final long minutes = ms / 60_000;
+            final long seconds = (ms % 60_000) / 1000;
+            return String.format("%dm %ds (%,dms)", minutes, seconds, ms);
+        } else {
+            return String.format("%.2fs (%,dms)", ms / 1000.0, ms);
+        }
+    }
+
     @PreDestroy
     public void preDestroy() {
         final long waited = Objects.requireNonNullElse(totalWaitMs.get(), 0L);
-        logger.info("Total time spent waiting to acquire Cosmos locks: "
-                + String.format("%.2f", waited / 1000.0) + "s");
+        logger.info("Total time spent waiting to acquire Cosmos locks: " + formatWaitTime(waited));
 
         synchronized (CosmosMutex.class) {
             if (cosmosClient != null) {
