@@ -4,6 +4,7 @@ import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.inject.Inject;
+import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
@@ -65,10 +66,19 @@ class SentenceVectorizerDataToRagDocTest {
 
     @BeforeAll
     static void registerConfig() {
+        final String autodiscovery = System.getenv("SB_COSMOS_AUTODISCOVERY");
+        final String gatewayMode = System.getenv("SB_COSMOS_GATEWAYMODE");
+
         final var configSource = new PropertiesConfigSource(
                 Map.of(
                         "sb.encryption.password", "1234567890",
-                        "sb.encryption.salt", "1234567890"
+                        "sb.encryption.salt", "1234567890",
+                        "sb.cosmos.endpoint", "https://localhost:9081",
+                        "sb.cosmos.key", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
+                        "sb.cosmos.lockdatabase", "secondbrainlock",
+                        "sb.cosmos.lockscontainer", "locks",
+                        "sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery,
+                        "sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode
                 ),
                 "TestConfig",
                 Integer.MAX_VALUE
