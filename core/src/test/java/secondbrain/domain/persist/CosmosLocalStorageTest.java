@@ -12,6 +12,7 @@ import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.encryption.AesEncryptor;
@@ -73,8 +74,8 @@ public class CosmosLocalStorageTest {
      * Or for the system Java JDK:
      * sudo keytool -import -trustcacerts -alias cosmosdb_domain -file domain.crt -keystore /Library/Java/JavaVirtualMachines/zulu-25.jdk/Contents/Home/lib/security/cacerts
      */
-    @BeforeEach
-    void updateConfig() {
+    @BeforeAll
+    static void registerConfig() {
         final String autodiscovery = System.getenv("SB_COSMOS_AUTODISCOVERY");
         final String gatewayMode = System.getenv("SB_COSMOS_GATEWAYMODE");
 
@@ -98,13 +99,17 @@ public class CosmosLocalStorageTest {
                 .build();
 
         final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-
-        configProviderResolver.releaseConfig(oldConfig);
+        Try.run(() -> configProviderResolver.releaseConfig(configProviderResolver.getConfig()))
+                .onFailure(ex -> { /* ignore if no config registered yet */ });
         configProviderResolver.registerConfig(
                 newConfig,
                 Thread.currentThread().getContextClassLoader()
         );
+    }
+
+    @BeforeEach
+    void updateConfig() {
+        registerConfig();
     }
 
     @Test

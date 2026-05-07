@@ -13,6 +13,7 @@ import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
@@ -41,8 +42,8 @@ public class CosmosMutexTest {
      * Import it into the java keystore. You might need to chaneg the path to your JAVA_HOME to be something like /home/matthew/.jdks/azul-25
      * keytool -import -trustcacerts -alias cosmosdb_cert -file ~/emulatorcert.crt -keystore $JAVA_HOME/lib/security/cacerts
      */
-    @BeforeEach
-    void updateConfig() {
+    @BeforeAll
+    static void registerConfig() {
         final String autodiscovery = System.getenv("SB_COSMOS_AUTODISCOVERY");
         final String gatewayMode = System.getenv("SB_COSMOS_GATEWAYMODE");
 
@@ -64,13 +65,17 @@ public class CosmosMutexTest {
                 .build();
 
         final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-
-        configProviderResolver.releaseConfig(oldConfig);
+        Try.run(() -> configProviderResolver.releaseConfig(configProviderResolver.getConfig()))
+                .onFailure(ex -> { /* ignore if no config registered yet */ });
         configProviderResolver.registerConfig(
                 newConfig,
                 Thread.currentThread().getContextClassLoader()
         );
+    }
+
+    @BeforeEach
+    void updateConfig() {
+        registerConfig();
     }
 
     @Test
