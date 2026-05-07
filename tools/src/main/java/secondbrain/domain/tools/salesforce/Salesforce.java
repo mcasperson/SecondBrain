@@ -67,6 +67,7 @@ public class Salesforce implements Tool<Void> {
     public static final String OPPORTUNITY_ATTRIBUTE_1_ARG = "opportunityAttribute1";
     public static final String OPPORTUNITY_ATTRIBUTE_1_NAME_ARG = "opportunityAttributeName";
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
+    private static final int PARALLEL_BATCH_SIZE = 10;
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -243,31 +244,53 @@ public class Salesforce implements Tool<Void> {
             throw new InsufficientContext("No Salesforce emails found.");
         }
 
-        // Only do the post-processing after the hooks
+        // Only do the post-processing after the hooks, in parallel
         final List<RagDocumentContext<SalesforceEmailRecord>> records = filteredDocs.stream()
-                // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc ->
-                    ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
-                            .map(results -> ragDoc
-                                    .addMetadata(results.metadata())
-                                    .addIntermediateResults(results.intermediateResults()))
-                            .orElse(ragDoc)
-                )
-                // Filter out any documents that don't meet the rating criteria
-                .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
-                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-Salesforce-" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
-                .map(ragDoc -> ragDoc.addMetadata(getOpportunityMeta(parsedArgs, token)))
-                .map(doc -> parsedArgs.getSummarizeDocument()
-                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(doc.source()), "SalesforceEmail", doc, environmentSettings, parsedArgs)
-                        : doc)
+                .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs, token), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
 
         logger.info("Found " + records.size() + " Salesforce records");
 
         return records
                 .stream()
-                .map(r -> r.convertToRagDocumentContextVoid())
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
+    }
+
+    private <T> Optional<RagDocumentContext<T>> enrichAndSummarize(
+            final RagDocumentContext<T> ragDoc,
+            final Map<String, String> environmentSettings,
+            final SalesforceConfig.LocalArguments parsedArgs,
+            final SalesforceOauthTokenResponse token) {
+
+        final var enriched = ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
+                .map(results -> ragDoc
+                        .addMetadata(results.metadata())
+                        .addIntermediateResults(results.intermediateResults()))
+                .orElse(ragDoc);
+
+        // Filter out any documents that don't meet the rating criteria
+        if (!ratingFilter.contextMeetsRating(enriched, parsedArgs)) {
+            return Optional.empty();
+        }
+
+        final var withIntermediate = enriched
+                .addIntermediateResult(new IntermediateResult(enriched.document(), "Data-Salesforce-" + enriched.id() + "-" + parsedArgs.getEntity() + ".txt"))
+                .addMetadata(getOpportunityMeta(parsedArgs, token));
+
+        final var summarized = parsedArgs.getSummarizeDocument()
+                ? ragDocSummarizer.getDocumentSummary(
+                    getName(),
+                    getContextLabelWithDate(withIntermediate.source() instanceof SalesforceEmailRecord r ? r : null),
+                    "SalesforceEmail",
+                    withIntermediate,
+                    environmentSettings,
+                    parsedArgs)
+                : withIntermediate;
+
+        return Optional.of(summarized);
     }
 
     @Override
