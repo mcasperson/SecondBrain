@@ -55,11 +55,16 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
+
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
+
 @ApplicationScoped
 public class PlanHat implements Tool<Void> {
     public static final String COMPANY_ID_ARGS = "companyId";
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String PLANHAT_TTL_SECONDS_ARG = "ttlSeconds";
+    private static final int PARALLEL_BATCH_SIZE = 10;
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -116,6 +121,9 @@ public class PlanHat implements Tool<Void> {
 
     @Inject
     private ClientConstructor clientConstructor;
+
+    @Inject
+    private SharedVirtualThreadExecutor sharedExecutor;
 
     @Override
     public String getName() {
@@ -220,7 +228,6 @@ public class PlanHat implements Tool<Void> {
             throw new InternalFailure("You must provide a company ID to query");
         }
 
-
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<Conversation>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
@@ -254,11 +261,12 @@ public class PlanHat implements Tool<Void> {
                 // We filter after the API call to improve cache hits
                 .filter(conversation -> parsedArgs.getCompany().equals(conversation.companyId()))
                 .filter(conversation -> !"ticket".equals(conversation.type()))
-                .map(conversation -> conversation.updateDescriptionAndSnippet(
-                        htmlToText.getText(conversation.description()),
-                        htmlToText.getText(conversation.snippet()))
-                )
-                .map(conversation -> dataToRagDoc.getDocumentContext(conversation.updateUrl(publicUrl), getName(), getContextLabelWithDate(conversation), parsedArgs))
+                .collect(parallelToStream(conversation -> {
+                    final Conversation updated = conversation.updateDescriptionAndSnippet(
+                            htmlToText.getText(conversation.description()),
+                            htmlToText.getText(conversation.snippet()));
+                    return dataToRagDoc.getDocumentContext(updated.updateUrl(publicUrl), getName(), getContextLabelWithDate(updated), parsedArgs);
+                }, sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                 .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 .toList();
 
@@ -269,26 +277,49 @@ public class PlanHat implements Tool<Void> {
         final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
-                // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc ->
-                    ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
-                            .map(results -> ragDoc
-                                    .addMetadata(results.metadata())
-                                    .addIntermediateResults(results.intermediateResults()))
-                            .orElse(ragDoc)
-                )
-                // Filter out any documents that don't meet the rating criteria
-                .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
-                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-PlanHat-" + ragDoc.id() + "-" + parsedArgs.getEntity() + ".txt")))
-                .map(doc -> parsedArgs.getSummarizeDocument()
-                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(doc.source()), "PlanHat", doc, environmentSettings, parsedArgs)
-                        : doc)
-                .map(RagDocumentContext::convertToRagDocumentContextVoid)
+                // Get the metadata and summarize in parallel (these are the expensive LLM calls)
+                .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
 
         logger.info("Found " + context.size() + " PlanHat conversations");
 
         return context;
+    }
+
+    private <T> Optional<RagDocumentContext<Void>> enrichAndSummarize(
+            final RagDocumentContext<T> ragDoc,
+            final Map<String, String> environmentSettings,
+            final PlanHatConfig.LocalArguments parsedArgs) {
+
+        final var enriched = ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
+                .map(results -> ragDoc
+                        .addMetadata(results.metadata())
+                        .addIntermediateResults(results.intermediateResults()))
+                .orElse(ragDoc);
+
+        // Filter out any documents that don't meet the rating criteria
+        if (!ratingFilter.contextMeetsRating(enriched, parsedArgs)) {
+            return Optional.empty();
+        }
+
+        final var withIntermediate = enriched.addIntermediateResult(
+                new IntermediateResult(
+                        enriched.document(),
+                        "Data-PlanHat-" + enriched.id() + "-" + parsedArgs.getEntity() + ".txt"));
+
+        final var summarized = parsedArgs.getSummarizeDocument()
+                ? ragDocSummarizer.getDocumentSummary(
+                    getName(),
+                    getContextLabelWithDate(withIntermediate.source() instanceof Conversation c ? c : null),
+                    "PlanHat",
+                    withIntermediate,
+                    environmentSettings,
+                    parsedArgs)
+                : withIntermediate;
+
+        return Optional.of(summarized.convertToRagDocumentContextVoid());
     }
 
     @Override
