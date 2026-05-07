@@ -44,6 +44,9 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
+
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
@@ -71,6 +74,7 @@ public class Gong implements Tool<Void> {
     public static final String GONG_OBJECT_10_ARG = "object10";
     public static final String GONG_OBJECT_10_NAME_ARG = "object10Name";
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
+    private static final int PARALLEL_BATCH_SIZE = 10;
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
             You are given list of call transcripts from Gong.
@@ -123,6 +127,9 @@ public class Gong implements Tool<Void> {
     @Inject
     @Preferred
     private LocalStorage localStorage;
+
+    @Inject
+    private SharedVirtualThreadExecutor sharedExecutor;
 
     @Override
     public String getName() {
@@ -251,31 +258,13 @@ public class Gong implements Tool<Void> {
         // Combine preinitialization hooks with ragDocs
         final List<RagDocumentContext<GongCallDetails>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
-        // Apply preprocessing hooks, and then rating metadata and filtering
+        // Apply preprocessing hooks, and then rating metadata and filtering in parallel
         final List<RagDocumentContext<GongCallDetails>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
-                // Get the metadata, which includes a rating against the filter question if present
-                .map(ragDoc ->
-                    ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
-                            .map(results -> ragDoc
-                                    .addMetadata(results.metadata())
-                                    .addIntermediateResults(results.intermediateResults()))
-                            .orElse(ragDoc)
-                )
-                // Filter out any documents that don't meet the rating criteria
-                .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
-                /*
-                    Take the raw transcript and summarize them with individual calls to the LLM.
-                    The transcripts are then combined into a single context.
-                    This was necessary because the private LLMs didn't do a very good job of summarizing
-                    raw tickets. The reality is that even LLMs with a context length of 128k can't process multiple
-                    call transcripts.
-                 */
-                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-Gong-" + ragDoc.id()+ "-" + parsedArgs.getEntity() + ".txt")))
-                .map(ragDoc -> parsedArgs.getSummarizeTranscript()
-                        ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithDate(ragDoc.source()), "Gong", ragDoc, environmentSettings, parsedArgs)
-                        : ragDoc)
+                .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .toList();
 
         // Save some memory by not retaining the source object (records are immutable, so we must collect a new list)
@@ -286,6 +275,38 @@ public class Gong implements Tool<Void> {
         logger.info("Found " + result.size() + " Gong calls");
 
         return result;
+    }
+
+    private <T> Optional<RagDocumentContext<T>> enrichAndSummarize(
+            final RagDocumentContext<T> ragDoc,
+            final Map<String, String> environmentSettings,
+            final GongConfig.LocalArguments parsedArgs) {
+
+        final var enriched = ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
+                .map(results -> ragDoc
+                        .addMetadata(results.metadata())
+                        .addIntermediateResults(results.intermediateResults()))
+                .orElse(ragDoc);
+
+        // Filter out any documents that don't meet the rating criteria
+        if (!ratingFilter.contextMeetsRating(enriched, parsedArgs)) {
+            return Optional.empty();
+        }
+
+        final var withIntermediate = enriched.addIntermediateResult(
+                new IntermediateResult(enriched.document(), "Data-Gong-" + enriched.id() + "-" + parsedArgs.getEntity() + ".txt"));
+
+        final var summarized = parsedArgs.getSummarizeTranscript()
+                ? ragDocSummarizer.getDocumentSummary(
+                    getName(),
+                    getContextLabelWithDate(withIntermediate.source() instanceof GongCallDetails g ? g : null),
+                    "Gong",
+                    withIntermediate,
+                    environmentSettings,
+                    parsedArgs)
+                : withIntermediate;
+
+        return Optional.of(summarized);
     }
 
     @Nullable
