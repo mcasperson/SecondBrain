@@ -9,6 +9,7 @@ import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.config.LocalConfigKeywordsEntity;
@@ -62,8 +63,8 @@ class SentenceVectorizerDataToRagDocTest {
     @Inject
     private SentenceVectorizerDataToRagDoc sentenceVectorizerDataToRagDoc;
 
-    @BeforeEach
-    void updateConfig() {
+    @BeforeAll
+    static void registerConfig() {
         final var configSource = new PropertiesConfigSource(
                 Map.of(
                         "sb.encryption.password", "1234567890",
@@ -77,13 +78,20 @@ class SentenceVectorizerDataToRagDocTest {
                 .build();
 
         final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-
-        configProviderResolver.releaseConfig(oldConfig);
+        try {
+            configProviderResolver.releaseConfig(configProviderResolver.getConfig());
+        } catch (final Exception ex) {
+            /* ignore if no config registered yet */
+        }
         configProviderResolver.registerConfig(
                 newConfig,
                 Thread.currentThread().getContextClassLoader()
         );
+    }
+
+    @BeforeEach
+    void updateConfig() {
+        registerConfig();
     }
 
     @Test
