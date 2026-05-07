@@ -176,7 +176,7 @@ public class Meta implements Tool<Void> {
                         .collect(parallelToStream(tool -> Try.of(() -> tool.getContext(environmentSettings, prompt, toolArgs))
                                         .map(List::stream)
                                         .onFailure(ex -> logger.warning("Failed to get context for " + tool.getName() + " with error: " + ex.getMessage()))
-                                        .get()
+                                        .getOrElse(Stream.empty())
                                         .map(RagDocumentContext::convertToRagDocumentContextVoid),
                                 sharedExecutor.getExecutor(),
                                 BATCH_SIZE))
