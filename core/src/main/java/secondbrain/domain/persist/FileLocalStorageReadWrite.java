@@ -52,6 +52,16 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final AtomicInteger FILE_READS = new AtomicInteger();
     private static final AtomicInteger MEMORY_READS = new AtomicInteger();
 
+    /**
+     * An in-memory index of cache files keyed by their cache key (tool_source_promptHash).
+     * Each value is a list of entries with the file path and expiration timestamp.
+     * This avoids repeated filesystem scans via Files.list() on every getString call.
+     */
+    private static final Map<String, List<CacheFileEntry>> FILE_INDEX = new ConcurrentHashMap<>();
+
+    private record CacheFileEntry(Path path, long timestamp) {
+    }
+
     @Inject
     private Logger logger;
 
@@ -93,11 +103,25 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
      */
     @PostConstruct
     private void init() {
+        final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
+
+        // Build the file index from existing cache files
+        Try.of(() -> Path.of(cacheDir))
+                .mapTry(Files::list)
+                .peek(files -> files.forEach(file -> {
+                    final Matcher matcher = LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString());
+                    if (matcher.matches()) {
+                        final String key = matcher.group(1);
+                        final long ts = NumberUtils.toLong(matcher.group(2), 0L);
+                        FILE_INDEX.computeIfAbsent(key, k -> Collections.synchronizedList(new ArrayList<>()))
+                                .add(new CacheFileEntry(file, ts));
+                    }
+                }));
+
         if (!localStorageMemoryCacheEnabled.isMemoryCacheEnabled()) {
             return;
         }
 
-        final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
 
         logger.fine("Initializing memory cache from local cache directory " + cacheDir);
 
@@ -139,34 +163,22 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
         final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
 
         clearExpiredEntries(cacheDir);
-        return Optional.ofNullable(getString(cacheDir, tool, source, promptHash));
-    }
 
-    private String getString(final String cacheDir, final String tool, final String source, final String promptHash) {
-        return Try.of(() -> Path.of(cacheDir))
-                .mapTry(Files::list)
-                // Find the matching cache file that is not expired
-                .map(files -> files
-                        // Files must match the regex
-                        .map(file -> LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString()))
-                        .filter(Matcher::matches)
-                        // the first group of the regex match must match the tool, source, and promptHash
-                        .filter(matcher -> matcher.group(1).equals(tool + "_" + source + "_" + promptHash))
-                        // The second group (timestamp) must be 0 or in the future
-                        .filter(matcher -> NumberUtils.toLong(matcher.group(2), -1L) == 0 || NumberUtils.toLong(matcher.group(2), 0L) >= Instant.now().getEpochSecond())
-                        // get the most recent item
-                        .sorted((Matcher m1, Matcher m2) -> Long.compare(
-                                Long.parseLong(m2.group(2)),
-                                Long.parseLong(m1.group(2))
-                        ))
-                        // We want the path of the first matching file
-                        .map(matcher -> Path.of(cacheDir, matcher.group(0)))
-                        // Get teh first matching file
-                        .findFirst())
-                // Get the cached result, failing if the Optional is empty
-                .map(Optional::get)
-                .mapTry(this::readFile)
-                .getOrNull();
+        final String key = tool + "_" + source + "_" + promptHash;
+        final List<CacheFileEntry> entries = FILE_INDEX.get(key);
+
+        if (entries == null || entries.isEmpty()) {
+            return Optional.empty();
+        }
+
+        final long now = Instant.now().getEpochSecond();
+
+        // Find the most recent non-expired entry (timestamp 0 means no expiration)
+        return entries.stream()
+                .filter(e -> e.timestamp() == 0 || e.timestamp() >= now)
+                .max(Comparator.comparingLong(CacheFileEntry::timestamp))
+                .map(CacheFileEntry::path)
+                .map(path -> Try.of(() -> readFile(path)).getOrNull());
     }
 
     private String readFile(final Path path) {
@@ -202,15 +214,20 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     @Override
     public String putString(final String tool, final String source, final String promptHash, @Nullable final Long timestamp, final String value) {
         final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
+        final long ts = Objects.requireNonNullElse(timestamp, 0L);
 
         Try.of(() -> Path.of(cacheDir))
                 .mapTry(Files::createDirectories)
                 .onFailure(ex -> logger.warning("Failed to create cache directory: " + exceptionHandler.getExceptionMessage(ex)))
-                .map(path -> path.resolve(tool + "_" + source + "_" + promptHash + ".cache." + Objects.requireNonNullElse(timestamp, 0L)))
+                .map(path -> path.resolve(tool + "_" + source + "_" + promptHash + ".cache." + ts))
                 // LockableFileWriter deals with multiple threads trying to write to the same file
                 .flatMap(path -> Try.withResources(() -> new LockableFileWriter.Builder().setFile(path.toFile()).setAppend(false).get())
                         .of(w -> {
                             w.write(value);
+                            // Update the file index
+                            final String key = tool + "_" + source + "_" + promptHash;
+                            FILE_INDEX.computeIfAbsent(key, k -> Collections.synchronizedList(new ArrayList<>()))
+                                    .add(new CacheFileEntry(path, ts));
                             return value;
                         }))
                 .onFailure(ex -> {
@@ -224,6 +241,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     @Override
     public void purge() {
         MEMORY_CACHE.clear();
+        FILE_INDEX.clear();
     }
 
 
@@ -261,13 +279,14 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
             }
 
             // Clear expired cache files
+            final long now = Instant.now().getEpochSecond();
             Try.of(() -> Path.of(cacheDir))
                     .mapTry(Files::list)
                     .map(files -> files
                             .map(file -> LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString()))
                             .filter(Matcher::matches)
                             // Keep files for deletion that have a timestamp that is not 0 (no expiration) and in the past
-                            .filter(matcher -> NumberUtils.toLong(matcher.group(2), 0L) != 0 && NumberUtils.toLong(matcher.group(2), 0L) < Instant.now().getEpochSecond())
+                            .filter(matcher -> NumberUtils.toLong(matcher.group(2), 0L) != 0 && NumberUtils.toLong(matcher.group(2), 0L) < now)
                             .map(matcher -> Path.of(cacheDir, matcher.group(0)))
                             .toList())
                     .peek(files -> {
@@ -282,6 +301,12 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                                     logger.warning("Failed to delete expired cache file " + file + ": " + exceptionHandler.getExceptionMessage(ex));
                                 }
                             })));
+
+            // Remove expired entries from the file index
+            FILE_INDEX.values().forEach(entries ->
+                    entries.removeIf(e -> e.timestamp() != 0 && e.timestamp() < now));
+            // Remove any keys that have no remaining entries
+            FILE_INDEX.entrySet().removeIf(e -> e.getValue().isEmpty());
 
             // Update the marker file timestamp
             Files.writeString(markerPath, Instant.now().toString(),
