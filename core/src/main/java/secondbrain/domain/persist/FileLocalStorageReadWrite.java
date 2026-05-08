@@ -42,7 +42,7 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
-    private static final List<String> IGNORED_FILES = List.of("localstoragev2.mv.db", "localstoragev2.trace.db", "lastclean.marker");
+    private static final Set<String> IGNORED_FILES = Set.of("localstoragev2.mv.db", "localstoragev2.trace.db", "lastclean.marker");
     private static final int LARGE_OBJECT_WARNING_BYTES = 2 * 1024 * 1024;
     private static final String MARKER_FILE_NAME = "lastclean.marker";
     private static final Duration CLEANUP_INTERVAL = Duration.ofHours(1);
@@ -114,6 +114,10 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     @PostConstruct
     private void init() {
         final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
+
+        // Ensure the cache directory exists
+        Try.run(() -> Files.createDirectories(Path.of(cacheDir)))
+                .onFailure(ex -> logger.warning("Failed to create cache directory: " + exceptionHandler.getExceptionMessage(ex)));
 
         // Build the file index from existing cache files (single directory scan)
         final List<Path> allFiles = Try.of(() -> Path.of(cacheDir))
@@ -227,8 +231,6 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
         final String key = cacheKey(tool, source, promptHash);
 
         Try.of(() -> Path.of(cacheDir))
-                .mapTry(Files::createDirectories)
-                .onFailure(ex -> logger.warning("Failed to create cache directory: " + exceptionHandler.getExceptionMessage(ex)))
                 .map(path -> path.resolve(key + ".cache." + ts))
                 // LockableFileWriter deals with multiple threads trying to write to the same file
                 .flatMap(path -> Try.withResources(() -> new LockableFileWriter.Builder().setFile(path.toFile()).setAppend(false).get())
