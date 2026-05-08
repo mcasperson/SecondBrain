@@ -13,6 +13,7 @@ import secondbrain.domain.converter.StringConverterSelector;
 import secondbrain.domain.files.FileWriter;
 import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.PromptHandler;
+import secondbrain.domain.handler.PromptHandlerOutput;
 import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.LocalStorageReadWrite;
@@ -34,35 +35,8 @@ public class Main {
     private StringConverterSelector stringConverterSelector;
 
     @Inject
-    private JsonDeserializer jsonDeserializer;
-
-    @Inject
     @ConfigProperty(name = "sb.input.file")
     private Optional<String> promptFile;
-
-    @Inject
-    @ConfigProperty(name = "sb.output.file")
-    private Optional<String> file;
-
-    @Inject
-    @ConfigProperty(name = "sb.output.appendFile", defaultValue = "false")
-    private Boolean appendToOutputFile;
-
-    @Inject
-    @ConfigProperty(name = "sb.output.annotationsFile")
-    private Optional<String> annotationsFile;
-
-    @Inject
-    @ConfigProperty(name = "sb.output.linksFile")
-    private Optional<String> linksFile;
-
-    @Inject
-    @ConfigProperty(name = "sb.output.debugFile")
-    private Optional<String> debugFile;
-
-    @Inject
-    @ConfigProperty(name = "sb.output.printAnnotations", defaultValue = "true")
-    private Boolean printAnnotations;
 
     @Inject
     @ConfigProperty(name = "sb.output.directory", defaultValue = ".")
@@ -78,11 +52,8 @@ public class Main {
     private Logger logger;
 
     @Inject
-    @Identifier("financialLocationContactRedaction")
-    private SanitizeDocument sanitizeDocument;
+    private PromptHandlerOutput promptHandlerOutput;
 
-    @Inject
-    private FileWriter fileWriter;
 
     /**
      * This is included here to force the service to initialise as early as possible.
@@ -132,25 +103,18 @@ public class Main {
             return;
         }
 
-
         final String format = args.length > 1 ? args[1] : "no-op";
         final StringConverter converter = stringConverterSelector.getStringConverter(format);
 
-        logger.info("Directory: " + directory);
-        logger.info("File: " + file.orElse(""));
-        logger.info("Annotations: " + annotationsFile.orElse(""));
-        logger.info("Links: " + linksFile.orElse(""));
-        logger.info("Debug: " + debugFile.orElse(""));
-
         Try.of(() -> promptHandler.handlePrompt(Map.of(), getPrompt(args)))
                 .map(response -> response.updateResponseText(converter))
-                .onSuccess(this::printOutput)
-                .onSuccess(this::writeAnnotations)
-                .onSuccess(this::writeLinks)
-                .onSuccess(this::writeDebug)
-                .onSuccess(this::writeOutput)
-                .onSuccess(this::saveMetadata)
-                .onSuccess(this::saveIntermediateResults)
+                .onSuccess(promptHandlerOutput::printOutput)
+                .onSuccess(promptHandlerOutput::writeAnnotations)
+                .onSuccess(promptHandlerOutput::writeLinks)
+                .onSuccess(promptHandlerOutput::writeDebug)
+                .onSuccess(promptHandlerOutput::writeOutput)
+                .onSuccess(promptHandlerOutput::saveMetadata)
+                .onSuccess(promptHandlerOutput::saveIntermediateResults)
                 .onFailure(e -> logger.severe("Failed to process prompt: " + e.getMessage()));
     }
 
@@ -162,99 +126,5 @@ public class Main {
                 .forEach(tool -> System.out.println(" - " + tool));
     }
 
-    private void printOutput(final PromptHandlerResponse content) {
-        final String redactedOutput = Objects.requireNonNullElse(sanitizeDocument.sanitize(content.getResponseText()), "");
 
-        System.out.println(redactedOutput);
-
-        if (printAnnotations) {
-            if (StringUtils.isNotBlank(content.getAnnotations())) {
-                System.out.println(sanitizeDocument.sanitize(content.getAnnotations()));
-            }
-            if (StringUtils.isNotBlank(content.getLinks())) {
-                System.out.println("Links:");
-                System.out.println(content.getLinks());
-            }
-            if (StringUtils.isNotBlank(content.getDebugInfo())) {
-                System.out.println(content.getDebugInfo());
-            }
-        }
-    }
-
-    private void writeAnnotations(final PromptHandlerResponse content) {
-        if (annotationsFile.isEmpty()) {
-            return;
-        }
-
-        final String annotations = Objects.requireNonNullElse(sanitizeDocument.sanitize(content.getAnnotations() + content.getDebugInfo()), "");
-
-        if (StringUtils.isNotBlank(annotations)) {
-            Try.run(() -> fileWriter.write(pathBuilder.getFilePath(directory, annotationsFile.get()), annotations))
-                    .onFailure(e -> logger.severe("Failed to write annotations to file: " + e.getMessage()));
-        }
-    }
-
-    private void writeLinks(final PromptHandlerResponse content) {
-        if (linksFile.isEmpty()) {
-            return;
-        }
-
-        if (StringUtils.isNotBlank(content.getLinks())) {
-            Try.run(() -> fileWriter.write(
-                            pathBuilder.getFilePath(directory, linksFile.get()),
-                            "Links:" + System.lineSeparator() + content.getLinks()))
-                    .onFailure(e -> logger.severe("Failed to write links to file: " + e.getMessage()));
-        }
-    }
-
-    private void writeDebug(final PromptHandlerResponse content) {
-        if (debugFile.isEmpty()) {
-            return;
-        }
-
-        if (StringUtils.isNotBlank(content.getDebugInfo())) {
-            Try.run(() -> fileWriter.write(pathBuilder.getFilePath(directory, debugFile.get()), content.getDebugInfo()))
-                    .onFailure(e -> logger.severe("Failed to write debug to file: " + e.getMessage()));
-        }
-    }
-
-    private void writeOutput(final PromptHandlerResponse content) {
-        if (file.isEmpty()) {
-            return;
-        }
-
-        final String redactedOutput = Objects.requireNonNullElse(sanitizeDocument.sanitize(content.getResponseText()), "");
-
-        if (appendToOutputFile) {
-            fileWriter.append(pathBuilder.getFilePath(directory, file.get()), redactedOutput);
-        } else {
-            fileWriter.write(pathBuilder.getFilePath(directory, file.get()), redactedOutput);
-        }
-    }
-
-    private void saveMetadata(final PromptHandlerResponse content) {
-        content
-                .getMetaObjectResults()
-                .stream()
-                .filter(Objects::nonNull)
-                .filter(meta -> StringUtils.isNotBlank(meta.getFilename()))
-                .peek(meta -> logger.info("Saving metadata: " + pathBuilder.getFilePath(directory, meta.getFilename())))
-                .forEach(meta -> Try.run(() -> fileWriter.write(
-                                pathBuilder.getFilePath(directory, meta.getFilename()),
-                                jsonDeserializer.serialize(meta)))
-                        .onFailure(e -> logger.severe("Failed to write metadata to files: " + e.getMessage())));
-    }
-
-    private void saveIntermediateResults(final PromptHandlerResponse content) {
-        content
-                .getIntermediateResults()
-                .stream()
-                .filter(Objects::nonNull)
-                .filter(meta -> StringUtils.isNotBlank(meta.filename()) && meta.content() != null)
-                .peek(meta -> logger.info("Saving intermediate result: " + pathBuilder.getFilePath(directory, meta.filename())))
-                .forEach(meta -> Try.run(() -> fileWriter.write(
-                                pathBuilder.getFilePath(directory, meta.filename()),
-                                Objects.requireNonNullElse(sanitizeDocument.sanitize(meta.content()), "")))
-                        .onFailure(e -> logger.severe("Failed to write intermediate result to files: " + e.getMessage())));
-    }
 }
