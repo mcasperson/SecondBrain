@@ -44,6 +44,9 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
+
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
@@ -52,6 +55,7 @@ public class Dovetail implements Tool<Void> {
     public static final String DOVETAIL_BASE_URL_ARG = "dovetailBaseUrl";
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
     public static final String MINIMUM_CONTENT_LENGTH_ARG = "minimumContentLength";
+    private static final int PARALLEL_BATCH_SIZE = 10;
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -101,6 +105,9 @@ public class Dovetail implements Tool<Void> {
     @Inject
     @Preferred
     private LocalStorage localStorage;
+
+    @Inject
+    private SharedVirtualThreadExecutor sharedExecutor;
 
     @Override
     public String getName() {
@@ -189,18 +196,17 @@ public class Dovetail implements Tool<Void> {
 
         logger.fine("Retrieved " + items.size() + " data items from Dovetail");
 
-        final List<DovetailDataDetails> dataItems = Try.of(() -> items.stream()
-                        .filter(item -> !item.deleted())
-                        .map(item -> new DovetailDataDetails(
-                                item.id(),
-                                item.title(),
-                                item.project() != null ? item.project().title() : "",
-                                item.createdAt(),
-                                dovetailClient.exportDataItemAsMarkdown(parsedArgs.getSecretApiKey(), item.id()),
-                                parsedArgs.getDovetailBaseUrl()))
-                        .toList())
-                .onFailure(ex -> logger.severe("Failed to get Dovetail details: " + ExceptionUtils.getRootCauseMessage(ex)))
-                .get();
+        final List<DovetailDataDetails> dataItems = items.stream()
+                .filter(item -> !item.deleted())
+                .collect(parallelToStream(item -> new DovetailDataDetails(
+                        item.id(),
+                        item.title(),
+                        item.project() != null ? item.project().title() : "",
+                        item.createdAt(),
+                        dovetailClient.exportDataItemAsMarkdown(parsedArgs.getSecretApiKey(), item.id()),
+                        parsedArgs.getDovetailBaseUrl()),
+                        sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .toList();
 
         final List<RagDocumentContext<DovetailDataDetails>> ragDocs = dataItems.stream()
                 .map(item -> dataToRagDoc.getDocumentContext(item, getName(), getContextLabelWithMeta(item), parsedArgs))
@@ -213,32 +219,52 @@ public class Dovetail implements Tool<Void> {
         final List<RagDocumentContext<DovetailDataDetails>> combinedDocs =
                 Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
-        // Apply preprocessing hooks, and then rating metadata and filtering
-        final List<RagDocumentContext<DovetailDataDetails>> context =
+        // Apply preprocessing hooks, and then rating metadata and filtering in parallel
+        final List<RagDocumentContext<Void>> context =
                 Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                         .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                         .stream()
-                        .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-Dovetail-" + ragDoc.id() + ".txt")))
-                        // Get the metadata, which includes a rating against the filter question if present
-                        .map(ragDoc ->
-                            ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
-                                    .map(results -> ragDoc
-                                            .addMetadata(results.metadata())
-                                            .addIntermediateResults(results.intermediateResults()))
-                                    .orElse(ragDoc)
-                        )
-                        // Filter out any documents that don't meet the rating criteria
-                        .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
-                        .map(ragDoc -> parsedArgs.getSummarizeDocument()
-                                ? ragDocSummarizer.getDocumentSummary(getName(), getContextLabelWithMeta(ragDoc.source()), "Dovetail", ragDoc, environmentSettings, parsedArgs)
-                                : ragDoc)
+                        .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
                         .toList();
 
         logger.info("Found " + context.size() + " Dovetail data items");
 
-        return context.stream()
-                .map(RagDocumentContext::convertToRagDocumentContextVoid)
-                .toList();
+        return context;
+    }
+
+    private <T> Optional<RagDocumentContext<Void>> enrichAndSummarize(
+            final RagDocumentContext<T> ragDoc,
+            final Map<String, String> environmentSettings,
+            final DovetailConfig.LocalArguments parsedArgs) {
+
+        final var withIntermediate = ragDoc.addIntermediateResult(
+                new IntermediateResult(ragDoc.document(), "Data-Dovetail-" + ragDoc.id() + ".txt"));
+
+        // Get the metadata, which includes a rating against the filter question if present
+        final var enriched = ratingMetadata.getMetadata(getName(), environmentSettings, withIntermediate, parsedArgs)
+                .map(results -> withIntermediate
+                        .addMetadata(results.metadata())
+                        .addIntermediateResults(results.intermediateResults()))
+                .orElse(withIntermediate);
+
+        // Filter out any documents that don't meet the rating criteria
+        if (!ratingFilter.contextMeetsRating(enriched, parsedArgs)) {
+            return Optional.empty();
+        }
+
+        final var summarized = parsedArgs.getSummarizeDocument()
+                ? ragDocSummarizer.getDocumentSummary(
+                    getName(),
+                    getContextLabelWithMeta(enriched.source() instanceof DovetailDataDetails d ? d : null),
+                    "Dovetail",
+                    enriched,
+                    environmentSettings,
+                    parsedArgs)
+                : enriched;
+
+        return Optional.of(summarized.convertToRagDocumentContextVoid());
     }
 
     @Override
@@ -752,6 +778,8 @@ class DovetailConfig {
         }
     }
 }
+
+
 
 
 
