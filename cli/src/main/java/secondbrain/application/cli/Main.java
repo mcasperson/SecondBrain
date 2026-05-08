@@ -12,6 +12,7 @@ import secondbrain.domain.converter.StringConverterSelector;
 import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerOutput;
+import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.persist.LocalStorageReadWrite;
 import secondbrain.domain.toolbuilder.ToolSelector;
 
@@ -48,12 +49,10 @@ public class Main {
     @Inject
     private PromptHandlerOutput promptHandlerOutput;
 
-
-    /**
-     * This is included here to force the service to initialise as early as possible.
-     */
-    @Inject
-    private LocalStorageReadWrite localStorageReadWrite;
+    public static Try.WithResources1<WeldContainer> getContainer() {
+        final Weld weld = new Weld();
+        return Try.withResources(() -> weld.addBeanClass(Main.class).addPackages(true, Marker.class).initialize());
+    }
 
     public static void main(final String[] args) {
         // Remove some of the initial SLF4J logging noise
@@ -63,15 +62,7 @@ public class Main {
         // See https://netty.io/wiki/java-24-and-sun.misc.unsafe.html
         System.setProperty("io.netty.noUnsafe", "true");
 
-        final Weld weld = new Weld();
-        /*
-        For the life of me I could not get Weld to find beans in the service module without manually adding a class in
-        a shared ancestor package and then scanning recursively. So the marker class exists to help Weld scan for
-        annotated classes in an Uber JAR.
-         */
-        try (WeldContainer weldContainer = weld.addBeanClass(Main.class).addPackages(true, Marker.class).initialize()) {
-            weldContainer.select(Main.class).get().entry(args);
-        }
+        getContainer().of(weldContainer -> weldContainer.select(Main.class).get().entry(args));
     }
 
     private String getPrompt(final String[] args) {
@@ -89,18 +80,17 @@ public class Main {
         throw new RuntimeException("No prompt specified");
     }
 
-    @SuppressWarnings("ReturnValueIgnored")
-    public void entry(final String[] args) {
+    public PromptHandlerResponse entry(final String[] args) {
         final String command = args.length > 0 ? args[0] : "";
         if ("--help".equals(command)) {
             printHelp();
-            return;
+            return null;
         }
 
         final String format = args.length > 1 ? args[1] : "no-op";
         final StringConverter converter = stringConverterSelector.getStringConverter(format);
 
-        Try.of(() -> promptHandler.handlePrompt(Map.of(), getPrompt(args)))
+        return Try.of(() -> promptHandler.handlePrompt(Map.of(), getPrompt(args)))
                 .map(response -> response.updateResponseText(converter))
                 .onSuccess(promptHandlerOutput::printOutput)
                 .onSuccess(promptHandlerOutput::writeAnnotations)
@@ -109,7 +99,8 @@ public class Main {
                 .onSuccess(promptHandlerOutput::writeOutput)
                 .onSuccess(promptHandlerOutput::saveMetadata)
                 .onSuccess(promptHandlerOutput::saveIntermediateResults)
-                .onFailure(e -> logger.severe("Failed to process prompt: " + e.getMessage()));
+                .onFailure(e -> logger.severe("Failed to process prompt: " + e.getMessage()))
+                .get();
     }
 
     private void printHelp() {
@@ -119,6 +110,4 @@ public class Main {
                 .map(tool -> tool.getName() + ": " + tool.getDescription())
                 .forEach(tool -> System.out.println(" - " + tool));
     }
-
-
 }
