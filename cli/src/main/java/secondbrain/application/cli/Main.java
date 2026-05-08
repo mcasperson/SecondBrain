@@ -1,6 +1,5 @@
 package secondbrain.application.cli;
 
-import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
@@ -10,19 +9,14 @@ import org.jboss.weld.environment.se.WeldContainer;
 import secondbrain.Marker;
 import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.converter.StringConverterSelector;
-import secondbrain.domain.files.FileWriter;
 import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerOutput;
-import secondbrain.domain.handler.PromptHandlerResponse;
-import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.LocalStorageReadWrite;
-import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.toolbuilder.ToolSelector;
 
 import java.nio.file.Files;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Logger;
 
