@@ -17,10 +17,15 @@ import secondbrain.domain.persist.config.LocalStorageMemoryCacheEnabled;
 import secondbrain.domain.persist.config.LocalStorageMemoryCacheFileLimit;
 import secondbrain.domain.persist.config.LocalStorageMemoryCacheSizeLimit;
 
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,8 +42,10 @@ import java.util.regex.Pattern;
 @ApplicationScoped
 public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
-    private static final List<String> IGNORED_FILES = List.of("localstoragev2.mv.db", "localstoragev2.trace.db");
+    private static final List<String> IGNORED_FILES = List.of("localstoragev2.mv.db", "localstoragev2.trace.db", "lastclean.marker");
     private static final int LARGE_OBJECT_WARNING_BYTES = 2 * 1024 * 1024;
+    private static final String MARKER_FILE_NAME = "lastclean.marker";
+    private static final Duration CLEANUP_INTERVAL = Duration.ofHours(1);
 
     private static final Map<Path, String> MEMORY_CACHE = new ConcurrentHashMap<>();
     private static final AtomicInteger TOTAL_READS = new AtomicInteger();
@@ -221,27 +228,67 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
 
     private void clearExpiredEntries(final String cacheDir) {
-        // Clear expired cache files
-        Try.of(() -> Path.of(cacheDir))
-                .mapTry(Files::list)
-                .map(files -> files
-                        .map(file -> LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString()))
-                        .filter(Matcher::matches)
-                        // Keep files for deletion that have a timestamp that is not 0 (no expiration) and in the past
-                        .filter(matcher -> NumberUtils.toLong(matcher.group(2), 0L) != 0 && NumberUtils.toLong(matcher.group(2), 0L) < Instant.now().getEpochSecond())
-                        .map(matcher -> Path.of(cacheDir, matcher.group(0)))
-                        .toList())
-                .peek(files -> {
-                    if (!files.isEmpty()) {
-                        logger.fine("Deleting " + files.size() + " expired cache files: " + files);
-                    }
-                })
-                .peek(files -> files.forEach(file -> Try.run(() -> Files.delete(file))
-                        .onFailure(ex -> {
-                            // Ignore race conditions when deleting files
-                            if (!(ex instanceof NoSuchFileException)) {
-                                logger.warning("Failed to delete expired cache file " + file + ": " + exceptionHandler.getExceptionMessage(ex));
-                            }
-                        })));
+        final Path markerPath = Path.of(cacheDir, MARKER_FILE_NAME);
+
+        // Check if we need to clean up based on the marker file age
+        if (Files.exists(markerPath)) {
+            final boolean recentEnough = Try.of(() -> Files.getLastModifiedTime(markerPath).toInstant())
+                    .map(lastClean -> Duration.between(lastClean, Instant.now()).compareTo(CLEANUP_INTERVAL) < 0)
+                    .getOrElse(false);
+            if (recentEnough) {
+                return;
+            }
+        }
+
+        // Acquire a lock on the marker file to prevent concurrent cleanup
+        try (final FileChannel channel = FileChannel.open(markerPath,
+                StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+             final FileLock lock = channel.tryLock()) {
+
+            if (lock == null) {
+                // Another thread/process is already cleaning up
+                return;
+            }
+
+            // Double-check the marker after acquiring the lock (another thread may have just finished)
+            if (Files.exists(markerPath)) {
+                final boolean recentEnough = Try.of(() -> Files.getLastModifiedTime(markerPath).toInstant())
+                        .map(lastClean -> Duration.between(lastClean, Instant.now()).compareTo(CLEANUP_INTERVAL) < 0)
+                        .getOrElse(false);
+                if (recentEnough) {
+                    return;
+                }
+            }
+
+            // Clear expired cache files
+            Try.of(() -> Path.of(cacheDir))
+                    .mapTry(Files::list)
+                    .map(files -> files
+                            .map(file -> LOCAL_CACHE_TIMESTAMP.matcher(file.getFileName().toString()))
+                            .filter(Matcher::matches)
+                            // Keep files for deletion that have a timestamp that is not 0 (no expiration) and in the past
+                            .filter(matcher -> NumberUtils.toLong(matcher.group(2), 0L) != 0 && NumberUtils.toLong(matcher.group(2), 0L) < Instant.now().getEpochSecond())
+                            .map(matcher -> Path.of(cacheDir, matcher.group(0)))
+                            .toList())
+                    .peek(files -> {
+                        if (!files.isEmpty()) {
+                            logger.fine("Deleting " + files.size() + " expired cache files: " + files);
+                        }
+                    })
+                    .peek(files -> files.forEach(file -> Try.run(() -> Files.delete(file))
+                            .onFailure(ex -> {
+                                // Ignore race conditions when deleting files
+                                if (!(ex instanceof NoSuchFileException)) {
+                                    logger.warning("Failed to delete expired cache file " + file + ": " + exceptionHandler.getExceptionMessage(ex));
+                                }
+                            })));
+
+            // Update the marker file timestamp
+            Files.writeString(markerPath, Instant.now().toString(),
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
+        } catch (final IOException ex) {
+            logger.warning("Failed to acquire lock for cache cleanup: " + exceptionHandler.getExceptionMessage(ex));
+        }
     }
 }
