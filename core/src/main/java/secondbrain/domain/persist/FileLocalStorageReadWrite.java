@@ -68,6 +68,10 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
      */
     private static volatile long lastCleanEpochSecond = 0;
 
+    private static String cacheKey(final String tool, final String source, final String promptHash) {
+        return tool + "_" + source + "_" + promptHash;
+    }
+
     @Inject
     private Logger logger;
 
@@ -169,7 +173,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
         clearExpiredEntries(cacheDir);
 
-        final String key = tool + "_" + source + "_" + promptHash;
+        final String key = cacheKey(tool, source, promptHash);
         final List<CacheFileEntry> entries = FILE_INDEX.get(key);
 
         if (entries == null || entries.isEmpty()) {
@@ -220,17 +224,17 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     public String putString(final String tool, final String source, final String promptHash, @Nullable final Long timestamp, final String value) {
         final String cacheDir = localStorageCacheDirectory.getCacheDirectory();
         final long ts = Objects.requireNonNullElse(timestamp, 0L);
+        final String key = cacheKey(tool, source, promptHash);
 
         Try.of(() -> Path.of(cacheDir))
                 .mapTry(Files::createDirectories)
                 .onFailure(ex -> logger.warning("Failed to create cache directory: " + exceptionHandler.getExceptionMessage(ex)))
-                .map(path -> path.resolve(tool + "_" + source + "_" + promptHash + ".cache." + ts))
+                .map(path -> path.resolve(key + ".cache." + ts))
                 // LockableFileWriter deals with multiple threads trying to write to the same file
                 .flatMap(path -> Try.withResources(() -> new LockableFileWriter.Builder().setFile(path.toFile()).setAppend(false).get())
                         .of(w -> {
                             w.write(value);
                             // Update the file index
-                            final String key = tool + "_" + source + "_" + promptHash;
                             FILE_INDEX.computeIfAbsent(key, k -> Collections.synchronizedList(new ArrayList<>()))
                                     .add(new CacheFileEntry(path, ts));
                             return value;
