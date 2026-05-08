@@ -65,6 +65,33 @@ public class Main {
         getContainer().of(weldContainer -> weldContainer.select(Main.class).get().entry(args));
     }
 
+    public PromptHandlerResponse entry(final String[] args) {
+        final String command = args.length > 0 ? args[0] : "";
+        if ("--help".equals(command)) {
+            printHelp();
+            return null;
+        }
+
+        final String format = args.length > 1 ? args[1] : "no-op";
+
+        return entry(getPrompt(args), format, Map.of());
+    }
+
+    public PromptHandlerResponse entry(final String prompt, final String format, final Map<String, String> context) {
+        final StringConverter converter = stringConverterSelector.getStringConverter(format);
+        return Try.of(() -> promptHandler.handlePrompt(context, prompt))
+                .map(response -> response.updateResponseText(converter))
+                .onSuccess(promptHandlerOutput::printOutput)
+                .onSuccess(promptHandlerOutput::writeAnnotations)
+                .onSuccess(promptHandlerOutput::writeLinks)
+                .onSuccess(promptHandlerOutput::writeDebug)
+                .onSuccess(promptHandlerOutput::writeOutput)
+                .onSuccess(promptHandlerOutput::saveMetadata)
+                .onSuccess(promptHandlerOutput::saveIntermediateResults)
+                .onFailure(e -> logger.severe("Failed to process prompt: " + e.getMessage()))
+                .get();
+    }
+
     private String getPrompt(final String[] args) {
         if (promptFile.isPresent() && StringUtils.isNotBlank(promptFile.get())) {
             return Try.of(() -> Files.readString(pathBuilder.getFilePath(directory, promptFile.get())))
@@ -78,29 +105,6 @@ public class Main {
         }
 
         throw new RuntimeException("No prompt specified");
-    }
-
-    public PromptHandlerResponse entry(final String[] args) {
-        final String command = args.length > 0 ? args[0] : "";
-        if ("--help".equals(command)) {
-            printHelp();
-            return null;
-        }
-
-        final String format = args.length > 1 ? args[1] : "no-op";
-        final StringConverter converter = stringConverterSelector.getStringConverter(format);
-
-        return Try.of(() -> promptHandler.handlePrompt(Map.of(), getPrompt(args)))
-                .map(response -> response.updateResponseText(converter))
-                .onSuccess(promptHandlerOutput::printOutput)
-                .onSuccess(promptHandlerOutput::writeAnnotations)
-                .onSuccess(promptHandlerOutput::writeLinks)
-                .onSuccess(promptHandlerOutput::writeDebug)
-                .onSuccess(promptHandlerOutput::writeOutput)
-                .onSuccess(promptHandlerOutput::saveMetadata)
-                .onSuccess(promptHandlerOutput::saveIntermediateResults)
-                .onFailure(e -> logger.severe("Failed to process prompt: " + e.getMessage()))
-                .get();
     }
 
     private void printHelp() {
