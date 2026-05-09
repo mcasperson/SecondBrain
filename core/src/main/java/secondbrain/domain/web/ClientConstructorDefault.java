@@ -18,10 +18,10 @@ public class ClientConstructorDefault implements ClientConstructor {
 
     @Override
     public Client getClient(final int connectionTimeout, final int readTimeout) {
-        final jakarta.ws.rs.client.ClientBuilder clientBuilder = jakarta.ws.rs.client.ClientBuilder.newBuilder();
-        clientBuilder.connectTimeout(connectionTimeout, TimeUnit.SECONDS);
-        clientBuilder.readTimeout(readTimeout, TimeUnit.SECONDS);
-        return clientBuilder.build();
+        return jakarta.ws.rs.client.ClientBuilder.newBuilder()
+        .connectTimeout(connectionTimeout, TimeUnit.SECONDS)
+        .readTimeout(readTimeout, TimeUnit.SECONDS)
+        .build();
     }
 
     @Override
