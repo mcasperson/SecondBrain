@@ -25,7 +25,11 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
 /**
@@ -98,6 +102,7 @@ public class CosmosMutex implements Mutex {
     private CosmosContainer container;
 
     private final AtomicReference<Long> totalWaitMs = new AtomicReference<>(0L);
+    private final ConcurrentMap<String, ReentrantLock> localMutexes = new ConcurrentHashMap<>();
 
     private int getLockTtlSeconds() {
         return Try.of(() -> Integer.parseInt(lockTtl.get())).getOrElse(DEFAULT_TTL);
@@ -231,24 +236,44 @@ public class CosmosMutex implements Mutex {
     @Override
     public <T> T acquire(final long timeout, final String lockName, final MutexCallback<T> callback) {
         final long startTime = System.currentTimeMillis();
+        final ReentrantLock localMutex = localMutexes.computeIfAbsent(lockName, ignored -> new ReentrantLock());
+        boolean localLocked = false;
 
-        while (true) {
-            final Try<T> result = tryAcquireAndExecute(container, lockName, callback);
-
-            // Get the result if we succeeded, or throw if we failed for any reason other than lock contention
-            if (result.isSuccess() || !(result.getCause() instanceof LockFail)) {
-                return result.get();
+        try {
+            localLocked = localMutex.tryLock(timeout, TimeUnit.MILLISECONDS);
+            if (!localLocked) {
+                throw new LockFail("Failed to obtain local lock within the specified timeout: " + timeout + "ms");
             }
 
-            final long elapsed = System.currentTimeMillis() - startTime;
-            if (elapsed >= timeout) {
-                throw new LockFail("Failed to obtain Cosmos lock within the specified timeout: " + timeout + "ms");
-            }
+            while (true) {
+                final Try<T> result = tryAcquireAndExecute(container, lockName, callback);
 
-            // Sleep before retrying
-            final long sleepMs = Math.min(SLEEP_MS, timeout - elapsed);
-            Try.run(() -> Thread.sleep(sleepMs));
-            totalWaitMs.accumulateAndGet(sleepMs, Long::sum);
+                // Get the result if we succeeded, or throw if we failed for any reason other than lock contention
+                if (result.isSuccess() || !(result.getCause() instanceof LockFail)) {
+                    return result.get();
+                }
+
+                final long elapsed = System.currentTimeMillis() - startTime;
+                if (elapsed >= timeout) {
+                    throw new LockFail("Failed to obtain Cosmos lock within the specified timeout: " + timeout + "ms");
+                }
+
+                // Sleep before retrying
+                final long sleepMs = Math.min(SLEEP_MS, timeout - elapsed);
+                Try.run(() -> Thread.sleep(sleepMs));
+                totalWaitMs.accumulateAndGet(sleepMs, Long::sum);
+            }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new LockFail("Interrupted while waiting to obtain local lock", ex);
+        } finally {
+            if (localLocked) {
+                localMutex.unlock();
+                // Best-effort cleanup to avoid map growth for lock names that are no longer used.
+                if (!localMutex.isLocked() && !localMutex.hasQueuedThreads()) {
+                    localMutexes.remove(lockName, localMutex);
+                }
+            }
         }
     }
 
