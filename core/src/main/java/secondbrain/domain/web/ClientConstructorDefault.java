@@ -3,6 +3,7 @@ package secondbrain.domain.web;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.jboss.resteasy.plugins.providers.FormUrlEncodedProvider;
 import org.jboss.resteasy.plugins.providers.StringTextStar;
 import org.jboss.resteasy.plugins.providers.jackson.ResteasyJackson2Provider;
 
@@ -17,7 +18,8 @@ public class ClientConstructorDefault implements ClientConstructor {
 
     final List<Class> REGISTERED_CLASSES = List.of(
             ResteasyJackson2Provider.class,
-            StringTextStar.class
+            StringTextStar.class,
+            FormUrlEncodedProvider.class
     );
 
     @Override
