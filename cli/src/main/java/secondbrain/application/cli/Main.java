@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
+import org.jspecify.annotations.Nullable;
 import secondbrain.Marker;
 import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.converter.StringConverterSelector;
@@ -65,6 +66,7 @@ public class Main {
         getContainer().of(weldContainer -> weldContainer.select(Main.class).get().entry(args));
     }
 
+    @Nullable
     public PromptHandlerResponse entry(final String[] args) {
         final String command = args.length > 0 ? args[0] : "";
         if ("--help".equals(command)) {

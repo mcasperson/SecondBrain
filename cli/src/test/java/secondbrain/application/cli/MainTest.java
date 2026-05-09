@@ -16,6 +16,7 @@ import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.converter.StringConverterSelector;
 import secondbrain.domain.files.FileWriter;
 import secondbrain.domain.files.PathBuilder;
+import secondbrain.domain.handler.DefaultPromptHandlerOutput;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.handler.PromptResponseSimple;
@@ -68,7 +69,7 @@ class MainTest {
     @WeldSetup
     private final WeldInitiator weld = WeldInitiator
             .from(WeldInitiator.createWeld()
-                    .beanClasses(Main.class, FinancialLocationContactRedaction.class, MockBeans.class)
+                    .beanClasses(Main.class, FinancialLocationContactRedaction.class, MockBeans.class, DefaultPromptHandlerOutput.class)
                     .addExtension(new ConfigExtension()))
             .activate(ApplicationScoped.class)
             .build();
