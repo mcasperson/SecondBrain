@@ -154,5 +154,42 @@ class FinancialLocationContactRedactionTest {
         assertTrue(result.contains("{{{REDACTED-PHONE}}}"), "Phone in JSON should be redacted");
         assertTrue(result.contains("{{{REDACTED-CREDIT-CARD}}}"), "Credit card in JSON should be redacted");
     }
+
+    // ---- removeEscapeBeforePlaceholder ----
+
+    @Test
+    void testRemoveEscape_replacesEscapedOpeningBraces() {
+        assertEquals("{{{REDACTED-EMAIL}}}", redaction.removeEscapeBeforePlaceholder("\\{{{REDACTED-EMAIL}}}"));
+    }
+
+    @Test
+    void testRemoveEscape_replacesMultipleOccurrences() {
+        final String input = "\\{{{REDACTED-EMAIL}}} and \\{{{REDACTED-PHONE}}}";
+        final String expected = "{{{REDACTED-EMAIL}}} and {{{REDACTED-PHONE}}}";
+        assertEquals(expected, redaction.removeEscapeBeforePlaceholder(input));
+    }
+
+    @Test
+    void testRemoveEscape_noEscapeUnchanged() {
+        final String input = "{{{REDACTED-EMAIL}}}";
+        assertEquals(input, redaction.removeEscapeBeforePlaceholder(input));
+    }
+
+    @Test
+    void testRemoveEscape_plainTextUnchanged() {
+        final String input = "No PII here.";
+        assertEquals(input, redaction.removeEscapeBeforePlaceholder(input));
+    }
+
+    @Test
+    void testRemoveEscape_emptyStringUnchanged() {
+        assertEquals("", redaction.removeEscapeBeforePlaceholder(""));
+    }
+
+    @Test
+    void testRemoveEscape_backslashNotFollowedByTripleBraceUnchanged() {
+        final String input = "path\\to\\file and \\{single}";
+        assertEquals(input, redaction.removeEscapeBeforePlaceholder(input));
+    }
 }
 

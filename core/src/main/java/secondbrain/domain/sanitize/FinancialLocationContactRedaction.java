@@ -133,7 +133,7 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
     @SuppressWarnings("unchecked")
     private Object filterValue(final Object value, final PlainTextFilterService service) {
         if (value instanceof String s) {
-            return filterPlainText(s, service);
+            return removeEscapeBeforePlaceholder(filterPlainText(s, service));
         } else if (value instanceof Map<?, ?> map) {
             return filterMap((Map<String, Object>) map, service);
         } else if (value instanceof List<?> list) {
@@ -157,5 +157,15 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
                 .map(TextFilterResult::getFilteredText)
                 .recover(ex -> text)
                 .get();
+    }
+
+    /**
+     * It is possible that the data scrubbing replaces a string that started with
+     * a character that was being escaped by a slash, leading to \{{{REDACTED}}},
+     * which is invalid. When we see a slash before a triple curly bracket, remove
+     * the slask.
+     */
+    public String removeEscapeBeforePlaceholder(final String value) {
+        return value.replaceAll("\\\\\\{\\{\\{", "{{{");
     }
 }
