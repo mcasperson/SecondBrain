@@ -2,6 +2,8 @@ package secondbrain.domain.web;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
+import org.jboss.resteasy.plugins.providers.jackson.ResteasyJackson2Provider;
 
 import java.util.concurrent.TimeUnit;
 
@@ -18,10 +20,10 @@ public class ClientConstructorDefault implements ClientConstructor {
 
     @Override
     public Client getClient(final int connectionTimeout, final int readTimeout) {
-        return jakarta.ws.rs.client.ClientBuilder.newBuilder()
-        .connectTimeout(connectionTimeout, TimeUnit.SECONDS)
-        .readTimeout(readTimeout, TimeUnit.SECONDS)
-        .build();
+        return ClientBuilder.newBuilder()
+            .connectTimeout(connectionTimeout, TimeUnit.SECONDS)
+            .readTimeout(readTimeout, TimeUnit.SECONDS)
+            .build();
     }
 
     @Override
