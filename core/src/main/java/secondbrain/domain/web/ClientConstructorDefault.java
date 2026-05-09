@@ -3,8 +3,10 @@ package secondbrain.domain.web;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
+import org.jboss.resteasy.plugins.providers.StringTextStar;
 import org.jboss.resteasy.plugins.providers.jackson.ResteasyJackson2Provider;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @ApplicationScoped
@@ -12,6 +14,11 @@ public class ClientConstructorDefault implements ClientConstructor {
 
     private static final int API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 30;
     private static final int API_READ_TIMEOUT_SECONDS_DEFAULT = 120;
+
+    final List<Class> REGISTERED_CLASSES = List.of(
+            ResteasyJackson2Provider.class,
+            StringTextStar.class
+    );
 
     @Override
     public Client getClient() {
@@ -25,9 +32,10 @@ public class ClientConstructorDefault implements ClientConstructor {
                 .readTimeout(readTimeout, TimeUnit.SECONDS);
 
         // This supports Groovy clients, where ResteasyJackson2Provider is not automatically registered
-        if (!builder.getConfiguration().isRegistered(ResteasyJackson2Provider.class)) {
-            builder.register(ResteasyJackson2Provider.class);
-        }
+        REGISTERED_CLASSES.stream()
+                .filter(c -> !builder.getConfiguration().isRegistered(c))
+                .forEach(builder::register);
+
 
         return builder.build();
     }
