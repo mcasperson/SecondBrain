@@ -14,7 +14,6 @@ import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerOutput;
 import secondbrain.domain.handler.PromptHandlerResponse;
-import secondbrain.domain.persist.LocalStorageReadWrite;
 import secondbrain.domain.toolbuilder.ToolSelector;
 
 import java.nio.file.Files;
