@@ -19,11 +19,17 @@ public class ClientConstructorDefault implements ClientConstructor {
     }
 
     @Override
-    public Client getClient(final int connectionTimeout, final int readTimeout) {
-        return ClientBuilder.newBuilder()
-            .connectTimeout(connectionTimeout, TimeUnit.SECONDS)
-            .readTimeout(readTimeout, TimeUnit.SECONDS)
-            .build();
+    synchronized public Client getClient(final int connectionTimeout, final int readTimeout) {
+        final ClientBuilder builder = ClientBuilder.newBuilder()
+                .connectTimeout(connectionTimeout, TimeUnit.SECONDS)
+                .readTimeout(readTimeout, TimeUnit.SECONDS);
+
+        // This supports Groovy clients, where ResteasyJackson2Provider is not automatically registered
+        if (!builder.getConfiguration().isRegistered(ResteasyJackson2Provider.class)) {
+            builder.register(ResteasyJackson2Provider.class);
+        }
+
+        return builder.build();
     }
 
     @Override
