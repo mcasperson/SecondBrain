@@ -54,6 +54,7 @@ public class CosmosLocalStorage implements LocalStorage {
     private static final int MAX_FAILURES = 5; // 2 MB
     private static final int SPLIT_ITEM_SIZE_BYTES = 1024 * 1024;
     private static final int LARGE_OBJECT_WARNING_BYTES = 2 * 1024 * 1024;
+    private static final int TTL_NO_EXPIRE = -1;
 
     private final AtomicInteger totalReads = new AtomicInteger();
     private final AtomicInteger totalCacheHits = new AtomicInteger();
@@ -524,7 +525,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Override
     public CacheResult<String> getOrPutString(final String tool, final String source, final String promptHash, final GenerateValue<String> generateValue) {
-        return getOrPutString(tool, source, promptHash, 0, generateValue);
+        return getOrPutString(tool, source, promptHash, TTL_NO_EXPIRE, generateValue);
     }
 
     @Override
@@ -534,7 +535,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Override
     public <T> CacheResult<T> getOrPutObject(final String tool, final String source, final String promptHash, final Class<T> clazz, final GenerateValue<T> generateValue) {
-        return getOrPutObject(tool, source, promptHash, 0, clazz, generateValue);
+        return getOrPutObject(tool, source, promptHash, TTL_NO_EXPIRE, clazz, generateValue);
     }
 
     @Override
@@ -543,23 +544,23 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     @Override
-    public <T, U> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, long ttlSeconds, Class<T> container, Class<U> contained, GenerateValue<T> generateValue) {
+    public <T, U> CacheResult<T> getOrPutGeneric(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> container, final Class<U> contained, final GenerateValue<T> generateValue) {
         return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeGeneric(json, container, contained));
     }
 
     @Override
     public <T, U> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, Class<T> container, Class<U> contained, GenerateValue<T> generateValue) {
-        return getOrPutGeneric(tool, source, promptHash, 0, container, contained, generateValue);
+        return getOrPutGeneric(tool, source, promptHash, TTL_NO_EXPIRE, container, contained, generateValue);
     }
 
     @Override
-    public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, long ttlSeconds, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
+    public <T, U, V> CacheResult<T> getOrPutGeneric(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> container, final Class<U> contained, final Class<V> contained2, final GenerateValue<T> generateValue) {
         return getOrPutPrivate(tool, source, promptHash, ttlSeconds, generateValue, json -> jsonDeserializer.deserializeGeneric(json, container, contained, contained2));
     }
 
     @Override
-    public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
-        return getOrPutGeneric(tool, source, promptHash, 0, container, contained, contained2, generateValue);
+    public <T, U, V> CacheResult<T> getOrPutGeneric(final String tool, final String source, final String promptHash, final Class<T> container, final Class<U> contained, final Class<V> contained2, GenerateValue<T> generateValue) {
+        return getOrPutGeneric(tool, source, promptHash, TTL_NO_EXPIRE, container, contained, contained2, generateValue);
     }
 
     /**
