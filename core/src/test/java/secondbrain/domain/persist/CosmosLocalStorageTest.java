@@ -131,6 +131,7 @@ public class CosmosLocalStorageTest {
                             CosmosLocalStorageTest.class.getSimpleName(),
                             "test" + i,
                             randomValue,
+                            60,
                             () -> randomValue)
                     .result());
         }
