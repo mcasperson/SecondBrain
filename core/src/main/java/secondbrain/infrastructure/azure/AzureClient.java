@@ -70,7 +70,7 @@ public class AzureClient implements LlmClient {
      * This is the default model.
      */
     private static final String DEFAULT_MODEL = "Phi-4";
-    private static final int DEFAULT_CACHE_TTL_DAYS = 90;
+    private static final int DEFAULT_CACHE_TTL_DAYS = 365;
     private static final int API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
     private static final long TIMEOUT_API_CALL_DELAY_SECONDS_DEFAULT = 30;
     private static final float TIME_IF_TOO_LONG_FRACTION = 0.6f;
