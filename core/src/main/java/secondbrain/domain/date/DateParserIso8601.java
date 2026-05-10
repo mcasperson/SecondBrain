@@ -16,9 +16,20 @@ import java.time.format.DateTimeFormatterBuilder;
 public class DateParserIso8601 implements DateParser {
     @Override
     public ZonedDateTime parseDate(final String date) {
-        return Try.of(() -> parseZonedDate(date))
-                .recoverWith(error -> Try.of(() -> parseLocalDate(date)))
+        final String normalizedDate = normalizeDateSeparator(date);
+
+        return Try.of(() -> parseZonedDate(normalizedDate))
+                .recoverWith(error -> Try.of(() -> parseLocalDate(normalizedDate)))
                 .get();
+    }
+
+    private String normalizeDateSeparator(final String date) {
+        // ISO8601 standard uses 'T', but some inputs provide lowercase 't'.
+        if (date != null && date.length() > 10 && date.charAt(10) == 't') {
+            return date.substring(0, 10) + 'T' + date.substring(11);
+        }
+
+        return date;
     }
 
     public ZonedDateTime parseZonedDate(final String date) {
