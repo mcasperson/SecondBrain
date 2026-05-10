@@ -3,6 +3,7 @@ package secondbrain.domain.sanitize;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -16,6 +17,7 @@ class CustomUnredactionTest {
         final CustomUnredaction unredaction = new CustomUnredaction();
         setField(unredaction, "regex1", Optional.of("ACC-\\d+"));
         setField(unredaction, "sanitizeDocument", accountSanitizer());
+        init(unredaction);
 
         final String original = "Customer account ACC-123 was charged.";
         final String redacted = "Customer account {{{ACCOUNT}}} was charged.";
@@ -28,6 +30,7 @@ class CustomUnredactionTest {
         final CustomUnredaction unredaction = new CustomUnredaction();
         setField(unredaction, "regex1", Optional.of("ACC-\\d+"));
         setField(unredaction, "sanitizeDocument", accountSanitizer());
+        init(unredaction);
 
         final String original = "Customer IDs: ACC-123 and ACC-456";
         final String redacted = "Customer IDs: {{{ACCOUNT}}} and {{{ACCOUNT}}}";
@@ -40,6 +43,7 @@ class CustomUnredactionTest {
         final CustomUnredaction unredaction = new CustomUnredaction();
         setField(unredaction, "regex1", Optional.of("ACC-\\d+"));
         setField(unredaction, "sanitizeDocument", accountSanitizer());
+        init(unredaction);
 
         assertEquals("already redacted", unredaction.unredact("", "already redacted"));
         assertEquals("already redacted", unredaction.unredact("Customer ACC-123", "already redacted"));
@@ -51,6 +55,7 @@ class CustomUnredactionTest {
         final CustomUnredaction unredaction = new CustomUnredaction();
         setField(unredaction, "regex1", Optional.empty());
         setField(unredaction, "sanitizeDocument", accountSanitizer());
+        init(unredaction);
 
         final String redacted = "Customer account {{{ACCOUNT}}} was charged.";
 
@@ -62,6 +67,7 @@ class CustomUnredactionTest {
         final CustomUnredaction unredaction = new CustomUnredaction();
         setField(unredaction, "regex1", Optional.of("[invalid"));
         setField(unredaction, "sanitizeDocument", accountSanitizer());
+        init(unredaction);
 
         final String redacted = "Customer account {{{ACCOUNT}}} was charged.";
 
@@ -76,6 +82,12 @@ class CustomUnredactionTest {
         final Field field = target.getClass().getDeclaredField(fieldName);
         field.setAccessible(true);
         field.set(target, value);
+    }
+
+    private static void init(final CustomUnredaction target) throws Exception {
+        final Method init = target.getClass().getDeclaredMethod("init");
+        init.setAccessible(true);
+        init.invoke(target);
     }
 }
 

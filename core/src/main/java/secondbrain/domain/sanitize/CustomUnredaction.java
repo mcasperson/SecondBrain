@@ -2,6 +2,7 @@ package secondbrain.domain.sanitize;
 
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.tika.utils.StringUtils;
@@ -22,18 +23,24 @@ public class CustomUnredaction implements Unredaction {
     @Identifier("financialLocationContactRedaction")
     private SanitizeDocument sanitizeDocument;
 
+    private Optional<Pattern> compiledRegex1 = Optional.empty();
+
+    @PostConstruct
+    void init() {
+        compiledRegex1 = regex1.flatMap(value -> Try.of(() -> Pattern.compile(value)).toJavaOptional());
+    }
+
     @Override
     public String unredact(final String original, final String redacted) {
         if (StringUtils.isBlank(original) || StringUtils.isBlank(redacted)) {
             return redacted;
         }
 
-        if (regex1.isEmpty()) {
+        if (compiledRegex1.isEmpty()) {
             return redacted;
         }
 
-        final Set<Map.Entry<String, String>> replacements = Try.of(() -> Pattern.compile(regex1.get()))
-                .map(r -> r.matcher(original))
+        final Set<Map.Entry<String, String>> replacements = Try.of(() -> compiledRegex1.get().matcher(original))
                 .map(m -> {
                     Set<Map.Entry<String, String>> matches = new LinkedHashSet<>();
                     while (m.find()) {
