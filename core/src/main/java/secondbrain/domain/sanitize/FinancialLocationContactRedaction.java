@@ -12,8 +12,10 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.jooq.lambda.Seq;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.json.JsonDeserializer;
 
@@ -31,6 +33,9 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
 
     @Inject
     private JsonDeserializer jsonDeserializer;
+
+    @Inject
+    private Instance<Unredaction> unredactions;
 
     @PostConstruct
     void construct() {
@@ -122,12 +127,16 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
         }
 
         // Try to parse the document as a JSON object; if successful, filter strings recursively
-        return Try.of(() -> jsonDeserializer.tryDeserializeMap(document, String.class, Object.class))
+        final String redacted = Try.of(() -> jsonDeserializer.tryDeserializeMap(document, String.class, Object.class))
                 .filter(Optional::isPresent)
                 .map(map -> filterMap(map.get(), service))
                 .map(jsonDeserializer::serialize)
                 .recover(ex -> filterPlainText(document, service))
                 .get();
+
+        //
+        return Seq.seq(unredactions).foldLeft(redacted, (current, unredaction) ->
+                                unredaction.unredact(document, current));
     }
 
     @SuppressWarnings("unchecked")
