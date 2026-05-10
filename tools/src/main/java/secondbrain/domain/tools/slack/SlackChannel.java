@@ -318,7 +318,7 @@ public class SlackChannel implements Tool<Void> {
                         Seq.seq(results).foldLeft(
                                 // The starting point is the original message.
                                 messages,
-                                // Each user id match is replaced with the username retrieved from the Slack API.
+                                // Each channel id match is replaced with the channel name retrieved from the Slack API.
                                 // The original message with the user IDs replaced is returned.
                                 (m, match) -> m.replace(match.group(), slackClient.channel(client, token, match.group("channelname"), parsedArgs.getApiDelay()).channelName())))
                 /*

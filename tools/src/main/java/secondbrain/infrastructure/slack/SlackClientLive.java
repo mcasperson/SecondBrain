@@ -487,6 +487,7 @@ public class SlackClientLive implements SlackClient {
                         CHANNEL_TTL_SECONDS,
                         ChannelDetails.class,
                         () -> findChannelIdFromApi(client, accessToken, channel, null, apiDelay)).result())
+                .filter(Objects::nonNull)
                 .map(c -> new SlackChannelResource(c.teamId(), c.channelId(), c.channelName()))
                 .get();
     }
