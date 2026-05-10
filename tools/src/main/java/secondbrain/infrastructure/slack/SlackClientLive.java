@@ -49,7 +49,7 @@ public class SlackClientLive implements SlackClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final int API_TIMEOUT_SECONDS = 60;
-    private static final int CHANNEL_TTL_SECONDS = 60 * 60 * 24 * 30;
+    private static final int CHANNEL_TTL_SECONDS = 60 * 60 * 24 * 365;
 
     @Inject
     @ConfigProperty(name = "sb.slack.lock", defaultValue = "sb_slack.lock")
