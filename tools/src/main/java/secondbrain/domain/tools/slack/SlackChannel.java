@@ -152,7 +152,7 @@ public class SlackChannel implements Tool<Void> {
                             parsedArgs.getSecretAccessToken(),
                             parsedArgs.getChannel(),
                             parsedArgs.getApiDelay()))
-                    .map(c -> c.channelId())
+                    .map(SlackChannelResource::channelId)
                     .getOrElse("");
             if (org.apache.commons.lang3.StringUtils.isNotBlank(channelId)
                     && !slackClient.anyItemsInDuration(client, parsedArgs.getSecretAccessToken(), channelId, parsedArgs.getApiDelay(), ChronoUnit.YEARS, ChronoUnit.MONTHS)) {
