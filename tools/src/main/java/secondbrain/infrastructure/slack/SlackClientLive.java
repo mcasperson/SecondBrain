@@ -14,10 +14,10 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.date.DateTruncate;
-import secondbrain.domain.exceptions.EmptyString;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
@@ -25,7 +25,6 @@ import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.domain.tools.slack.ChannelDetails;
-import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.slack.api.SlackChannelResource;
 import secondbrain.infrastructure.slack.api.SlackConversationResource;
 import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
@@ -50,13 +49,11 @@ public class SlackClientLive implements SlackClient {
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final int API_TIMEOUT_SECONDS = 60;
     private static final int CHANNEL_TTL_SECONDS = 60 * 60 * 24 * 365;
+    private static final int CHANNEL_LIST_TTL_SECONDS = 60 * 60 * 24 * 7;
 
     @Inject
     @ConfigProperty(name = "sb.slack.lock", defaultValue = "sb_slack.lock")
     private String lockFile;
-
-    @Inject
-    private ValidateString validateString;
 
     @Inject
     @Preferred
@@ -486,7 +483,7 @@ public class SlackClientLive implements SlackClient {
                         hash,
                         CHANNEL_TTL_SECONDS,
                         ChannelDetails.class,
-                        () -> findChannelIdFromApi(client, accessToken, channel, null, apiDelay)).result())
+                        () -> findChannelIdFromApi(client, accessToken, channel, apiDelay)).result())
                 .filter(Objects::nonNull)
                 .map(c -> new SlackChannelResource(c.teamId(), c.channelId(), c.channelName()))
                 .get();
@@ -496,55 +493,60 @@ public class SlackClientLive implements SlackClient {
             final AsyncMethodsClient client,
             final String accessToken,
             final String channel,
-            @Nullable final String cursor,
             final int apiDelay) {
         return mutex.acquire(
                 MUTEX_TIMEOUT_MS,
                 lockFile + ".channelid",
-                () -> findChannelIdFromApiLocked(client, accessToken, channel, cursor, apiDelay));
+                () -> findChannelIdFromApiLocked(client, accessToken, channel, apiDelay));
     }
 
     private ChannelDetails findChannelIdFromApiLocked(
             final AsyncMethodsClient client,
             final String accessToken,
             final String channel,
-            @Nullable final String cursor,
             final int apiDelay) {
 
-        final ConversationsListResponse response = findConversationListFromApi(client, accessToken, cursor, 0, apiDelay);
-
-        final Try<ChannelDetails> results = Try.of(() -> response)
-                // try to get the channel
-                .map(r -> getChannelId(r, channel))
-                // this fails if nothing was returned
-                .map(Optional::get)
-                // if we fail, we try to get the next page
-                .recover(NoSuchElementException.class, ex -> findChannelIdFromApiLocked(
-                        client,
-                        accessToken,
-                        channel,
-                        // the cursor must be a non-empty string to do a recursive call
-                        validateString.throwIfBlank(response.getResponseMetadata().getNextCursor()),
-                        apiDelay));
-
-        return results
-                .mapFailure(
-                        API.Case(API.$(instanceOf(EmptyString.class)),
-                                ex -> new InternalFailure("Slack channel API reached the end of the results. Failed to find channel " + channel, ex)))
-                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsList", ex)))
+        final List<Conversation> conversations = Try
+                .of(() -> localStorage.getOrPutList(
+                        SlackClientLive.class.getSimpleName(),
+                        "SlackAPIChannelList",
+                        DigestUtils.sha256Hex(accessToken),
+                        CHANNEL_LIST_TTL_SECONDS,
+                        Conversation.class,
+                        () -> findConversationListFromApiUntilCursorEmptyLocked(
+                                client,
+                                accessToken,
+                                apiDelay)).result())
                 .get();
+
+        return conversations
+                .stream()
+                .filter(c -> channel.equals(c.getName()))
+                .findFirst()
+                .map(c -> new ChannelDetails(channel, c.getId(), c.getContextTeamId()))
+                .orElseThrow(() -> new InternalFailure(
+                        "Slack channel API reached the end of the results. Failed to find channel " + channel));
     }
 
-    private ConversationsListResponse findConversationListFromApi(
+    private List<Conversation> findConversationListFromApiUntilCursorEmptyLocked(
             final AsyncMethodsClient client,
             final String accessToken,
-            @Nullable final String cursor,
-            final int retryCount,
             final int apiDelay) {
-        return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
-                lockFile + ".conversationlist",
-                () -> findConversationListFromApiLocked(client, accessToken, cursor, retryCount, apiDelay));
+        final List<Conversation> conversations = new ArrayList<>();
+        @Nullable String cursor = null;
+
+        while (true) {
+            final ConversationsListResponse response = findConversationListFromApiLocked(client, accessToken, cursor, 0, apiDelay);
+            conversations.addAll(Objects.requireNonNullElse(response.getChannels(), List.<Conversation>of()));
+
+            cursor = Optional.ofNullable(response.getResponseMetadata())
+                    .map(ResponseMetadata::getNextCursor)
+                    .orElse(null);
+
+            if (StringUtils.isBlank(cursor)) {
+                return conversations;
+            }
+        }
     }
 
     private ConversationsListResponse findConversationListFromApiLocked(
@@ -579,13 +581,5 @@ public class SlackClientLive implements SlackClient {
                         .get())
                 .recover(ex -> findConversationListFromApiLocked(client, accessToken, cursor, retryCount + 1, apiDelay))
                 .get();
-    }
-
-    private Optional<ChannelDetails> getChannelId(ConversationsListResponse response, String channel) {
-        return response.getChannels()
-                .stream()
-                .filter(c -> c.getName().equals(channel))
-                .map(c -> new ChannelDetails(channel, c.getId(), c.getContextTeamId()))
-                .findFirst();
     }
 }
