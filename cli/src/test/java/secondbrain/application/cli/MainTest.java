@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.converter.StringConverterSelector;
 import secondbrain.domain.files.FileWriter;
@@ -69,7 +70,7 @@ class MainTest {
     @WeldSetup
     private final WeldInitiator weld = WeldInitiator
             .from(WeldInitiator.createWeld()
-                    .beanClasses(Main.class, FinancialLocationContactRedaction.class, MockBeans.class, DefaultPromptHandlerOutput.class)
+                    .beanClasses(Main.class, ArgsAccessor.class, FinancialLocationContactRedaction.class, MockBeans.class, DefaultPromptHandlerOutput.class)
                     .addExtension(new ConfigExtension()))
             .activate(ApplicationScoped.class)
             .build();
