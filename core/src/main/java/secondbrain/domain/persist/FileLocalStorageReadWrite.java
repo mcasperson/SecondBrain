@@ -222,6 +222,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     private String readFileSilentFail(final Path path) {
         return Try.of(() -> Files.readString(path))
+                .onFailure(ex -> logger.warning("Failed to read file " + path))
                 .getOrElse(() -> null);
     }
 
