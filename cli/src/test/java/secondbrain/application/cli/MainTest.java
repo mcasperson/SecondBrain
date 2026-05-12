@@ -12,7 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.ArgsAccessorSimple;
 import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.converter.StringConverterSelector;
 import secondbrain.domain.files.FileWriter;
@@ -22,10 +22,12 @@ import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.handler.PromptResponseSimple;
 import secondbrain.domain.json.JsonDeserializer;
+import secondbrain.domain.objects.SecretGetterGenerator;
 import secondbrain.domain.persist.LocalStorageReadWrite;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.IntermediateResult;
+import secondbrain.domain.validate.ValidateStringBlank;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -70,7 +72,14 @@ class MainTest {
     @WeldSetup
     private final WeldInitiator weld = WeldInitiator
             .from(WeldInitiator.createWeld()
-                    .beanClasses(Main.class, ArgsAccessor.class, FinancialLocationContactRedaction.class, MockBeans.class, DefaultPromptHandlerOutput.class)
+                    .beanClasses(
+                            Main.class,
+                            ValidateStringBlank.class,
+                            ArgsAccessorSimple.class,
+                            SecretGetterGenerator.class,
+                            FinancialLocationContactRedaction.class,
+                            MockBeans.class,
+                            DefaultPromptHandlerOutput.class)
                     .addExtension(new ConfigExtension()))
             .activate(ApplicationScoped.class)
             .build();
