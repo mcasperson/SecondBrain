@@ -20,6 +20,7 @@ import secondbrain.domain.persist.config.LocalStorageMemoryCacheSizeLimit;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -242,7 +243,9 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                             return value;
                         }))
                 .onFailure(ex -> {
-                    if (!(ex instanceof NoSuchElementException)) {
+                    if (ex instanceof OverlappingFileLockException) {
+                        logger.warning("Another thread is currently writing to this cache file: " + key);
+                    } else if (!(ex instanceof NoSuchElementException)) {
                         logger.warning("Failed to write cache file timestamp: " + exceptionHandler.getExceptionMessage(ex));
                     }
                 });
