@@ -86,4 +86,11 @@ public interface Tool<T> {
      * Get the label that identifies each item in the context.
      */
     String getContextLabel();
+
+    /**
+     * Generate a hash code based on the inputs that are passed to call.
+     */
+    int contextHashCode(Map<String, String> environmentSettings,
+                        String prompt,
+                        List<ToolArgs> arguments);
 }

@@ -166,6 +166,12 @@ public class ZenDeskOrganization implements Tool<Void> {
     }
 
     @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
+    }
+
+    @Override
     public String getContextLabel() {
         return "ZenDesk Ticket";
     }
@@ -409,11 +415,11 @@ public class ZenDeskOrganization implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> ticketToComments(final List<ZenDeskTicket> tickets,
-                                                                     final Map<String, String> environmentSettings,
-                                                                     final String url,
-                                                                     final String email,
-                                                                     final String token,
-                                                                     final ZenDeskConfig.LocalArguments parsedArgs) {
+                                                            final Map<String, String> environmentSettings,
+                                                            final String url,
+                                                            final String email,
+                                                            final String token,
+                                                            final ZenDeskConfig.LocalArguments parsedArgs) {
         return tickets.stream()
                 // Get the context associated with the ticket
                 .flatMap(ticket -> ticketTool.getContext(
@@ -808,17 +814,23 @@ class ZenDeskConfig {
             this.context = context;
         }
 
+        @Override
         public String toString() {
             return getToStringGenerator().generateGetterConfig(this);
         }
 
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
+        }
+
         public String getTicketFilterQuestion() {
             return getArgsAccessor().getArgument(
-                    getConfigTicketFilterQuestion()::get,
-                    arguments,
-                    context,
-                    CommonArguments.CONTENT_RATING_QUESTION_ARG,
-                    CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            getConfigTicketFilterQuestion()::get,
+                            arguments,
+                            context,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
                             "")
                     .getSafeValue();
         }

@@ -11,11 +11,13 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InternalFailure;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -24,7 +26,6 @@ import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.yaml.YamlDeserializer;
 
 import java.util.*;
-import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
@@ -101,11 +102,11 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
                 .getOrElseThrow(ex -> new ExternalFailure("Failed to download or parse the entity directory", ex));
 
         return entityDirectory.getPositionalEntities()
-                        .stream()
-                        .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
-                        .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), sharedExecutor.getExecutor(), BATCH_SIZE))
-                        .flatMap(stream -> stream)
-                        .toList();
+                .stream()
+                .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
+                .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), sharedExecutor.getExecutor(), BATCH_SIZE))
+                .flatMap(stream -> stream)
+                .toList();
     }
 
     @Override
@@ -124,6 +125,12 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
                 null);
     }
 
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final MultiSlackSearchCacheWarmerConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
+    }
 
     @Override
     public String getContextLabel() {
@@ -219,6 +226,9 @@ class MultiSlackSearchCacheWarmerConfig {
     private ArgsAccessor argsAccessor;
 
     @Inject
+    private ToStringGenerator toStringGenerator;
+
+    @Inject
     @ConfigProperty(name = "sb.multislacksearchcachewarmer.url")
     private Optional<String> configUrl;
 
@@ -241,6 +251,10 @@ class MultiSlackSearchCacheWarmerConfig {
         return argsAccessor;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -252,6 +266,16 @@ class MultiSlackSearchCacheWarmerConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public String getUrl() {

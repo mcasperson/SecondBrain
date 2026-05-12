@@ -48,4 +48,9 @@ public class TestTool implements Tool<Void> {
     public String getContextLabel() {
         return "Unused";
     }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        return getName().hashCode();
+    }
 }

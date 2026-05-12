@@ -23,6 +23,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.rating.RatingTool;
@@ -138,6 +139,12 @@ public class GitHubIssues implements Tool<Void> {
                 .stream()
                 .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
+    }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
     }
 
     private List<RagDocumentContext<GitHubIssue>> convertIssueToRagDoc(
@@ -333,6 +340,9 @@ class GitHubIssueConfig {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     public Optional<String> getConfigAccessToken() {
         return configAccessToken;
     }
@@ -409,6 +419,10 @@ class GitHubIssueConfig {
         return validateString;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem {
         private final List<ToolArgs> arguments;
         private final String prompt;
@@ -418,6 +432,16 @@ class GitHubIssueConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         @SuppressWarnings("NullAway")

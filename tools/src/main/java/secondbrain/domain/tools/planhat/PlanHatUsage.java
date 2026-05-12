@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -17,6 +16,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.domain.web.ClientConstructor;
@@ -109,6 +109,12 @@ public class PlanHatUsage implements Tool<Void> {
     }
 
     @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
+    }
+
+    @Override
     public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -146,7 +152,7 @@ public class PlanHatUsage implements Tool<Void> {
         final Company company = firstCompany.get();
 
         final List<RagDocumentContext<Company>> usageContext = parsedArgs.getUsagePairs()
-                 .filter(pair -> StringUtils.isNotBlank(pair.getLeft()) && StringUtils.isNotBlank(pair.getRight()))
+                .filter(pair -> StringUtils.isNotBlank(pair.getLeft()) && StringUtils.isNotBlank(pair.getRight()))
                 .map(pair -> new RagDocumentContext<>(
                         getName(),
                         getContextLabel() + " " + company.name() + " " + pair.getLeft(),
@@ -233,20 +239,20 @@ public class PlanHatUsage implements Tool<Void> {
                 .stream()
                 .filter(p -> StringUtils.isBlank(p.type()))
                 .map(p -> new RagDocumentContext<Company>(
-                                getName(),
-                                getContextLabel() + " " + company.name() + " " + p.description(),
+                        getName(),
+                        getContextLabel() + " " + company.name() + " " + p.description(),
+                        p.value().toString(),
+                        List.of(),
+                        company.id() + ":" + p.description(),
+                        company,
+                        new MetaObjectResults(new MetaObjectResult(
+                                p.description(),
                                 p.value().toString(),
-                                List.of(),
-                                company.id() + ":" + p.description(),
-                                company,
-                                new MetaObjectResults(new MetaObjectResult(
-                                        p.description(),
-                                        p.value().toString(),
-                                        company.id(),
-                                        getName())),
-                                null,
-                                null,
-                                List.of()))
+                                company.id(),
+                                getName())),
+                        null,
+                        null,
+                        List.of()))
                 .toList();
 
         // Find all properties that represent people and resolve them to the person's name
@@ -255,13 +261,13 @@ public class PlanHatUsage implements Tool<Void> {
                 .filter(p -> "Person".equalsIgnoreCase(p.type()))
                 .map(p ->
                         Try.withResources(clientConstructor::getClient)
-                            .of(client -> planHatClient.getUser(
-                                    client,
-                                    p.value().toString(),
-                                    // TODO: work out a way to identify planhat instances with custom fields. This logic assumes one planhat instance.
-                                    tokens.getFirst().getLeft(),
-                                    tokens.getFirst().getRight(),
-                                    parsedArgs.getSearchTTL()))
+                                .of(client -> planHatClient.getUser(
+                                        client,
+                                        p.value().toString(),
+                                        // TODO: work out a way to identify planhat instances with custom fields. This logic assumes one planhat instance.
+                                        tokens.getFirst().getLeft(),
+                                        tokens.getFirst().getRight(),
+                                        parsedArgs.getSearchTTL()))
                                 .map(person -> Pair.of(p.description(), person.getFullName()))
                                 .getOrElse(() -> null))
                 .filter(Objects::nonNull)
@@ -287,6 +293,7 @@ public class PlanHatUsage implements Tool<Void> {
                 .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
     }
+
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
@@ -422,6 +429,9 @@ class PlanHatUsageConfig {
     @Inject
     private ArgsAccessor argsAccessor;
 
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     public Optional<String> getConfigCompany() {
         return configCompany;
     }
@@ -534,6 +544,10 @@ class PlanHatUsageConfig {
         return configCustomPerson5;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -545,6 +559,16 @@ class PlanHatUsageConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public String getCompany() {
@@ -664,7 +688,7 @@ class PlanHatUsageConfig {
                     getCustom3(),
                     getCustom4(),
                     getCustom5()
-             );
+            );
         }
 
         public String getUsageId1() {
@@ -826,13 +850,13 @@ class PlanHatUsageConfig {
                     getCustomPerson5());
         }
 
-         public Stream<Pair<String, String>> getUsagePairs() {
-             return Stream.of(
-                     Pair.of(getUsageName1(), getUsageId1()),
-                     Pair.of(getUsageName2(), getUsageId2()),
-                     Pair.of(getUsageName3(), getUsageId3()),
-                     Pair.of(getUsageName4(), getUsageId4()),
-                     Pair.of(getUsageName5(), getUsageId5()));
-         }
+        public Stream<Pair<String, String>> getUsagePairs() {
+            return Stream.of(
+                    Pair.of(getUsageName1(), getUsageId1()),
+                    Pair.of(getUsageName2(), getUsageId2()),
+                    Pair.of(getUsageName3(), getUsageId3()),
+                    Pair.of(getUsageName4(), getUsageId4()),
+                    Pair.of(getUsageName5(), getUsageId5()));
+        }
     }
 }

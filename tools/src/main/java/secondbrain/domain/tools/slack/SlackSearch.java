@@ -35,7 +35,6 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
-import secondbrain.domain.processing.RatingResults;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -121,6 +120,12 @@ public class SlackSearch implements Tool<Void> {
         return List.of(
                 new ToolArguments(SLACK_SEARCH_KEYWORDS_ARG, "Optional comma separated list of keywords defined in the prompt", "")
         );
+    }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
     }
 
     @Override
@@ -219,11 +224,11 @@ public class SlackSearch implements Tool<Void> {
                 .stream()
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc ->
-                    ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
-                            .map(results -> ragDoc
-                                    .addMetadata(results.metadata())
-                                    .addIntermediateResults(results.intermediateResults()))
-                            .orElse(ragDoc)
+                        ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
+                                .map(results -> ragDoc
+                                        .addMetadata(results.metadata())
+                                        .addIntermediateResults(results.intermediateResults()))
+                                .orElse(ragDoc)
                 )
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
@@ -485,6 +490,11 @@ class SlackSearchConfig {
         @Override
         public String toString() {
             return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public Set<String> getSearchKeywords() {

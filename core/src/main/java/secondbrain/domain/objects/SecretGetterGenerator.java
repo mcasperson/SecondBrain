@@ -44,4 +44,36 @@ public class SecretGetterGenerator implements ToStringGenerator {
 
         return String.join("\n", values);
     }
+
+    @Override
+    public int generateHashGetterConfig(final Object obj) {
+        return generateHashGetterConfig(obj, List.of());
+    }
+
+    @Override
+    public int generateHashGetterConfig(final Object obj, final List<String> excludeFields) {
+        if (obj == null) {
+            return 0;
+        }
+
+        final List<String> processedExclusions = Objects.requireNonNullElse(excludeFields, List.<String>of()).stream()
+                .map(e -> e.toLowerCase(Locale.ROOT))
+                .toList();
+
+        final List<Object> values = Arrays.stream(obj.getClass().getMethods())
+                .filter(method -> !processedExclusions.contains(method.getName().toLowerCase(Locale.ROOT)))
+                .sorted(Comparator.comparing(Method::getName))
+                .filter(method -> (method.getName().startsWith("get") || method.getName().startsWith("is")) &&
+                        !method.getName().equals("getClass") &&
+                        !method.getName().startsWith("getSecret") &&
+                        !method.getName().startsWith("getSensitive") &&
+                        method.getParameterCount() == 0 &&
+                        method.getReturnType() != void.class)
+                .map(getterMethod -> Try.of(() -> getterMethod.invoke(obj))
+                        .getOrNull())
+                .filter(Objects::nonNull)
+                .toList();
+
+        return Objects.hash(values.toArray());
+    }
 }

@@ -7,6 +7,8 @@ import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("NullAway")
@@ -100,6 +102,37 @@ class SecretGetterGeneratorTest {
 
         // "getAge" should come before "getName" alphabetically
         assertTrue(ageIndex < nameIndex);
+    }
+
+    @Test
+    void generateHashGetterConfig_withNull() {
+        int result = generator.generateHashGetterConfig(null);
+        assertEquals(0, result);
+    }
+
+    @Test
+    void generateHashGetterConfig_withSimpleObject() {
+        TestObject obj1 = new TestObject("John", 30, "secret123");
+        TestObject obj2 = new TestObject("John", 30, "secret456");
+        TestObject obj3 = new TestObject("Jane", 30, "secret123");
+
+        int hash1 = generator.generateHashGetterConfig(obj1);
+        int hash2 = generator.generateHashGetterConfig(obj2);
+        int hash3 = generator.generateHashGetterConfig(obj3);
+
+        assertEquals(hash1, hash2, "Hash should be same as secrets are ignored");
+        assertNotEquals(hash1, hash3, "Hash should be different for different names");
+    }
+
+    @Test
+    void generateHashGetterConfig_withExclusions() {
+        TestObject obj1 = new TestObject("John", 30, "secret123");
+        TestObject obj2 = new TestObject("Jane", 30, "secret123");
+
+        int hash1 = generator.generateHashGetterConfig(obj1, List.of("getName"));
+        int hash2 = generator.generateHashGetterConfig(obj2, List.of("getName"));
+
+        assertEquals(hash1, hash2, "Hash should be same if name is excluded");
     }
 
     // Test helper classes

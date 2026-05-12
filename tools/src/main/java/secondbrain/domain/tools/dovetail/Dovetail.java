@@ -13,7 +13,11 @@ import org.jooq.lambda.Seq;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.*;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
+import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.config.LocalConfigFilteredParent;
+import secondbrain.domain.config.LocalConfigKeywordsEntity;
+import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -29,7 +33,10 @@ import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
-import secondbrain.domain.tooldefs.*;
+import secondbrain.domain.tooldefs.IntermediateResult;
+import secondbrain.domain.tooldefs.Tool;
+import secondbrain.domain.tooldefs.ToolArgs;
+import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.dovetail.model.DovetailDataDetails;
 import secondbrain.domain.validate.ValidateString;
@@ -43,8 +50,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
-
-import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
@@ -171,7 +176,7 @@ public class Dovetail implements Tool<Void> {
             final List<ToolArgs> arguments) {
         final DovetailConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        if (StringUtils.isNotBlank(parsedArgs.getStartDate()) && StringUtils.isNotBlank(parsedArgs.getEndDate())){
+        if (StringUtils.isNotBlank(parsedArgs.getStartDate()) && StringUtils.isNotBlank(parsedArgs.getEndDate())) {
             logger.info("Getting context for " + getName() + " from " + parsedArgs.getStartDate() + " to " + parsedArgs.getEndDate());
         } else if (StringUtils.isNotBlank(parsedArgs.getStartDate())) {
             logger.info("Getting context for " + getName() + " from " + parsedArgs.getStartDate());
@@ -187,10 +192,10 @@ public class Dovetail implements Tool<Void> {
                         .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         final List<DovetailDataItem> items = Try.of(() ->
-                dovetailClient.getDataItems(
-                        parsedArgs.getSecretApiKey(),
-                        parsedArgs.getStartDate(),
-                        parsedArgs.getEndDate()))
+                        dovetailClient.getDataItems(
+                                parsedArgs.getSecretApiKey(),
+                                parsedArgs.getStartDate(),
+                                parsedArgs.getEndDate()))
                 .onFailure(ex -> logger.severe("Failed to get Dovetail data items: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .get();
 
@@ -199,12 +204,12 @@ public class Dovetail implements Tool<Void> {
         final List<DovetailDataDetails> dataItems = items.stream()
                 .filter(item -> !item.deleted())
                 .collect(parallelToStream(item -> new DovetailDataDetails(
-                        item.id(),
-                        item.title(),
-                        item.project() != null ? item.project().title() : "",
-                        item.createdAt(),
-                        dovetailClient.exportDataItemAsMarkdown(parsedArgs.getSecretApiKey(), item.id()),
-                        parsedArgs.getDovetailBaseUrl()),
+                                item.id(),
+                                item.title(),
+                                item.project() != null ? item.project().title() : "",
+                                item.createdAt(),
+                                dovetailClient.exportDataItemAsMarkdown(parsedArgs.getSecretApiKey(), item.id()),
+                                parsedArgs.getDovetailBaseUrl()),
                         sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                 .toList();
 
@@ -256,12 +261,12 @@ public class Dovetail implements Tool<Void> {
 
         final var summarized = parsedArgs.getSummarizeDocument()
                 ? ragDocSummarizer.getDocumentSummary(
-                    getName(),
-                    getContextLabelWithMeta(enriched.source() instanceof DovetailDataDetails d ? d : null),
-                    "Dovetail",
-                    enriched,
-                    environmentSettings,
-                    parsedArgs)
+                getName(),
+                getContextLabelWithMeta(enriched.source() instanceof DovetailDataDetails d ? d : null),
+                "Dovetail",
+                enriched,
+                environmentSettings,
+                parsedArgs)
                 : enriched;
 
         return Optional.of(summarized.convertToRagDocumentContextVoid());
@@ -292,6 +297,12 @@ public class Dovetail implements Tool<Void> {
     @Override
     public String getContextLabel() {
         return "Dovetail data item";
+    }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final DovetailConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
     }
 
     private String getContextLabelWithMeta(@Nullable final DovetailDataDetails item) {
@@ -509,6 +520,11 @@ class DovetailConfig {
         @Override
         public String toString() {
             return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         @SuppressWarnings("NullAway")

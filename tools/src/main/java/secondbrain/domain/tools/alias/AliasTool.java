@@ -13,11 +13,12 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.List;
@@ -118,6 +119,12 @@ public class AliasTool implements Tool<Void> {
     public String getContextLabel() {
         return "Entity Name";
     }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final AliasConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
+    }
 }
 
 @ApplicationScoped
@@ -137,6 +144,9 @@ class AliasConfig {
     @ConfigProperty(name = "sb.alias.postinferenceHooks", defaultValue = "")
     private Optional<String> configPostInferenceHooks;
 
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -153,12 +163,26 @@ class AliasConfig {
         return configPostInferenceHooks;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
         private final String prompt;
 
         private final Map<String, String> environmentSettings;
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
+        }
 
         public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> environmentSettings) {
             this.arguments = arguments;

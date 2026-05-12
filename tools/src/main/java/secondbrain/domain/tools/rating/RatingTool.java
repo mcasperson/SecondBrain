@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.context.HashMapEnvironmentSettings;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -16,6 +17,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InvalidAnswer;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
@@ -25,10 +27,10 @@ import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.infrastructure.llm.LlmClient;
 
-import java.util.*;
-
-import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
-
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -265,6 +267,12 @@ public class RatingTool implements Tool<Void> {
     }
 
     @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
+    }
+
+    @Override
     public String getContextLabel() {
         return "Document";
     }
@@ -345,6 +353,9 @@ class RatingConfig {
     @ConfigProperty(name = "sb.rating.ignoreInvalidResponses", defaultValue = "false")
     private Optional<String> configIgnoreInvalidResponses;
 
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -419,6 +430,10 @@ class RatingConfig {
         return configPostInferenceHooks;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -430,6 +445,16 @@ class RatingConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.environmentSettings = environmentSettings;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public String getDocument() {

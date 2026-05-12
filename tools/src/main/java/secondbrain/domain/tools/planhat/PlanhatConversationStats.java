@@ -4,7 +4,6 @@ import com.google.common.collect.ImmutableList;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
@@ -81,6 +80,12 @@ public class PlanhatConversationStats implements Tool<Void> {
     @Override
     public String getDescription() {
         return "Returns a summary of PlanHat conversation counts grouped by type for a given company.";
+    }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final PlanhatConversationStatsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
     }
 
     @Override
@@ -294,6 +299,11 @@ class PlanhatConversationStatsConfig {
         @Override
         public String toString() {
             return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public String getCompanyId() {

@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
@@ -17,6 +18,7 @@ import secondbrain.domain.exceptions.ExternalFailure;
 import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -29,7 +31,6 @@ import secondbrain.domain.yaml.YamlDeserializer;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.*;
-import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import java.util.logging.Logger;
 
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
@@ -110,15 +111,15 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                 .getOrElseThrow(ex -> new ExternalFailure("Failed to download or parse the entity directory", ex));
 
         final List<RagDocumentContext<Void>> ragContext = entityDirectory.getEntities()
-                        .stream()
-                        .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.getName().toLowerCase(Locale.ROOT)))
-                        // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
-                        // We batch here to interleave API requests to the various external data sources
-                        .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), sharedExecutor.getExecutor(), BATCH_SIZE))
-                        .flatMap(stream -> stream)
-                        // We want the context sorted back into a predictable order to avoid a cache miss due to the contents of the system prompt changing
-                        .sorted(Comparator.comparing(RagDocumentContext::tool))
-                        .toList();
+                .stream()
+                .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.getName().toLowerCase(Locale.ROOT)))
+                // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
+                // We batch here to interleave API requests to the various external data sources
+                .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), sharedExecutor.getExecutor(), BATCH_SIZE))
+                .flatMap(stream -> stream)
+                // We want the context sorted back into a predictable order to avoid a cache miss due to the contents of the system prompt changing
+                .sorted(Comparator.comparing(RagDocumentContext::tool))
+                .toList();
 
         if (ragContext.isEmpty()) {
             throw new InsufficientContext("No GitHub issues, GitHub diffs, or Slack messages found.");
@@ -141,6 +142,12 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     @Override
     public String getContextLabel() {
         return "Unused";
+    }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final GitHubSlackPublicFileConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
     }
 
     private List<RagDocumentContext<Void>> getEntityContext(
@@ -331,6 +338,9 @@ class GitHubSlackPublicFileConfig {
     @ConfigProperty(name = "sb.githubslackpublicfile.entity")
     private Optional<String> configEntity;
 
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -376,6 +386,10 @@ class GitHubSlackPublicFileConfig {
         return configEntity;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
         private final String prompt;
@@ -385,6 +399,16 @@ class GitHubSlackPublicFileConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public String getUrl() {

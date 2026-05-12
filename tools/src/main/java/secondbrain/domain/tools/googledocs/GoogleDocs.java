@@ -36,6 +36,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
@@ -225,6 +226,12 @@ public class GoogleDocs implements Tool<Void> {
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
                 .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
+    }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
     }
 
     private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context) {
@@ -431,6 +438,9 @@ class GoogleDocsConfig {
     @Inject
     private ArgsAccessor argsAccessor;
 
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     public Optional<String> getConfigGoogleServiceAccountJson() {
         return configGoogleServiceAccountJson;
     }
@@ -483,6 +493,10 @@ class GoogleDocsConfig {
         return configPostInferenceHooks;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments implements LocalConfigKeywordsEntity, LocalConfigSummarizer, LocalConfigFilteredItem {
         private final List<ToolArgs> arguments;
 
@@ -494,6 +508,16 @@ class GoogleDocsConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public String getDocumentId() {

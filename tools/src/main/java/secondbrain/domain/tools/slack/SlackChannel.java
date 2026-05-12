@@ -131,6 +131,12 @@ public class SlackChannel implements Tool<Void> {
     }
 
     @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
+    }
+
+    @Override
     public String getContextLabel() {
         return "Slack Messages";
     }
@@ -222,7 +228,7 @@ public class SlackChannel implements Tool<Void> {
                         parsedArgs.getApiDelay())))
                 .map(c -> c.updateConversation(replaceUserIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)))
                 .map(c -> c.updateConversation(replaceChannelIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)))
-                .filter( c-> StringUtils.length(c.generateText()) >= MINIMUM_MESSAGE_LENGTH)
+                .filter(c -> StringUtils.length(c.generateText()) >= MINIMUM_MESSAGE_LENGTH)
                 .map(c -> dataToRagDoc.getDocumentContext(c, getName(), getContextLabel(), parsedArgs))
                 .map(List::of)
                 .recover(NoSuchElementException.class, ex -> {
@@ -241,11 +247,11 @@ public class SlackChannel implements Tool<Void> {
                 .stream()
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc ->
-                    ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
-                            .map(results -> ragDoc
-                                    .addMetadata(results.metadata())
-                                    .addIntermediateResults(results.intermediateResults()))
-                            .orElse(ragDoc)
+                        ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
+                                .map(results -> ragDoc
+                                        .addMetadata(results.metadata())
+                                        .addIntermediateResults(results.intermediateResults()))
+                                .orElse(ragDoc)
                 )
                 // Filter out any documents that don't meet the rating criteria
                 .filter(ragDoc -> ratingFilter.contextMeetsRating(ragDoc, parsedArgs))
@@ -514,8 +520,14 @@ class SlackChannelConfig {
             this.context = context;
         }
 
+        @Override
         public String toString() {
             return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public String getChannel() {

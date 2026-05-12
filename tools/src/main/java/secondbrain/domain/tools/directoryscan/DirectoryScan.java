@@ -26,6 +26,7 @@ import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -204,6 +205,12 @@ public class DirectoryScan implements Tool<Void> {
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
                 .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
+    }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
     }
 
     private List<String> getFiles(final DirectoryScanConfig.LocalArguments parsedArgs) {
@@ -411,6 +418,9 @@ class DirectoryScanConfig {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     public Optional<String> getConfigFileModel() {
         return configFileModel;
     }
@@ -471,6 +481,10 @@ class DirectoryScanConfig {
         return validateString;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments implements LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
@@ -482,6 +496,16 @@ class DirectoryScanConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public List<String> getDirectory() {
@@ -548,11 +572,11 @@ class DirectoryScanConfig {
         @Override
         public List<String> getKeywords() {
             return getArgsAccessor().getArgumentList(
-                    getConfigKeywords()::get,
-                    arguments,
-                    context,
-                    CommonArguments.KEYWORDS_ARG,
-                    CommonArguments.KEYWORDS_ARG,
+                            getConfigKeywords()::get,
+                            arguments,
+                            context,
+                            CommonArguments.KEYWORDS_ARG,
+                            CommonArguments.KEYWORDS_ARG,
                             "")
                     .stream()
                     .map(Argument::value)

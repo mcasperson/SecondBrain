@@ -1,11 +1,9 @@
 package secondbrain.domain.tools.planhat;
 
-import com.google.common.collect.ImmutableList;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -16,11 +14,8 @@ import org.jooq.lambda.Seq;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.LocalConfigFilteredItem;
-import secondbrain.domain.config.LocalConfigFilteredParent;
-import secondbrain.domain.config.LocalConfigKeywordsEntity;
-import secondbrain.domain.config.LocalConfigSummarizer;
-import secondbrain.domain.config.LocalSkipEmptyInLastDuration;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
+import secondbrain.domain.config.*;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -54,8 +49,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
-
-import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 
@@ -133,6 +126,12 @@ public class PlanHat implements Tool<Void> {
     @Override
     public String getDescription() {
         return "Queries PlanHat for customer information, activities, emails, and conversations";
+    }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
     }
 
     @Override
@@ -311,12 +310,12 @@ public class PlanHat implements Tool<Void> {
 
         final var summarized = parsedArgs.getSummarizeDocument()
                 ? ragDocSummarizer.getDocumentSummary(
-                    getName(),
-                    getContextLabelWithDate(withIntermediate.source() instanceof Conversation c ? c : null),
-                    "PlanHat",
-                    withIntermediate,
-                    environmentSettings,
-                    parsedArgs)
+                getName(),
+                getContextLabelWithDate(withIntermediate.source() instanceof Conversation c ? c : null),
+                "PlanHat",
+                withIntermediate,
+                environmentSettings,
+                parsedArgs)
                 : withIntermediate;
 
         return Optional.of(summarized.convertToRagDocumentContextVoid());
@@ -574,6 +573,11 @@ class PlanHatConfig {
         @Override
         public String toString() {
             return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public String getCompany() {

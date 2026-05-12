@@ -19,6 +19,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.tooldefs.Tool;
@@ -102,6 +103,12 @@ public class PublicFile implements Tool<Void> {
     @Override
     public String getContextLabel() {
         return "File Contents";
+    }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final PublicWebConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
     }
 
     @Override
@@ -200,6 +207,9 @@ class PublicWebConfig {
     @Inject
     private ArgsAccessor argsAccessor;
 
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -228,6 +238,10 @@ class PublicWebConfig {
         return argsAccessor;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments implements LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
@@ -239,6 +253,16 @@ class PublicWebConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public String getUrl() {

@@ -13,6 +13,7 @@ import org.jooq.lambda.Seq;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.config.*;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
@@ -43,8 +44,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
-
-import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
@@ -211,6 +210,12 @@ public class Gong implements Tool<Void> {
                 .get();
     }
 
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final GongConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
+    }
+
     private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings, final String prompt, final GongConfig.LocalArguments parsedArgs) {
 
@@ -298,12 +303,12 @@ public class Gong implements Tool<Void> {
 
         final var summarized = parsedArgs.getSummarizeTranscript()
                 ? ragDocSummarizer.getDocumentSummary(
-                    getName(),
-                    getContextLabelWithDate(withIntermediate.source() instanceof GongCallDetails g ? g : null),
-                    "Gong",
-                    withIntermediate,
-                    environmentSettings,
-                    parsedArgs)
+                getName(),
+                getContextLabelWithDate(withIntermediate.source() instanceof GongCallDetails g ? g : null),
+                "Gong",
+                withIntermediate,
+                environmentSettings,
+                parsedArgs)
                 : withIntermediate;
 
         return Optional.of(summarized);
@@ -783,24 +788,32 @@ class GongConfig {
             this.context = context;
         }
 
+        @Override
         public String toString() {
             return getToStringGenerator().generateGetterConfig(this);
         }
 
-        @SuppressWarnings("NullAway")
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
+        }
+
         public String getSecretAccessKey() {
             // Try to decrypt the value, otherwise assume it is a plain text value, and finally
             // fall back to the value defined in the local configuration.
-            final Try<String> token = Try.of(() -> getTextEncryptor().decrypt(context.get("gong_access_key")))
-                    .recover(e -> context.get("gong_access_key"))
-                    .mapTry(getValidateString()::throwIfBlank)
-                    .recoverWith(e -> Try.of(() -> getConfigAccessKey().get()));
-
-            if (token.isFailure() || StringUtils.isBlank(token.get())) {
-                throw new InternalFailure("Failed to get Gong access key");
+            final String accessKey = context.get("gong_access_key");
+            if (StringUtils.isNotBlank(accessKey)) {
+                return Try.of(() -> getTextEncryptor().decrypt(accessKey))
+                        .recover(e -> accessKey)
+                        .mapTry(getValidateString()::throwIfBlank)
+                        .recoverWith(e -> Try.of(() -> getConfigAccessKey().get()))
+                        .mapTry(getValidateString()::throwIfBlank)
+                        .getOrElseThrow(ex -> new InternalFailure("Failed to get Gong access key"));
             }
 
-            return token.get();
+            return Try.of(() -> getConfigAccessKey().get())
+                    .mapTry(getValidateString()::throwIfBlank)
+                    .getOrElseThrow(ex -> new InternalFailure("Failed to get Gong access key"));
         }
 
         @SuppressWarnings("NullAway")

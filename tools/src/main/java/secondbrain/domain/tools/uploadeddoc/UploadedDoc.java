@@ -22,10 +22,11 @@ import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
-import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -103,6 +104,12 @@ public class UploadedDoc implements Tool<Void> {
     @Override
     public String getContextLabel() {
         return "File Contents";
+    }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final UploadDocConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
     }
 
     @Override
@@ -217,6 +224,9 @@ class UploadDocConfig {
     @Inject
     private ArgsAccessor argsAccessor;
 
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     public Optional<String> getConfigUploadKeywords() {
         return configUploadKeywords;
     }
@@ -241,6 +251,10 @@ class UploadDocConfig {
         return argsAccessor;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -252,6 +266,16 @@ class UploadDocConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public byte[] getDocument() {

@@ -24,6 +24,7 @@ import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.limit.TrimResult;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.rating.RatingTool;
@@ -134,6 +135,12 @@ public class YoutubePlaylist implements Tool<Void> {
     }
 
     @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
+    }
+
+    @Override
     public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -148,14 +155,14 @@ public class YoutubePlaylist implements Tool<Void> {
 
         final Try<List<YoutubeVideo>> videos = parsedArgs.getPlaylistId().isEmpty() ?
                 Try.of(() -> youtubeClient.searchVideos(parsedArgs.getQuery(), parsedArgs.getChannelId(), "", parsedArgs.getSecretApiKey())
-                        .stream()
-                        .map(YoutubeSearchItem::toYoutubeVideo)
-                        .toList()) :
+                             .stream()
+                             .map(YoutubeSearchItem::toYoutubeVideo)
+                             .toList()) :
                 Try.of(() -> parsedArgs.getPlaylistId()
-                        .stream()
-                        .flatMap(playList -> youtubeClient.getPlaylistItems(playList, "", parsedArgs.getSecretApiKey()).stream())
-                        .map(YoutubePlaylistsItem::toYoutubeVideo)
-                        .toList());
+                             .stream()
+                             .flatMap(playList -> youtubeClient.getPlaylistItems(playList, "", parsedArgs.getSecretApiKey()).stream())
+                             .map(YoutubePlaylistsItem::toYoutubeVideo)
+                             .toList());
 
         final List<Pair<YoutubeVideo, String>> calls = videos
                 .map(list -> list.stream().limit(parsedArgs.getMaxVideos()).toList())
@@ -200,8 +207,8 @@ public class YoutubePlaylist implements Tool<Void> {
                  */
                 .map(ragDoc -> parsedArgs.getSummarizeTranscript() ?
                         Try.of(() -> getCallSummary(ragDoc, environmentSettings, parsedArgs))
-                                .onFailure(ex -> logger.warning("Failed to summarize Youtube video transcript for video ID " + ragDoc.id() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
-                                .getOrNull() :
+                        .onFailure(ex -> logger.warning("Failed to summarize Youtube video transcript for video ID " + ragDoc.id() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                        .getOrNull() :
                         ragDoc)
                 // A failure results in a null value, which is filtered out
                 .filter(Objects::nonNull)
@@ -357,6 +364,9 @@ class YoutubeConfig {
     private ArgsAccessor argsAccessor;
 
     @Inject
+    private ToStringGenerator toStringGenerator;
+
+    @Inject
     @Identifier("AES")
     private Encryptor textEncryptor;
 
@@ -475,6 +485,10 @@ class YoutubeConfig {
         return argsAccessor;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public Encryptor getTextEncryptor() {
         return textEncryptor;
     }
@@ -504,6 +518,16 @@ class YoutubeConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         @SuppressWarnings("NullAway")

@@ -22,14 +22,15 @@ import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.sanitize.SanitizeDocument;
-import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -115,6 +116,12 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     }
 
     @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
+    }
+
+    @Override
     public String getContextLabel() {
         return "ZenDesk Ticket";
     }
@@ -140,11 +147,11 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
                         parsedArgs))
                 .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
                 .map(ticket ->
-                    ratingMetadata.getMetadata(getName(), environmentSettings, ticket, parsedArgs)
-                            .map(results -> ticket
-                                    .addMetadata(results.metadata())
-                                    .addIntermediateResults(results.intermediateResults()))
-                            .orElse(ticket)
+                        ratingMetadata.getMetadata(getName(), environmentSettings, ticket, parsedArgs)
+                                .map(results -> ticket
+                                        .addMetadata(results.metadata())
+                                        .addIntermediateResults(results.intermediateResults()))
+                                .orElse(ticket)
                 )
                 .map(ticket -> ticket.addIntermediateResult(
                         new IntermediateResult(ticket.document(), ticketToFileName(ticket, parsedArgs.getEntity()))))
@@ -398,6 +405,9 @@ class ZenDeskTicketConfig {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -470,6 +480,10 @@ class ZenDeskTicketConfig {
         return configTicketCreatedAt;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
@@ -481,6 +495,16 @@ class ZenDeskTicketConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         @SuppressWarnings("NullAway")

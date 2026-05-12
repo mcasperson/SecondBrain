@@ -6,4 +6,8 @@ public interface ToStringGenerator {
     String generateGetterConfig(Object obj);
 
     String generateGetterConfig(Object obj, List<String> excludeFields);
+
+    int generateHashGetterConfig(Object obj);
+
+    int generateHashGetterConfig(Object obj, List<String> excludeFields);
 }

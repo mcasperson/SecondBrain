@@ -13,11 +13,8 @@ import org.jooq.lambda.Seq;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
-import secondbrain.domain.config.LocalConfigFilteredItem;
-import secondbrain.domain.config.LocalConfigFilteredParent;
-import secondbrain.domain.config.LocalConfigKeywordsEntity;
-import secondbrain.domain.config.LocalConfigSummarizer;
-import secondbrain.domain.config.LocalSkipEmptyInLastDuration;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
+import secondbrain.domain.config.*;
 import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
@@ -40,7 +37,6 @@ import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.salesforce.SalesforceClient;
 import secondbrain.infrastructure.salesforce.api.SalesforceEmailRecord;
 import secondbrain.infrastructure.salesforce.api.SalesforceOauthTokenResponse;
-import secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery;
 import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
 import java.time.OffsetDateTime;
@@ -48,7 +44,6 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 import java.util.*;
-import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -282,12 +277,12 @@ public class Salesforce implements Tool<Void> {
 
         final var summarized = parsedArgs.getSummarizeDocument()
                 ? ragDocSummarizer.getDocumentSummary(
-                    getName(),
-                    getContextLabelWithDate(withIntermediate.source() instanceof SalesforceEmailRecord r ? r : null),
-                    "SalesforceEmail",
-                    withIntermediate,
-                    environmentSettings,
-                    parsedArgs)
+                getName(),
+                getContextLabelWithDate(withIntermediate.source() instanceof SalesforceEmailRecord r ? r : null),
+                "SalesforceEmail",
+                withIntermediate,
+                environmentSettings,
+                parsedArgs)
                 : withIntermediate;
 
         return Optional.of(summarized);
@@ -318,6 +313,12 @@ public class Salesforce implements Tool<Void> {
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
                 .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
+    }
+
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
     }
 
     @Override
@@ -609,6 +610,11 @@ class SalesforceConfig {
         @Override
         public String toString() {
             return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public String getAccountId() {

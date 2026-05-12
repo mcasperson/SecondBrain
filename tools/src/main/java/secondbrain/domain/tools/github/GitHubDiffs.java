@@ -4,7 +4,6 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -21,6 +20,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.list.ListUtilsEx;
+import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -221,6 +221,12 @@ public class GitHubDiffs implements Tool<Void> {
                 .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
+    @Override
+    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parsedArgs.hashCode();
+    }
+
     private List<RagDocumentContext<GitHubCommitAndDiff>> convertCommitsToDiffSummaries(
             final List<GitHubCommitAndDiff> commitsResponse,
             final GitHubDiffConfig.LocalArguments parsedArgs,
@@ -244,8 +250,8 @@ public class GitHubDiffs implements Tool<Void> {
          */
         final String summary = parsedArgs.getSummarizeDiff()
                 ? Try.of(() -> getDiffSummary(commit.getMessageAndDiff(), parsedArgs, environmentSettings))
-                .onFailure(throwable -> logger.warning("Failed to summarize diff for commit " + commit.commit().sha() + ": " + throwable.getMessage()))
-                .getOrElse("Failed to summarize diff")
+                  .onFailure(throwable -> logger.warning("Failed to summarize diff for commit " + commit.commit().sha() + ": " + throwable.getMessage()))
+                  .getOrElse("Failed to summarize diff")
                 : commit.getMessageAndDiff();
 
         return new RagDocumentContext<>(
@@ -386,6 +392,9 @@ class GitHubDiffConfig {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private ToStringGenerator toStringGenerator;
+
     public Optional<String> getConfigGithubAccessToken() {
         return configGithubAccessToken;
     }
@@ -454,6 +463,10 @@ class GitHubDiffConfig {
         return validateString;
     }
 
+    public ToStringGenerator getToStringGenerator() {
+        return toStringGenerator;
+    }
+
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
@@ -465,6 +478,16 @@ class GitHubDiffConfig {
             this.arguments = arguments;
             this.prompt = prompt;
             this.context = context;
+        }
+
+        @Override
+        public String toString() {
+            return getToStringGenerator().generateGetterConfig(this);
+        }
+
+        @Override
+        public int hashCode() {
+            return getToStringGenerator().generateHashGetterConfig(this);
         }
 
         public int getDays() {
