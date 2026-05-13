@@ -12,6 +12,8 @@ import org.jooq.lambda.Seq;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @ApplicationScoped
 public class CustomUnredaction implements Unredaction {
@@ -20,14 +22,36 @@ public class CustomUnredaction implements Unredaction {
     private Optional<String> regex1;
 
     @Inject
+    @ConfigProperty(name = "sb.unredaction.regex2")
+    private Optional<String> regex2;
+
+    @Inject
+    @ConfigProperty(name = "sb.unredaction.regex3")
+    private Optional<String> regex3;
+
+    @Inject
+    @ConfigProperty(name = "sb.unredaction.regex4")
+    private Optional<String> regex4;
+
+    @Inject
+    @ConfigProperty(name = "sb.unredaction.regex5")
+    private Optional<String> regex5;
+
+    @Inject
     @Identifier("financialLocationContactRedaction")
     private SanitizeDocument sanitizeDocument;
 
-    private Optional<Pattern> compiledRegex1 = Optional.empty();
+    private final List<Pattern> compiledRegexes = new ArrayList<>();
 
     @PostConstruct
     void init() {
-        compiledRegex1 = regex1.flatMap(value -> Try.of(() -> Pattern.compile(value)).toJavaOptional());
+        compiledRegexes.addAll(Stream.of(regex1, regex2, regex3, regex4, regex5)
+                .filter(Objects::nonNull)
+                .filter(Optional::isPresent)
+                .map(r -> Try.of(() -> Pattern.compile(r.get())))
+                .filter(Try::isSuccess)
+                .map(Try::get)
+                .toList());
     }
 
     @Override
@@ -36,22 +60,24 @@ public class CustomUnredaction implements Unredaction {
             return redacted;
         }
 
-        if (compiledRegex1.isEmpty()) {
+        if (compiledRegexes.isEmpty()) {
             return redacted;
         }
 
-        final Set<Map.Entry<String, String>> replacements = Try.of(() -> compiledRegex1.get().matcher(original))
-                .map(m -> {
-                    Set<Map.Entry<String, String>> matches = new LinkedHashSet<>();
-                    while (m.find()) {
-                        final String sanitized = sanitizeDocument.sanitize(m.group());
-                        if (!StringUtils.isBlank(sanitized)) {
-                            matches.add(Map.entry(sanitized, m.group()));
-                        }
-                    }
-                    return matches;
-                })
-                .getOrElse(Collections::emptySet);
+        final Set<Map.Entry<String, String>> replacements = compiledRegexes.stream()
+                .flatMap(r -> Try.of(() -> r.matcher(original))
+                        .map(m -> {
+                            Set<Map.Entry<String, String>> matches = new LinkedHashSet<>();
+                            while (m.find()) {
+                                final String sanitized = sanitizeDocument.sanitize(m.group());
+                                if (!StringUtils.isBlank(sanitized)) {
+                                    matches.add(Map.entry(sanitized, m.group()));
+                                }
+                            }
+                            return matches.stream();
+                        })
+                        .getOrElse(Stream::empty))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         return Seq.seq(replacements).foldLeft(redacted,
                 (fixed, replacement) -> fixed.replaceFirst(
