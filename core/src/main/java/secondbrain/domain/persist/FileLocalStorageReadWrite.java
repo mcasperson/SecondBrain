@@ -173,7 +173,15 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                     if (SHUTDOWN.get()) {
                         return;
                     }
-                    
+
+                    /*
+                        Potential race condition here if shutdown exits after waiting for the lock
+                        and the bean is shut down. This will lead to:
+                        Exception in thread "Thread-25" org.jboss.weld.exceptions.IllegalStateException: WELD-000229: Contextual reference of Managed Bean
+
+                        We'll accept this, as if the bean is shutdown, this logic can fail without
+                        impacting the application's function.
+                    */
                     final List<Pair<Path, BasicFileAttributes>> files = allFiles.stream()
                             .filter(f -> !IGNORED_FILES.contains(f.getFileName().toString()))
                             .map(f -> Pair.of(f, Try.of(() -> Files.readAttributes(f, BasicFileAttributes.class)).getOrNull()))
