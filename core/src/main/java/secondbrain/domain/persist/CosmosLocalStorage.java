@@ -513,7 +513,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     final CacheResult<String> value = Try.of(generateValue::generate)
                             .map(v -> new CacheResult<String>(v, null, false))
                             .recover(TimeoutException.class, ex -> {
-                                logger.fine("Timeout when generating value, returning null");
+                                logger.fine("Timeout when generating value from " + tool + ", returning null");
                                 return new CacheResult<String>(null, ex, false);
                             })
                             .recover(ex -> {
@@ -534,7 +534,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     return Try.of(generateValue::generate)
                             .map(v -> new CacheResult<String>(v, null, false))
                             .recover(TimeoutException.class, ex2 -> {
-                                logger.fine("Timeout when generating value, returning null");
+                                logger.fine("Timeout when generating value from " + tool + ", returning null");
                                 return new CacheResult<String>(null, ex2, false);
                             })
                             .recover(ex2 -> {
@@ -623,7 +623,7 @@ public class CosmosLocalStorage implements LocalStorage {
                             final CacheResult<T> value = Try.of(generateValue::generate)
                                     .map(v -> new CacheResult<T>(v, null, false))
                                     .recover(TimeoutException.class, ex2 -> {
-                                        logger.fine("Timeout when generating value, returning null");
+                                        logger.fine("Timeout when generating value from " + tool + ", returning null");
                                         return new CacheResult<T>(null, ex2, false);
                                     })
                                     .recover(Exception.class, ex2 -> {
@@ -650,7 +650,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     return Try.of(generateValue::generate)
                             .map(v -> new CacheResult<T>(v, null, false))
                             .recover(TimeoutException.class, ex2 -> {
-                                logger.fine("Timeout when generating value, returning null");
+                                logger.fine("Timeout when generating value from " + tool + ", returning null");
                                 return new CacheResult<T>(null, ex2, false);
                             })
                             .recover(ex2 -> {
@@ -663,7 +663,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .recover(SerializationFailed.class, ex -> Try.of(generateValue::generate)
                         .map(v -> new CacheResult<T>(v, null, false))
                         .recover(TimeoutException.class, ex2 -> {
-                            logger.fine("Timeout when generating value, returning null");
+                            logger.fine("Timeout when generating value from " + tool + ", returning null");
                             return new CacheResult<T>(null, ex2, false);
                         })
                         .recover(ex2 -> {
@@ -740,7 +740,7 @@ public class CosmosLocalStorage implements LocalStorage {
                                     return Try.of(generateValue::generate)
                                             .map(v -> new CacheResult<T[]>(v, null, false))
                                             .recover(TimeoutException.class, ex2 -> {
-                                                logger.fine("Timeout when generating value, returning null");
+                                                logger.fine("Timeout when generating value from " + tool + ", returning null");
                                                 return new CacheResult<T[]>(null, ex2, false);
                                             })
                                             .recover(ex2 -> {
@@ -766,7 +766,7 @@ public class CosmosLocalStorage implements LocalStorage {
         final CacheResult<T[]> value = Try.of(generateValue::generate)
                 .map(v -> new CacheResult<T[]>(v, null, false))
                 .recover(TimeoutException.class, ex -> {
-                    logger.fine("Timeout when generating value, returning null");
+                    logger.fine("Timeout when generating value from " + tool + ", returning null");
                     return new CacheResult<T[]>(null, ex, false);
                 })
                 .recover(ex -> {
