@@ -510,7 +510,16 @@ public class CosmosLocalStorage implements LocalStorage {
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .recover(result -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                    final String value = generateValue.generate();
+                    final String value = Try.of(generateValue::generate)
+                            .recover(TimeoutException.class, ex -> {
+                                logger.fine("Timeout when generating value, returning null");
+                                return null;
+                            })
+                            .recover(Exception.class, ex -> {
+                                logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                                return null;
+                            })
+                            .getOrElse(() -> null);
                     if (StringUtils.isNotBlank(value)) {
                         putString(tool, source, promptHash, ttlSeconds, value);
                     }
@@ -519,15 +528,16 @@ public class CosmosLocalStorage implements LocalStorage {
                 .onFailure(LocalStorageFailure.class, ex -> logger.warning("Failed to generate value or save it to the database: " + exceptionHandler.getExceptionMessage(ex)))
                 .recover(LocalStorageFailure.class, ex -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                    return new CacheResult<String>(generateValue.generate(), false);
-                })
-                .recover(TimeoutException.class, ex -> {
-                    logger.fine("Timeout when generating value, returning null");
-                    return new CacheResult<String>(null, false);
-                })
-                .recover(Exception.class, ex -> {
-                    logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
-                    return new CacheResult<String>(null, false);
+                    return new CacheResult<String>(Try.of(generateValue::generate)
+                            .recover(TimeoutException.class, ex2 -> {
+                                logger.fine("Timeout when generating value, returning null");
+                                return null;
+                            })
+                            .recover(Exception.class, ex2 -> {
+                                logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex2));
+                                return null;
+                            })
+                            .getOrElse(() -> null), false);
                 })
                 .get();
     }
@@ -606,13 +616,25 @@ public class CosmosLocalStorage implements LocalStorage {
                 .recoverWith(ex -> Try.of(() -> {
                             logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                             logger.fine("Exception: " + exceptionHandler.getExceptionMessage(ex));
-                            final T value = generateValue.generate();
+                            final T value = Try.of(generateValue::generate)
+                                    .recover(TimeoutException.class, ex2 -> {
+                                        logger.fine("Timeout when generating value, returning null");
+                                        return null;
+                                    })
+                                    .recover(Exception.class, ex2 -> {
+                                        logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                                        return null;
+                                    })
+                                    .getOrElse(() -> null);
+
+                            if (value != null) {
                             putString(
                                     tool,
                                     source,
                                     promptHash,
                                     ttlSeconds,
                                     jsonDeserializer.serialize(value));
+                            }
                             return new CacheResult<T>(value, false);
                         })
                 )
@@ -620,18 +642,28 @@ public class CosmosLocalStorage implements LocalStorage {
                 .onFailure(SerializationFailed.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 .recover(LocalStorageFailure.class, ex -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                    return new CacheResult<T>(generateValue.generate(), false);
+                    return new CacheResult<T>(Try.of(generateValue::generate)
+                            .recover(TimeoutException.class, ex2 -> {
+                                logger.fine("Timeout when generating value, returning null");
+                                return null;
+                            })
+                            .recover(Exception.class, ex2 -> {
+                                logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                                return null;
+                            })
+                            .getOrElse(() -> null), false);
                 })
                 // Gracefully deal with an object that can't be serialized
-                .recover(SerializationFailed.class, ex -> new CacheResult<T>(generateValue.generate(), false))
-                .recover(TimeoutException.class, ex -> {
-                    logger.fine("Timeout when generating value, returning null");
-                    return new CacheResult<T>(null, false);
-                })
-                .recover(Exception.class, ex -> {
-                    logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
-                    return new CacheResult<T>(null, false);
-                })
+                .recover(SerializationFailed.class, ex -> new CacheResult<T>(Try.of(generateValue::generate)
+                        .recover(TimeoutException.class, ex2 -> {
+                            logger.fine("Timeout when generating value, returning null");
+                            return null;
+                        })
+                        .recover(Exception.class, ex2 -> {
+                            logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                            return null;
+                        })
+                        .getOrElse(() -> null), false))
                 .get();
     }
 
@@ -698,17 +730,18 @@ public class CosmosLocalStorage implements LocalStorage {
                         .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                         .recover(LocalStorageFailure.class, ex -> {
                                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                                    return new CacheResult<T[]>(generateValue.generate(), false);
+                                    return new CacheResult<T[]>(Try.of(generateValue::generate)
+                                            .recover(TimeoutException.class, ex2 -> {
+                                                logger.fine("Timeout when generating value, returning null");
+                                                return null;
+                                            })
+                                            .recover(Exception.class, ex2 -> {
+                                                logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                                                return null;
+                                            })
+                                            .getOrElse(() -> null), false);
                                 }
                         )
-                        .recover(TimeoutException.class, ex -> {
-                            logger.fine("Timeout when generating value, returning null");
-                            return new CacheResult<T[]>(null, false);
-                        })
-                        .recover(Exception.class, ex -> {
-                            logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
-                            return new CacheResult<T[]>(null, false);
-                        })
                         .get();
     }
 
