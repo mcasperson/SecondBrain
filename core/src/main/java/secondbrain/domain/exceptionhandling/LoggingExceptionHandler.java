@@ -24,11 +24,7 @@ public class LoggingExceptionHandler implements ExceptionHandler {
             return ExceptionUtils.getStackTrace(e);
         }
 
-        if (StringUtils.isBlank(e.getMessage())) {
-            return e.toString();
-        }
-
-        return e.getMessage();
+        return e.toString();
     }
 
     @Override
