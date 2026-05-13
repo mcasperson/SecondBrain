@@ -169,11 +169,11 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
         final AtomicLong currentCacheSize = new AtomicLong(0L);
         final Thread thread = new Thread(() -> {
             if (CACHE_LOCK.tryLock()) {
-                if (SHUTDOWN.get()) {
-                    return;
-                }
-                
                 try {
+                    if (SHUTDOWN.get()) {
+                        return;
+                    }
+                    
                     final List<Pair<Path, BasicFileAttributes>> files = allFiles.stream()
                             .filter(f -> !IGNORED_FILES.contains(f.getFileName().toString()))
                             .map(f -> Pair.of(f, Try.of(() -> Files.readAttributes(f, BasicFileAttributes.class)).getOrNull()))
