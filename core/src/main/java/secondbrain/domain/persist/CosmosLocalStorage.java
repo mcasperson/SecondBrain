@@ -297,7 +297,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     // Track failures
                     .onFailure(ex -> totalFailures.incrementAndGet())
                     // Log errors
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+                    .onFailure(ex -> logger.warning("Failed to get string: " + exceptionHandler.getExceptionMessage(ex)));
 
             final CacheResult<String> directResult = result
                     .mapFailure(
@@ -851,7 +851,7 @@ public class CosmosLocalStorage implements LocalStorage {
                             sanitizeTtl(ttlSeconds)))
                     .map(item -> container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions()))
                     .onFailure(ex -> totalFailures.incrementAndGet())
-                    .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
+                    .onFailure(ex -> logger.warning("Failed to put string: " + exceptionHandler.getExceptionMessage(ex)));
 
             result
                     .mapFailure(
