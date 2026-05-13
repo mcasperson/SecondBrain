@@ -626,7 +626,7 @@ public class CosmosLocalStorage implements LocalStorage {
                                         logger.fine("Timeout when generating value from " + tool + ", returning null");
                                         return new CacheResult<T>(null, ex2, false);
                                     })
-                                    .recover(Exception.class, ex2 -> {
+                                    .recover(ex2 -> {
                                         logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
                                         return new CacheResult<T>(null, ex2, false);
                                     })
