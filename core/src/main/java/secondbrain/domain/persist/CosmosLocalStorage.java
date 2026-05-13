@@ -525,6 +525,10 @@ public class CosmosLocalStorage implements LocalStorage {
                     logger.fine("Timeout when generating value, returning null");
                     return new CacheResult<String>(null, false);
                 })
+                .recover(Exception.class, ex -> {
+                    logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                    return new CacheResult<String>(null, false);
+                })
                 .get();
     }
 
@@ -620,6 +624,14 @@ public class CosmosLocalStorage implements LocalStorage {
                 })
                 // Gracefully deal with an object that can't be serialized
                 .recover(SerializationFailed.class, ex -> new CacheResult<T>(generateValue.generate(), false))
+                .recover(TimeoutException.class, ex -> {
+                    logger.fine("Timeout when generating value, returning null");
+                    return new CacheResult<T>(null, false);
+                })
+                .recover(Exception.class, ex -> {
+                    logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                    return new CacheResult<T>(null, false);
+                })
                 .get();
     }
 
@@ -689,6 +701,14 @@ public class CosmosLocalStorage implements LocalStorage {
                                     return new CacheResult<T[]>(generateValue.generate(), false);
                                 }
                         )
+                        .recover(TimeoutException.class, ex -> {
+                            logger.fine("Timeout when generating value, returning null");
+                            return new CacheResult<T[]>(null, false);
+                        })
+                        .recover(Exception.class, ex -> {
+                            logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                            return new CacheResult<T[]>(null, false);
+                        })
                         .get();
     }
 
@@ -702,7 +722,16 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @SuppressWarnings("ReturnValueIgnored")
     public <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T[]> generateValue) {
-        final T[] value = generateValue.generate();
+        final T[] value = Try.of(generateValue::generate)
+                .recover(TimeoutException.class, ex -> {
+                    logger.fine("Timeout when generating value, returning null");
+                    return null;
+                })
+                .recover(Exception.class, ex -> {
+                    logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                    return null;
+                })
+                .getOrElse(() -> null);
 
         if (value != null) {
             // Persist the full array as a single compressed and encrypted item in local storage
