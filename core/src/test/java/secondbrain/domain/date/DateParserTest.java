@@ -45,6 +45,13 @@ public class DateParserTest {
     }
 
     @Test
+    public void testParseLocalDateWitLowerCaseT() {
+        DateParserIso8601 dateParser = new DateParserIso8601();
+        ZonedDateTime date = dateParser.parseDate("2025-10-07t20:30");
+        assertNotNull(date);
+    }
+
+    @Test
     public void testParseLocalDateWithoutSeconds() {
         DateParserIso8601 dateParser = new DateParserIso8601();
         ZonedDateTime date = dateParser.parseDate("2024-09-08T07:00");
