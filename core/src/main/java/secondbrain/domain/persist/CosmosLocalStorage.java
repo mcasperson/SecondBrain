@@ -200,7 +200,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
     private void resetConnection() {
         synchronized (CosmosLocalStorage.class) {
-            logger.warning("Resetting Cosmos DB connection");
+            logger.warning("Resetting Cosmos DB connection after " + totalFailures.get() + " errors");
             totalFailures.set(0);
             flush();
             preDestroy();
