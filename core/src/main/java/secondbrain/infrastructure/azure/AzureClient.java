@@ -292,7 +292,7 @@ public class AzureClient implements LlmClient {
 
         // Bypass cache altogether if both read and write are disabled.
         if (getDisableToolReadCache().contains(tool) && getDisableToolWriteCache().contains(tool)) {
-            return new CacheResult<String>(call(request, resolvedUrl), false);
+            return new CacheResult<String>(call(request, resolvedUrl), null, false);
         }
 
         // We can refresh the cache with a new value, but we don't want to read from it.
@@ -304,7 +304,7 @@ public class AzureClient implements LlmClient {
                     promptHash,
                     ttl,
                     result);
-            return new CacheResult<String>(result, false);
+            return new CacheResult<String>(result, null, false);
         }
 
         // We can get a cached value but not save it
@@ -313,7 +313,7 @@ public class AzureClient implements LlmClient {
                             tool,
                             cacheSource,
                             promptHash))
-                    .getOrElse(() -> new CacheResult<String>(call(request, resolvedUrl), false));
+                    .getOrElse(() -> new CacheResult<String>(call(request, resolvedUrl), null, false));
         }
 
         // Normal caching operation - get or put

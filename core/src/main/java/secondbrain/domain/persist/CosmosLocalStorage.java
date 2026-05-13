@@ -267,7 +267,7 @@ public class CosmosLocalStorage implements LocalStorage {
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
         synchronized (CosmosLocalStorage.class) {
             if (localStorageCacheDisable.isDisabled() || localStorageDisableTool.isToolDisabled(tool) || localStorageCacheWriteOnly.isWriteOnly() || container == null) {
-                return new CacheResult<String>(null, false);
+                return new CacheResult<String>(null, null,false);
             }
 
             if (totalFailures.get() > MAX_FAILURES) {
@@ -282,7 +282,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     // We only accept the local cache value if it's not blank
                     .filter(Optional::isPresent)
                     // Convert to a CacheResult
-                    .map(cache -> new CacheResult<String>(cache.get(), true))
+                    .map(cache -> new CacheResult<String>(cache.get(), null,true))
                     // If there was no locally cached value, get from Cosmos DB
                     .recover(NoSuchElementException.class, ex -> loadFromDatabase(tool, source, promptHash))
                     // Decrypt and decompress the result if it was from cache
@@ -311,7 +311,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
     private CacheResult<String> handleError(final CosmosException ex) {
         if (ex.getStatusCode() == 404) {
-            return new CacheResult<String>(null, false);
+            return new CacheResult<String>(null, null, false);
         }
         throw ex;
     }
@@ -325,19 +325,19 @@ public class CosmosLocalStorage implements LocalStorage {
         final CacheResult<String> sizeResult = Try
                 .of(() -> localStorageReadWrite.getString(tool, source, promptHash + "_chunked_size"))
                 .filter(Optional::isPresent)
-                .map(cache -> new CacheResult<String>(cache.get(), true))
+                .map(cache -> new CacheResult<String>(cache.get(), null,true))
                 .recover(NoSuchElementException.class, ex -> loadFromDatabase(tool, source, promptHash + "_chunked_size"))
                 .map(value -> unpack(value, tool, source))
                 .recover(CosmosException.class, this::handleError)
                 .getOrNull();
 
         if (sizeResult == null || StringUtils.isBlank(sizeResult.result())) {
-            return new CacheResult<String>(null, false);
+            return new CacheResult<String>(null, null, false);
         }
 
         final int total = NumberUtils.toInt(sizeResult.result(), 0);
         if (total <= 0) {
-            return new CacheResult<String>(null, false);
+            return new CacheResult<String>(null, null, false);
         }
 
         if (total > 2) {
@@ -350,7 +350,7 @@ public class CosmosLocalStorage implements LocalStorage {
             final CacheResult<String> chunk = Try
                     .of(() -> localStorageReadWrite.getString(tool, source, key))
                     .filter(Optional::isPresent)
-                    .map(cache -> new CacheResult<String>(cache.get(), true))
+                    .map(cache -> new CacheResult<String>(cache.get(), null, true))
                     .recover(NoSuchElementException.class, ex -> loadFromDatabase(tool, source, key))
                     .map(value -> unpack(value, tool, source))
                     .recover(CosmosException.class, this::handleError)
@@ -358,13 +358,13 @@ public class CosmosLocalStorage implements LocalStorage {
 
             if (chunk == null || StringUtils.isBlank(chunk.result())) {
                 logger.warning("Missing chunk " + i + " of " + total + " for tool " + tool + " source " + source + " prompt " + promptHash);
-                return new CacheResult<String>(null, false);
+                return new CacheResult<String>(null, null, false);
             }
             sb.append(chunk.result());
         }
 
         logger.fine("Reassembled " + total + " chunks for tool " + tool + " source " + source + " prompt " + promptHash);
-        return new CacheResult<>(sb.toString(), true);
+        return new CacheResult<>(sb.toString(), null, true);
     }
 
     @SuppressWarnings("NullAway")
@@ -390,7 +390,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .getOrNull();
 
 
-        return new CacheResult<String>(original, true);
+        return new CacheResult<String>(original, null, true);
     }
 
     private String decompressString(final String compressed) {
@@ -480,14 +480,14 @@ public class CosmosLocalStorage implements LocalStorage {
         // Check if item has expired (if timestamp is set)
         if (response.getItem().timestamp != null) {
             if (response.getItem().timestamp < Instant.now().getEpochSecond()) {
-                return new CacheResult<String>(null, false);
+                return new CacheResult<String>(null, null, false);
             }
         }
 
         // If we are loading this from the remote cache, save it locally too
         localStorageReadWrite.putString(tool, source, promptHash, response.getItem().timestamp, response.getItem().response());
 
-        return new CacheResult<String>(response.getItem().response(), true);
+        return new CacheResult<String>(response.getItem().response(), null, true);
     }
 
     @Override
@@ -499,7 +499,7 @@ public class CosmosLocalStorage implements LocalStorage {
 
     private CacheResult<String> getOrPutStringTimed(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<String> generateValue) {
         if (localStorageCacheDisable.isDisabled() || container == null) {
-            return new CacheResult<String>(generateValue.generate(), false);
+            return new CacheResult<String>(generateValue.generate(), null, false);
         }
 
         logger.fine("Getting string from cache for tool " + tool + " source " + source + " prompt " + promptHash);
@@ -510,34 +510,38 @@ public class CosmosLocalStorage implements LocalStorage {
                 .onSuccess(v -> logger.fine("Cache hit for tool " + tool + " source " + source + " prompt " + promptHash))
                 .recover(result -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                    final String value = Try.of(generateValue::generate)
+                    final CacheResult<String> value = Try.of(generateValue::generate)
+                            .map(v -> new CacheResult<String>(v, null, false))
                             .recover(TimeoutException.class, ex -> {
                                 logger.fine("Timeout when generating value, returning null");
-                                return null;
+                                return new CacheResult<String>(null, ex, false);
                             })
-                            .recover(Exception.class, ex -> {
+                            .recover(ex -> {
                                 logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
-                                return null;
+                                return new CacheResult<String>(null, ex, false);
                             })
-                            .getOrElse(() -> null);
-                    if (StringUtils.isNotBlank(value)) {
-                        putString(tool, source, promptHash, ttlSeconds, value);
+                            .get();
+
+                    if (StringUtils.isNotBlank(value.result())) {
+                        putString(tool, source, promptHash, ttlSeconds, value.result());
                     }
-                    return new CacheResult<String>(value, false);
+
+                    return value;
                 })
                 .onFailure(LocalStorageFailure.class, ex -> logger.warning("Failed to generate value or save it to the database: " + exceptionHandler.getExceptionMessage(ex)))
                 .recover(LocalStorageFailure.class, ex -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                    return new CacheResult<String>(Try.of(generateValue::generate)
+                    return Try.of(generateValue::generate)
+                            .map(v -> new CacheResult<String>(v, null, false))
                             .recover(TimeoutException.class, ex2 -> {
                                 logger.fine("Timeout when generating value, returning null");
-                                return null;
+                                return new CacheResult<String>(null, ex2, false);
                             })
-                            .recover(Exception.class, ex2 -> {
+                            .recover(ex2 -> {
                                 logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex2));
-                                return null;
+                                return new CacheResult<String>(null, ex2, false);
                             })
-                            .getOrElse(() -> null), false);
+                            .get();
                 })
                 .get();
     }
@@ -597,7 +601,7 @@ public class CosmosLocalStorage implements LocalStorage {
     @SuppressWarnings("NullAway")
     private <T> CacheResult<T> getOrPutTimed(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T> generateValue, final Deserialize<T> deserializer) {
         if (localStorageCacheDisable.isDisabled() || container == null) {
-            return new CacheResult<T>(generateValue.generate(), false);
+            return new CacheResult<T>(generateValue.generate(), null, false);
         }
 
         logger.fine("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
@@ -611,59 +615,62 @@ public class CosmosLocalStorage implements LocalStorage {
                         logger.warning("Large cached object loaded (" + (size / 1024 / 1024) + " MB) for tool " + tool + " source " + source + " prompt " + promptHash);
                     }
                 })
-                .mapTry(r -> new CacheResult<T>(deserializer.deserialize(r.result()), true))
+                .mapTry(r -> new CacheResult<T>(deserializer.deserialize(r.result()), null,true))
                 .onFailure(DeserializationFailed.class, ex -> logger.warning("Failed to deserialize cached object: " + exceptionHandler.getExceptionMessage(ex)))
                 .recoverWith(ex -> Try.of(() -> {
                             logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                             logger.fine("Exception: " + exceptionHandler.getExceptionMessage(ex));
-                            final T value = Try.of(generateValue::generate)
+                            final CacheResult<T> value = Try.of(generateValue::generate)
+                                    .map(v -> new CacheResult<T>(v, null, false))
                                     .recover(TimeoutException.class, ex2 -> {
                                         logger.fine("Timeout when generating value, returning null");
-                                        return null;
+                                        return new CacheResult<T>(null, ex2, false);
                                     })
                                     .recover(Exception.class, ex2 -> {
                                         logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
-                                        return null;
+                                        return new CacheResult<T>(null, ex2, false);
                                     })
-                                    .getOrElse(() -> null);
+                                    .get();
 
-                            if (value != null) {
-                            putString(
+                            if (value.result() != null) {
+                                putString(
                                     tool,
                                     source,
                                     promptHash,
                                     ttlSeconds,
-                                    jsonDeserializer.serialize(value));
+                                    jsonDeserializer.serialize(value.result()));
                             }
-                            return new CacheResult<T>(value, false);
+                            return value;
                         })
                 )
                 .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 .onFailure(SerializationFailed.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                 .recover(LocalStorageFailure.class, ex -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                    return new CacheResult<T>(Try.of(generateValue::generate)
+                    return Try.of(generateValue::generate)
+                            .map(v -> new CacheResult<T>(v, null, false))
                             .recover(TimeoutException.class, ex2 -> {
                                 logger.fine("Timeout when generating value, returning null");
-                                return null;
+                                return new CacheResult<T>(null, ex2, false);
                             })
-                            .recover(Exception.class, ex2 -> {
+                            .recover(ex2 -> {
                                 logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
-                                return null;
+                                return new CacheResult<T>(null, ex2, false);
                             })
-                            .getOrElse(() -> null), false);
+                            .get();
                 })
                 // Gracefully deal with an object that can't be serialized
-                .recover(SerializationFailed.class, ex -> new CacheResult<T>(Try.of(generateValue::generate)
+                .recover(SerializationFailed.class, ex -> Try.of(generateValue::generate)
+                        .map(v -> new CacheResult<T>(v, null, false))
                         .recover(TimeoutException.class, ex2 -> {
                             logger.fine("Timeout when generating value, returning null");
-                            return null;
+                            return new CacheResult<T>(null, ex2, false);
                         })
-                        .recover(Exception.class, ex2 -> {
+                        .recover(ex2 -> {
                             logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
-                            return null;
+                            return new CacheResult<T>(null, ex2, false);
                         })
-                        .getOrElse(() -> null), false))
+                        .get())
                 .get();
     }
 
@@ -682,7 +689,7 @@ public class CosmosLocalStorage implements LocalStorage {
     @SuppressWarnings("NullAway")
     private <T> CacheResult<T[]> getOrPutObjectArrayTimed(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
         if (localStorageCacheDisable.isDisabled() || container == null) {
-            return new CacheResult<T[]>(generateValue.generate(), false);
+            return new CacheResult<T[]>(generateValue.generate(), null, false);
         }
 
         logger.fine("Getting object from cache for tool " + tool + " source " + source + " prompt " + promptHash);
@@ -696,7 +703,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .map(encryptor::decrypt)
                 .map(this::decompressString)
                 .map(result -> jsonDeserializer.deserialize(result, arrayClazz))
-                .map(array -> new CacheResult<T[]>(array, true));
+                .map(array -> new CacheResult<T[]>(array, null, true));
 
         if (localCacheTry.isSuccess()) {
             logger.fine("Local cache hit for tool " + tool + " source " + source + " prompt " + promptHash + " in local cache");
@@ -720,7 +727,7 @@ public class CosmosLocalStorage implements LocalStorage {
                         // Persist the full array in local storage for next time
                         .peek(array -> persistArrayResultLocal(tool, source, promptHash, ttlSeconds, array))
                         // The array is wrapped in a CacheResult
-                        .map(array -> new CacheResult<T[]>(array, true))
+                        .map(array -> new CacheResult<T[]>(array, null, true))
                         .recoverWith(ex -> Try.of(() -> {
                                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                                     logger.fine("Exception: " + exceptionHandler.getExceptionMessage(ex));
@@ -730,16 +737,17 @@ public class CosmosLocalStorage implements LocalStorage {
                         .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
                         .recover(LocalStorageFailure.class, ex -> {
                                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
-                                    return new CacheResult<T[]>(Try.of(generateValue::generate)
+                                    return Try.of(generateValue::generate)
+                                            .map(v -> new CacheResult<T[]>(v, null, false))
                                             .recover(TimeoutException.class, ex2 -> {
                                                 logger.fine("Timeout when generating value, returning null");
-                                                return null;
+                                                return new CacheResult<T[]>(null, ex2, false);
                                             })
-                                            .recover(Exception.class, ex2 -> {
+                                            .recover(ex2 -> {
                                                 logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
-                                                return null;
+                                                return new CacheResult<T[]>(null, ex2, false);
                                             })
-                                            .getOrElse(() -> null), false);
+                                            .get();
                                 }
                         )
                         .get();
@@ -755,20 +763,21 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @SuppressWarnings("ReturnValueIgnored")
     public <T> CacheResult<T[]> persistArrayResult(final String tool, final String source, final String promptHash, final long ttlSeconds, final GenerateValue<T[]> generateValue) {
-        final T[] value = Try.of(generateValue::generate)
+        final CacheResult<T[]> value = Try.of(generateValue::generate)
+                .map(v -> new CacheResult<T[]>(v, null, false))
                 .recover(TimeoutException.class, ex -> {
                     logger.fine("Timeout when generating value, returning null");
-                    return null;
+                    return new CacheResult<T[]>(null, ex, false);
                 })
-                .recover(Exception.class, ex -> {
+                .recover(ex -> {
                     logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
-                    return null;
+                    return new CacheResult<T[]>(null, ex, false);
                 })
-                .getOrElse(() -> null);
+                .get();
 
-        if (value != null) {
+        if (value.result() != null) {
             // Persist the full array as a single compressed and encrypted item in local storage
-            persistArrayResultLocal(tool, source, promptHash, ttlSeconds, value);
+            persistArrayResultLocal(tool, source, promptHash, ttlSeconds, value.result());
 
             // The result associated with the original hash is the count of items
             putString(
@@ -776,22 +785,22 @@ public class CosmosLocalStorage implements LocalStorage {
                     source,
                     promptHash,
                     ttlSeconds,
-                    value.length + "");
+                    value.result().length + "");
 
             // Serialize and persist each item sequentially to reduce peak memory.
             // Parallel writes would hold multiple large serialized strings in flight
             // simultaneously (each item can be ~1MB), risking OOM under load.
-            for (int index = 0; index < value.length; index++) {
+            for (int index = 0; index < value.result().length; index++) {
                 putString(
                         tool,
                         source,
                         promptHash + "_" + index,
                         ttlSeconds,
-                        jsonDeserializer.serialize(value[index]));
+                        jsonDeserializer.serialize(value.result()[index]));
             }
         }
 
-        return new CacheResult<T[]>(value, false);
+        return value;
     }
 
     @SuppressWarnings("NullAway")
