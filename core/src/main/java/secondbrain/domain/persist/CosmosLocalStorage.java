@@ -294,6 +294,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     .map(value -> unpack(value, tool, source))
                     // If the item is not found, return a CacheResult with null
                     .recover(CosmosException.class, this::handleError)
+                    .recover(InterruptedException.class, this::handleError)
                     // Track failures
                     .onFailure(ex -> totalFailures.incrementAndGet())
                     // Log errors
@@ -319,6 +320,11 @@ public class CosmosLocalStorage implements LocalStorage {
             return new CacheResult<String>(null, null, false);
         }
         throw ex;
+    }
+
+    private CacheResult<String> handleError(final InterruptedException ex) {
+        logger.warning("Interupted while getting string: " + exceptionHandler.getExceptionMessage(ex));
+        return new CacheResult<String>(null, null, false);
     }
 
     /**
