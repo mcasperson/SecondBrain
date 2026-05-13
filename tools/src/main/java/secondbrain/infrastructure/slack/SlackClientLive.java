@@ -506,13 +506,13 @@ public class SlackClientLive implements SlackClient {
             final String channel,
             final int apiDelay) {
 
-        final List<Conversation> conversations = Try
+        final List<ChannelDetails> conversations = Try
                 .of(() -> localStorage.getOrPutList(
                         SlackClientLive.class.getSimpleName(),
-                        "SlackAPIChannelList",
+                        "SlackAPIChannelListV2",
                         DigestUtils.sha256Hex(accessToken),
                         CHANNEL_LIST_TTL_SECONDS,
-                        Conversation.class,
+                        ChannelDetails.class,
                         () -> findConversationListFromApiUntilCursorEmptyLocked(
                                 client,
                                 accessToken,
@@ -521,23 +521,26 @@ public class SlackClientLive implements SlackClient {
 
         return conversations
                 .stream()
-                .filter(c -> channel.equals(c.getName()))
+                .filter(c -> channel.equals(c.channelName()))
                 .findFirst()
-                .map(c -> new ChannelDetails(channel, c.getId(), c.getContextTeamId()))
+                .map(c -> new ChannelDetails(channel, c.channelId(), c.teamId()))
                 .orElseThrow(() -> new InternalFailure(
                         "Slack channel API reached the end of the results. Failed to find channel " + channel));
     }
 
-    private List<Conversation> findConversationListFromApiUntilCursorEmptyLocked(
+    private List<ChannelDetails> findConversationListFromApiUntilCursorEmptyLocked(
             final AsyncMethodsClient client,
             final String accessToken,
             final int apiDelay) {
-        final List<Conversation> conversations = new ArrayList<>();
+        final List<ChannelDetails> conversations = new ArrayList<>();
         @Nullable String cursor = null;
 
         while (true) {
             final ConversationsListResponse response = findConversationListFromApiLocked(client, accessToken, cursor, 0, apiDelay);
-            conversations.addAll(Objects.requireNonNullElse(response.getChannels(), List.<Conversation>of()));
+            conversations.addAll(Objects.requireNonNullElse(response.getChannels(), List.<Conversation>of())
+                    .stream()
+                    .map(c -> new ChannelDetails(c.getName(), c.getId(), c.getContextTeamId()))
+                    .toList());
 
             cursor = Optional.ofNullable(response.getResponseMetadata())
                     .map(ResponseMetadata::getNextCursor)
