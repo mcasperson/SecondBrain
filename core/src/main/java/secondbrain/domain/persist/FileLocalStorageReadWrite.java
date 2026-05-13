@@ -30,8 +30,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,6 +55,8 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final AtomicInteger TOTAL_READS = new AtomicInteger();
     private static final AtomicInteger FILE_READS = new AtomicInteger();
     private static final AtomicInteger MEMORY_READS = new AtomicInteger();
+    private static final AtomicBoolean SHUTDOWN = new AtomicBoolean(false);
+    private static final ReentrantLock CACHE_LOCK = new ReentrantLock();
 
     /**
      * An in-memory index of cache files keyed by their cache key (tool_source_promptHash).
@@ -98,6 +103,7 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
 
     @PreDestroy
     private void shutdown() {
+        SHUTDOWN.set(true);
         if (TOTAL_READS.get() > 0) {
             logger.info("Local storage cache read stats: total reads=" + TOTAL_READS.get()
                     + ", file reads=" + FILE_READS.get()
@@ -105,6 +111,16 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
                     + ", file read hit rate=" + String.format("%.2f", (FILE_READS.get() * 100.0) / TOTAL_READS.get()) + "%"
                     + ", memory read hit rate=" + String.format("%.2f", (MEMORY_READS.get() * 100.0) / TOTAL_READS.get()) + "%");
         }
+
+        // Attempt a graceful shutdown
+        Try.of(() -> CACHE_LOCK.tryLock(10, TimeUnit.SECONDS))
+                .map(success -> {
+                    if (success) {
+                        CACHE_LOCK.unlock();
+                    }
+                    return success;
+                })
+                .onFailure(ex -> logger.warning("Failed while waiting for cache population to finish"));
     }
 
     /**
@@ -152,19 +168,32 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
         // Preload the most recent cache entries into memory using the already-scanned file list
         final AtomicLong currentCacheSize = new AtomicLong(0L);
         final Thread thread = new Thread(() -> {
-            allFiles.stream()
-                    .filter(f -> !IGNORED_FILES.contains(f.getFileName().toString()))
-                    .map(f -> Pair.of(f, Try.of(() -> Files.readAttributes(f, BasicFileAttributes.class)).getOrNull()))
-                    .filter(pair -> pair.getRight() != null)
-                    .sorted((f1, f2) -> f2.getRight().lastAccessTime().compareTo(f1.getRight().lastAccessTime()))
-                    .limit(localStorageMemoryCacheFileLimit.getMemoryCacheFileLimit())
-                    .takeWhile(f -> currentCacheSize.addAndGet(f.getRight().size()) <= localStorageMemoryCacheSizeLimit.getMemoryCacheSizeLimit())
-                    .forEach(f -> {
-                        if (Thread.interrupted()) {
-                            throw new RuntimeException("interrupted");
+            if (SHUTDOWN.get()) {
+                return;
+            }
+
+            if (CACHE_LOCK.tryLock()) {
+                try {
+                    final List<Pair<Path, BasicFileAttributes>> files = allFiles.stream()
+                            .filter(f -> !IGNORED_FILES.contains(f.getFileName().toString()))
+                            .map(f -> Pair.of(f, Try.of(() -> Files.readAttributes(f, BasicFileAttributes.class)).getOrNull()))
+                            .filter(pair -> pair.getRight() != null)
+                            .sorted((f1, f2) -> f2.getRight().lastAccessTime().compareTo(f1.getRight().lastAccessTime()))
+                            .limit(localStorageMemoryCacheFileLimit.getMemoryCacheFileLimit())
+                            .takeWhile(f -> currentCacheSize.addAndGet(f.getRight().size()) <= localStorageMemoryCacheSizeLimit.getMemoryCacheSizeLimit())
+                            .toList();
+
+                    for (Pair<Path, BasicFileAttributes> f : files) {
+                        if (SHUTDOWN.get()) {
+                            break;
                         }
+
                         MEMORY_CACHE.computeIfAbsent(f.getLeft(), this::readFileSilentFail);
-                    });
+                    }
+                } finally {
+                    CACHE_LOCK.unlock();
+                }
+            }
         });
         thread.setDaemon(true);
         thread.start();
