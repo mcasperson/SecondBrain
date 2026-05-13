@@ -168,11 +168,11 @@ public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
         // Preload the most recent cache entries into memory using the already-scanned file list
         final AtomicLong currentCacheSize = new AtomicLong(0L);
         final Thread thread = new Thread(() -> {
-            if (SHUTDOWN.get()) {
-                return;
-            }
-
             if (CACHE_LOCK.tryLock()) {
+                if (SHUTDOWN.get()) {
+                    return;
+                }
+                
                 try {
                     final List<Pair<Path, BasicFileAttributes>> files = allFiles.stream()
                             .filter(f -> !IGNORED_FILES.contains(f.getFileName().toString()))
