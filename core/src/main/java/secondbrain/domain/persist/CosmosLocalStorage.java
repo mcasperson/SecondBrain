@@ -522,7 +522,7 @@ public class CosmosLocalStorage implements LocalStorage {
                                 return new CacheResult<String>(null, ex, false);
                             })
                             .recover(ex -> {
-                                logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                                logger.warning("Unexpected error when generating value for tool " + tool + ": " + exceptionHandler.getExceptionMessage(ex));
                                 return new CacheResult<String>(null, ex, false);
                             })
                             .get();
@@ -543,7 +543,7 @@ public class CosmosLocalStorage implements LocalStorage {
                                 return new CacheResult<String>(null, ex2, false);
                             })
                             .recover(ex2 -> {
-                                logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex2));
+                                logger.warning("Unexpected error when generating value for tool " + tool + ": " + exceptionHandler.getExceptionMessage(ex2));
                                 return new CacheResult<String>(null, ex2, false);
                             })
                             .get();
@@ -632,7 +632,7 @@ public class CosmosLocalStorage implements LocalStorage {
                                         return new CacheResult<T>(null, ex2, false);
                                     })
                                     .recover(ex2 -> {
-                                        logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                                        logger.warning("Unexpected error when generating value for tool " + tool + ": " + exceptionHandler.getExceptionMessage(ex));
                                         return new CacheResult<T>(null, ex2, false);
                                     })
                                     .get();
@@ -659,7 +659,7 @@ public class CosmosLocalStorage implements LocalStorage {
                                 return new CacheResult<T>(null, ex2, false);
                             })
                             .recover(ex2 -> {
-                                logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                                logger.warning("Unexpected error when generating value for tool " + tool + ": " + exceptionHandler.getExceptionMessage(ex));
                                 return new CacheResult<T>(null, ex2, false);
                             })
                             .get();
@@ -672,7 +672,7 @@ public class CosmosLocalStorage implements LocalStorage {
                             return new CacheResult<T>(null, ex2, false);
                         })
                         .recover(ex2 -> {
-                            logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                            logger.warning("Unexpected error when generating value for tool " + tool + ": " + exceptionHandler.getExceptionMessage(ex));
                             return new CacheResult<T>(null, ex2, false);
                         })
                         .get())
@@ -749,7 +749,7 @@ public class CosmosLocalStorage implements LocalStorage {
                                                 return new CacheResult<T[]>(null, ex2, false);
                                             })
                                             .recover(ex2 -> {
-                                                logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                                                logger.warning("Unexpected error when generating value for tool " + tool + ": " + exceptionHandler.getExceptionMessage(ex));
                                                 return new CacheResult<T[]>(null, ex2, false);
                                             })
                                             .get();
@@ -775,7 +775,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     return new CacheResult<T[]>(null, ex, false);
                 })
                 .recover(ex -> {
-                    logger.warning("Unexpected error when generating value: " + exceptionHandler.getExceptionMessage(ex));
+                    logger.warning("Unexpected error when generating value for tool " + tool + ": " + exceptionHandler.getExceptionMessage(ex));
                     return new CacheResult<T[]>(null, ex, false);
                 })
                 .get();
