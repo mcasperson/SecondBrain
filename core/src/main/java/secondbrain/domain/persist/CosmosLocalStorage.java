@@ -485,6 +485,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .get();
     }
 
+    @SuppressWarnings("NullAway")
     private CacheResult<String> loadFromDatabaseTimed(final String tool, final String source, final String promptHash) {
         if (container == null) {
             throw new LocalStorageFailure("Cosmos DB container is not initialized");
