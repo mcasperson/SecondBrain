@@ -32,6 +32,7 @@ import secondbrain.domain.zip.Zipper;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -193,10 +194,14 @@ public class CosmosLocalStorage implements LocalStorage {
             pendingWrites.clear();
         }
         logger.fine("Waiting for " + toWait.size() + " pending background writes to complete");
-        for (final Future<?> f : toWait) {
-            Try.run(() -> f.get(2, TimeUnit.MINUTES))
-                    .onFailure(ex -> logger.warning("Error waiting for pending write: " + exceptionHandler.getExceptionMessage(ex)));
-        }
+        final CompletableFuture<?>[] waitFutures = toWait.stream()
+                .map(f -> CompletableFuture.runAsync(
+                        () -> Try.run(() -> f.get(2, TimeUnit.MINUTES))
+                                .onFailure(ex -> logger.warning("Error waiting for pending write: " + exceptionHandler.getExceptionMessage(ex))),
+                        sharedVirtualThreadExecutor.getExecutor()))
+                .toArray(CompletableFuture[]::new);
+        Try.run(() -> CompletableFuture.allOf(waitFutures).get(2, TimeUnit.MINUTES))
+                .onFailure(ex -> logger.warning("Timed out or failed waiting for all pending writes: " + exceptionHandler.getExceptionMessage(ex)));
     }
 
     private void resetConnection() {
