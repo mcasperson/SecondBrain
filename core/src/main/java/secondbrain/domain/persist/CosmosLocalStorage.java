@@ -298,7 +298,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     // Track failures
                     .onFailure(ex -> totalFailures.incrementAndGet())
                     // Log errors
-                    .onFailure(ex -> logger.warning("Failed to get string: " + exceptionHandler.getExceptionMessage(ex)));
+                    .onFailure(ex -> logger.warning("Failed to get string: " + exceptionHandler.getDetailedExceptionMessage(ex)));
 
             final CacheResult<String> directResult = result
                     .mapFailure(

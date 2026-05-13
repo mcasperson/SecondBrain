@@ -20,10 +20,23 @@ public class LoggingExceptionHandler implements ExceptionHandler {
             return "Exception was null";
         }
 
-        if (Boolean.parseBoolean(printStackTrace) || e instanceof ExternalException || e instanceof InterruptedException) {
+        if (Boolean.parseBoolean(printStackTrace) || e instanceof ExternalException) {
             return ExceptionUtils.getStackTrace(e);
         }
 
-        return e.toString();
+        if (StringUtils.isBlank(e.getMessage())) {
+            return e.toString();
+        }
+
+        return e.getMessage();
+    }
+
+    @Override
+    public String getDetailedExceptionMessage(Throwable e) {
+        if (e == null) {
+            return "Exception was null";
+        }
+
+        return e.toString() + "\n" + ExceptionUtils.getStackTrace(e);
     }
 }
