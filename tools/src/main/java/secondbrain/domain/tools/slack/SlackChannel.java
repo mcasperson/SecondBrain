@@ -148,6 +148,11 @@ public class SlackChannel implements Tool<Void> {
             final List<ToolArgs> arguments) {
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
+        // Quick exit when there is no channel
+        if (StringUtils.isBlank(parsedArgs.getChannel())) {
+            return List.of();
+        }
+
         // Create the client once and reuse it across the early-out check and the main retrieval
         final AsyncMethodsClient client = Slack.getInstance().methodsAsync();
 
