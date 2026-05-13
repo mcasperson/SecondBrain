@@ -294,7 +294,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     // Decrypt and decompress the result if it was from cache
                     .map(value -> unpack(value, tool, source))
                     // If the item is not found, return a CacheResult with null
-                    .recover(Exception.class, this::handleError)
+                    .recoverWith(Exception.class, this::handleError)
                     // Track failures
                     .onFailure(ex -> totalFailures.incrementAndGet())
                     // Log errors
@@ -315,10 +315,10 @@ public class CosmosLocalStorage implements LocalStorage {
         }
     }
 
-    private CacheResult<String> handleError(final Exception ex) {
+    private Try<CacheResult<String>> handleError(final Exception ex) {
         if (ex instanceof CosmosException clientEx) {
             if (clientEx.getStatusCode() == 404) {
-                return new CacheResult<String>(null, null, false);
+                return Try.of(() -> new CacheResult<String>(null, null, false));
             }
         }
 
@@ -332,10 +332,10 @@ public class CosmosLocalStorage implements LocalStorage {
             at com.azure.cosmos.CosmosContainer.readItem(CosmosContainer.java:629)
          */
         if (ex instanceof InterruptedException || Exceptions.unwrap(ex) instanceof InterruptedException) {
-            return new CacheResult<String>(null, null, false);
+            return Try.of(() -> new CacheResult<String>(null, null, false));
         }
 
-        throw new LocalStorageFailure("Failed to get record", ex);
+       return Try.failure(ex);
     }
 
     /**
@@ -350,7 +350,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 .map(cache -> new CacheResult<String>(cache.get(), null,true))
                 .recover(NoSuchElementException.class, ex -> loadFromDatabase(tool, source, promptHash + "_chunked_size"))
                 .map(value -> unpack(value, tool, source))
-                .recover(CosmosException.class, this::handleError)
+                .recoverWith(CosmosException.class, this::handleError)
                 .getOrNull();
 
         if (sizeResult == null || StringUtils.isBlank(sizeResult.result())) {
@@ -375,7 +375,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     .map(cache -> new CacheResult<String>(cache.get(), null, true))
                     .recover(NoSuchElementException.class, ex -> loadFromDatabase(tool, source, key))
                     .map(value -> unpack(value, tool, source))
-                    .recover(CosmosException.class, this::handleError)
+                    .recoverWith(CosmosException.class, this::handleError)
                     .getOrNull();
 
             if (chunk == null || StringUtils.isBlank(chunk.result())) {
