@@ -18,6 +18,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
+import reactor.core.Exceptions;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.*;
@@ -293,8 +294,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     // Decrypt and decompress the result if it was from cache
                     .map(value -> unpack(value, tool, source))
                     // If the item is not found, return a CacheResult with null
-                    .recover(CosmosException.class, this::handleError)
-                    .recover(InterruptedException.class, this::handleError)
+                    .recover(Exception.class, this::handleError)
                     // Track failures
                     .onFailure(ex -> totalFailures.incrementAndGet())
                     // Log errors
@@ -315,16 +315,27 @@ public class CosmosLocalStorage implements LocalStorage {
         }
     }
 
-    private CacheResult<String> handleError(final CosmosException ex) {
-        if (ex.getStatusCode() == 404) {
+    private CacheResult<String> handleError(final Exception ex) {
+        if (ex instanceof CosmosException clientEx) {
+            if (clientEx.getStatusCode() == 404) {
+                return new CacheResult<String>(null, null, false);
+            }
+        }
+
+        /*
+        Catch this exception:
+        reactor.core.Exceptions$ReactiveException: java.lang.InterruptedException
+            at reactor.core.Exceptions.propagate(Exceptions.java:410)
+            at reactor.core.publisher.BlockingSingleSubscriber.blockingGet(BlockingSingleSubscriber.java:96)
+            at reactor.core.publisher.Mono.block(Mono.java:1779)
+            at com.azure.cosmos.CosmosContainer.blockItemResponse(CosmosContainer.java:271)
+            at com.azure.cosmos.CosmosContainer.readItem(CosmosContainer.java:629)
+         */
+        if (Exceptions.unwrap(ex) instanceof InterruptedException) {
             return new CacheResult<String>(null, null, false);
         }
-        throw ex;
-    }
 
-    private CacheResult<String> handleError(final InterruptedException ex) {
-        logger.warning("Interrupted while getting string: " + exceptionHandler.getExceptionMessage(ex));
-        return new CacheResult<String>(null, null, false);
+        throw new LocalStorageFailure("Failed to get record", ex);
     }
 
     /**
