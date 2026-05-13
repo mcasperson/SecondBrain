@@ -20,7 +20,7 @@ public class LoggingExceptionHandler implements ExceptionHandler {
             return "Exception was null";
         }
 
-        if (Boolean.parseBoolean(printStackTrace) || e instanceof ExternalException) {
+        if (Boolean.parseBoolean(printStackTrace) || e instanceof ExternalException || e instanceof InterruptedException) {
             return ExceptionUtils.getStackTrace(e);
         }
 
