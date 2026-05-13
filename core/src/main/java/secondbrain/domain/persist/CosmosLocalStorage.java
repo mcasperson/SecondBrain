@@ -323,7 +323,7 @@ public class CosmosLocalStorage implements LocalStorage {
     }
 
     private CacheResult<String> handleError(final InterruptedException ex) {
-        logger.warning("Interupted while getting string: " + exceptionHandler.getExceptionMessage(ex));
+        logger.warning("Interrupted while getting string: " + exceptionHandler.getExceptionMessage(ex));
         return new CacheResult<String>(null, null, false);
     }
 
