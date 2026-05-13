@@ -34,6 +34,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
@@ -515,10 +516,14 @@ public class CosmosLocalStorage implements LocalStorage {
                     }
                     return new CacheResult<String>(value, false);
                 })
-                .onFailure(LocalStorageFailure.class, ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(LocalStorageFailure.class, ex -> logger.warning("Failed to generate value or save it to the database: " + exceptionHandler.getExceptionMessage(ex)))
                 .recover(LocalStorageFailure.class, ex -> {
                     logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                     return new CacheResult<String>(generateValue.generate(), false);
+                })
+                .recover(TimeoutException.class, ex -> {
+                    logger.fine("Timeout when generating value, returning null");
+                    return new CacheResult<String>(null, false);
                 })
                 .get();
     }
