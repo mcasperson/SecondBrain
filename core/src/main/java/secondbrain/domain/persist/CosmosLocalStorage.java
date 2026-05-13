@@ -331,7 +331,7 @@ public class CosmosLocalStorage implements LocalStorage {
             at com.azure.cosmos.CosmosContainer.blockItemResponse(CosmosContainer.java:271)
             at com.azure.cosmos.CosmosContainer.readItem(CosmosContainer.java:629)
          */
-        if (Exceptions.unwrap(ex) instanceof InterruptedException) {
+        if (ex instanceof InterruptedException || Exceptions.unwrap(ex) instanceof InterruptedException) {
             return new CacheResult<String>(null, null, false);
         }
 
