@@ -29,11 +29,11 @@ public class DefaultPromptHandlerOutput implements PromptHandlerOutput {
     private static final String OUTPUT_DIRECTORY = "PromptHandlerOutputOutputDirectory";
 
     @Inject
-    @ConfigProperty(name = "sb.output.printAnnotations", defaultValue = "true")
+    @ConfigProperty(name = "sb.output.printAnnotations")
     private Optional<String> printAnnotations;
 
     @Inject
-    @ConfigProperty(name = "sb.output.appendFile", defaultValue = "false")
+    @ConfigProperty(name = "sb.output.appendFile")
     private Optional<String> appendToOutputFile;
 
     @Inject
@@ -53,7 +53,7 @@ public class DefaultPromptHandlerOutput implements PromptHandlerOutput {
     private SanitizeDocument sanitizeDocument;
 
     @Inject
-    @ConfigProperty(name = "sb.output.directory", defaultValue = ".")
+    @ConfigProperty(name = "sb.output.directory")
     private Optional<String> directory;
 
     @Inject
@@ -92,7 +92,7 @@ public class DefaultPromptHandlerOutput implements PromptHandlerOutput {
                 context,
                 "",
                 PRINT_ANNOTATIONS,
-                "").getSafeValue();
+                "true").getSafeValue();
         return StringUtils.isBlank(value) ? Optional.empty() : Optional.of(value);
     }
 
@@ -103,7 +103,7 @@ public class DefaultPromptHandlerOutput implements PromptHandlerOutput {
                 context,
                 "",
                 APPEND_TO_OUTPUT_FILE,
-                "").getSafeValue();
+                "false").getSafeValue();
         return StringUtils.isBlank(value) ? Optional.empty() : Optional.of(value);
     }
 
@@ -147,7 +147,7 @@ public class DefaultPromptHandlerOutput implements PromptHandlerOutput {
                 context,
                 "",
                 OUTPUT_DIRECTORY,
-                "").getSafeValue();
+                ".").getSafeValue();
         return StringUtils.isBlank(value) ? Optional.empty() : Optional.of(value);
     }
 
