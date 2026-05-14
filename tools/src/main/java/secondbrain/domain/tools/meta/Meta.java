@@ -5,6 +5,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
@@ -25,6 +26,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.*;
@@ -104,6 +106,7 @@ public class Meta implements Tool<Void> {
                 new ToolArguments(CommonArguments.FILTER_GREATER_THAN_ARG, "Set to true to filter out any documents with a rating greater than the specified minimum rating", "false"),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to use for context filtering", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size to use when extracting keywords from documents", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.PREINITIALIZATION_HOOKS_ARG, "The names of classes implementing the PreProcessingHook interface to apply before initialization", ""),
                 new ToolArguments(CommonArguments.PREPROCESSOR_HOOKS_ARG, "The names of classes implementing the PreProcessingHook interface to apply before processing the document", ""),
                 new ToolArguments(CommonArguments.POSTINFERENCE_HOOKS_ARG, "The name of classes implementing the PostInferenceHook interface to apply after passing the context to the LLM", ""),
@@ -136,7 +139,7 @@ public class Meta implements Tool<Void> {
                 new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                 new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                 new ToolArgs(CommonArguments.FILTER_GREATER_THAN_ARG, parsedArgs.getFilterGreaterThan() + "", true),
-                new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", parsedArgs.getKeywords()), true),
                 new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow() + "", true),
                 new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, parsedArgs.getSummarizeDocument() + "", true),
                 new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getSummarizeDocumentPrompt(), true),
@@ -285,6 +288,9 @@ class MetaConfig {
     private ToStringGenerator toStringGenerator;
 
     @Inject
+    private Keywords keywords;
+
+    @Inject
     @ConfigProperty(name = "sb.meta.toolNames")
     private Optional<String> configToolNames;
 
@@ -390,6 +396,10 @@ class MetaConfig {
 
     public ToStringGenerator getToStringGenerator() {
         return toStringGenerator;
+    }
+
+    public Keywords getKeywordsTool() {
+        return keywords;
     }
 
     public Optional<String> getConfigIndividualContextFilterQuestion() {
@@ -600,15 +610,35 @@ class MetaConfig {
          * The keywords to use for context filtering. This is a comma-separated list of keywords that are used to
          * extract a subset of the document to include in the context. If not specified, the full document is included in the context.
          */
-        public String getKeywords() {
-            return getArgsAccessor().getArgument(
+        public List<String> getKeywords() {
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
                             CommonArguments.KEYWORDS_ARG,
                             CommonArguments.KEYWORDS_ARG,
                             "")
-                    .getSafeValue();
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    null,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         /**
