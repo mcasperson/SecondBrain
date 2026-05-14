@@ -13,6 +13,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -41,6 +42,7 @@ import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.tools.googledocs.model.GoogleDoc;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -449,6 +451,9 @@ class GoogleDocsConfig {
     @Inject
     private ToStringGenerator toStringGenerator;
 
+    @Inject
+    private Keywords keywords;
+
     public Optional<String> getConfigGoogleServiceAccountJson() {
         return configGoogleServiceAccountJson;
     }
@@ -505,6 +510,10 @@ class GoogleDocsConfig {
         return toStringGenerator;
     }
 
+    public Keywords getKeywordsTool() {
+        return keywords;
+    }
+
     public class LocalArguments implements LocalConfigKeywordsEntity, LocalConfigSummarizer, LocalConfigFilteredItem {
         private final List<ToolArgs> arguments;
 
@@ -546,7 +555,7 @@ class GoogleDocsConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigGoogleKeywords()::get,
                             arguments,
                             context,
@@ -556,6 +565,24 @@ class GoogleDocsConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    null,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         public String getGoogleServiceAccountJson() {

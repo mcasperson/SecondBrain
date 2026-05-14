@@ -4,6 +4,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -39,6 +40,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.tools.dovetail.model.DovetailDataDetails;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.dovetail.DovetailClient;
@@ -418,6 +420,9 @@ class DovetailConfig {
     @ConfigProperty(name = "sb.dovetail.minimumContentLength", defaultValue = "0")
     private Optional<String> configMinimumContentLength;
 
+    @Inject
+    private Keywords keywords;
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -514,12 +519,18 @@ class DovetailConfig {
         return configMinimumContentLength;
     }
 
+    public Keywords getKeywordsTool() {
+        return keywords;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
+        private final String prompt;
         private final Map<String, String> context;
 
         public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
             this.arguments = arguments;
+            this.prompt = prompt;
             this.context = context;
         }
 
@@ -628,7 +639,7 @@ class DovetailConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -638,6 +649,24 @@ class DovetailConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    null,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         @Override

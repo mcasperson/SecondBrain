@@ -526,7 +526,7 @@ class SlackSearchConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -536,6 +536,12 @@ class SlackSearchConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordExtractor().getKeywords(prompt), false);
+            }
+
+            return keywords;
         }
 
         public boolean getGenerateKeywords() {

@@ -4,7 +4,9 @@ import com.google.common.collect.ImmutableList;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
@@ -27,6 +29,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.tools.publicfile.model.FileContents;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -216,6 +219,9 @@ class PublicWebConfig {
     @Inject
     private ToStringGenerator toStringGenerator;
 
+    @Inject
+    private Keywords keywords;
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -246,6 +252,10 @@ class PublicWebConfig {
 
     public ToStringGenerator getToStringGenerator() {
         return toStringGenerator;
+    }
+
+    public Keywords getKeywordsTool() {
+        return keywords;
     }
 
     public class LocalArguments implements LocalConfigKeywordsEntity {
@@ -283,7 +293,7 @@ class PublicWebConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -293,6 +303,24 @@ class PublicWebConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    null,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         @Override

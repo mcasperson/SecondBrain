@@ -6,6 +6,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -37,6 +38,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
 import secondbrain.infrastructure.slack.api.SlackChannelResource;
@@ -428,6 +430,9 @@ class SlackChannelConfig {
     private Optional<String> configSkipEmptyInLastDuration;
 
     @Inject
+    private Keywords keywords;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -518,6 +523,10 @@ class SlackChannelConfig {
         return configSkipEmptyInLastDuration;
     }
 
+    public Keywords getKeywordsTool() {
+        return keywords;
+    }
+
     public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
@@ -606,7 +615,7 @@ class SlackChannelConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -616,6 +625,24 @@ class SlackChannelConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    null,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         @Override

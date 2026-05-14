@@ -4,6 +4,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -24,7 +25,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.limit.DocumentTrimmer;
+import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
@@ -34,6 +35,7 @@ import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.gong.model.GongCallDetails;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.gong.api.GongCallExtensive;
@@ -109,9 +111,6 @@ public class Gong implements Tool<Void> {
     private LlmClient llmClient;
 
     @Inject
-    private ValidateString validateString;
-
-    @Inject
     private Logger logger;
 
     @Inject
@@ -130,9 +129,6 @@ public class Gong implements Tool<Void> {
 
     @Inject
     private SharedVirtualThreadExecutor sharedExecutor;
-
-    @Inject
-    private DocumentTrimmer documentTrimmer;
 
     @Override
     public String getName() {
@@ -154,6 +150,7 @@ public class Gong implements Tool<Void> {
                 new ToolArguments(CommonArguments.END_DATE, "The optional date to stop retrieving calls at", ""),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The optional keywords to limit the call transcripts to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize each call transcript", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the call transcript", ""),
                 new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of a call transcript", ""),
@@ -261,18 +258,18 @@ public class Gong implements Tool<Void> {
 
         final List<RagDocumentContext<GongCallDetails>> ragDocs = calls.stream()
                 .map(call -> dataToRagDoc.getDocumentContext(call, getName(), getContextLabelWithDate(call), call.generateMetaObjectResults(), parsedArgs))
-                .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
+                .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 .toList();
 
         // Combine preinitialization hooks with ragDocs
         final List<RagDocumentContext<GongCallDetails>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
+        final List<String> keywordsList = parsedArgs.getKeywords();
+
         // Apply preprocessing hooks, and then rating metadata and filtering in parallel
         final List<RagDocumentContext<GongCallDetails>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
-                .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
-                .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
@@ -436,6 +433,10 @@ class GongConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
+    @ConfigProperty(name = "sb.gong.generatekeywords")
+    private Optional<String> configGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.gong.summarizetranscript")
     private Optional<String> configSummarizeTranscript;
 
@@ -595,6 +596,9 @@ class GongConfig {
     @Inject
     private ValidateString validateString;
 
+    @Inject
+    private Keywords keywords;
+
     public Optional<String> getConfigDays() {
         return configDays;
     }
@@ -637,6 +641,10 @@ class GongConfig {
 
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
+    }
+
+    public Optional<String> getConfigGenerateKeywords() {
+        return configGenerateKeywords;
     }
 
     public Optional<String> getConfigCallId() {
@@ -781,6 +789,10 @@ class GongConfig {
 
     public Optional<String> getConfigRequireCompany() {
         return configRequireCompany;
+    }
+
+    public Keywords getKeywordsTool() {
+        return keywords;
     }
 
     public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
@@ -931,7 +943,7 @@ class GongConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -941,6 +953,24 @@ class GongConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigGenerateKeywords()::get,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         @Override

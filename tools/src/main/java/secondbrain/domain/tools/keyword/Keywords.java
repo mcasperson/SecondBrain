@@ -16,6 +16,7 @@ import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
@@ -70,6 +71,9 @@ public class Keywords implements Tool<Void> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private JsonDeserializer jsonDeserializer;
+
     @Override
     public String getName() {
         return Keywords.class.getSimpleName();
@@ -85,6 +89,13 @@ public class Keywords implements Tool<Void> {
         return List.of(
                 new ToolArguments(EXCLUDE_KEYWORDS_ARG, "Comma-separated list of keywords to remove from generated output", "")
         );
+    }
+
+    public List<String> getKeywords(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        return Try.of(() -> call(environmentSettings, prompt, List.of()))
+                .map(RagMultiDocumentContext::getResponse)
+                .map(list -> jsonDeserializer.deserializeCollection(list, String.class))
+                .getOrElse(List.of());
     }
 
     @Override
