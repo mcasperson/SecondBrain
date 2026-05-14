@@ -21,5 +21,22 @@ class KeywordsTest {
 
         assertEquals(List.of(), result);
     }
-}
 
+    @Test
+    void parseKeywordsExcludesConfiguredKeywordsCaseInsensitive() {
+        final List<String> result = Keywords.parseKeywords(
+                "[\"Azure\",\"Kubernetes\",\"AKS\",\"azure\"]",
+                List.of("azure", "aks"));
+
+        assertEquals(List.of("Kubernetes"), result);
+    }
+
+    @Test
+    void applyExclusionsToResponseReturnsFilteredJson() {
+        final String result = Keywords.applyExclusionsToResponse(
+                "[\"Azure\",\"Kubernetes\",\"AKS\"]",
+                List.of("AKS"));
+
+        assertEquals("[\"Azure\",\"Kubernetes\"]", result);
+    }
+}

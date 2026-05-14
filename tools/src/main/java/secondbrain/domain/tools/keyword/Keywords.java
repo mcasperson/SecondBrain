@@ -10,6 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
+import secondbrain.domain.args.Argument;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
@@ -35,6 +36,7 @@ import java.util.stream.Stream;
 public class Keywords implements Tool<Void> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    static final String EXCLUDE_KEYWORDS_ARG = "excludeKeywords";
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -80,7 +82,9 @@ public class Keywords implements Tool<Void> {
 
     @Override
     public List<ToolArguments> getArguments() {
-        return List.of();
+        return List.of(
+                new ToolArguments(EXCLUDE_KEYWORDS_ARG, "Comma-separated list of keywords to remove from generated output", "")
+        );
     }
 
     @Override
@@ -112,7 +116,8 @@ public class Keywords implements Tool<Void> {
                         environmentSettings,
                         getName()))
                 // Some models return markdown wrappers around the JSON array.
-                .map(ragDoc -> ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))));
+                .map(ragDoc -> ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))))
+                .map(ragDoc -> ragDoc.updateResponse(applyExclusionsToResponse(ragDoc.getResponse(), parsedArgs.getExcludeKeywords())));
 
         final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
@@ -125,21 +130,39 @@ public class Keywords implements Tool<Void> {
      * Calls the tool and converts the JSON response into a normalized keyword list.
      */
     public List<String> generateKeywords(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        return parseKeywords(call(environmentSettings, prompt, arguments).getResponse());
+        final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        return parseKeywords(call(environmentSettings, prompt, arguments).getResponse(), parsedArgs.getExcludeKeywords());
     }
 
     static List<String> parseKeywords(final String jsonResponse) {
+        return parseKeywords(jsonResponse, List.of());
+    }
+
+    static List<String> parseKeywords(final String jsonResponse, final List<String> excludedKeywords) {
         if (StringUtils.isBlank(jsonResponse)) {
             return List.of();
         }
 
         return Try.of(() -> OBJECT_MAPPER.readValue(jsonResponse, new TypeReference<List<String>>() {
                 }))
-                .map(Keywords::normalizeKeywords)
+                .map(keywords -> normalizeKeywords(keywords, excludedKeywords))
                 .getOrElse(List.of());
     }
 
-    static List<String> normalizeKeywords(final List<String> keywords) {
+    static List<String> normalizeKeywords(final List<String> keywords, final List<String> excludedKeywords) {
+        if (keywords == null) {
+            return List.of();
+        }
+
+        final List<String> normalizedKeywords = normalizeSimpleKeywords(keywords);
+        final List<String> normalizedExcludes = normalizeSimpleKeywords(excludedKeywords);
+
+        return normalizedKeywords.stream()
+                .filter(keyword -> normalizedExcludes.stream().noneMatch(excluded -> excluded.equalsIgnoreCase(keyword)))
+                .toList();
+    }
+
+    private static List<String> normalizeSimpleKeywords(final List<String> keywords) {
         if (keywords == null) {
             return List.of();
         }
@@ -149,6 +172,11 @@ public class Keywords implements Tool<Void> {
                 .map(String::trim)
                 .distinct()
                 .toList();
+    }
+
+    static String applyExclusionsToResponse(final String jsonResponse, final List<String> excludedKeywords) {
+        return Try.of(() -> OBJECT_MAPPER.writeValueAsString(parseKeywords(jsonResponse, excludedKeywords)))
+                .getOrElse(jsonResponse);
     }
 
     @Override
@@ -181,6 +209,10 @@ class KeywordsConfig {
     private Optional<String> configPostInferenceHooks;
 
     @Inject
+    @ConfigProperty(name = "sb.keywords.excludeKeywords", defaultValue = "")
+    private Optional<String> configExcludeKeywords;
+
+    @Inject
     private ToStringGenerator toStringGenerator;
 
     public ArgsAccessor getArgsAccessor() {
@@ -197,6 +229,10 @@ class KeywordsConfig {
 
     public Optional<String> getConfigPostInferenceHooks() {
         return configPostInferenceHooks;
+    }
+
+    public Optional<String> getConfigExcludeKeywords() {
+        return configExcludeKeywords;
     }
 
     public ToStringGenerator getToStringGenerator() {
@@ -254,6 +290,21 @@ class KeywordsConfig {
                     CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     CommonArguments.POSTINFERENCE_HOOKS_ARG,
                     "").getSafeValue();
+        }
+
+        public List<String> getExcludeKeywords() {
+            return getArgsAccessor().getArgumentList(
+                            getConfigExcludeKeywords()::get,
+                            arguments,
+                            environmentSettings,
+                            Keywords.EXCLUDE_KEYWORDS_ARG,
+                            Keywords.EXCLUDE_KEYWORDS_ARG,
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .filter(StringUtils::isNotBlank)
+                    .map(String::trim)
+                    .toList();
         }
     }
 }
