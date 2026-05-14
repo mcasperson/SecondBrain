@@ -174,6 +174,7 @@ public class PlanHat implements Tool<Void> {
                 new ToolArguments(CommonArguments.END_DATE, "The optional date to stop retrieving conversations at", ""),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The optional keywords to limit the conversations to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize each conversation", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the conversation", ""),
                 new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of a conversation", ""),

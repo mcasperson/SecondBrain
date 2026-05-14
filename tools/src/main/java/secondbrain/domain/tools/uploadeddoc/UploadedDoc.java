@@ -100,6 +100,7 @@ public class UploadedDoc implements Tool<Void> {
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "An optional list of keywords used to trim the document", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", "")
         );
     }

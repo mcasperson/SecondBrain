@@ -123,6 +123,7 @@ public class SlackChannel implements Tool<Void> {
                 new ToolArguments(API_DELAY_ARG, "The number of milliseconds to delay between Slack API calls", "120000"),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to limit the Slack messages to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize the Slack messages", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the Slack messages", ""),
                 new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of the Slack messages", ""),

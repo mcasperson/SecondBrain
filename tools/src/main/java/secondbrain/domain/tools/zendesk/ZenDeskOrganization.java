@@ -159,6 +159,7 @@ public class ZenDeskOrganization implements Tool<Void> {
                 new ToolArguments(EXCLUDE_ORGANIZATION_ARG, "An optional comma separated list of organizations to exclude", ""),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to limit the emails to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(EXCLUDE_SUBMITTERS_ARG, "An optional comma separated list of submitters to exclude", ""),
                 new ToolArguments(RECIPIENT_ARG, "An optional recipient email address that tickets must be sent to", ""),
                 new ToolArguments(NUM_COMMENTS_ARG, "The optional number of comments to include in the context", "1"),

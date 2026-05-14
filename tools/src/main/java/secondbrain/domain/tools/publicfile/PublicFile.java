@@ -101,6 +101,7 @@ public class PublicFile implements Tool<Void> {
                         "The URL of the document to download",
                         ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(
                         CommonArguments.KEYWORDS_ARG,
                         "The keywords to limit the document to",

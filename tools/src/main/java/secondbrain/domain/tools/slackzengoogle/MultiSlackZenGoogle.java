@@ -38,6 +38,7 @@ import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.planhat.PlanHatUsage;
 import secondbrain.domain.tools.rating.RatingTool;
@@ -219,6 +220,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 new ToolArguments(MULTI_SLACK_ZEN_URL_ARG, "The entity directory URL", ""),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to limit the child context to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.ENTITY_NAME_CONTEXT_ARG, "The optional name of the entity to query", ""),
                 new ToolArguments(MULTI_SLACK_ZEN_MAX_ENTITIES_ARG, "The optional maximum number of entities to process", "0"),
                 new ToolArguments(CommonArguments.DAYS_ARG, "The number of days to query", ""));
@@ -618,7 +620,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         logger.fine("Getting Slack keywords for " + positionalEntity.entity().name());
 
         // Add any specific keywords
-        final List<String> keywords = new ArrayList<>(Arrays.stream(parsedArgs.getKeywords().split(",")).toList());
+        final List<String> keywords = new ArrayList<>(parsedArgs.getKeywords());
 
         // build the environment settings
         final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
@@ -668,7 +670,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
-                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", parsedArgs.getKeywords()), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Gong.COMPANY_ARG, id, true),
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
@@ -704,7 +706,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
-                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", parsedArgs.getKeywords()), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(Salesforce.ACCOUNT_ID, id, true),
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
@@ -739,7 +741,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
-                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", parsedArgs.getKeywords()), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(PlanHat.COMPANY_ID_ARGS, id, true),
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
@@ -796,7 +798,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
-                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", parsedArgs.getKeywords()), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
@@ -826,7 +828,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
-                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", parsedArgs.getKeywords()), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
@@ -861,7 +863,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
                         new ToolArgs(ZenDeskOrganization.ZENDESK_ORGANIZATION_ARG, id, true),
-                        new ToolArgs(CommonArguments.KEYWORDS_ARG, parsedArgs.getKeywords(), true),
+                        new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", parsedArgs.getKeywords()), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
@@ -974,6 +976,9 @@ class MultiSlackZenGoogleConfig {
 
     @Inject
     private ArgsAccessor argsAccessor;
+
+    @Inject
+    private Keywords keywords;
 
     @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.ttlSeconds")
@@ -1488,6 +1493,10 @@ class MultiSlackZenGoogleConfig {
         return configExcludeConfigCacheGetters;
     }
 
+    public Keywords getKeywordsTool() {
+        return keywords;
+    }
+
     public class LocalArguments implements LocalSkipEmptyInLastDuration {
         private final List<ToolArgs> arguments;
 
@@ -1621,15 +1630,35 @@ class MultiSlackZenGoogleConfig {
             return NumberUtils.toInt(stringValue, 1);
         }
 
-        public String getKeywords() {
-            return getArgsAccessor().getArgument(
+        public List<String> getKeywords() {
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
                             CommonArguments.KEYWORDS_ARG,
                             CommonArguments.KEYWORDS_ARG,
                             "")
-                    .getSafeValue();
+                    .stream()
+                    .map(Argument::value)
+                    .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    null,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         public Integer getKeywordWindow() {
