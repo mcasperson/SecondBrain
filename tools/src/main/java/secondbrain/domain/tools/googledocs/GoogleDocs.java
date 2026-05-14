@@ -36,6 +36,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.tooldefs.*;
@@ -102,6 +103,9 @@ public class GoogleDocs implements Tool<Void> {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private DocumentTrimmer documentTrimmer;
 
     @Override
     public String getName() {
@@ -207,7 +211,11 @@ public class GoogleDocs implements Tool<Void> {
 
         // Apply preprocessing hooks
         return Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
-                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
+                .stream()
+                .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
+                .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
+                .toList();
     }
 
     @Override

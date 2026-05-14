@@ -22,6 +22,7 @@ import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingMetadata;
@@ -100,6 +101,9 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
     @Override
     public String getName() {
         return ZenDeskIndividualTicket.class.getSimpleName();
@@ -155,6 +159,8 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
                 )
                 .map(ticket -> ticket.addIntermediateResult(
                         new IntermediateResult(ticket.document(), ticketToFileName(ticket, parsedArgs.getEntity()))))
+                .map(ticket -> ticket.updateDocument(documentTrimmer.trimDocumentToKeywords(ticket.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
+                .filter(ticket -> StringUtils.isNotBlank(ticket.document()))
                 .map(ticket -> ticket.convertToRagDocumentContextVoid())
                 .map(List::of)
                 // deal with the filter failing

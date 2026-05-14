@@ -30,6 +30,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.keyword.KeywordExtractor;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
@@ -60,7 +61,7 @@ public class SlackSearch implements Tool<Void> {
     public static final String SLACK_IGNORE_CHANNELS_ARG = "ignoreChannels";
     public static final String API_DELAY_ARG = "apiDelay";
     public static final String SEARCH_TTL_ARG = "searchTtl";
-    public static final String SLACK_GENERATE_KEYWORDS_ARG = "generateKeywords";
+    public static final String SLACK_GENERATE_KEYWORDS_ARG = CommonArguments.AUTO_GENERATE_KEYWORDS_ARG;
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
 
     private static final String INSTRUCTIONS = """
@@ -105,6 +106,9 @@ public class SlackSearch implements Tool<Void> {
     @Preferred
     private LocalStorage localStorage;
 
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
     @Override
     public String getName() {
         return SlackSearch.class.getSimpleName();
@@ -118,7 +122,8 @@ public class SlackSearch implements Tool<Void> {
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
-                new ToolArguments(SLACK_SEARCH_KEYWORDS_ARG, "Optional comma separated list of keywords defined in the prompt", "")
+                new ToolArguments(SLACK_SEARCH_KEYWORDS_ARG, "Optional comma separated list of keywords defined in the prompt", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false")
         );
     }
 
@@ -222,6 +227,8 @@ public class SlackSearch implements Tool<Void> {
         final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
+                .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
+                .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc ->
                         ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)

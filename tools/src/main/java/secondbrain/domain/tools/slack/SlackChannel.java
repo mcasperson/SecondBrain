@@ -26,6 +26,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
@@ -97,6 +98,9 @@ public class SlackChannel implements Tool<Void> {
 
     @Inject
     private DataToRagDoc dataToRagDoc;
+
+    @Inject
+    private DocumentTrimmer documentTrimmer;
 
     @Override
     public String getName() {
@@ -250,6 +254,8 @@ public class SlackChannel implements Tool<Void> {
         final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
+                .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
+                .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc ->
                         ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)

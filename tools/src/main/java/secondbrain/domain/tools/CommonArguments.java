@@ -85,4 +85,10 @@ public class CommonArguments {
      * is left blank, as these tools often can't or don't force the use of a company when collecting data.
      */
     public static final String REQUIRE_COMPANY = "requireCompany";
+    /**
+     * When set to true, the tool automatically generates a set of keywords from the prompt using the
+     * Keywords LLM tool, and uses them for document filtering. This removes the need to supply explicit
+     * keywords via the {@link #KEYWORDS_ARG} argument.
+     */
+    public static final String AUTO_GENERATE_KEYWORDS_ARG = "autoGenerateKeywords";
 }
