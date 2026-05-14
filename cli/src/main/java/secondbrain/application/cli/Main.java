@@ -82,13 +82,13 @@ public class Main {
         final StringConverter converter = stringConverterSelector.getStringConverter(format);
         return Try.of(() -> promptHandler.handlePrompt(context, prompt))
                 .map(response -> response.updateResponseText(converter))
-                .onSuccess(promptHandlerOutput::printOutput)
-                .onSuccess(promptHandlerOutput::writeAnnotations)
-                .onSuccess(promptHandlerOutput::writeLinks)
-                .onSuccess(promptHandlerOutput::writeDebug)
-                .onSuccess(promptHandlerOutput::writeOutput)
-                .onSuccess(promptHandlerOutput::saveMetadata)
-                .onSuccess(promptHandlerOutput::saveIntermediateResults)
+                .onSuccess(content -> promptHandlerOutput.printOutput(content, context))
+                .onSuccess(content -> promptHandlerOutput.writeAnnotations(content, context))
+                .onSuccess(content -> promptHandlerOutput.writeLinks(content, context))
+                .onSuccess(content -> promptHandlerOutput.writeDebug(content, context))
+                .onSuccess(content -> promptHandlerOutput.writeOutput(content, context))
+                .onSuccess(content -> promptHandlerOutput.saveMetadata(content, context))
+                .onSuccess(content -> promptHandlerOutput.saveIntermediateResults(content, context))
                 .onFailure(e -> logger.severe("Failed to process prompt: " + e.getMessage()))
                 .get();
     }
