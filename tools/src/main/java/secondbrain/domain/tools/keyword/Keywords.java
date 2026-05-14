@@ -40,8 +40,9 @@ public class Keywords implements Tool<Void> {
             You are a helpful assistant.
             You are given a prompt.
             You must generate a list of broad, relevant keywords from the prompt.
-            Aim for 20 keywords.
-            Keywords should be specific terms or short phrases useful for document retrieval.
+            Aim for 50 keywords.
+            Keywords should be specific terms, abbreviations, and acronyms useful for document retrieval.
+            If the prompt includes acronyms, platform names, product names, companies, or tools, those must be present in the list.
             You will be penalized for returning generic or irrelevant keywords.
             You will be penalized for returning markdown or any other formatting.
             The response must be a JSON array of strings, with each string being a keyword.
