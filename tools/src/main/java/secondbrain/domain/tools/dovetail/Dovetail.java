@@ -374,6 +374,10 @@ class DovetailConfig {
     private Optional<String> configKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.dovetail.autoGenerateKeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.dovetail.keywordWindow")
     private Optional<String> configKeywordWindow;
 
@@ -470,6 +474,10 @@ class DovetailConfig {
 
     public Optional<String> getConfigKeywords() {
         return configKeywords;
+    }
+
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
     }
 
     public Optional<String> getConfigKeywordWindow() {
@@ -660,7 +668,7 @@ class DovetailConfig {
 
         public boolean getAutoGenerateKeywords() {
             final String value = getArgsAccessor().getArgument(
-                    null,
+                    getConfigAutoGenerateKeywords()::get,
                     arguments,
                     context,
                     CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,

@@ -210,6 +210,10 @@ class UploadDocConfig {
     private Optional<String> configUploadKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.upload.autogeneratekeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.upload.keywordwindow")
     private Optional<String> configKeywordWindow;
 
@@ -236,6 +240,10 @@ class UploadDocConfig {
 
     public Optional<String> getConfigUploadKeywords() {
         return configUploadKeywords;
+    }
+
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
     }
 
     public Optional<String> getConfigKeywordWindow() {
@@ -323,7 +331,7 @@ class UploadDocConfig {
 
         public boolean getAutoGenerateKeywords() {
             final String value = getArgsAccessor().getArgument(
-                    null,
+                    getConfigAutoGenerateKeywords()::get,
                     arguments,
                     context,
                     CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,

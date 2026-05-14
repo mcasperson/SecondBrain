@@ -379,6 +379,10 @@ class SlackChannelConfig {
     private Optional<String> configKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.slack.genetarekeywords")
+    private Optional<String> configGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.slack.keywordwindow")
     private Optional<String> configKeywordWindow;
 
@@ -458,6 +462,10 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigKeywords() {
         return configKeywords;
+    }
+
+    public Optional<String> getConfigGenerateKeywords() {
+        return configGenerateKeywords;
     }
 
     public Optional<String> getConfigKeywordWindow() {
@@ -636,7 +644,7 @@ class SlackChannelConfig {
 
         public boolean getAutoGenerateKeywords() {
             final String value = getArgsAccessor().getArgument(
-                    null,
+                    getConfigGenerateKeywords()::get,
                     arguments,
                     context,
                     CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,

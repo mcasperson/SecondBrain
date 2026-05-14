@@ -1025,6 +1025,10 @@ class MultiSlackZenGoogleConfig {
     private Optional<String> configKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.autogeneratekeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.multislackzengoogle.keywordwindow")
     private Optional<String> configKeywordWindow;
 
@@ -1258,6 +1262,10 @@ class MultiSlackZenGoogleConfig {
 
     public Optional<String> getConfigKeywords() {
         return configKeywords;
+    }
+
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -1651,7 +1659,7 @@ class MultiSlackZenGoogleConfig {
 
         public boolean getAutoGenerateKeywords() {
             final String value = getArgsAccessor().getArgument(
-                    null,
+                    getConfigAutoGenerateKeywords()::get,
                     arguments,
                     context,
                     CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,

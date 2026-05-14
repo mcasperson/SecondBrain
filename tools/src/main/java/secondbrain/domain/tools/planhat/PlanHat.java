@@ -425,6 +425,10 @@ class PlanHatConfig {
     private Optional<String> configKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.planhat.autogeneratekeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.planhat.keywordwindow")
     private Optional<String> configKeywordWindow;
 
@@ -507,6 +511,10 @@ class PlanHatConfig {
 
     public Optional<String> getConfigKeywords() {
         return configKeywords;
+    }
+
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
     }
 
     public Optional<String> getConfigKeywordWindow() {
@@ -737,7 +745,7 @@ class PlanHatConfig {
 
         public boolean getAutoGenerateKeywords() {
             final String value = getArgsAccessor().getArgument(
-                    null,
+                    getConfigAutoGenerateKeywords()::get,
                     arguments,
                     context,
                     CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,

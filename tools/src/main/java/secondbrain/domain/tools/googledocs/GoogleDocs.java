@@ -411,6 +411,10 @@ class GoogleDocsConfig {
     private Optional<String> configGoogleKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.google.generatekeywords")
+    private Optional<String> configGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.google.keywordwindow")
     private Optional<String> configKeywordWindow;
 
@@ -465,6 +469,10 @@ class GoogleDocsConfig {
 
     public Optional<String> getConfigGoogleKeywords() {
         return configGoogleKeywords;
+    }
+
+    public Optional<String> getConfigGenerateKeywords() {
+        return configGenerateKeywords;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -576,7 +584,7 @@ class GoogleDocsConfig {
 
         public boolean getAutoGenerateKeywords() {
             final String value = getArgsAccessor().getArgument(
-                    null,
+                    getConfigGenerateKeywords()::get,
                     arguments,
                     context,
                     CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,

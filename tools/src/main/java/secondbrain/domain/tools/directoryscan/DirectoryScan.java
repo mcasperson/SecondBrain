@@ -399,6 +399,10 @@ class DirectoryScanConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
+    @ConfigProperty(name = "sb.directoryscan.autogeneratekeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.directoryscan.summarizeindividualfiles")
     private Optional<String> configSummarizeIndividualFiles;
 
@@ -460,6 +464,10 @@ class DirectoryScanConfig {
 
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
+    }
+
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
     }
 
     public Optional<String> getConfigSummarizeIndividualFiles() {
@@ -600,7 +608,7 @@ class DirectoryScanConfig {
 
         public boolean getAutoGenerateKeywords() {
             final String value = getArgsAccessor().getArgument(
-                    null,
+                    getConfigAutoGenerateKeywords()::get,
                     arguments,
                     context,
                     CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
