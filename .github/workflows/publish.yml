@@ -157,7 +157,7 @@ jobs:
         shell: bash
 
       - name: Publish to GitHub Packages
-        run: mvn -s settings.xml --batch-mode -DskipTests deploy
+        run: mvn -s settings.xml --batch-mode -DskipTests source:jar-no-fork deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
