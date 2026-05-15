@@ -62,7 +62,8 @@ public class Main {
         // See https://netty.io/wiki/java-24-and-sun.misc.unsafe.html
         System.setProperty("io.netty.noUnsafe", "true");
 
-        getContainer().of(weldContainer -> weldContainer.select(Main.class).get().entry(args));
+        getContainer().of(weldContainer -> weldContainer.select(Main.class).get().entry(args))
+                .onFailure(e -> System.err.println("Failed to process prompt: " + e.getMessage()));
     }
 
     @Nullable

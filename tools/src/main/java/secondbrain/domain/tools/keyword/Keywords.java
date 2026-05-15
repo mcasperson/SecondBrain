@@ -78,6 +78,7 @@ public class Keywords implements Tool<Void> {
     private JsonDeserializer jsonDeserializer;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     @Inject
