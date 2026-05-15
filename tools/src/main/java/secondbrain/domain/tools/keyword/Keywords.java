@@ -7,6 +7,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
@@ -18,6 +19,7 @@ import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -25,9 +27,8 @@ import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
 import secondbrain.infrastructure.llm.LlmClient;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.logging.Logger;
 import java.util.stream.Stream;
 
 /**
@@ -37,7 +38,9 @@ import java.util.stream.Stream;
 public class Keywords implements Tool<Void> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    static final String EXCLUDE_KEYWORDS_ARG = "excludeKeywords";
+    public static final String EXCLUDE_KEYWORDS_ARG = "excludeKeywords";
+    private static final int KEYWORDS_TTL = 60 * 60 * 24 * 90;
+
 
     private static final String INSTRUCTIONS = """
             You are a helpful assistant.
@@ -74,6 +77,12 @@ public class Keywords implements Tool<Void> {
     @Inject
     private JsonDeserializer jsonDeserializer;
 
+    @Inject
+    private LocalStorage localStorage;
+
+    @Inject
+    private Logger logger;
+
     @Override
     public String getName() {
         return Keywords.class.getSimpleName();
@@ -100,6 +109,22 @@ public class Keywords implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        return Try.of(() -> localStorage.getOrPutGeneric(
+                                getName(),
+                                getName(),
+                                Integer.toString((INSTRUCTIONS + prompt).hashCode()),
+                                KEYWORDS_TTL,
+                                List.class,
+                                RagDocumentContext.class,
+                                Void.class,
+                                () -> getContextPrivate(environmentSettings, prompt, arguments))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get Keywords context from cache: " + ExceptionUtils.getRootCauseMessage(ex)))
+                .get();
+    }
+
+    private List<RagDocumentContext<Void>> getContextPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         // Get preinitialization hooks before ragdocs
