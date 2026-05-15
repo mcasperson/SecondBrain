@@ -5,6 +5,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -24,6 +25,7 @@ import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
@@ -32,6 +34,7 @@ import secondbrain.domain.processing.RatingFilter;
 import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.salesforce.SalesforceClient;
@@ -114,6 +117,9 @@ public class Salesforce implements Tool<Void> {
     @Inject
     private SharedVirtualThreadExecutor sharedExecutor;
 
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
     @Override
     public String getName() {
         return Salesforce.class.getSimpleName();
@@ -135,6 +141,7 @@ public class Salesforce implements Tool<Void> {
                 new ToolArguments(CommonArguments.END_DATE, "The optional date to stop retrieving emails at", ""),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The optional keywords to limit the emails to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize each email", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the email", ""),
                 new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of an email", ""),
@@ -241,6 +248,8 @@ public class Salesforce implements Tool<Void> {
 
         // Only do the post-processing after the hooks, in parallel
         final List<RagDocumentContext<SalesforceEmailRecord>> records = filteredDocs.stream()
+                .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
+                .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs, token), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
@@ -445,6 +454,10 @@ class SalesforceConfig {
     private Optional<String> configKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.salesforce.autogeneratekeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.salesforce.keywordwindow")
     private Optional<String> configKeywordWindow;
 
@@ -483,6 +496,9 @@ class SalesforceConfig {
     @Inject
     @ConfigProperty(name = "sb.salesforce.requireCompany")
     private Optional<String> configRequireCompany;
+
+    @Inject
+    private Keywords keywords;
 
     public Optional<String> getConfigClientId() {
         return configClientId;
@@ -544,6 +560,10 @@ class SalesforceConfig {
         return configKeywords;
     }
 
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
+    }
+
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
     }
@@ -586,6 +606,10 @@ class SalesforceConfig {
 
     public Optional<String> getConfigRequireCompany() {
         return configRequireCompany;
+    }
+
+    public Keywords getKeywordsTool() {
+        return keywords;
     }
 
     public DateParser getDateParser() {
@@ -876,7 +900,7 @@ class SalesforceConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -886,6 +910,24 @@ class SalesforceConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigAutoGenerateKeywords()::get,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         @Override

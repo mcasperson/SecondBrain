@@ -4,6 +4,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -27,6 +28,7 @@ import secondbrain.domain.limit.TrimResult;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -123,6 +125,7 @@ public class YoutubePlaylist implements Tool<Void> {
                 new ToolArguments(YOUTUBE_MAX_VIDEOS_ARG, "The maximum number of videos to process", "10"),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The optional keywords to limit the video transcripts to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize each video transcript", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the video transcript", "Summarize the YouTube video transcript in three paragraphs"),
                 new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of a video transcript", ""),
@@ -394,6 +397,10 @@ class YoutubeConfig {
     private Optional<String> configKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.youtube.autoGenerateKeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.youtube.keywordWindow")
     private Optional<String> configKeywordWindow;
 
@@ -433,12 +440,19 @@ class YoutubeConfig {
     @ConfigProperty(name = "sb.youtube.maxvideos")
     private Optional<String> configMaxVideos;
 
+    @Inject
+    private Keywords keywords;
+
     public Optional<String> getConfigPlaylistId() {
         return playlistId;
     }
 
     public Optional<String> getConfigKeywords() {
         return configKeywords;
+    }
+
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
     }
 
     public Optional<String> getConfigKeywordWindow() {
@@ -479,6 +493,10 @@ class YoutubeConfig {
 
     public Optional<String> getConfigMaxVideos() {
         return configMaxVideos;
+    }
+
+    public Keywords getKeywordsTool() {
+        return keywords;
     }
 
     public ArgsAccessor getArgsAccessor() {
@@ -559,7 +577,7 @@ class YoutubeConfig {
         }
 
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -569,6 +587,24 @@ class YoutubeConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigAutoGenerateKeywords()::get,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         public int getKeywordWindow() {

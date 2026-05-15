@@ -6,6 +6,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -26,6 +27,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
@@ -36,6 +38,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.slack.SlackClient;
 import secondbrain.infrastructure.slack.api.SlackChannelResource;
@@ -98,6 +101,9 @@ public class SlackChannel implements Tool<Void> {
     @Inject
     private DataToRagDoc dataToRagDoc;
 
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
     @Override
     public String getName() {
         return SlackChannel.class.getSimpleName();
@@ -117,6 +123,7 @@ public class SlackChannel implements Tool<Void> {
                 new ToolArguments(API_DELAY_ARG, "The number of milliseconds to delay between Slack API calls", "120000"),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to limit the Slack messages to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize the Slack messages", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the Slack messages", ""),
                 new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of the Slack messages", ""),
@@ -250,6 +257,8 @@ public class SlackChannel implements Tool<Void> {
         final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
+                .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
+                .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 // Get the metadata, which includes a rating against the filter question if present
                 .map(ragDoc ->
                         ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
@@ -370,6 +379,10 @@ class SlackChannelConfig {
     private Optional<String> configKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.slack.genetarekeywords")
+    private Optional<String> configGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.slack.keywordwindow")
     private Optional<String> configKeywordWindow;
 
@@ -422,6 +435,9 @@ class SlackChannelConfig {
     private Optional<String> configSkipEmptyInLastDuration;
 
     @Inject
+    private Keywords keywords;
+
+    @Inject
     private ArgsAccessor argsAccessor;
 
     @Inject
@@ -446,6 +462,10 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigKeywords() {
         return configKeywords;
+    }
+
+    public Optional<String> getConfigGenerateKeywords() {
+        return configGenerateKeywords;
     }
 
     public Optional<String> getConfigKeywordWindow() {
@@ -510,6 +530,10 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigSkipEmptyInLastDuration() {
         return configSkipEmptyInLastDuration;
+    }
+
+    public Keywords getKeywordsTool() {
+        return keywords;
     }
 
     public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
@@ -600,7 +624,7 @@ class SlackChannelConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -610,6 +634,24 @@ class SlackChannelConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigGenerateKeywords()::get,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         @Override

@@ -4,6 +4,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -25,6 +26,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
@@ -36,6 +38,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -118,6 +121,9 @@ public class PlanHat implements Tool<Void> {
     @Inject
     private SharedVirtualThreadExecutor sharedExecutor;
 
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
     @Override
     public String getName() {
         return PlanHat.class.getSimpleName();
@@ -168,6 +174,7 @@ public class PlanHat implements Tool<Void> {
                 new ToolArguments(CommonArguments.END_DATE, "The optional date to stop retrieving conversations at", ""),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The optional keywords to limit the conversations to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize each conversation", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the conversation", ""),
                 new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of a conversation", ""),
@@ -276,6 +283,8 @@ public class PlanHat implements Tool<Void> {
         final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
+                .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
+                .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 // Get the metadata and summarize in parallel (these are the expensive LLM calls)
                 .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                 .filter(Optional::isPresent)
@@ -404,6 +413,9 @@ class PlanHatConfig {
     @Inject
     private ArgsAccessor argsAccessor;
 
+    @Inject
+    private Keywords keywords;
+
     @Identifier("everything")
     @Inject
     private DateParser dateParser;
@@ -411,6 +423,10 @@ class PlanHatConfig {
     @Inject
     @ConfigProperty(name = "sb.planhat.keywords")
     private Optional<String> configKeywords;
+
+    @Inject
+    @ConfigProperty(name = "sb.planhat.autogeneratekeywords")
+    private Optional<String> configAutoGenerateKeywords;
 
     @Inject
     @ConfigProperty(name = "sb.planhat.keywordwindow")
@@ -489,8 +505,16 @@ class PlanHatConfig {
         return argsAccessor;
     }
 
+    public Keywords getKeywordsTool() {
+        return keywords;
+    }
+
     public Optional<String> getConfigKeywords() {
         return configKeywords;
+    }
+
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
     }
 
     public Optional<String> getConfigKeywordWindow() {
@@ -701,7 +725,7 @@ class PlanHatConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -711,6 +735,24 @@ class PlanHatConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigAutoGenerateKeywords()::get,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         @Override

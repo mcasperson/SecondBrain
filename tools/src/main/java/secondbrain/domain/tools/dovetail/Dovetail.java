@@ -4,6 +4,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -27,6 +28,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
@@ -38,6 +40,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.tools.dovetail.model.DovetailDataDetails;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.dovetail.DovetailClient;
@@ -114,6 +117,9 @@ public class Dovetail implements Tool<Void> {
     @Inject
     private SharedVirtualThreadExecutor sharedExecutor;
 
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
     @Override
     public String getName() {
         return Dovetail.class.getSimpleName();
@@ -134,6 +140,7 @@ public class Dovetail implements Tool<Void> {
                 new ToolArguments(CommonArguments.END_DATE, "The optional date to stop retrieving data items at", ""),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The optional keywords to limit the data item content to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "Set to true to first summarize each data item", "false"),
                 new ToolArguments(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, "The prompt used to summarize the data item", ""),
                 new ToolArguments(CommonArguments.CONTENT_RATING_QUESTION_ARG, "The question used to determine the content rating of a data item", ""),
@@ -229,6 +236,8 @@ public class Dovetail implements Tool<Void> {
                 Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                         .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                         .stream()
+                        .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
+                        .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                         .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                         .filter(Optional::isPresent)
                         .map(Optional::get)
@@ -365,6 +374,10 @@ class DovetailConfig {
     private Optional<String> configKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.dovetail.autoGenerateKeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.dovetail.keywordWindow")
     private Optional<String> configKeywordWindow;
 
@@ -412,6 +425,9 @@ class DovetailConfig {
     @ConfigProperty(name = "sb.dovetail.minimumContentLength", defaultValue = "0")
     private Optional<String> configMinimumContentLength;
 
+    @Inject
+    private Keywords keywords;
+
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
     }
@@ -458,6 +474,10 @@ class DovetailConfig {
 
     public Optional<String> getConfigKeywords() {
         return configKeywords;
+    }
+
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
     }
 
     public Optional<String> getConfigKeywordWindow() {
@@ -508,12 +528,18 @@ class DovetailConfig {
         return configMinimumContentLength;
     }
 
+    public Keywords getKeywordsTool() {
+        return keywords;
+    }
+
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
+        private final String prompt;
         private final Map<String, String> context;
 
         public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
             this.arguments = arguments;
+            this.prompt = prompt;
             this.context = context;
         }
 
@@ -622,7 +648,7 @@ class DovetailConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -632,6 +658,24 @@ class DovetailConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigAutoGenerateKeywords()::get,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         @Override

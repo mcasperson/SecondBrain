@@ -4,7 +4,9 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -22,6 +24,7 @@ import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
+import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingMetadata;
@@ -31,6 +34,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -100,6 +104,9 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     @Inject
     private ExceptionMapping exceptionMapping;
 
+    @Inject
+    private DocumentTrimmer documentTrimmer;
+
     @Override
     public String getName() {
         return ZenDeskIndividualTicket.class.getSimpleName();
@@ -155,7 +162,9 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
                 )
                 .map(ticket -> ticket.addIntermediateResult(
                         new IntermediateResult(ticket.document(), ticketToFileName(ticket, parsedArgs.getEntity()))))
-                .map(ticket -> ticket.convertToRagDocumentContextVoid())
+                .map(ticket -> ticket.updateDocument(documentTrimmer.trimDocumentToKeywords(ticket.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
+                .filter(ticket -> StringUtils.isNotBlank(ticket.document()))
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .map(List::of)
                 // deal with the filter failing
                 .recover(NoSuchElementException.class, ex -> List.of());
@@ -392,6 +401,10 @@ class ZenDeskTicketConfig {
     private Optional<String> configKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.autogeneratekeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.zendesk.keywordwindow")
     private Optional<String> configKeywordWindow;
 
@@ -407,6 +420,9 @@ class ZenDeskTicketConfig {
 
     @Inject
     private ToStringGenerator toStringGenerator;
+
+    @Inject
+    private Keywords keywords;
 
     public ArgsAccessor getArgsAccessor() {
         return argsAccessor;
@@ -472,6 +488,10 @@ class ZenDeskTicketConfig {
         return configKeywords;
     }
 
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
+    }
+
     public Optional<String> getConfigKeywordWindow() {
         return configKeywordWindow;
     }
@@ -482,6 +502,10 @@ class ZenDeskTicketConfig {
 
     public ToStringGenerator getToStringGenerator() {
         return toStringGenerator;
+    }
+
+    public Keywords getKeywordsTool() {
+        return keywords;
     }
 
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigKeywordsEntity {
@@ -707,7 +731,7 @@ class ZenDeskTicketConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -717,6 +741,24 @@ class ZenDeskTicketConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigAutoGenerateKeywords()::get,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         @Override

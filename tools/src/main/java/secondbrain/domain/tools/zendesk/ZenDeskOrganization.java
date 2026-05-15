@@ -4,6 +4,7 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -40,6 +41,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.validate.ValidateInputs;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
@@ -157,6 +159,7 @@ public class ZenDeskOrganization implements Tool<Void> {
                 new ToolArguments(EXCLUDE_ORGANIZATION_ARG, "An optional comma separated list of organizations to exclude", ""),
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "The keywords to limit the emails to", ""),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(EXCLUDE_SUBMITTERS_ARG, "An optional comma separated list of submitters to exclude", ""),
                 new ToolArguments(RECIPIENT_ARG, "An optional recipient email address that tickets must be sent to", ""),
                 new ToolArguments(NUM_COMMENTS_ARG, "The optional number of comments to include in the context", "1"),
@@ -538,6 +541,10 @@ class ZenDeskConfig {
     private Optional<String> configKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.zendesk.autogeneratekeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.zendesk.keywordwindow")
     private Optional<String> configKeywordWindow;
 
@@ -630,6 +637,9 @@ class ZenDeskConfig {
     @ConfigProperty(name = "sb.zendesk.requireCompany")
     private Optional<String> configRequireCompany;
 
+    @Inject
+    private Keywords keywords;
+
     public Optional<String> getConfigContextFilterMinimumRating() {
         return configContextFilterMinimumRating;
     }
@@ -676,6 +686,10 @@ class ZenDeskConfig {
 
     public Optional<String> getConfigKeywords() {
         return configKeywords;
+    }
+
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
     }
 
     public Optional<String> getConfigKeywordWindow() {
@@ -795,6 +809,10 @@ class ZenDeskConfig {
 
     public Optional<String> getConfigRequireCompany() {
         return configRequireCompany;
+    }
+
+    public Keywords getKeywordsTool() {
+        return keywords;
     }
 
     public DateParser getDateParser() {
@@ -1175,7 +1193,7 @@ class ZenDeskConfig {
         }
 
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -1185,6 +1203,24 @@ class ZenDeskConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigAutoGenerateKeywords()::get,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         public int getKeywordWindow() {

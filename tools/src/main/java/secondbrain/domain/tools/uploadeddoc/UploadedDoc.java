@@ -4,6 +4,8 @@ import ai.djl.repository.FilenameUtils;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -27,6 +29,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -97,6 +100,7 @@ public class UploadedDoc implements Tool<Void> {
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments(CommonArguments.KEYWORDS_ARG, "An optional list of keywords used to trim the document", ""),
+                new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.KEYWORD_WINDOW_ARG, "The window size around any matching keywords", "")
         );
     }
@@ -206,6 +210,10 @@ class UploadDocConfig {
     private Optional<String> configUploadKeywords;
 
     @Inject
+    @ConfigProperty(name = "sb.upload.autogeneratekeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.upload.keywordwindow")
     private Optional<String> configKeywordWindow;
 
@@ -227,8 +235,15 @@ class UploadDocConfig {
     @Inject
     private ToStringGenerator toStringGenerator;
 
+    @Inject
+    private Keywords keywords;
+
     public Optional<String> getConfigUploadKeywords() {
         return configUploadKeywords;
+    }
+
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
     }
 
     public Optional<String> getConfigKeywordWindow() {
@@ -253,6 +268,10 @@ class UploadDocConfig {
 
     public ToStringGenerator getToStringGenerator() {
         return toStringGenerator;
+    }
+
+    public Keywords getKeywordsTool() {
+        return keywords;
     }
 
     public class LocalArguments {
@@ -292,7 +311,7 @@ class UploadDocConfig {
         }
 
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigUploadKeywords()::get,
                             arguments,
                             context,
@@ -302,6 +321,24 @@ class UploadDocConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigAutoGenerateKeywords()::get,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         public int getKeywordWindow() {

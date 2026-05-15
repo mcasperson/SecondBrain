@@ -3,6 +3,7 @@ package secondbrain.domain.tools.directoryscan;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -32,6 +33,7 @@ import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.tools.CommonArguments;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.llm.LlmClient;
@@ -397,6 +399,10 @@ class DirectoryScanConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
+    @ConfigProperty(name = "sb.directoryscan.autogeneratekeywords")
+    private Optional<String> configAutoGenerateKeywords;
+
+    @Inject
     @ConfigProperty(name = "sb.directoryscan.summarizeindividualfiles")
     private Optional<String> configSummarizeIndividualFiles;
 
@@ -420,6 +426,9 @@ class DirectoryScanConfig {
 
     @Inject
     private ToStringGenerator toStringGenerator;
+
+    @Inject
+    private Keywords keywords;
 
     public Optional<String> getConfigFileModel() {
         return configFileModel;
@@ -457,6 +466,10 @@ class DirectoryScanConfig {
         return configKeywordWindow;
     }
 
+    public Optional<String> getConfigAutoGenerateKeywords() {
+        return configAutoGenerateKeywords;
+    }
+
     public Optional<String> getConfigSummarizeIndividualFiles() {
         return configSummarizeIndividualFiles;
     }
@@ -483,6 +496,10 @@ class DirectoryScanConfig {
 
     public ToStringGenerator getToStringGenerator() {
         return toStringGenerator;
+    }
+
+    public Keywords getKeywordsTool() {
+        return keywords;
     }
 
     public class LocalArguments implements LocalConfigKeywordsEntity {
@@ -571,7 +588,7 @@ class DirectoryScanConfig {
 
         @Override
         public List<String> getKeywords() {
-            return getArgsAccessor().getArgumentList(
+            final List<String> keywords = getArgsAccessor().getArgumentList(
                             getConfigKeywords()::get,
                             arguments,
                             context,
@@ -581,6 +598,24 @@ class DirectoryScanConfig {
                     .stream()
                     .map(Argument::value)
                     .toList();
+
+            if (getAutoGenerateKeywords()) {
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+            }
+
+            return keywords;
+        }
+
+        public boolean getAutoGenerateKeywords() {
+            final String value = getArgsAccessor().getArgument(
+                    getConfigAutoGenerateKeywords()::get,
+                    arguments,
+                    context,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    CommonArguments.AUTO_GENERATE_KEYWORDS_ARG,
+                    "false").getSafeValue();
+
+            return BooleanUtils.toBoolean(value);
         }
 
         @Override
