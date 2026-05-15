@@ -54,7 +54,9 @@ public class JdlSentenceVectorizerTest {
         final var configSource = new PropertiesConfigSource(
                 Map.of(
                         "sb.encryption.password", "1234567890",
-                        "sb.encryption.salt", "1234567890"
+                        "sb.encryption.salt", "1234567890",
+                        "sb.cosmos.endpoint", "https://localhost:9081",
+                        "sb.cosmos.key", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
                 ),
                 "TestConfig",
                 Integer.MAX_VALUE
