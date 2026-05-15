@@ -38,9 +38,6 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 public class GongClientLive implements GongClient {
     private static final int TTL = 60 * 60 * 24 * 90;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
-    private static final long API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 10;
-    private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2; // 2 minutes
-    private static final long CLIENT_TIMEOUT_BUFFER_SECONDS = 5;
     private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final int MAX_PAGES = 100;
 
@@ -122,7 +119,7 @@ public class GongClientLive implements GongClient {
                         ttl,
                         GongCallExtensive.class,
                         GongCallExtensive[].class,
-                        () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0, maxPages))
+                        () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, maxPages))
                 .result()
         ).recover(GongAPIException.class, e -> {
             // I have seen cases where the gong result was stopped half-way through and the
@@ -135,7 +132,7 @@ public class GongClientLive implements GongClient {
                                     source,
                                     DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
                                     ttl,
-                                    () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, "", 0))
+                                    () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, maxPages))
                             .result();
                 }
             }
@@ -193,9 +190,11 @@ public class GongClientLive implements GongClient {
             @Nullable final String callId,
             final String username,
             final String password,
-            final String cursor,
-            final int page) {
-        return getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, cursor, page, MAX_PAGES);
+            final int maxPages) {
+        return mutex.acquire(
+                MUTEX_TIMEOUT_MS,
+                lockFile,
+                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, "", 0, maxPages));
     }
 
     /**
