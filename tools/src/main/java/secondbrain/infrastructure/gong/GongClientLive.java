@@ -266,15 +266,6 @@ public class GongClientLive implements GongClient {
     private GongCallsExtensive callApi(final GongCallExtensiveQuery body,
                                        final String username,
                                        final String password) {
-        return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
-                lockFile,
-                () -> callApiLocked(body, username, password));
-    }
-
-    private GongCallsExtensive callApiLocked(final GongCallExtensiveQuery body,
-                                             final String username,
-                                             final String password) {
         return Try.withResources(() -> new TimedOperation("Gong API call for calls extensive"))
                 .of(t -> callApiTimed(body, username, password))
                 .get();
