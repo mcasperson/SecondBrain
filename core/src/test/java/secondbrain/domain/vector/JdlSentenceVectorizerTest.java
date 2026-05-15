@@ -9,6 +9,7 @@ import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.context.JdlSentenceVectorizer;
@@ -49,8 +50,8 @@ public class JdlSentenceVectorizerTest {
     @Inject
     private JdlSentenceVectorizer jdlSentenceVectorizer;
 
-    @BeforeEach
-    void updateConfig() {
+    @BeforeAll
+    static void registerConfig() {
         final var configSource = new PropertiesConfigSource(
                 Map.of(
                         "sb.encryption.password", "1234567890",
