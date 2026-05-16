@@ -117,6 +117,11 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
 
     @Override
     public @Nullable String sanitize(@Nullable final String document) {
+        return sanitize(document, true);
+    }
+
+    @Override
+    public @Nullable String sanitize(@Nullable String document, boolean unsanitize) {
         if (StringUtils.isBlank(document)) {
             return "";
         }
@@ -134,9 +139,13 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
                 .recover(ex -> filterPlainText(document, service))
                 .get();
 
-        //
-        return Seq.seq(unredactions).foldLeft(redacted, (current, unredaction) ->
-                                unredaction.unredact(document, current));
+        if (unsanitize) {
+            // Remove unwanted unsanitizations
+            return Seq.seq(unredactions).foldLeft(redacted, (current, unredaction) ->
+                    unredaction.unredact(document, current));
+        }
+
+        return redacted;
     }
 
     @SuppressWarnings("unchecked")

@@ -13,4 +13,5 @@ public interface SanitizeDocument {
      * @return The sanitized document
      */
     @Nullable String sanitize(@Nullable String document);
+    @Nullable String sanitize(@Nullable String document, boolean unsanitize);
 }

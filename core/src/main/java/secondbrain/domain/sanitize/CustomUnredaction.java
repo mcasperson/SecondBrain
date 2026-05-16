@@ -69,7 +69,7 @@ public class CustomUnredaction implements Unredaction {
                         .map(m -> {
                             Set<Map.Entry<String, String>> matches = new LinkedHashSet<>();
                             while (m.find()) {
-                                final String sanitized = sanitizeDocument.sanitize(m.group());
+                                final String sanitized = sanitizeDocument.sanitize(m.group(), false);
                                 if (!StringUtils.isBlank(sanitized)) {
                                     matches.add(Map.entry(sanitized, m.group()));
                                 }
