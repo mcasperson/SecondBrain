@@ -61,7 +61,7 @@ public class Keywords implements Tool<Void> {
             The response must be a JSON array of strings, with each string being a keyword.
             You will be penalized for returning any text in the response that is not a valid JSON array.
             For example, if the prompt is "How do I deploy to Azure Kubernetes Service?",
-            you might return ["Azure", "Kubernetes", "AKS", "deployment"].
+            you might return ["Azure", "Kubernetes", "AKS", "deployment", "deploy"].
             If there are no useful keywords, return an empty array: [].""".stripLeading();
 
     @Inject
