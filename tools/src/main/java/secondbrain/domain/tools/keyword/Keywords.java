@@ -51,6 +51,7 @@ public class Keywords implements Tool<Void> {
             You are given a prompt.
             You must generate a list of broad, relevant keywords from the prompt.
             The keywords are expected to be found in conversations, emails, and internal messages, so you must select terms that people are likely to literally say or write.
+            Prefer single words over phrases with multiple words.
             You will be penalized for selecting terms that describe conversations, emails, and internal messages but are unlikely to be literally used in them.
             Aim for 50 keywords.
             Keywords should be specific terms, abbreviations, and acronyms useful for document retrieval.
