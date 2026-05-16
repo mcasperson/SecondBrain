@@ -114,6 +114,10 @@ public class Keywords implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+
+        // We expect this tool to be called by multiple threads with the same prompt.
+        // The first one should generate the value, and others should get the cached result.
+
         final ReentrantLock lock = promptLocks.computeIfAbsent(prompt, k -> new ReentrantLock());
         lock.lock();
         try {
