@@ -220,7 +220,7 @@ public class Gong implements Tool<Void> {
     private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings, final String prompt, final GongConfig.LocalArguments parsedArgs) {
 
-        logger.info("Getting context for " + getName() + " for company " + parsedArgs.getCompany() + " with call ID " + parsedArgs.getCallId());
+        logger.fine("Getting Gong context for " + getName() + " for company " + parsedArgs.getCompany() + " with call ID " + parsedArgs.getCallId());
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<GongCallDetails>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))

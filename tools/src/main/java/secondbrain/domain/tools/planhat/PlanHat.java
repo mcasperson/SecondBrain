@@ -228,7 +228,7 @@ public class PlanHat implements Tool<Void> {
     private List<RagDocumentContext<Void>> getContextPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        logger.fine("Getting context for " + getName() + " for company " + parsedArgs.getCompany());
+        logger.fine("Getting PlanHat context for " + getName() + " for company " + parsedArgs.getCompany());
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
             throw new InternalFailure("You must provide a company ID to query");

@@ -186,7 +186,7 @@ public class SlackSearch implements Tool<Void> {
             return List.of();
         }
 
-        logger.fine("Getting context for " + getName() + " for keywords " + parsedArgs.getKeywords());
+        logger.fine("Getting Slack Search context for " + getName() + " for keywords " + parsedArgs.getKeywords());
 
         // If there is nothing to search for, return an empty list
         if (CollectionUtils.isEmpty(parsedArgs.getSearchKeywords())) {

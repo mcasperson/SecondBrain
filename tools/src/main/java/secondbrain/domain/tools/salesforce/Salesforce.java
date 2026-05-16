@@ -208,7 +208,7 @@ public class Salesforce implements Tool<Void> {
             final SalesforceOauthTokenResponse token) {
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        logger.info("Getting context for " + getName() + " with account ID " + parsedArgs.getAccountId());
+        logger.info("Getting SalesForce context for " + getName() + " with account ID " + parsedArgs.getAccountId());
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<SalesforceEmailRecord>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
