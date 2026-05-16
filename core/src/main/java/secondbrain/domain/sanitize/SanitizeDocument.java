@@ -13,5 +13,12 @@ public interface SanitizeDocument {
      * @return The sanitized document
      */
     @Nullable String sanitize(@Nullable String document);
+
+    /**
+     * Sanitize the document.
+     * @param document The source document
+     * @param unsanitize true to remove unwanted sanitizations, and false otherwise. Unsantize methods must set this to false to prevent stack overflows.
+     * @return The sanitized document
+     */
     @Nullable String sanitize(@Nullable String document, boolean unsanitize);
 }

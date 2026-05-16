@@ -140,7 +140,7 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
                 .get();
 
         if (unsanitize) {
-            // Remove unwanted unsanitizations
+            // Remove unwanted sanitizations
             return Seq.seq(unredactions).foldLeft(redacted, (current, unredaction) ->
                     unredaction.unredact(document, current));
         }
