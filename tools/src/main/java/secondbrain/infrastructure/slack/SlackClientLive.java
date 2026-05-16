@@ -94,7 +94,8 @@ public class SlackClientLive implements SlackClient {
             final int apiDelay,
             final ChronoUnit duration,
             final ChronoUnit cached) {
-        final String afterDate = LocalDate.now(ZoneId.systemDefault()).minus(1, duration).toString();
+        final String afterDate = DateTruncate.truncate(OffsetDateTime.now(ZoneId.systemDefault())
+                .minus(1, duration), duration).format(ISO_OFFSET_DATE_TIME);
         final Set<String> durationKeywords = new HashSet<>(keywords);
         durationKeywords.add("after:" + afterDate);
         return !search(client, accessToken, durationKeywords,
