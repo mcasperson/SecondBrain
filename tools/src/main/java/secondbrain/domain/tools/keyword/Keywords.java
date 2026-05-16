@@ -44,6 +44,7 @@ public class Keywords implements Tool<Void> {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final int KEYWORDS_TTL = 60 * 60 * 24 * 90;
     private static final ConcurrentHashMap<String, ReentrantLock> promptLocks = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, List<String>> keywordCache = new ConcurrentHashMap<>();
 
 
     private static final String INSTRUCTIONS = """
@@ -109,10 +110,30 @@ public class Keywords implements Tool<Void> {
     }
 
     public List<String> getKeywords(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        return Try.of(() -> call(environmentSettings, prompt, List.of()))
-                .map(RagMultiDocumentContext::getResponse)
-                .map(list -> jsonDeserializer.deserializeCollection(list, String.class))
-                .getOrElse(List.of());
+        final List<String> cachedKeywords = keywordCache.get(prompt);
+        if (cachedKeywords != null) {
+            return cachedKeywords;
+        }
+
+        final ReentrantLock lock = promptLocks.computeIfAbsent(prompt, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            final List<String> doubleCheckedCachedKeywords = keywordCache.get(prompt);
+            if (doubleCheckedCachedKeywords != null) {
+                return doubleCheckedCachedKeywords;
+            }
+
+            final List<String> generatedKeywords = Try.of(() -> call(environmentSettings, prompt, List.of()))
+                    .map(RagMultiDocumentContext::getResponse)
+                    .map(list -> jsonDeserializer.deserializeCollection(list, String.class))
+                    .map(List::copyOf)
+                    .getOrElse(List.of());
+
+            keywordCache.put(prompt, generatedKeywords);
+            return generatedKeywords;
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
