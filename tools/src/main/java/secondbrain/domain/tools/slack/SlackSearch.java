@@ -160,7 +160,7 @@ public class SlackSearch implements Tool<Void> {
             return List.of();
         }
 
-        final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
+        final String cacheKey = parsedArgs + "\n" + prompt;
         return Try.of(() -> localStorage.getOrPutGeneric(
                                 getName(),
                                 getName(),
