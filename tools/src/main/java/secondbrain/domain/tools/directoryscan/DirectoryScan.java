@@ -407,6 +407,10 @@ class DirectoryScanConfig {
     private Optional<String> configSummarizeIndividualFiles;
 
     @Inject
+    @ConfigProperty(name = "sb.directoryscan.contextFilterQuestion")
+    private Optional<String> configContextFilterQuestion;
+
+    @Inject
     @ConfigProperty(name = "sb.directoryscan.preprocessorHooks", defaultValue = "")
     private Optional<String> configPreprocessorHooks;
 
@@ -472,6 +476,10 @@ class DirectoryScanConfig {
 
     public Optional<String> getConfigSummarizeIndividualFiles() {
         return configSummarizeIndividualFiles;
+    }
+
+    public Optional<String> getConfigContextFilterQuestion() {
+        return configContextFilterQuestion;
     }
 
     public Optional<String> getConfigPreprocessorHooks() {
@@ -600,7 +608,7 @@ class DirectoryScanConfig {
                     .toList();
 
             if (getAutoGenerateKeywords()) {
-                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt, List.of()), false);
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt + "\n" + getContextFilterQuestion(), List.of()), false);
             }
 
             return keywords;
@@ -616,6 +624,17 @@ class DirectoryScanConfig {
                     "false").getSafeValue();
 
             return BooleanUtils.toBoolean(value);
+        }
+
+        public String getContextFilterQuestion() {
+            return getArgsAccessor().getArgument(
+                            getConfigContextFilterQuestion()::get,
+                            arguments,
+                            context,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            CommonArguments.CONTENT_RATING_QUESTION_ARG,
+                            "")
+                    .getSafeValue();
         }
 
         @Override
