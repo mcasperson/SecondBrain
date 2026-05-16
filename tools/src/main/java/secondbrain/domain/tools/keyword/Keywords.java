@@ -28,6 +28,8 @@ import secondbrain.domain.tools.CommonArguments;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -37,9 +39,11 @@ import java.util.stream.Stream;
 @ApplicationScoped
 public class Keywords implements Tool<Void> {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     public static final String EXCLUDE_KEYWORDS_ARG = "excludeKeywords";
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final int KEYWORDS_TTL = 60 * 60 * 24 * 90;
+    private static final ConcurrentHashMap<String, ReentrantLock> promptLocks = new ConcurrentHashMap<>();
 
 
     private static final String INSTRUCTIONS = """
@@ -110,19 +114,25 @@ public class Keywords implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        return Try.of(() -> localStorage.getOrPutGeneric(
-                                getName(),
-                                getName(),
-                                Integer.toString((INSTRUCTIONS + prompt).hashCode()),
-                                KEYWORDS_TTL,
-                                List.class,
-                                RagDocumentContext.class,
-                                Void.class,
-                                () -> getContextPrivate(environmentSettings, prompt, arguments))
-                        .result())
-                .filter(Objects::nonNull)
-                .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get Keywords context from cache: " + ExceptionUtils.getRootCauseMessage(ex)))
-                .get();
+        final ReentrantLock lock = promptLocks.computeIfAbsent(prompt, k -> new ReentrantLock());
+        lock.lock();
+        try {
+            return Try.of(() -> localStorage.getOrPutGeneric(
+                                    getName(),
+                                    getName(),
+                                    Integer.toString((INSTRUCTIONS + prompt).hashCode()),
+                                    KEYWORDS_TTL,
+                                    List.class,
+                                    RagDocumentContext.class,
+                                    Void.class,
+                                    () -> getContextPrivate(environmentSettings, prompt, arguments))
+                            .result())
+                    .filter(Objects::nonNull)
+                    .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get Keywords context from cache: " + ExceptionUtils.getRootCauseMessage(ex)))
+                    .get();
+        } finally {
+            lock.unlock();
+        }
     }
 
     private List<RagDocumentContext<Void>> getContextPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
@@ -161,14 +171,6 @@ public class Keywords implements Tool<Void> {
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
                 .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
-    }
-
-    /**
-     * Calls the tool and converts the JSON response into a normalized keyword list.
-     */
-    public List<String> generateKeywords(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parseKeywords(call(environmentSettings, prompt, arguments).getResponse(), parsedArgs.getExcludeKeywords());
     }
 
     static List<String> parseKeywords(final String jsonResponse) {
