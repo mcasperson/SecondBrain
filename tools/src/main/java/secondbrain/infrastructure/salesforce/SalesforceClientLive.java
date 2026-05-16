@@ -124,8 +124,11 @@ public class SalesforceClientLive implements SalesforceClient {
                 .toList();
     }
 
+    /**
+     * This is synchronized so multiple attempts to get a token result in the same one being returned.
+     */
     @Override
-    public SalesforceOauthTokenResponse getToken(final String clientId, final String clientSecret) {
+    public synchronized SalesforceOauthTokenResponse getToken(final String clientId, final String clientSecret) {
         checkState(domain.isPresent(), "Salesforce domain is not configured");
 
         return Try.of(() -> localStorage.getOrPutObject(
