@@ -32,4 +32,9 @@ public class RemoveMarkdownBlock implements SanitizeDocument {
 
         return document;
     }
+
+    @Override
+    public @Nullable String sanitize(@Nullable final String document, final boolean unsanitize) {
+        return sanitize(document);
+    }
 }

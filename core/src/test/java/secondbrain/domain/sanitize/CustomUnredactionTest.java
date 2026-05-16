@@ -75,7 +75,17 @@ class CustomUnredactionTest {
     }
 
     private static SanitizeDocument accountSanitizer() {
-        return document -> document == null ? "" : document.replaceAll("ACC-\\d+", "{{{ACCOUNT}}}");
+        return new SanitizeDocument() {
+            @Override
+            public String sanitize(final String document) {
+                return document == null ? "" : document.replaceAll("ACC-\\d+", "{{{ACCOUNT}}}");
+            }
+
+            @Override
+            public String sanitize(final String document, final boolean unsanitize) {
+                return sanitize(document);
+            }
+        };
     }
 
     private static void setField(final Object target, final String fieldName, final Object value) throws Exception {

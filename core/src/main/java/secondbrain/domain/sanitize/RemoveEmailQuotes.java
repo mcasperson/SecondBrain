@@ -17,4 +17,9 @@ public class RemoveEmailQuotes implements SanitizeDocument {
         // Simple implementation to remove quoted text from emails
         return document.replaceAll("(?m)^>.*$", "").trim();
     }
+
+    @Override
+    public @Nullable String sanitize(@Nullable final String document, final boolean unsanitize) {
+        return sanitize(document);
+    }
 }

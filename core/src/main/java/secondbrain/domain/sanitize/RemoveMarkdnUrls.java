@@ -24,4 +24,9 @@ public class RemoveMarkdnUrls implements SanitizeDocument {
                 .replaceAll("<", " ");
 
     }
+
+    @Override
+    public @Nullable String sanitize(@Nullable final String document, final boolean unsanitize) {
+        return sanitize(document);
+    }
 }
