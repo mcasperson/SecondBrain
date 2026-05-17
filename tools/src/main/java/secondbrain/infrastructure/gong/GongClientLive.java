@@ -38,7 +38,6 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 public class GongClientLive implements GongClient {
     private static final int TTL = 60 * 60 * 24 * 90;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
-    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final int MAX_PAGES = 100;
 
     @Inject
@@ -194,7 +193,6 @@ public class GongClientLive implements GongClient {
             final String password,
             final int maxPages) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, "", 0, maxPages));
     }
@@ -298,7 +296,6 @@ public class GongClientLive implements GongClient {
             final String username,
             final String password) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getCallTranscriptApiLocked(id, username, password));
     }

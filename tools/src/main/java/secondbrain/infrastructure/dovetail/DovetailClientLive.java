@@ -36,7 +36,6 @@ public class DovetailClientLive implements DovetailClient {
     private static final int LIST_TTL = 60 * 60 * 24;
     private static final int TTL = 60 * 60 * 24 * 365;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
-    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final int MAX_PAGES = 100;
 
     @Inject
@@ -182,7 +181,6 @@ public class DovetailClientLive implements DovetailClient {
             @Nullable final String toDateTime,
             @Nullable final String cursor) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> callDataListApiLocked(apiKey, fromDateTime, toDateTime, cursor));
     }
@@ -234,7 +232,6 @@ public class DovetailClientLive implements DovetailClient {
             final String apiKey,
             final String id) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> exportMarkdownApiLocked(apiKey, id));
     }

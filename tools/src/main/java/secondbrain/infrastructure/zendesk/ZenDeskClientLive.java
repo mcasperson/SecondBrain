@@ -48,7 +48,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
         }
      */
     private static final int MAX_PAGES = 10;
-    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final Map<String, ZenDeskUserItemResponse> LOCAL_CACHE = new HashMap<>();
     private static final Map<String, ZenDeskOrganizationItemResponse> LOCAL_ORG_CACHE = new HashMap<>();
 
@@ -170,7 +169,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final int page,
             final int maxPage) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getTicketsApiLocked(authorization, url, query, page, maxPage));
     }
@@ -244,7 +242,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String url,
             final String id) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getTicketApiLocked(authorization, url, id));
     }
@@ -318,7 +315,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String authorization,
             final String url,
             final String ticketId) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getCommentsFromApiLocked(authorization, url, ticketId));
+        return mutex.acquire(lockFile, () -> getCommentsFromApiLocked(authorization, url, ticketId));
     }
 
     private ZenDeskCommentsResponse getCommentsFromApiLocked(
@@ -361,7 +358,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String url,
             final String orgId) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getOrganizationFromApiLocked(authorization, url, orgId));
     }
@@ -445,7 +441,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String url,
             final String userId) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getUserFromApiLocked(authorization, url, userId));
     }

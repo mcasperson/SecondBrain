@@ -43,7 +43,6 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 @ApplicationScoped
 public class PlanHatClientLive implements PlanHatClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(5);
-    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final int DEFAULT_PAGE_SIZE = 5;
     private static final int DEFAULT_MAX_OFFSET = 2000;
     private static final int MAX_LENGTH = 524288; // About 1MB for 2 byte characters.
@@ -272,7 +271,6 @@ public class PlanHatClientLive implements PlanHatClient {
 
     private Conversation[] callApi(final Client client, final String company, final String url, final String token, final int offset) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> callApiLocked(client, company, url, token, offset));
     }
@@ -323,7 +321,6 @@ public class PlanHatClientLive implements PlanHatClient {
             final String url,
             final String token) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getObjectivesApiLocked(client, companyId, url, token));
     }
@@ -409,7 +406,6 @@ public class PlanHatClientLive implements PlanHatClient {
             final String url,
             final String token) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getOpportunitiesApiLocked(client, companyId, url, token));
     }
@@ -453,7 +449,6 @@ public class PlanHatClientLive implements PlanHatClient {
             final String url,
             final String token) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getUserApiLocked(client, userId, url, token));
     }
@@ -496,7 +491,6 @@ public class PlanHatClientLive implements PlanHatClient {
             final String url,
             final String token) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getCompanyApiLocked(client, company, url, token));
     }

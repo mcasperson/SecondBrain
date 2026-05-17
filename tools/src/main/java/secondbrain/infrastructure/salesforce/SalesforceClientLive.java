@@ -48,7 +48,6 @@ public class SalesforceClientLive implements SalesforceClient {
     private static final long API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 2;
     private static final long API_CALL_DELAY_SECONDS_DEFAULT = 30;
     private static final int API_RETRIES = 3;
-    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
 
     @Inject
@@ -222,7 +221,6 @@ public class SalesforceClientLive implements SalesforceClient {
 
     private SalesforceEmailRecord[] getEmailsApi(final String token, final String accountId, final String startDate, final String endDate, final int limit) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getEmailsApiLocked(token, accountId, startDate, endDate, limit, 0));
     }
@@ -309,7 +307,6 @@ public class SalesforceClientLive implements SalesforceClient {
 
     private SalesforceOpportunityQuery getOpportunityByAccountIdApi(final String token, final String accountId) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getOpportunityByAccountIdApiLocked(token, accountId));
     }
@@ -349,7 +346,6 @@ public class SalesforceClientLive implements SalesforceClient {
 
     private SalesforceTaskRecord[] getTasksApi(final String token, final String accountId, final String type, final String startDate, final String endDate) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile,
                 () -> getTasksApiLocked(token, accountId, type, startDate, endDate, 0));
     }

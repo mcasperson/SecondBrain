@@ -34,7 +34,6 @@ import java.util.logging.Logger;
 public class YoutubeClientLive implements YoutubeClient {
     // Youtube rate limits heavily, so we limit to 1 request every 30 seconds
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(0.03);
-    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
     @Inject
     @ConfigProperty(name = "sb.youtube.lock", defaultValue = "sb_youtube.lock")
@@ -149,7 +148,7 @@ public class YoutubeClientLive implements YoutubeClient {
     }
 
     private String getTranscriptApi(final String videoId, final String lang) {
-        return mutex.acquire(MUTEX_TIMEOUT_MS, lockFile, () -> getTranscriptApiLocked(videoId, lang));
+        return mutex.acquire(lockFile, () -> getTranscriptApiLocked(videoId, lang));
     }
 
     private String getTranscriptApiLocked(final String videoId, final String lang) {

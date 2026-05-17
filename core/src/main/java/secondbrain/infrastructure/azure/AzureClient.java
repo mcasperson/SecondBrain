@@ -78,7 +78,6 @@ public class AzureClient implements LlmClient {
     private static final int RATELIMIT_API_RETRIES = 3;
     private static final long RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT = 90;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
-    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
     private static final int API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 30;
 
     // Default rate is around 250 requests per minute.
@@ -338,7 +337,7 @@ public class AzureClient implements LlmClient {
         checkState(url.isPresent(), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
-        return mutex.acquire(MUTEX_TIMEOUT_MS, getModelLockFile(request), () -> callLocked(request, url.get(), 0));
+        return mutex.acquire(getModelLockFile(request), () -> callLocked(request, url.get(), 0));
     }
 
     private String call(final PromptTextGenerator request, final String resolvedUrl) {
@@ -346,7 +345,7 @@ public class AzureClient implements LlmClient {
         checkState(org.apache.commons.lang3.StringUtils.isNotBlank(resolvedUrl), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
-        return mutex.acquire(MUTEX_TIMEOUT_MS, getModelLockFile(request), () -> callLocked(request, resolvedUrl, 0));
+        return mutex.acquire(getModelLockFile(request), () -> callLocked(request, resolvedUrl, 0));
     }
 
     private String callLocked(final PromptTextGenerator request, final String resolvedUrl, int retry) {

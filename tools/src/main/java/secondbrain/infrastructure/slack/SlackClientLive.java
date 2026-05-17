@@ -46,7 +46,6 @@ public class SlackClientLive implements SlackClient {
     private static final int RETRIES = 10;
     private static final int RETRY_JITTER = 10000;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);
-    private static final long MUTEX_TIMEOUT_MS = 30 * 60 * 1000;
     private static final int API_TIMEOUT_SECONDS = 60;
     private static final int CHANNEL_TTL_SECONDS = 60 * 60 * 24 * 365;
     private static final int CHANNEL_LIST_TTL_SECONDS = 60 * 60 * 24 * 7;
@@ -224,7 +223,6 @@ public class SlackClientLive implements SlackClient {
             final int retryCount,
             final int apiDelay) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile + ".users",
                 () -> userFromApiLocked(client, accessToken, userId, retryCount, apiDelay));
     }
@@ -318,7 +316,6 @@ public class SlackClientLive implements SlackClient {
             final int retryCount,
             final int apiDelay) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile + ".channel",
                 () -> channelFromApiLocked(client, accessToken, channelId, retryCount, apiDelay));
     }
@@ -423,7 +420,6 @@ public class SlackClientLive implements SlackClient {
             final Set<String> keywords,
             final int apiDelay) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile + " .search",
                 () -> searchFromApiLocked(client, accessToken, keywords, 0, apiDelay));
     }
@@ -496,7 +492,6 @@ public class SlackClientLive implements SlackClient {
             final String channel,
             final int apiDelay) {
         return mutex.acquire(
-                MUTEX_TIMEOUT_MS,
                 lockFile + ".channelid",
                 () -> findChannelIdFromApiLocked(client, accessToken, channel, apiDelay));
     }
