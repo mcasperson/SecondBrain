@@ -22,10 +22,19 @@ public class TimedOperation implements AutoCloseable {
     @Override
     public void close() throws Exception {
         final long duration = System.currentTimeMillis() - startTime;
+        final double durationMinutes = duration / 60000.0;
+        final double durationHours = duration / 3600000.0;
+        final String durationMessage = String.format(
+                "Operation %s took %d ms (%.2f minutes, %.2f hours)",
+                name,
+                duration,
+                durationMinutes,
+                durationHours);
+
         if (duration > warningThresholdMs) {
-            logger.warning("Operation " + name + " took " + (System.currentTimeMillis() - startTime) + " ms");
+            logger.warning(durationMessage);
         } else {
-            logger.fine("Operation " + name + " took " + (System.currentTimeMillis() - startTime) + " ms");
+            logger.fine(durationMessage);
         }
     }
 }
