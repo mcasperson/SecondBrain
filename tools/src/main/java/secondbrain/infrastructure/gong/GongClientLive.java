@@ -108,6 +108,8 @@ public class GongClientLive implements GongClient {
                 ? OffsetDateTime.now(ZoneId.systemDefault()).truncatedTo(ChronoUnit.DAYS).format(ISO_OFFSET_DATE_TIME)
                 : toDateTime;
 
+        final String hash = DigestUtils.sha256Hex(fromDateTime + toDateTimeFinal + callId);
+
         /*
             Cache at the parent level to take advantage of the local cache, even if the remote cache
             (CosmoDB) has limits on the size of each cached object.
@@ -115,7 +117,7 @@ public class GongClientLive implements GongClient {
         final GongCallExtensive[] calls = Try.of(() -> localStorage.getOrPutObjectArray(
                         GongClientLive.class.getSimpleName(),
                         source,
-                        DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
+                        hash,
                         ttl,
                         GongCallExtensive.class,
                         GongCallExtensive[].class,
@@ -130,7 +132,7 @@ public class GongClientLive implements GongClient {
                     return localStorage.persistArrayResult(
                                     GongClientLive.class.getSimpleName(),
                                     source,
-                                    DigestUtils.sha256Hex(fromDateTime + toDateTime + callId),
+                                    hash,
                                     ttl,
                                     () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, maxPages))
                             .result();
