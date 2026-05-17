@@ -412,8 +412,8 @@ class SlackChannelConfig {
     private Optional<String> configDays;
 
     @Inject
-    @ConfigProperty(name = "sb.slack.historytto")
-    private Optional<String> configHistoryttl;
+    @ConfigProperty(name = "sb.slack.historyttl")
+    private Optional<String> configHistoryTtl;
 
     @Inject
     @ConfigProperty(name = "sb.slack.keywords")
@@ -501,8 +501,8 @@ class SlackChannelConfig {
         return configDays;
     }
 
-    public Optional<String> getConfigHistoryttl() {
-        return configHistoryttl;
+    public Optional<String> getConfigHistoryTtl() {
+        return configHistoryTtl;
     }
 
     public Optional<String> getConfigKeywords() {
@@ -659,7 +659,7 @@ class SlackChannelConfig {
 
         public int getSearchTTL() {
             final Argument argument = getArgsAccessor().getArgument(
-                    getConfigHistoryttl()::get,
+                    getConfigHistoryTtl()::get,
                     arguments,
                     context,
                     SlackChannel.HISTORY_TTL_ARG,
