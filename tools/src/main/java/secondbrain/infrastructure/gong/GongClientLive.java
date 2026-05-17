@@ -141,17 +141,21 @@ public class GongClientLive implements GongClient {
             final String password,
             final GongCallExtensive call) {
 
-        return Try.of(() -> localStorage.getOrPutObject(
+        final GongCallTranscript transcript = Try.of(() -> localStorage.getOrPutObject(
                                 GongClientLive.class.getSimpleName(),
                                 "GongAPICallTranscript",
                                 call.metaData().id(),
                                 GongCallTranscript.class,
                                 () -> getCallTranscriptApi(call.metaData().id(), username, password))
                         .result())
-                .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Transcript not found for Gong call " + call.metaData().id()))
-                .get()
-                .getTranscript(call);
+                .getOrNull();
+
+        if (transcript == null) {
+            return "";
+        }
+
+        return Objects.requireNonNullElse(transcript.getTranscript(call), "");
     }
 
     private GongCallExtensive[] getCallsExtensiveApi(
