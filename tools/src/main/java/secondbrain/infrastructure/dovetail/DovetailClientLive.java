@@ -83,7 +83,7 @@ public class DovetailClientLive implements DovetailClient {
                         LIST_TTL,
                         DovetailDataItem.class,
                         DovetailDataItem[].class,
-                        () -> getDataItemsApiLocked(apiKey, fromDateTime, toDateTimeFinal, null, 0))
+                        () -> getDataItemsApiLocked(apiKey, fromDateTime, toDateTimeFinal))
                 .result();
 
         if (items == null) {
@@ -130,18 +130,17 @@ public class DovetailClientLive implements DovetailClient {
     private DovetailDataItem[] getDataItemsApiLocked(
             final String apiKey,
             @Nullable final String fromDateTime,
-            @Nullable final String toDateTime,
-            @Nullable final String cursor,
-            final int page) {
+            @Nullable final String toDateTime) {
 
         /*
          Use an iterative approach instead of recursion to avoid O(N²) memory from
          stacked ArrayUtils.addAll intermediate arrays and deep recursion stack frames.
          */
         final List<DovetailDataItem> result = new java.util.ArrayList<>();
-        String currentCursor = cursor;
+        String currentCursor = null;
+        boolean reachedMaxPages = true;
 
-        for (int currentPage = page; currentPage < MAX_PAGES; currentPage++) {
+        for (int currentPage = 0; currentPage < MAX_PAGES; currentPage++) {
             logger.fine("Getting Dovetail data items from " + fromDateTime + " to " + toDateTime + " with cursor " + currentCursor);
 
             final String cacheCursor = currentCursor;
@@ -162,13 +161,14 @@ public class DovetailClientLive implements DovetailClient {
                     || pageResult.page() == null
                     || !pageResult.page().hasMore()
                     || StringUtils.isBlank(pageResult.page().nextCursor())) {
+                reachedMaxPages = false;
                 break;
             }
 
             currentCursor = pageResult.page().nextCursor();
         }
 
-        if (page >= MAX_PAGES) {
+        if (reachedMaxPages) {
             logger.warning("Reached maximum pages of " + MAX_PAGES + " when fetching Dovetail data items");
         }
 

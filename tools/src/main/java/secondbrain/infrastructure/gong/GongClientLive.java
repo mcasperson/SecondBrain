@@ -120,7 +120,7 @@ public class GongClientLive implements GongClient {
                         ttl,
                         GongCallExtensive.class,
                         GongCallExtensive[].class,
-                        () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, maxPages))
+                        () -> getCallsExtensiveApi(fromDateTime, toDateTimeFinal, callId, username, password, maxPages))
                 .result()
         ).recover(GongAPIException.class, e -> {
             // I have seen cases where the gong result was stopped half-way through and the
@@ -133,7 +133,7 @@ public class GongClientLive implements GongClient {
                                     source,
                                     hash,
                                     ttl,
-                                    () -> getCallsExtensiveApiLocked(fromDateTime, toDateTimeFinal, callId, username, password, maxPages))
+                                    () -> getCallsExtensiveApi(fromDateTime, toDateTimeFinal, callId, username, password, maxPages))
                             .result();
                 }
             }
@@ -185,7 +185,7 @@ public class GongClientLive implements GongClient {
                 .getTranscript(call);
     }
 
-    private GongCallExtensive[] getCallsExtensiveApiLocked(
+    private GongCallExtensive[] getCallsExtensiveApi(
             @Nullable final String fromDateTime,
             @Nullable final String toDateTime,
             @Nullable final String callId,
@@ -194,7 +194,7 @@ public class GongClientLive implements GongClient {
             final int maxPages) {
         return mutex.acquire(
                 lockFile,
-                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, "", 0, maxPages));
+                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, maxPages));
     }
 
     /**
@@ -206,8 +206,6 @@ public class GongClientLive implements GongClient {
             @Nullable final String callId,
             final String username,
             final String password,
-            final String cursor,
-            final int page,
             final int maxPages) {
 
         final List<String> callIds = StringUtils.isBlank(callId) ? null : Arrays.stream(callId.split(",")).toList();
@@ -219,9 +217,10 @@ public class GongClientLive implements GongClient {
          stacked ArrayUtils.addAll intermediate arrays and deep recursion stack frames.
          */
         final List<GongCallExtensive> result = new ArrayList<>();
-        String currentCursor = cursor;
+        String currentCursor = "";
+        boolean reachedMaxPages = true;
 
-        for (int currentPage = page; currentPage < maxPages; currentPage++) {
+        for (int currentPage = 0; currentPage < maxPages; currentPage++) {
             logger.fine("Getting Gong calls extensive with IDs " + callId + " from " + fromDateTime + " to " + toDateTime + " with cursor " + currentCursor);
 
             final GongCallExtensiveQuery body = new GongCallExtensiveQuery(
@@ -250,14 +249,15 @@ public class GongClientLive implements GongClient {
             }
 
             if (calls == null || StringUtils.isBlank(calls.records().cursor())) {
+                reachedMaxPages = false;
                 break;
             }
 
             currentCursor = calls.records().cursor();
         }
 
-        if (result.isEmpty() && page >= maxPages) {
-            logger.warning("Reached maximum pages of " + MAX_PAGES + " when fetching Gong calls extensive");
+        if (reachedMaxPages) {
+            logger.warning("Reached maximum pages of " + maxPages + " when fetching Gong calls extensive");
         }
 
         return result.toArray(GongCallExtensive[]::new);
