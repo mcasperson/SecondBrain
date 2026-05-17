@@ -3,6 +3,7 @@ package secondbrain.infrastructure.gong.api;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
+import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record GongCallTranscript(List<GongCallTranscriptCollection> callTranscripts) {
@@ -12,7 +13,9 @@ public record GongCallTranscript(List<GongCallTranscriptCollection> callTranscri
         }
 
         return callTranscripts.stream()
-                .flatMap(transcript -> transcript.transcript().stream())
+                .filter(Objects::nonNull)
+                .flatMap(transcript -> transcript.getTranscriptItems().stream())
+                .filter(Objects::nonNull)
                 .map(transcriptItem -> call.getPartyNameFromId(transcriptItem.speakerId()) +
                         ":\n" +
                         transcriptItem.getTranscript())

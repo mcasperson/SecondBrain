@@ -12,6 +12,12 @@ public record GongCallExtensive(GongCallExtensiveMetadata metaData,
                                 List<GongCallExtensiveContext> context,
                                 List<GongCallExtensiveParty> parties) {
 
+    private static final GongCallExtensiveMetadata EMPTY_METADATA = new GongCallExtensiveMetadata("", "", "");
+
+    public GongCallExtensiveMetadata getMetaData() {
+        return Objects.requireNonNullElse(metaData(), EMPTY_METADATA);
+    }
+
     public List<GongCallExtensiveContext> getContext() {
         return Objects.requireNonNullElse(context(), List.of());
     }
@@ -60,6 +66,6 @@ public record GongCallExtensive(GongCallExtensiveMetadata metaData,
 
     public String getPartyNameFromId(final String partyId) {
         final GongCallExtensiveParty party = getPartyFromId(partyId);
-        return party != null ? party.name() : "Unknown Speaker";
+        return party != null ? Objects.toString(party.name(), "Unknown Speaker") : "Unknown Speaker";
     }
 }

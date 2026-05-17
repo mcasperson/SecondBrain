@@ -25,7 +25,6 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.processing.DataToRagDoc;
@@ -206,9 +205,8 @@ public class Gong implements Tool<Void> {
                         RagDocumentContext.class,
                         GongCallDetails.class,
                         () -> getContextPrivate(environmentSettings, prompt, parsedArgs)).result())
-                .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to generate Gong context: " + ExceptionUtils.getRootCauseMessage(ex)))
-                .get();
+                .getOrElse(List.of());
     }
 
     @Override
@@ -235,6 +233,8 @@ public class Gong implements Tool<Void> {
                                 parsedArgs.getStartDate(),
                                 parsedArgs.getEndDate()))
                 .map(e -> e.stream()
+                        .filter(Objects::nonNull)
+                        .filter(gong -> StringUtils.isNotBlank(gong.getMetaData().id()))
                         .map(gong -> new GongCallDetails(
                                 gong.metaData().id(),
                                 gong.metaData().url(),
@@ -263,8 +263,6 @@ public class Gong implements Tool<Void> {
 
         // Combine preinitialization hooks with ragDocs
         final List<RagDocumentContext<GongCallDetails>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
-
-        final List<String> keywordsList = parsedArgs.getKeywords();
 
         // Apply preprocessing hooks, and then rating metadata and filtering in parallel
         final List<RagDocumentContext<GongCallDetails>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))

@@ -122,6 +122,7 @@ public class GongClientLive implements GongClient {
          cache the result, and then filter the calls by the company ID.
          */
         return Arrays.stream(calls)
+                .filter(Objects::nonNull)
                 .filter(call -> call.getContext().stream()
                         .anyMatch(c ->
                                 // The company can be blank
@@ -140,15 +141,20 @@ public class GongClientLive implements GongClient {
             final String username,
             final String password,
             final GongCallExtensive call) {
+        final String callId = getCallId(call);
+        if (StringUtils.isBlank(callId)) {
+            logger.warning("Skipping Gong transcript retrieval because the call or metadata ID is missing");
+            return "";
+        }
 
         final GongCallTranscript transcript = Try.of(() -> localStorage.getOrPutObject(
                                 GongClientLive.class.getSimpleName(),
                                 "GongAPICallTranscript",
-                                call.metaData().id(),
+                                callId,
                                 GongCallTranscript.class,
-                                () -> getCallTranscriptApi(call.metaData().id(), username, password))
+                                () -> getCallTranscriptApi(callId, username, password))
                         .result())
-                .onFailure(NoSuchElementException.class, ex -> logger.warning("Transcript not found for Gong call " + call.metaData().id()))
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Transcript not found for Gong call " + callId))
                 .getOrNull();
 
         if (transcript == null) {
@@ -156,6 +162,14 @@ public class GongClientLive implements GongClient {
         }
 
         return Objects.requireNonNullElse(transcript.getTranscript(call), "");
+    }
+
+    @Nullable
+    private String getCallId(@Nullable final GongCallExtensive call) {
+        if (call == null || call.metaData() == null || StringUtils.isBlank(call.metaData().id())) {
+            return null;
+        }
+        return call.metaData().id();
     }
 
     private GongCallExtensive[] getCallsExtensiveApi(
