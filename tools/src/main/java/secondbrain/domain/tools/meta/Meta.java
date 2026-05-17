@@ -196,7 +196,7 @@ public class Meta implements Tool<Void> {
             throw new EmptyList("No valid tools found for names: " + toolNames);
         }
 
-        filteredTools.forEach(tool -> logger.info("Including tool: " + tool.getName()));
+        filteredTools.forEach(tool -> logger.fine("Including tool: " + tool.getName()));
 
         return filteredTools;
     }
