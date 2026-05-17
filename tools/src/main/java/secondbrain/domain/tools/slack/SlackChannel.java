@@ -200,7 +200,7 @@ public class SlackChannel implements Tool<Void> {
         }
 
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
-        return channelIds.stream().flatMap(c ->
+        return parsedArgs.getChannels().stream().flatMap(c ->
                         Try.of(() -> localStorage.getOrPutGeneric(
                                                 getName(),
                                                 getName(),
@@ -222,20 +222,20 @@ public class SlackChannel implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final AsyncMethodsClient client,
             final SlackChannelConfig.LocalArguments parsedArgs,
-            final String channelId) {
+            final String channelName) {
 
-        if (StringUtils.isBlank(channelId)) {
+        if (StringUtils.isBlank(channelName)) {
             return List.of();
         }
 
-        logger.fine("Getting Slack Channel context for " + getName() + " for channel " + channelId);
+        logger.fine("Getting Slack Channel context for " + getName() + " for channel " + channelName);
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<SlackChannelResource>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         /*
-            Get the oldest date to search from, starting from the starr of the current day.
+            Get the oldest date to search from, starting from the start of the current day.
             This improves the cache if we have to rerun the tool multiple times in a day, as the
             oldest date will be the same.
         */
@@ -249,7 +249,7 @@ public class SlackChannel implements Tool<Void> {
 
         // you can get this instance via ctx.client() in a Bolt app
 
-        final Try<List<RagDocumentContext<SlackChannelResource>>> result = getChannelRagDocs(client, parsedArgs, parsedArgs.getChannel(), oldest);
+        final Try<List<RagDocumentContext<SlackChannelResource>>> result = getChannelRagDocs(client, parsedArgs, channelName, oldest);
 
         final List<RagDocumentContext<SlackChannelResource>> ragDocs = exceptionMapping.map(result).get();
 
