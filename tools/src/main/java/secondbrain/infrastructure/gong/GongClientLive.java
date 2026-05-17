@@ -4,8 +4,6 @@ import com.google.common.util.concurrent.RateLimiter;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -13,11 +11,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.constants.Constants;
-import secondbrain.domain.date.DateTruncate;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.httpclient.HttpClientCaller;
 import secondbrain.domain.injection.Preferred;
-import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.persist.TimedOperation;
@@ -29,7 +25,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
@@ -37,6 +32,7 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 @ApplicationScoped
 public class GongClientLive implements GongClient {
     private static final int TTL = 60 * 60 * 24 * 90;
+    private static final String CALLS_CACHE_SOURCE = "GongAPICallsExtensiveParentV2";
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);
     private static final int MAX_PAGES = 100;
 
@@ -76,32 +72,6 @@ public class GongClientLive implements GongClient {
             final String password,
             @Nullable final String fromDateTime,
             @Nullable final String toDateTime) {
-        return getCallsExtensive(company, callId, username, password,  "GongAPICallsExtensiveParentV2", TTL, fromDateTime, toDateTime);
-    }
-
-    private List<GongCallExtensive> getCallsExtensive(
-            final String company,
-            @Nullable final String callId,
-            final String username,
-            final String password,
-            final String source,
-            final long ttl,
-            @Nullable final String fromDateTime,
-            @Nullable final String toDateTime) {
-        return getCallsExtensive(company, callId, username, password, source, ttl, MAX_PAGES, fromDateTime, toDateTime);
-    }
-
-    private List<GongCallExtensive> getCallsExtensive(
-            final String company,
-            @Nullable final String callId,
-            final String username,
-            final String password,
-            final String source,
-            final long ttl,
-            final int maxPages,
-            @Nullable final String fromDateTime,
-            @Nullable final String toDateTime) {
-
         // Build a "to" date for the cache key
         final String toDateTimeFinal = StringUtils.isBlank(toDateTime)
                 ? OffsetDateTime.now(ZoneId.systemDefault()).truncatedTo(ChronoUnit.DAYS).format(ISO_OFFSET_DATE_TIME)
@@ -115,12 +85,12 @@ public class GongClientLive implements GongClient {
          */
         final GongCallExtensive[] calls = Try.of(() -> localStorage.getOrPutObjectArray(
                         GongClientLive.class.getSimpleName(),
-                        source,
+                        CALLS_CACHE_SOURCE,
                         hash,
-                        ttl,
+                        TTL,
                         GongCallExtensive.class,
                         GongCallExtensive[].class,
-                        () -> getCallsExtensiveApi(fromDateTime, toDateTimeFinal, callId, username, password, maxPages))
+                        () -> getCallsExtensiveApi(fromDateTime, toDateTimeFinal, callId, username, password))
                 .result()
         ).recover(GongAPIException.class, e -> {
             // I have seen cases where the gong result was stopped half-way through and the
@@ -130,10 +100,10 @@ public class GongClientLive implements GongClient {
                 if (invalidResponse.getBody().contains("cursor has expired")) {
                     return localStorage.persistArrayResult(
                                     GongClientLive.class.getSimpleName(),
-                                    source,
+                                    CALLS_CACHE_SOURCE,
                                     hash,
-                                    ttl,
-                                    () -> getCallsExtensiveApi(fromDateTime, toDateTimeFinal, callId, username, password, maxPages))
+                                    TTL,
+                                    () -> getCallsExtensiveApi(fromDateTime, toDateTimeFinal, callId, username, password))
                             .result();
                 }
             }
@@ -152,15 +122,14 @@ public class GongClientLive implements GongClient {
          cache the result, and then filter the calls by the company ID.
          */
         return Arrays.stream(calls)
-                .filter(call -> Objects.requireNonNullElse(call.context(), List.<GongCallExtensiveContext>of())
-                        .stream()
+                .filter(call -> call.getContext().stream()
                         .anyMatch(c ->
                                 // The company can be blank
                                 StringUtils.isBlank(company) ||
                                         // Or one of the call context object must be for Salesforce
                                         ("Salesforce".equals(c.system()) &&
                                                 // And one of the objects must be an account that matches the company id
-                                                c.objects().stream().anyMatch(o ->
+                                                c.getObjects().stream().anyMatch(o ->
                                                         company.equals(o.objectId()) && "Account".equals(o.objectType())))))
                 .toList();
 
@@ -190,11 +159,10 @@ public class GongClientLive implements GongClient {
             @Nullable final String toDateTime,
             @Nullable final String callId,
             final String username,
-            final String password,
-            final int maxPages) {
+            final String password) {
         return mutex.acquire(
                 lockFile,
-                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password, maxPages));
+                () -> getCallsExtensiveApiLocked(fromDateTime, toDateTime, callId, username, password));
     }
 
     /**
@@ -205,8 +173,7 @@ public class GongClientLive implements GongClient {
             @Nullable final String toDateTime,
             @Nullable final String callId,
             final String username,
-            final String password,
-            final int maxPages) {
+            final String password) {
 
         final List<String> callIds = StringUtils.isBlank(callId) ? null : Arrays.stream(callId.split(",")).toList();
         final String nullableFromDateTime = StringUtils.isBlank(fromDateTime) ? null : fromDateTime;
@@ -220,7 +187,7 @@ public class GongClientLive implements GongClient {
         String currentCursor = "";
         boolean reachedMaxPages = true;
 
-        for (int currentPage = 0; currentPage < maxPages; currentPage++) {
+        for (int currentPage = 0; currentPage < MAX_PAGES; currentPage++) {
             logger.fine("Getting Gong calls extensive with IDs " + callId + " from " + fromDateTime + " to " + toDateTime + " with cursor " + currentCursor);
 
             final GongCallExtensiveQuery body = new GongCallExtensiveQuery(
@@ -245,19 +212,19 @@ public class GongClientLive implements GongClient {
                     .result();
 
             if (calls != null) {
-                Collections.addAll(result, calls.getCallsArray());
+                result.addAll(calls.getCalls());
             }
 
-            if (calls == null || StringUtils.isBlank(calls.records().cursor())) {
+            if (calls == null || StringUtils.isBlank(calls.getRecords().getCursor())) {
                 reachedMaxPages = false;
                 break;
             }
 
-            currentCursor = calls.records().cursor();
+            currentCursor = calls.getRecords().getCursor();
         }
 
         if (reachedMaxPages) {
-            logger.warning("Reached maximum pages of " + maxPages + " when fetching Gong calls extensive");
+            logger.warning("Reached maximum pages of " + MAX_PAGES + " when fetching Gong calls extensive");
         }
 
         return result.toArray(GongCallExtensive[]::new);

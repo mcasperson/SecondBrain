@@ -12,6 +12,10 @@ public record GongCallExtensive(GongCallExtensiveMetadata metaData,
                                 List<GongCallExtensiveContext> context,
                                 List<GongCallExtensiveParty> parties) {
 
+    public List<GongCallExtensiveContext> getContext() {
+        return Objects.requireNonNullElse(context(), List.of());
+    }
+
     public String getSystemContextOrDefault(final String systemName, final String objectName, final String defaultValue) {
         return getSystemContext(systemName)
                 .flatMap(c -> c.getObject(objectName))
@@ -20,17 +24,15 @@ public record GongCallExtensive(GongCallExtensiveMetadata metaData,
     }
 
     public Optional<GongCallExtensiveContext> getSystemContext(final String system) {
-        return Objects.requireNonNullElse(context(), List.<GongCallExtensiveContext>of())
-                .stream()
+        return getContext().stream()
                 .filter(c -> system.equals(c.system()))
                 .findFirst();
     }
 
     public Optional<GongCallExtensiveContextObjectField> getSystemContext(final String system, final String objectType, final String fieldName) {
-        return Objects.requireNonNullElse(context(), List.<GongCallExtensiveContext>of())
-                .stream()
+        return getContext().stream()
                 .filter(c -> system.equals(c.system()))
-                .flatMap(c -> c.objects().stream())
+                .flatMap(c -> c.getObjects().stream())
                 .filter(o -> objectType.equals(o.objectType()))
                 .flatMap(o -> o.getFields().stream())
                 .filter(f -> fieldName.equals(f.name()))
