@@ -54,6 +54,7 @@ import java.util.stream.Stream;
 @ApplicationScoped
 public class SlackChannel implements Tool<Void> {
     public static final String SLACK_CHANEL_ARG = "slackChannel";
+    public static final String SLACK_CHANEL_2_ARG = "slackChannel2";
     public static final String API_DELAY_ARG = "apiDelay";
     public static final String HISTORY_TTL_ARG = "historyTtl";
     public static final String TTL_SECONDS_ARG = "ttlSeconds";
@@ -118,6 +119,7 @@ public class SlackChannel implements Tool<Void> {
     public List<ToolArguments> getArguments() {
         return List.of(
                 new ToolArguments(SLACK_CHANEL_ARG, "The Slack channel to read", "general"),
+                new ToolArguments(SLACK_CHANEL_2_ARG, "An optional second Slack channel to read", ""),
                 new ToolArguments(CommonArguments.DAYS_ARG, "The number of days worth of messages to return", "7"),
                 new ToolArguments(HISTORY_TTL_ARG, "The number of milliseconds to cache the Slack history", "86400000"),
                 new ToolArguments(API_DELAY_ARG, "The number of milliseconds to delay between Slack API calls", "120000"),
@@ -148,6 +150,10 @@ public class SlackChannel implements Tool<Void> {
         return "Slack Messages";
     }
 
+    public String getContextLabelWithChannelName(final String channelName) {
+        return "Slack Messages " + channelName;
+    }
+
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
@@ -155,53 +161,70 @@ public class SlackChannel implements Tool<Void> {
             final List<ToolArgs> arguments) {
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        // Quick exit when there is no channel
-        if (StringUtils.isBlank(parsedArgs.getChannel())) {
+        // Quick exit when there are no channels
+        if (parsedArgs.getChannels().isEmpty()) {
             return List.of();
         }
 
         // Create the client once and reuse it across the early-out check and the main retrieval
         final AsyncMethodsClient client = Slack.getInstance().methodsAsync();
 
+        final List<String> channelIds = parsedArgs.getChannels()
+                .stream()
+                .map(c -> Try.of(() -> slackClient.findChannelId(
+                                client,
+                                parsedArgs.getSecretAccessToken(),
+                                parsedArgs.getChannel(),
+                                parsedArgs.getApiDelay()))
+                        .map(SlackChannelResource::channelId)
+                        .getOrElse(""))
+                .filter(StringUtils::isNotBlank)
+                .toList();
+
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration()) {
-            final String channelId = Try.of(() -> slackClient.findChannelId(
+            final boolean allEmpty = channelIds.
+                    stream()
+                    .noneMatch(c -> slackClient.anyItemsInDuration(
                             client,
                             parsedArgs.getSecretAccessToken(),
-                            parsedArgs.getChannel(),
-                            parsedArgs.getApiDelay()))
-                    .map(SlackChannelResource::channelId)
-                    .getOrElse("");
-            if (org.apache.commons.lang3.StringUtils.isNotBlank(channelId)
-                    && !slackClient.anyItemsInDuration(client, parsedArgs.getSecretAccessToken(), channelId, parsedArgs.getApiDelay(), ChronoUnit.YEARS, ChronoUnit.MONTHS)) {
+                            c,
+                            parsedArgs.getApiDelay(),
+                            ChronoUnit.YEARS,
+                            ChronoUnit.MONTHS));
+
+            if (allEmpty) {
                 logger.info("Skipping SlackChannel context retrieval because skipEmptyInLastDuration is set and there are no Slack messages in the specified duration");
                 return List.of();
             }
         }
 
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
-        return Try.of(() -> localStorage.getOrPutGeneric(
-                                getName(),
-                                getName(),
-                                Integer.toString(cacheKey.hashCode()),
-                                parsedArgs.getCacheTtl(),
-                                List.class,
-                                RagDocumentContext.class,
-                                Void.class,
-                                () -> getContextPrivate(environmentSettings, client, parsedArgs))
-                        .result())
-                .filter(Objects::nonNull)
-                .onFailure(NoSuchElementException.class, ex -> logger.warning("Error while getting Slack channel context: " + ExceptionUtils.getRootCauseMessage(ex)))
-                .getOrElse(List::of);
+        return channelIds.stream().flatMap(c ->
+                        Try.of(() -> localStorage.getOrPutGeneric(
+                                                getName(),
+                                                getName(),
+                                                Integer.toString(cacheKey.hashCode()),
+                                                parsedArgs.getCacheTtl(),
+                                                List.class,
+                                                RagDocumentContext.class,
+                                                Void.class,
+                                                () -> getContextPrivate(environmentSettings, client, parsedArgs, c))
+                                        .result())
+                                .filter(Objects::nonNull)
+                                .map(List::stream)
+                                .onFailure(NoSuchElementException.class, ex -> logger.warning("Error while getting Slack channel context: " + ExceptionUtils.getRootCauseMessage(ex)))
+                                .getOrElse(Stream::of))
+                .toList();
     }
 
     private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final AsyncMethodsClient client,
-            final SlackChannelConfig.LocalArguments parsedArgs) {
+            final SlackChannelConfig.LocalArguments parsedArgs,
+            final String channelId) {
 
-        if (StringUtils.isBlank(parsedArgs.getChannel())) {
-            logger.fine("No channel provided for " + this.getName() + " so returning no results");
+        if (StringUtils.isBlank(channelId)) {
             return List.of();
         }
 
@@ -226,32 +249,18 @@ public class SlackChannel implements Tool<Void> {
 
         // you can get this instance via ctx.client() in a Bolt app
 
-        final Try<List<RagDocumentContext<SlackChannelResource>>> result = Try.of(() -> slackClient.findChannelId(
-                        client,
-                        parsedArgs.getSecretAccessToken(),
-                        parsedArgs.getChannel(),
-                        parsedArgs.getApiDelay()))
-                .map(c -> c.updateConversation(slackClient.conversationHistory(
-                        client,
-                        parsedArgs.getSecretAccessToken(),
-                        c.channelId(),
-                        oldest,
-                        parsedArgs.getSearchTTL(),
-                        parsedArgs.getApiDelay())))
-                .map(c -> c.updateConversation(replaceUserIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)))
-                .map(c -> c.updateConversation(replaceChannelIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)))
-                .filter(c -> StringUtils.length(c.generateText()) >= MINIMUM_MESSAGE_LENGTH)
-                .map(c -> dataToRagDoc.getDocumentContext(c, getName(), getContextLabel(), parsedArgs))
-                .map(List::of)
-                .recover(NoSuchElementException.class, ex -> {
-                    logger.info("Not enough messages found in channel " + parsedArgs.getChannel());
-                    return List.of();
-                });
+        final Try<List<RagDocumentContext<SlackChannelResource>>> result = getChannelRagDocs(client, parsedArgs, parsedArgs.getChannel(), oldest);
 
         final List<RagDocumentContext<SlackChannelResource>> ragDocs = exceptionMapping.map(result).get();
 
-        // Combine preinitialization hooks with ragDocs
-        final List<RagDocumentContext<SlackChannelResource>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+        final List<RagDocumentContext<SlackChannelResource>> ragDocs2 = StringUtils.isBlank(parsedArgs.getChannel2())
+                ? List.of()
+                : exceptionMapping.map(getChannelRagDocs(client, parsedArgs, parsedArgs.getChannel2(), oldest)).get();
+
+        // Combine preinitialization hooks with ragDocs from both channels
+        final List<RagDocumentContext<SlackChannelResource>> combinedDocs = Stream.concat(
+                preinitHooks.stream(),
+                Stream.concat(ragDocs.stream(), ragDocs2.stream())).toList();
 
         // Apply preprocessing hooks
         final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
@@ -299,6 +308,34 @@ public class SlackChannel implements Tool<Void> {
         // Apply postinference hooks
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
                 .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
+    }
+
+    private Try<List<RagDocumentContext<SlackChannelResource>>> getChannelRagDocs(
+            final AsyncMethodsClient client,
+            final SlackChannelConfig.LocalArguments parsedArgs,
+            final String channel,
+            final String oldest) {
+        return Try.of(() -> slackClient.findChannelId(
+                        client,
+                        parsedArgs.getSecretAccessToken(),
+                        channel,
+                        parsedArgs.getApiDelay()))
+                .map(c -> c.updateConversation(slackClient.conversationHistory(
+                        client,
+                        parsedArgs.getSecretAccessToken(),
+                        c.channelId(),
+                        oldest,
+                        parsedArgs.getSearchTTL(),
+                        parsedArgs.getApiDelay())))
+                .map(c -> c.updateConversation(replaceUserIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)))
+                .map(c -> c.updateConversation(replaceChannelIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)))
+                .filter(c -> StringUtils.length(c.generateText()) >= MINIMUM_MESSAGE_LENGTH)
+                .map(c -> dataToRagDoc.getDocumentContext(c, getName(), getContextLabelWithChannelName(c.channelName()), parsedArgs))
+                .map(List::of)
+                .recover(NoSuchElementException.class, ex -> {
+                    logger.info("Not enough messages found in channel " + channel);
+                    return List.of();
+                });
     }
 
     private String replaceUserIds(final AsyncMethodsClient client, final String token, final String messages, final SlackChannelConfig.LocalArguments parsedArgs) {
@@ -365,6 +402,10 @@ class SlackChannelConfig {
     @Inject
     @ConfigProperty(name = "sb.slack.channel")
     private Optional<String> configChannel;
+
+    @Inject
+    @ConfigProperty(name = "sb.slack.channel2")
+    private Optional<String> configChannel2;
 
     @Inject
     @ConfigProperty(name = "sb.slack.days")
@@ -450,6 +491,10 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigChannel() {
         return configChannel;
+    }
+
+    public Optional<String> getConfigChannel2() {
+        return configChannel2;
     }
 
     public Optional<String> getConfigDays() {
@@ -559,6 +604,12 @@ class SlackChannelConfig {
             return getToStringGenerator().generateHashGetterConfig(this);
         }
 
+        public List<String> getChannels() {
+            return Stream.of(getChannel(), getChannel2())
+                    .filter(StringUtils::isNotBlank)
+                    .toList();
+        }
+
         public String getChannel() {
             return getArgsAccessor().getArgument(
                             getConfigChannel()::get,
@@ -566,6 +617,18 @@ class SlackChannelConfig {
                             context,
                             SlackChannel.SLACK_CHANEL_ARG,
                             SlackChannel.SLACK_CHANEL_ARG,
+                            "")
+                    .getSafeValue()
+                    .replaceFirst("^#", "");
+        }
+
+        public String getChannel2() {
+            return getArgsAccessor().getArgument(
+                            getConfigChannel2()::get,
+                            arguments,
+                            context,
+                            SlackChannel.SLACK_CHANEL_2_ARG,
+                            SlackChannel.SLACK_CHANEL_2_ARG,
                             "")
                     .getSafeValue()
                     .replaceFirst("^#", "");
