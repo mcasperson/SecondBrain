@@ -5,6 +5,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import secondbrain.domain.exceptions.LockFail;
+import secondbrain.domain.mutex.config.MutexTimeout;
 import secondbrain.domain.tryext.TryExtensions;
 
 import java.io.RandomAccessFile;
@@ -25,6 +26,9 @@ import java.util.logging.Logger;
 public class FileLockMutex implements Mutex {
     private static final long SLEEP = 10000;
     private static final Map<String, ReentrantLock> LOCKS = new ConcurrentHashMap<>();
+
+    @Inject
+    private MutexTimeout mutexTimeout;
 
     @Inject
     private Logger log;
@@ -48,6 +52,11 @@ public class FileLockMutex implements Mutex {
                     }
                 })
                 .get();
+    }
+
+    @Override
+    public <T> T acquire(final String lockName, final MutexCallback<T> callback) {
+        return acquire(mutexTimeout.getDefaultTimeout(), lockName, callback);
     }
 
     public <T> T establishFileLock(final long timeout, final String lockName, final MutexCallback<T> callback) {

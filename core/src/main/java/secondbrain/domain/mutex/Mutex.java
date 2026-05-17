@@ -5,4 +5,5 @@ package secondbrain.domain.mutex;
  */
 public interface Mutex {
     <T> T acquire(long timeout, String lockName, MutexCallback<T> callback);
+    <T> T acquire(String lockName, MutexCallback<T> callback);
 }

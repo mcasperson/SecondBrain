@@ -19,6 +19,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.exceptions.LockFail;
+import secondbrain.domain.mutex.config.MutexTimeout;
 
 import java.time.Instant;
 import java.util.List;
@@ -100,6 +101,9 @@ public class CosmosMutex implements Mutex {
 
     @Nullable
     private CosmosContainer container;
+
+    @Inject
+    private MutexTimeout mutexTimeout;
 
     private final AtomicReference<Long> totalWaitMs = new AtomicReference<>(0L);
     private final ConcurrentMap<String, ReentrantLock> localMutexes = new ConcurrentHashMap<>();
@@ -275,6 +279,11 @@ public class CosmosMutex implements Mutex {
                 }
             }
         }
+    }
+
+    @Override
+    public <T> T acquire(final String lockName, final MutexCallback<T> callback) {
+        return acquire(mutexTimeout.getDefaultTimeout(), lockName, callback);
     }
 
     private <T> Try<T> tryAcquireAndExecute(@Nullable final CosmosContainer container, final String lockName, final MutexCallback<T> callback) {
