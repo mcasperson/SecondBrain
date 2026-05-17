@@ -40,7 +40,6 @@ import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.salesforce.SalesforceClient;
 import secondbrain.infrastructure.salesforce.api.SalesforceEmailRecord;
 import secondbrain.infrastructure.salesforce.api.SalesforceOauthTokenResponse;
-import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -196,9 +195,21 @@ public class Salesforce implements Tool<Void> {
                                 SalesforceEmailRecord.class,
                                 () -> getContextPrivate(environmentSettings, prompt, arguments, token))
                         .result())
-                .filter(Objects::nonNull)
+                .map(this::convertToVoidRagContexts)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get Salesforce context from cache: " + ex.getMessage()))
-                .get();
+                .getOrElse(List.of());
+    }
+
+    private List<RagDocumentContext<Void>> convertToVoidRagContexts(@Nullable final List<?> records) {
+        if (records == null) {
+            return List.of();
+        }
+
+        return records.stream()
+                .filter(RagDocumentContext.class::isInstance)
+                .map(record -> (RagDocumentContext<?>) record)
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
+                .toList();
     }
 
     private List<RagDocumentContext<Void>> getContextPrivate(
@@ -219,13 +230,15 @@ public class Salesforce implements Tool<Void> {
 
         // Get emails related to the account and any opportunities associated with the account
         final List<String> relatedToIds = Try.of(() -> salesforceClient.getAccountAndOpportunityIds(token.accessToken(), parsedArgs.getAccountId()))
-                .get();
+                .map(ids -> Objects.isNull(ids) ? List.<String>of() : ids)
+                .getOrElse(List.of());
 
 
         final Try<List<RagDocumentContext<SalesforceEmailRecord>>> context = Try.of(() -> relatedToIds
                         .stream()
                         .collect(parallelToStream(id -> salesforceClient.getEmails(token.accessToken(), id, startDate, endDate), sharedExecutor.getExecutor(), 3))
                         .flatMap(Arrays::stream)
+                        .filter(Objects::nonNull)
                         .toList())
                 .map(emails -> emails.stream()
                         .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabelWithDate(email), parsedArgs))
@@ -335,14 +348,6 @@ public class Salesforce implements Tool<Void> {
         return "Salesforce Email";
     }
 
-    private String getContextLabelWithDate(@Nullable final SalesforceTaskRecord record) {
-        if (record == null || record.getCreatedDate() == null) {
-            return getContextLabel();
-        }
-
-        return getContextLabel() + " " + record.getCreatedDate();
-    }
-
     private String getContextLabelWithDate(@Nullable final SalesforceEmailRecord record) {
         if (record == null || record.messageDate() == null) {
             return getContextLabel();
@@ -351,14 +356,16 @@ public class Salesforce implements Tool<Void> {
         return getContextLabel() + " " + record.messageDate();
     }
 
+    @Nullable
     private MetaObjectResult getOpportunityMeta(final SalesforceConfig.LocalArguments parsedArgs,
                                                 final SalesforceOauthTokenResponse token) {
         return Try.of(() -> salesforceClient.getOpportunityByAccountId(token.accessToken(), parsedArgs.getAccountId()))
-                .map(opportunities -> opportunities.records().stream().findFirst())
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .map(opp -> getMeta(opp, parsedArgs.getOpportunity1Name(), parsedArgs.getOpportunity1()))
-                .get();
+                .map(secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery::getRecords)
+                .flatMap(opportunities -> opportunities.stream()
+                        .findFirst()
+                        .map(opp -> Try.success(getMeta(opp, parsedArgs.getOpportunity1Name(), parsedArgs.getOpportunity1())))
+                        .orElseGet(() -> Try.success(null)))
+                .getOrNull();
     }
 
     @Nullable
