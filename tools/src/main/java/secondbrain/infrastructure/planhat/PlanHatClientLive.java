@@ -152,7 +152,7 @@ public class PlanHatClientLive implements PlanHatClient {
         return conversations == null
                 ? List.of()
                 : Stream.of(conversations)
-                .filter(c -> StringUtils.isNotBlank(c.date()) && dateParser.parseDate(c.date()).isBefore(endDate))
+                .filter(c -> StringUtils.isNotBlank(c.getDate()) && dateParser.parseDate(c.getDate()).isBefore(endDate))
                 .toList();
     }
 
@@ -243,8 +243,8 @@ public class PlanHatClientLive implements PlanHatClient {
                     .result();
 
             final List<Conversation> filtered = Stream.of(Objects.requireNonNullElse(conversations, new Conversation[]{}))
-                    .filter(c -> startDate == null || (StringUtils.isNotBlank(c.date()) && dateParser.parseDate(c.date()).isAfter(startDate)))
-                    .filter(c -> endDate == null || (StringUtils.isNotBlank(c.date()) && dateParser.parseDate(c.date()).isBefore(endDate)))
+                    .filter(c -> startDate == null || (StringUtils.isNotBlank(c.getDate()) && dateParser.parseDate(c.getDate()).isAfter(startDate)))
+                    .filter(c -> endDate == null || (StringUtils.isNotBlank(c.getDate()) && dateParser.parseDate(c.getDate()).isBefore(endDate)))
                     .toList();
 
             if (filtered.isEmpty()) {
@@ -307,8 +307,8 @@ public class PlanHatClientLive implements PlanHatClient {
         if (getMaxLength() > 0) {
             return Stream.of(result)
                     .map(c -> c.updateDescriptionAndSnippet(
-                            StringUtils.substring(c.description(), 0, getMaxLength()),
-                            StringUtils.substring(c.snippet(), 0, getMaxLength())))
+                            StringUtils.substring(c.getDescription(), 0, getMaxLength()),
+                            StringUtils.substring(c.getSnippet(), 0, getMaxLength())))
                     .toArray(Conversation[]::new);
         }
 

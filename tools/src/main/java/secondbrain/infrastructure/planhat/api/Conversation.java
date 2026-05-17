@@ -45,7 +45,7 @@ public record Conversation(@JsonProperty("_id") @Nullable String id,
 
     @Override
     public String generateUrl() {
-        return Objects.requireNonNullElse(url, "") + "/profile/" + Objects.requireNonNullElse(companyId(), "") + "?conversationId=" + Objects.requireNonNullElse(id(), "");
+        return getUrl() + "/profile/" + getCompanyId() + "?conversationId=" + getId();
     }
 
     public String getDescription() {
@@ -54,5 +54,33 @@ public record Conversation(@JsonProperty("_id") @Nullable String id,
 
     public String getSnippet() {
         return Objects.requireNonNullElse(snippet, "");
+    }
+
+    public String getId() {
+        return Objects.requireNonNullElse(id, "");
+    }
+
+    public String getDate() {
+        return Objects.requireNonNullElse(date, "");
+    }
+
+    public String getCompanyId() {
+        return Objects.requireNonNullElse(companyId, "");
+    }
+
+    public String getCompanyName() {
+        return Objects.requireNonNullElse(companyName, "");
+    }
+
+    public String getSubject() {
+        return Objects.requireNonNullElse(subject, "");
+    }
+
+    public String getType() {
+        return Objects.requireNonNullElse(type, "");
+    }
+
+    public String getUrl() {
+        return Objects.requireNonNullElse(url, "");
     }
 }

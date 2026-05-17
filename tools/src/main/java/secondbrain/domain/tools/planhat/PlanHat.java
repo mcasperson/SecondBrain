@@ -154,12 +154,12 @@ public class PlanHat implements Tool<Void> {
             return sb.toString();
         }
 
-        if (StringUtils.isNotBlank(conversation.type())) {
-            sb.append(" Type: ").append(conversation.type()).append(" ");
+        if (StringUtils.isNotBlank(conversation.getType())) {
+            sb.append(" Type: ").append(conversation.getType()).append(" ");
         }
 
-        if (StringUtils.isNotBlank(conversation.date())) {
-            sb.append(" Date: ").append(conversation.date());
+        if (StringUtils.isNotBlank(conversation.getDate())) {
+            sb.append(" Date: ").append(conversation.getDate());
         }
 
         return sb.toString();
@@ -265,8 +265,8 @@ public class PlanHat implements Tool<Void> {
 
         final List<RagDocumentContext<Conversation>> ragDocs = conversations.stream()
                 // We filter after the API call to improve cache hits
-                .filter(conversation -> parsedArgs.getCompany().equals(conversation.companyId()))
-                .filter(conversation -> !"ticket".equals(conversation.type()))
+                .filter(conversation -> parsedArgs.getCompany().equals(conversation.getCompanyId()))
+                .filter(conversation -> !"ticket".equals(conversation.getType()))
                 .collect(parallelToStream(conversation -> {
                     final Conversation updated = conversation.updateDescriptionAndSnippet(
                             htmlToText.getText(conversation.getDescription()),

@@ -33,7 +33,6 @@ import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -148,7 +147,7 @@ public class PlanhatConversationStats implements Tool<Void> {
 
         final Map<String, Long> countsByType = conversations.stream()
                 .collect(Collectors.groupingBy(
-                        c -> StringUtils.defaultIfBlank(Objects.toString(c.type(), "unknown"), "unknown"),
+                        c -> StringUtils.defaultIfBlank(c.getType(), "unknown"),
                         Collectors.counting()));
 
         final long total = conversations.size();
