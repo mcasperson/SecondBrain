@@ -5,6 +5,7 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.annotations.PropertyLabelDescriptionValue;
@@ -116,6 +117,12 @@ public class PlanHatUsage implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
+                .onFailure(ex -> java.util.logging.Logger.getLogger(getClass().getName()).warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                .getOrElse(List::of);
+    }
+
+    private List<RagDocumentContext<Void>> getContextPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
@@ -193,25 +200,25 @@ public class PlanHatUsage implements Tool<Void> {
         final Map<String, String> people = tokens.isEmpty()
                 ? Map.of()
                 : parsedArgs.getCustomPersons()
-                  .filter(StringUtils::isNotBlank)
-                  .collect(Collectors.toMap(
-                          customFieldKey -> customFieldKey,
-                          customFieldKey -> {
-                              if (StringUtils.isBlank(company.getCustomStringKey(customFieldKey))) {
-                                  return "";
-                              }
-                              // Step 2: fetch the user by the resolved ID
-                              return Try.withResources(clientConstructor::getClient)
-                                     .of(client -> planHatClient.getUser(
-                                             client,
-                                             company.getCustomStringKey(customFieldKey),
-                                             // TODO: work out a way to identify planhat instances with custom fields. This logic assumes one planhat instance.
-                                             tokens.getFirst().getLeft(),
-                                             tokens.getFirst().getRight(),
-                                             parsedArgs.getSearchTTL()))
-                                     .map(PlanHatUser::getFullName)
-                                     .getOrElse("");
-                          }));
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toMap(
+                        customFieldKey -> customFieldKey,
+                        customFieldKey -> {
+                            if (StringUtils.isBlank(company.getCustomStringKey(customFieldKey))) {
+                                return "";
+                            }
+                            // Step 2: fetch the user by the resolved ID
+                            return Try.withResources(clientConstructor::getClient)
+                                    .of(client -> planHatClient.getUser(
+                                            client,
+                                            company.getCustomStringKey(customFieldKey),
+                                            // TODO: work out a way to identify planhat instances with custom fields. This logic assumes one planhat instance.
+                                            tokens.getFirst().getLeft(),
+                                            tokens.getFirst().getRight(),
+                                            parsedArgs.getSearchTTL()))
+                                    .map(PlanHatUser::getFullName)
+                                    .getOrElse("");
+                        }));
 
         final List<RagDocumentContext<Company>> customPersonContext = people.entrySet().stream()
                 .filter(entry -> StringUtils.isNotBlank(entry.getValue()))

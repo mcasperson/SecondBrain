@@ -269,8 +269,8 @@ public class PlanHat implements Tool<Void> {
                 .filter(conversation -> !"ticket".equals(conversation.type()))
                 .collect(parallelToStream(conversation -> {
                     final Conversation updated = conversation.updateDescriptionAndSnippet(
-                            htmlToText.getText(conversation.description()),
-                            htmlToText.getText(conversation.snippet()));
+                            htmlToText.getText(conversation.getDescription()),
+                            htmlToText.getText(conversation.getSnippet()));
                     return dataToRagDoc.getDocumentContext(updated.updateUrl(publicUrl), getName(), getContextLabelWithDate(updated), parsedArgs);
                 }, sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                 .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
@@ -718,9 +718,7 @@ class PlanHatConfig {
                     PlanHat.SEARCH_TTL_ARG,
                     DEFAULT_TTL);
 
-            return Try.of(argument::value)
-                    .map(i -> Math.max(0, Integer.parseInt(i)))
-                    .get();
+            return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), Integer.parseInt(DEFAULT_TTL)));
         }
 
         @Override

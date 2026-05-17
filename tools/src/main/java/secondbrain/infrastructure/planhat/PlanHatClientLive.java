@@ -152,7 +152,7 @@ public class PlanHatClientLive implements PlanHatClient {
         return conversations == null
                 ? List.of()
                 : Stream.of(conversations)
-                .filter(c -> dateParser.parseDate(c.date()).isBefore(endDate))
+                .filter(c -> StringUtils.isNotBlank(c.date()) && dateParser.parseDate(c.date()).isBefore(endDate))
                 .toList();
     }
 
@@ -243,8 +243,8 @@ public class PlanHatClientLive implements PlanHatClient {
                     .result();
 
             final List<Conversation> filtered = Stream.of(Objects.requireNonNullElse(conversations, new Conversation[]{}))
-                    .filter(c -> startDate == null || dateParser.parseDate(c.date()).isAfter(startDate))
-                    .filter(c -> endDate == null || dateParser.parseDate(c.date()).isBefore(endDate))
+                    .filter(c -> startDate == null || (StringUtils.isNotBlank(c.date()) && dateParser.parseDate(c.date()).isAfter(startDate)))
+                    .filter(c -> endDate == null || (StringUtils.isNotBlank(c.date()) && dateParser.parseDate(c.date()).isBefore(endDate)))
                     .toList();
 
             if (filtered.isEmpty()) {

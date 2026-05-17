@@ -11,7 +11,6 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
@@ -232,15 +231,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        return Try.of(() -> getContextUncached(environmentSettings, prompt, arguments))
-                .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
-                .getOrElse(List::of);
-    }
-
-    private List<RagDocumentContext<Void>> getContextUncached(
-            final Map<String, String> environmentSettings,
-            final String prompt,
-            final List<ToolArgs> arguments) {
         logger.fine("Getting context for " + getName());
 
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
@@ -276,11 +266,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             throw new InsufficientContext("No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found.");
         }
 
-        // We don't need this cache anymore, so save some memory and clear it
-        localStorageReadWrite.purge();
-
         return ragContext;
-        }
+    }
 
     @Override
     public RagMultiDocumentContext<Void> call(

@@ -3,6 +3,7 @@ package secondbrain.infrastructure.planhat.api;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
@@ -10,15 +11,15 @@ import secondbrain.domain.data.UrlData;
 import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record Conversation(@JsonProperty("_id") String id,
-                           String description,
-                           String snippet,
-                           String date,
-                           String companyId,
-                           String companyName,
-                           String subject,
-                           String type,
-                           String url) implements TextData, IdData, UrlData {
+public record Conversation(@JsonProperty("_id") @Nullable String id,
+                           @Nullable String description,
+                           @Nullable String snippet,
+                           @Nullable String date,
+                           @Nullable String companyId,
+                           @Nullable String companyName,
+                           @Nullable String subject,
+                           @Nullable String type,
+                           @Nullable String url) implements TextData, IdData, UrlData {
     public Conversation updateDescriptionAndSnippet(final String description, final String snippet) {
         return new Conversation(id, description, snippet, date, companyId, companyName, subject, type, url);
     }
@@ -29,7 +30,7 @@ public record Conversation(@JsonProperty("_id") String id,
 
     @Override
     public String generateId() {
-        return id;
+        return Objects.requireNonNullElse(id, "");
     }
 
     @Override
@@ -44,7 +45,7 @@ public record Conversation(@JsonProperty("_id") String id,
 
     @Override
     public String generateUrl() {
-        return url + "/profile/" + companyId() + "?conversationId=" + id();
+        return Objects.requireNonNullElse(url, "") + "/profile/" + Objects.requireNonNullElse(companyId(), "") + "?conversationId=" + Objects.requireNonNullElse(id(), "");
     }
 
     public String getDescription() {
