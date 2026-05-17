@@ -157,7 +157,7 @@ public class Keywords implements Tool<Void> {
                             .result())
                     .filter(Objects::nonNull)
                     .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get Keywords context from cache: " + ExceptionUtils.getRootCauseMessage(ex)))
-                    .get();
+                    .getOrElse(List::of);
         } finally {
             lock.unlock();
         }

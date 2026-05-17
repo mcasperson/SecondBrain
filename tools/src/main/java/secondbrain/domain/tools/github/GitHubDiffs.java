@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
@@ -138,6 +139,15 @@ public class GitHubDiffs implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
+        return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
+                .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                .getOrElse(List::of);
+    }
+
+    private List<RagDocumentContext<Void>> getContextPrivate(
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
 
         final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
@@ -250,8 +260,8 @@ public class GitHubDiffs implements Tool<Void> {
          */
         final String summary = parsedArgs.getSummarizeDiff()
                 ? Try.of(() -> getDiffSummary(commit.getMessageAndDiff(), parsedArgs, environmentSettings))
-                  .onFailure(throwable -> logger.warning("Failed to summarize diff for commit " + commit.commit().sha() + ": " + throwable.getMessage()))
-                  .getOrElse("Failed to summarize diff")
+                .onFailure(throwable -> logger.warning("Failed to summarize diff for commit " + commit.commit().sha() + ": " + throwable.getMessage()))
+                .getOrElse("Failed to summarize diff")
                 : commit.getMessageAndDiff();
 
         return new RagDocumentContext<>(

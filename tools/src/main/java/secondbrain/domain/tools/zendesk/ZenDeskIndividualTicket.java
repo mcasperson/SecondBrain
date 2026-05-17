@@ -169,7 +169,7 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
                 // deal with the filter failing
                 .recover(NoSuchElementException.class, ex -> List.of());
 
-        return exceptionMapping.map(result).get();
+        return exceptionMapping.map(result).getOrElse(List::of);
     }
 
     private String ticketToFileName(final RagDocumentContext<ZenDeskTicket> ticket, final String entity) {

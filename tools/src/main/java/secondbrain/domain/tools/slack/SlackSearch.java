@@ -173,7 +173,7 @@ public class SlackSearch implements Tool<Void> {
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get context from cache: " + ex.getMessage()))
-                .get();
+                .getOrElse(List::of);
     }
 
     private List<RagDocumentContext<Void>> getContextPrivate(
@@ -212,7 +212,8 @@ public class SlackSearch implements Tool<Void> {
 
         final List<RagDocumentContext<SlackSearchResultResource>> ragDocs = searchResult
                 .stream()
-                .filter(matchedItem -> parsedArgs.getDays() == 0 || dateParser.parseDate(matchedItem.timestamp()).isAfter(parsedArgs.getStartDate()))
+                .filter(matchedItem -> parsedArgs.getDays() == 0 || (StringUtils.isNotBlank(matchedItem.timestamp()) && dateParser.parseDate(matchedItem.timestamp()).isAfter(parsedArgs.getStartDate())))
+                .filter(matchedItem -> StringUtils.isBlank(matchedItem.channelName()))
                 .filter(matchedItem -> parsedArgs.getIgnoreChannels()
                         .stream()
                         .noneMatch(matchedItem.channelName()::equalsIgnoreCase))

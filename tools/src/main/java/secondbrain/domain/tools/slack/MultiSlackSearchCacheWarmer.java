@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
@@ -91,6 +92,15 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
+                .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                .getOrElse(List::of);
+    }
+
+    private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {

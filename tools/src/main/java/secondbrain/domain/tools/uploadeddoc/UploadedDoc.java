@@ -121,6 +121,15 @@ public class UploadedDoc implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
+        return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
+                .onFailure(ex -> java.util.logging.Logger.getLogger(getClass().getName()).warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                .getOrElse(List::of);
+    }
+
+    private List<RagDocumentContext<Void>> getContextPrivate(
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
         final UploadDocConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (parsedArgs.getDocument().length == 0) {

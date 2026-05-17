@@ -3,9 +3,10 @@ package secondbrain.domain.tools.directoryscan;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
@@ -154,6 +155,15 @@ public class DirectoryScan implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
+                .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                .getOrElse(List::of);
+    }
+
+    private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {

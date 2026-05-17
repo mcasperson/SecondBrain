@@ -13,10 +13,11 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
@@ -42,8 +43,8 @@ import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
-import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.tools.googledocs.model.GoogleDoc;
+import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.infrastructure.llm.LlmClient;
 
@@ -142,9 +143,18 @@ public class GoogleDocs implements Tool<Void> {
         return "Google Document";
     }
 
-    @SuppressWarnings({"NullAway", "JavaUtilDate"})
     @Override
     public List<RagDocumentContext<Void>> getContext(
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
+                .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                .getOrElse(List::of);
+    }
+
+    @SuppressWarnings({"NullAway", "JavaUtilDate"})
+    private List<RagDocumentContext<Void>> getContextPrivate(
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {

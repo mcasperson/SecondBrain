@@ -216,7 +216,7 @@ public class ZenDeskOrganization implements Tool<Void> {
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("No cached context found for key " + cacheKey))
-                .get();
+                .getOrElse(List::of);
     }
 
     private List<RagDocumentContext<Void>> getContextPrivate(

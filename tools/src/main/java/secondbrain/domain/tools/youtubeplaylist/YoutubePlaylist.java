@@ -4,8 +4,8 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -144,7 +144,19 @@ public class YoutubePlaylist implements Tool<Void> {
     }
 
     @Override
-    public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public List<RagDocumentContext<Void>> getContext(
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
+        return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
+                .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                .getOrElse(List::of);
+    }
+
+    private List<RagDocumentContext<Void>> getContextPrivate(
+            final Map<String, String> environmentSettings,
+            final String prompt,
+            final List<ToolArgs> arguments) {
         final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
         if (parsedArgs.getPlaylistId().isEmpty() && StringUtils.isBlank(parsedArgs.getChannelId()) && StringUtils.isBlank(parsedArgs.getQuery())) {
@@ -158,14 +170,14 @@ public class YoutubePlaylist implements Tool<Void> {
 
         final Try<List<YoutubeVideo>> videos = parsedArgs.getPlaylistId().isEmpty() ?
                 Try.of(() -> youtubeClient.searchVideos(parsedArgs.getQuery(), parsedArgs.getChannelId(), "", parsedArgs.getSecretApiKey())
-                             .stream()
-                             .map(YoutubeSearchItem::toYoutubeVideo)
-                             .toList()) :
+                        .stream()
+                        .map(YoutubeSearchItem::toYoutubeVideo)
+                        .toList()) :
                 Try.of(() -> parsedArgs.getPlaylistId()
-                             .stream()
-                             .flatMap(playList -> youtubeClient.getPlaylistItems(playList, "", parsedArgs.getSecretApiKey()).stream())
-                             .map(YoutubePlaylistsItem::toYoutubeVideo)
-                             .toList());
+                        .stream()
+                        .flatMap(playList -> youtubeClient.getPlaylistItems(playList, "", parsedArgs.getSecretApiKey()).stream())
+                        .map(YoutubePlaylistsItem::toYoutubeVideo)
+                        .toList());
 
         final List<Pair<YoutubeVideo, String>> calls = videos
                 .map(list -> list.stream().limit(parsedArgs.getMaxVideos()).toList())
@@ -210,8 +222,8 @@ public class YoutubePlaylist implements Tool<Void> {
                  */
                 .map(ragDoc -> parsedArgs.getSummarizeTranscript() ?
                         Try.of(() -> getCallSummary(ragDoc, environmentSettings, parsedArgs))
-                        .onFailure(ex -> logger.warning("Failed to summarize Youtube video transcript for video ID " + ragDoc.id() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
-                        .getOrNull() :
+                                .onFailure(ex -> logger.warning("Failed to summarize Youtube video transcript for video ID " + ragDoc.id() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                                .getOrNull() :
                         ragDoc)
                 // A failure results in a null value, which is filtered out
                 .filter(Objects::nonNull)

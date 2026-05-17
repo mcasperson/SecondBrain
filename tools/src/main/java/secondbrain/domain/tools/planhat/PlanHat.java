@@ -222,7 +222,7 @@ public class PlanHat implements Tool<Void> {
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get PlanHat context from cache: " + ExceptionUtils.getRootCauseMessage(ex)))
-                .get();
+                .getOrElse(List::of);
     }
 
     private List<RagDocumentContext<Void>> getContextPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {

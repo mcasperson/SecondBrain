@@ -2,26 +2,30 @@ package secondbrain.infrastructure.slack.api;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
 import secondbrain.domain.data.UrlData;
 
+import java.util.Objects;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record SlackSearchResultResource(String id, String timestamp, String channelName, String text,
-                                        String permalink) implements TextData, IdData, UrlData {
+public record SlackSearchResultResource(@Nullable String id, @Nullable String timestamp,
+                                        @Nullable String channelName, @Nullable String text,
+                                        @Nullable String permalink) implements TextData, IdData, UrlData {
     @Override
     public String generateId() {
-        return id;
+        return Objects.requireNonNullElse(id, "");
     }
 
     @Override
     public String generateText() {
-        return text;
+        return Objects.requireNonNullElse(text, "");
     }
 
     @Override
     public String generateLinkText() {
-        return StringUtils.substring(text()
+        return StringUtils.substring(Objects.requireNonNullElse(text(), "")
                         .replaceAll(":.*?:", "")
                         .replaceAll("[^A-Za-z0-9-._ ]", " ")
                         .trim(),
@@ -30,6 +34,6 @@ public record SlackSearchResultResource(String id, String timestamp, String chan
 
     @Override
     public String generateUrl() {
-        return permalink;
+        return Objects.requireNonNullElse(permalink, "");
     }
 }
