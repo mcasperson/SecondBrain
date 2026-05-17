@@ -134,10 +134,10 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     }
 
     private String getContextLabelWithDate(@Nullable final ZenDeskTicket ticket) {
-        if (ticket == null || ticket.createdAt() == null) {
+        if (ticket == null || StringUtils.isBlank(ticket.getCreatedAt())) {
             return getContextLabel();
         }
-        return getContextLabel() + " " + ticket.createdAt();
+        return getContextLabel() + " " + ticket.getCreatedAt();
     }
 
     @Override
@@ -156,8 +156,8 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
                 .map(ticket ->
                         ratingMetadata.getMetadata(getName(), environmentSettings, ticket, parsedArgs)
                                 .map(results -> ticket
-                                        .addMetadata(results.metadata())
-                                        .addIntermediateResults(results.intermediateResults()))
+                                        .addMetadata(results.getMetadata())
+                                        .addIntermediateResults(results.getIntermediateResults()))
                                 .orElse(ticket)
                 )
                 .map(ticket -> ticket.addIntermediateResult(

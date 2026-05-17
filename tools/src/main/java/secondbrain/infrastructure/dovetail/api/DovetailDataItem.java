@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Optional;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record DovetailDataItem(
         String id,
@@ -14,5 +16,8 @@ public record DovetailDataItem(
         boolean deleted,
         @Nullable DovetailDataFolder folder
 ) {
+    public Optional<DovetailDataFolder> getFolder() {
+        return Optional.ofNullable(folder);
+    }
 }
 

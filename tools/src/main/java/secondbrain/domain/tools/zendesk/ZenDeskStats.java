@@ -146,7 +146,7 @@ public class ZenDeskStats implements Tool<Void> {
 
         final Map<String, Long> countsByStatus = tickets.stream()
                 .collect(Collectors.groupingBy(
-                        ticket -> StringUtils.defaultIfBlank(Objects.toString(ticket.status(), "unknown"), "unknown"),
+                        ticket -> StringUtils.defaultIfBlank(ticket.getStatus(), "unknown"),
                         Collectors.counting()));
 
         final long total = tickets.size();

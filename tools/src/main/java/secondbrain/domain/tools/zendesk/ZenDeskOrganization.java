@@ -180,10 +180,10 @@ public class ZenDeskOrganization implements Tool<Void> {
     }
 
     private String getContextLabelWithDate(@Nullable final ZenDeskTicket ticket) {
-        if (ticket == null || ticket.createdAt() == null) {
+        if (ticket == null || StringUtils.isBlank(ticket.getCreatedAt())) {
             return getContextLabel();
         }
-        return getContextLabel() + " " + ticket.createdAt();
+        return getContextLabel() + " " + ticket.getCreatedAt();
     }
 
     @Override
@@ -398,11 +398,11 @@ public class ZenDeskOrganization implements Tool<Void> {
         }
 
         return tickets.stream()
-                .filter(ticket -> !exclude.contains(ticket.submitterId()))
-                .filter(ticket -> !excludedOwner.contains(ticket.organizationId()))
-                .filter(ticket -> !forceAssignee || !StringUtils.isBlank(ticket.assigneeId()))
-                .filter(ticket -> StringUtils.isBlank(recipient) || recipient.equals(ticket.recipient()))
-                .filter(ticket -> StringUtils.isBlank(organization) || organization.equals(ticket.organizationId()))
+                .filter(ticket -> !exclude.contains(ticket.getSubmitterId()))
+                .filter(ticket -> !excludedOwner.contains(ticket.getOrganizationId()))
+                .filter(ticket -> !forceAssignee || !StringUtils.isBlank(ticket.getAssigneeId()))
+                .filter(ticket -> StringUtils.isBlank(recipient) || recipient.equals(ticket.getRecipient()))
+                .filter(ticket -> StringUtils.isBlank(organization) || organization.equals(ticket.getOrganizationId()))
                 .collect(Collectors.toList());
     }
 

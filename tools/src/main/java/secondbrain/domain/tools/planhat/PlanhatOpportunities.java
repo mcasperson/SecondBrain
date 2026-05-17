@@ -160,22 +160,22 @@ public class PlanhatOpportunities implements Tool<Void> {
         final StringBuilder sb = new StringBuilder();
         sb.append("PlanHat Opportunity:\n");
         sb.append("- ID: ").append(Objects.requireNonNullElse(opportunity.id(), "")).append("\n");
-        sb.append("- Title: ").append(Objects.requireNonNullElse(opportunity.title(), "")).append("\n");
-        sb.append("- Status: ").append(Objects.requireNonNullElse(opportunity.status(), "")).append("\n");
-        sb.append("- Sales Stage: ").append(Objects.requireNonNullElse(opportunity.salesStage(), "")).append("\n");
-        sb.append("- Company ID: ").append(Objects.requireNonNullElse(opportunity.companyId(), "")).append("\n");
-        sb.append("- Company Name: ").append(Objects.requireNonNullElse(opportunity.companyName(), "")).append("\n");
-        sb.append("- MRR: ").append(Objects.requireNonNullElse(opportunity.mrr(), "")).append("\n");
-        sb.append("- ARR: ").append(Objects.requireNonNullElse(opportunity.arr(), "")).append("\n");
-        sb.append("- Owner ID: ").append(Objects.requireNonNullElse(opportunity.ownerId(), "")).append("\n");
-        sb.append("- Landing Date: ").append(Objects.requireNonNullElse(opportunity.landingDate(), "")).append("\n");
-        sb.append("- Close Date: ").append(Objects.requireNonNullElse(opportunity.closeDate(), "")).append("\n");
-        sb.append("- Created At: ").append(Objects.requireNonNullElse(opportunity.createdAt(), "")).append("\n");
-        sb.append("- Updated At: ").append(Objects.requireNonNullElse(opportunity.updatedAt(), "")).append("\n");
+        sb.append("- Title: ").append(opportunity.getTitle()).append("\n");
+        sb.append("- Status: ").append(opportunity.getStatus()).append("\n");
+        sb.append("- Sales Stage: ").append(opportunity.getSalesStage()).append("\n");
+        sb.append("- Company ID: ").append(opportunity.getCompanyId()).append("\n");
+        sb.append("- Company Name: ").append(opportunity.getCompanyName()).append("\n");
+        sb.append("- MRR: ").append(opportunity.getMrr()).append("\n");
+        sb.append("- ARR: ").append(opportunity.getArr()).append("\n");
+        sb.append("- Owner ID: ").append(opportunity.getOwnerId()).append("\n");
+        sb.append("- Landing Date: ").append(opportunity.getLandingDate()).append("\n");
+        sb.append("- Close Date: ").append(opportunity.getCloseDate()).append("\n");
+        sb.append("- Created At: ").append(opportunity.getCreatedAt()).append("\n");
+        sb.append("- Updated At: ").append(opportunity.getUpdatedAt()).append("\n");
 
-        if (opportunity.custom() != null && !opportunity.custom().isEmpty()) {
+        if (!opportunity.getCustom().isEmpty()) {
             sb.append("- Custom Fields:\n");
-            opportunity.custom().forEach((key, value) ->
+            opportunity.getCustom().forEach((key, value) ->
                     sb.append("  - ").append(key).append(": ").append(Objects.requireNonNullElse(value, "")).append("\n"));
         }
 

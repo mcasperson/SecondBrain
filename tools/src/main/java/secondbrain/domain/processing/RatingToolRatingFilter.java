@@ -18,7 +18,7 @@ public class RatingToolRatingFilter implements RatingFilter {
             return false;
         }
 
-        final MetaObjectResults fixedMetadata = Objects.requireNonNullElse(activity.metadata(), new MetaObjectResults());
+        final MetaObjectResults fixedMetadata = activity.getMetadata();
 
         // If the item was not filtered, then return true
         if (!fixedMetadata.hasName(FILTER_RATING_META)) {

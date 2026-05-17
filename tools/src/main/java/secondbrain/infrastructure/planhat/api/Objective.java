@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Map;
+import java.util.Objects;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record Objective(
@@ -18,6 +19,25 @@ public record Objective(
         @Nullable String createdAt,
         @Nullable String updatedAt
 ) {
+    public Integer getHealth() {
+        return Objects.requireNonNullElse(health, 0);
+    }
+
+    public boolean isSharedInPortal() {
+        return Objects.requireNonNullElse(sharedInPortal, false);
+    }
+
+    public Map<String, Object> getCustom() {
+        return Objects.requireNonNullElse(custom, Map.of());
+    }
+
+    public String getCreatedAt() {
+        return Objects.requireNonNullElse(createdAt, "");
+    }
+
+    public String getUpdatedAt() {
+        return Objects.requireNonNullElse(updatedAt, "");
+    }
 }
 
 

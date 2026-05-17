@@ -163,14 +163,14 @@ public class PlanhatObjectives implements Tool<Void> {
         sb.append("- Name: ").append(Objects.requireNonNullElse(objective.name(), "")).append("\n");
         sb.append("- Company ID: ").append(Objects.requireNonNullElse(objective.companyId(), "")).append("\n");
         sb.append("- Company Name: ").append(Objects.requireNonNullElse(objective.companyName(), "")).append("\n");
-        sb.append("- Health: ").append(Objects.requireNonNullElse(objective.health(), "")).append("\n");
-        sb.append("- Shared In Portal: ").append(Objects.requireNonNullElse(objective.sharedInPortal(), "")).append("\n");
-        sb.append("- Created At: ").append(Objects.requireNonNullElse(objective.createdAt(), "")).append("\n");
-        sb.append("- Updated At: ").append(Objects.requireNonNullElse(objective.updatedAt(), "")).append("\n");
+        sb.append("- Health: ").append(objective.getHealth()).append("\n");
+        sb.append("- Shared In Portal: ").append(objective.isSharedInPortal()).append("\n");
+        sb.append("- Created At: ").append(objective.getCreatedAt()).append("\n");
+        sb.append("- Updated At: ").append(objective.getUpdatedAt()).append("\n");
 
-        if (objective.custom() != null && !objective.custom().isEmpty()) {
+        if (!objective.getCustom().isEmpty()) {
             sb.append("- Custom Fields:\n");
-            objective.custom().forEach((key, value) ->
+            objective.getCustom().forEach((key, value) ->
                     sb.append("  - ").append(key).append(": ").append(Objects.requireNonNullElse(value, "")).append("\n"));
         }
 

@@ -32,7 +32,11 @@ public record SlackChannelResource(String teamId, String channelId, String chann
 
     @Override
     public String generateText() {
-        return Objects.requireNonNull(conversation, "");
+        return Objects.requireNonNullElse(conversation, "");
+    }
+
+    public String getConversation() {
+        return Objects.requireNonNullElse(conversation, "");
     }
 
     public SlackChannelResource updateConversation(final String conversation) {

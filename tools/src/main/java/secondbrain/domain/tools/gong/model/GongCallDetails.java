@@ -11,6 +11,7 @@ import secondbrain.infrastructure.gong.api.GongCallExtensiveParty;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -55,6 +56,46 @@ public record GongCallDetails(String id,
     @Override
     public String generateUrl() {
         return url;
+    }
+
+    public Optional<MetaObjectResult> getMeta1() {
+        return Optional.ofNullable(meta1);
+    }
+
+    public Optional<MetaObjectResult> getMeta2() {
+        return Optional.ofNullable(meta2);
+    }
+
+    public Optional<MetaObjectResult> getMeta3() {
+        return Optional.ofNullable(meta3);
+    }
+
+    public Optional<MetaObjectResult> getMeta4() {
+        return Optional.ofNullable(meta4);
+    }
+
+    public Optional<MetaObjectResult> getMeta5() {
+        return Optional.ofNullable(meta5);
+    }
+
+    public Optional<MetaObjectResult> getMeta6() {
+        return Optional.ofNullable(meta6);
+    }
+
+    public Optional<MetaObjectResult> getMeta7() {
+        return Optional.ofNullable(meta7);
+    }
+
+    public Optional<MetaObjectResult> getMeta8() {
+        return Optional.ofNullable(meta8);
+    }
+
+    public Optional<MetaObjectResult> getMeta9() {
+        return Optional.ofNullable(meta9);
+    }
+
+    public Optional<MetaObjectResult> getMeta10() {
+        return Optional.ofNullable(meta10);
     }
 
     public MetaObjectResults generateMetaObjectResults() {

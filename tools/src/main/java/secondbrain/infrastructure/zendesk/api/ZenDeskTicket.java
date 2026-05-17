@@ -46,6 +46,22 @@ public record ZenDeskTicket(String id,
         return Objects.requireNonNullElse(createdAt, "");
     }
 
+    public String getStatus() {
+        return Objects.requireNonNullElse(status, "");
+    }
+
+    public String getRecipient() {
+        return Objects.requireNonNullElse(recipient, "");
+    }
+
+    public String getComments() {
+        return Objects.requireNonNullElse(comments, "");
+    }
+
+    public String getUrl() {
+        return Objects.requireNonNullElse(url, "");
+    }
+
     public ZenDeskTicket updateComments(final String comments) {
         return new ZenDeskTicket(id, submitterId, assigneeId, subject, organizationId, recipient, comments, url, status, createdAt);
     }

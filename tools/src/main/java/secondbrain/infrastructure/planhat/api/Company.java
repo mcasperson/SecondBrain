@@ -34,4 +34,16 @@ public record Company(@JsonProperty("_id") String id,
     public Company updateCustom(final Map<String, Object> custom) {
         return new Company(this.id, this.name, this.owner, this.renewalDate, this.health, this.usage, custom);
     }
+
+    public String getOwner() {
+        return Objects.requireNonNullElse(owner, "");
+    }
+
+    public String getRenewalDate() {
+        return Objects.requireNonNullElse(renewalDate, "");
+    }
+
+    public Integer getHealth() {
+        return Objects.requireNonNullElse(health, 0);
+    }
 }

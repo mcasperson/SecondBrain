@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jspecify.annotations.Nullable;
 
+import java.util.Objects;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record DovetailDataExport(
         String id,
@@ -13,5 +15,8 @@ public record DovetailDataExport(
         boolean deleted,
         @Nullable @JsonProperty("content_markdown") String contentMarkdown
 ) {
+    public String getContentMarkdown() {
+        return Objects.requireNonNullElse(contentMarkdown, "");
+    }
 }
 

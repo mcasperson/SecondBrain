@@ -259,8 +259,8 @@ public class Dovetail implements Tool<Void> {
         // Get the metadata, which includes a rating against the filter question if present
         final var enriched = ratingMetadata.getMetadata(getName(), environmentSettings, withIntermediate, parsedArgs)
                 .map(results -> withIntermediate
-                        .addMetadata(results.metadata())
-                        .addIntermediateResults(results.intermediateResults()))
+                        .addMetadata(results.getMetadata())
+                        .addIntermediateResults(results.getIntermediateResults()))
                 .orElse(withIntermediate);
 
         // Filter out any documents that don't meet the rating criteria

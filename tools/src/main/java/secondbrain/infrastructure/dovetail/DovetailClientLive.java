@@ -119,7 +119,7 @@ public class DovetailClientLive implements DovetailClient {
                                 () -> {
                                     final DovetailDataExportResponse response = exportMarkdownApi(apiKey, id);
                                     return response != null && response.data() != null
-                                            ? Objects.requireNonNullElse(response.data().contentMarkdown(), "")
+                                            ? response.data().getContentMarkdown()
                                             : "";
                                 })
                         .result())
@@ -160,12 +160,12 @@ public class DovetailClientLive implements DovetailClient {
             if (pageResult == null
                     || pageResult.page() == null
                     || !pageResult.page().hasMore()
-                    || StringUtils.isBlank(pageResult.page().nextCursor())) {
+                    || StringUtils.isBlank(pageResult.page().getNextCursor())) {
                 reachedMaxPages = false;
                 break;
             }
 
-            currentCursor = pageResult.page().nextCursor();
+            currentCursor = pageResult.page().getNextCursor();
         }
 
         if (reachedMaxPages) {

@@ -2,6 +2,8 @@ package secondbrain.domain.tooldefs;
 
 import org.jspecify.annotations.Nullable;
 
+import java.util.Objects;
+
 /**
  * Defines some source details about the context collected for the entity.
  *
@@ -13,5 +15,13 @@ import org.jspecify.annotations.Nullable;
 public record MetaObjectResult(String name, Object value, @Nullable String id, @Nullable String source) {
     public MetaObjectResult(final String name, final Object value) {
         this(name, value, null, null);
+    }
+
+    public String getId() {
+        return Objects.requireNonNullElse(id, "");
+    }
+
+    public String getSource() {
+        return Objects.requireNonNullElse(source, "");
     }
 }

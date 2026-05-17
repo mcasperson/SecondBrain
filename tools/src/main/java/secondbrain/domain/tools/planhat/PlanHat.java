@@ -303,8 +303,8 @@ public class PlanHat implements Tool<Void> {
 
         final var enriched = ratingMetadata.getMetadata(getName(), environmentSettings, ragDoc, parsedArgs)
                 .map(results -> ragDoc
-                        .addMetadata(results.metadata())
-                        .addIntermediateResults(results.intermediateResults()))
+                        .addMetadata(results.getMetadata())
+                        .addIntermediateResults(results.getIntermediateResults()))
                 .orElse(ragDoc);
 
         // Filter out any documents that don't meet the rating criteria
