@@ -6,6 +6,7 @@ import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.response.conversations.ConversationsHistoryResponse;
 import com.slack.api.methods.response.conversations.ConversationsInfoResponse;
 import com.slack.api.methods.response.conversations.ConversationsListResponse;
+import com.slack.api.methods.response.conversations.ConversationsRepliesResponse;
 import com.slack.api.methods.response.search.SearchAllResponse;
 import com.slack.api.methods.response.users.UsersInfoResponse;
 import com.slack.api.model.*;
@@ -26,6 +27,7 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.timeout.TimeoutService;
 import secondbrain.domain.tools.slack.ChannelDetails;
 import secondbrain.infrastructure.slack.api.SlackChannelResource;
+import secondbrain.infrastructure.slack.api.SlackChannelWithReplies;
 import secondbrain.infrastructure.slack.api.SlackConversationResource;
 import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 
@@ -35,6 +37,7 @@ import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
@@ -133,25 +136,48 @@ public class SlackClientLive implements SlackClient {
                                 source,
                                 hash,
                                 ttlSeconds,
-                                ConversationsHistoryResponse.class,
+                                SlackChannelWithReplies.class,
                                 () -> conversationHistoryFromApi(client, accessToken, channelId, oldest, 0, apiDelay))
                         .result())
                 .map(this::conversationsToText)
                 .get();
     }
 
-    private String conversationsToText(final @Nullable ConversationsHistoryResponse conversation) {
-        if (conversation == null) {
+    private String conversationsToText(final @Nullable SlackChannelWithReplies conversation) {
+        if (conversation == null || conversation.history() == null) {
             return "";
         }
 
-        return Objects.requireNonNullElse(conversation.getMessages(), List.<Message>of())
+        final Map<String, ConversationsRepliesResponse> repliesByTs =
+                Objects.requireNonNullElse(conversation.repliesByThreadTs(), Map.<String, ConversationsRepliesResponse>of());
+
+        return Objects.requireNonNullElse(conversation.history().getMessages(), List.<Message>of())
                 .stream()
-                .map(Message::getText)
+                .map(message -> {
+                    final String messageText = Objects.requireNonNullElse(message.getText(), "");
+                    final String ts = message.getTs();
+                    if (ts == null || message.getReplyCount() == null || message.getReplyCount() == 0) {
+                        return messageText;
+                    }
+
+                    final ConversationsRepliesResponse thread = repliesByTs.get(ts);
+                    if (thread == null) {
+                        return messageText;
+                    }
+
+                    final String replyText = Objects.requireNonNullElse(thread.getMessages(), List.<Message>of())
+                            .stream()
+                            .skip(1) // first message is the root, already included above
+                            .map(m -> Objects.requireNonNullElse(m.getText(), ""))
+                            .filter(StringUtils::isNotBlank)
+                            .reduce("", (a, b) -> a + "\n  > " + b);
+
+                    return replyText.isEmpty() ? messageText : messageText + replyText;
+                })
                 .reduce("", (a, b) -> a + "\n" + b);
     }
 
-    private ConversationsHistoryResponse conversationHistoryFromApi(
+    private SlackChannelWithReplies conversationHistoryFromApi(
             final AsyncMethodsClient client,
             final String accessToken,
             final String channelId,
@@ -181,14 +207,65 @@ public class SlackClientLive implements SlackClient {
                         .get())
                 .recover(SlackApiException.class, ex -> {
                     if (ex.getResponse().code() == 429) {
-                        return conversationHistoryFromApi(client, accessToken, channelId, oldest, retryCount + 1, apiDelay);
+                        return conversationHistoryFromApi(client, accessToken, channelId, oldest, retryCount + 1, apiDelay).history();
                     }
 
                     throw new ExternalFailure("Could not call searchAll", ex);
                 });
 
-        return result
+        final ConversationsHistoryResponse history = result
                 .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsHistory", ex)))
+                .get();
+
+        final Map<String, ConversationsRepliesResponse> repliesByThreadTs =
+                Objects.requireNonNullElse(history.getMessages(), List.<Message>of())
+                        .stream()
+                        .filter(m -> m.getTs() != null && m.getReplyCount() != null && m.getReplyCount() > 0)
+                        .collect(Collectors.toMap(
+                                Message::getTs,
+                                m -> conversationRepliesFromApi(client, accessToken, channelId, m.getTs(), 0, apiDelay)));
+
+        return new SlackChannelWithReplies(history, repliesByThreadTs);
+    }
+
+    private ConversationsRepliesResponse conversationRepliesFromApi(
+            final AsyncMethodsClient client,
+            final String accessToken,
+            final String channelId,
+            final String threadTs,
+            final int retryCount,
+            final int apiDelay) {
+        if (retryCount > RETRIES) {
+            throw new InternalFailure("Could not call conversationsReplies after " + RETRIES + " retries");
+        }
+
+        RATE_LIMITER.acquire();
+
+        if (retryCount > 0) {
+            logger.fine("Retrying Slack conversationsReplies");
+            Try.run(() -> Thread.sleep(apiDelay + (int) (Math.random() * RETRY_JITTER)));
+        }
+
+        final Try<ConversationsRepliesResponse> result = Try.of(() -> client.conversationsReplies(r -> r
+                                .token(accessToken)
+                                .channel(channelId)
+                                .ts(threadTs))
+                        .whenComplete((r, ex) -> {
+                            if (ex != null) {
+                                logger.warning("Failed to call Slack conversationsReplies");
+                            }
+                        })
+                        .get())
+                .recover(SlackApiException.class, ex -> {
+                    if (ex.getResponse().code() == 429) {
+                        return conversationRepliesFromApi(client, accessToken, channelId, threadTs, retryCount + 1, apiDelay);
+                    }
+
+                    throw new ExternalFailure("Could not call conversationsReplies", ex);
+                });
+
+        return result
+                .mapFailure(API.Case(API.$(), ex -> new ExternalFailure("Could not call conversationsReplies", ex)))
                 .get();
     }
 
