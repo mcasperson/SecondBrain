@@ -211,7 +211,7 @@ public class SlackChannel implements Tool<Void> {
                         Try.of(() -> localStorage.getOrPutGeneric(
                                                 getName(),
                                                 getName(),
-                                                Integer.toString((parsedArgs + prompt + c).hashCode()),
+                                                Integer.toString((parsedArgs + prompt + c.channelName()).hashCode()),
                                                 parsedArgs.getCacheTtl(),
                                                 List.class,
                                                 RagDocumentContext.class,
