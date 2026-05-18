@@ -242,7 +242,7 @@ public class Salesforce implements Tool<Void> {
                         .toList())
                 .map(emails -> emails.stream()
                         .map(email -> dataToRagDoc.getDocumentContext(email.updateDomain(parsedArgs.getDomain()), getName(), getContextLabelWithDate(email), parsedArgs))
-                        .filter(ragDoc -> !validateString.isBlank(ragDoc, RagDocumentContext::document))
+                        .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                         .toList());
 
         // Combine preinitialization hooks with ragDocs
