@@ -234,28 +234,15 @@ public class SlackChannel implements Tool<Void> {
         final List<RagDocumentContext<SlackChannelResource>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
-        /*
-            Get the oldest date to search from, starting from the start of the current day.
-            This improves the cache if we have to rerun the tool multiple times in a day, as the
-            oldest date will be the same.
-        */
-        final String oldest = Long.valueOf(LocalDateTime.now(ZoneId.systemDefault())
-                        .toLocalDate()
-                        .atStartOfDay()
-                        .minusDays(parsedArgs.getDays())
-                        .atZone(ZoneId.systemDefault())
-                        .toEpochSecond())
-                .toString();
-
         // you can get this instance via ctx.client() in a Bolt app
 
-        final Try<List<RagDocumentContext<SlackChannelResource>>> result = getChannelRagDocs(client, parsedArgs, channelName, oldest);
+        final Try<List<RagDocumentContext<SlackChannelResource>>> result = getChannelRagDocs(client, parsedArgs, channelName, parsedArgs.getOldest());
 
         final List<RagDocumentContext<SlackChannelResource>> ragDocs = exceptionMapping.map(result).get();
 
         final List<RagDocumentContext<SlackChannelResource>> ragDocs2 = StringUtils.isBlank(parsedArgs.getChannel2())
                 ? List.of()
-                : exceptionMapping.map(getChannelRagDocs(client, parsedArgs, parsedArgs.getChannel2(), oldest)).get();
+                : exceptionMapping.map(getChannelRagDocs(client, parsedArgs, parsedArgs.getChannel2(), parsedArgs.getOldest())).get();
 
         // Combine preinitialization hooks with ragDocs from both channels
         final List<RagDocumentContext<SlackChannelResource>> combinedDocs = Stream.concat(
@@ -646,6 +633,21 @@ class SlackChannelConfig {
             return Try.of(argument::getSafeValue)
                     .map(i -> Math.max(0, Integer.parseInt(i)))
                     .get();
+        }
+
+        /*
+            Get the oldest date to search from, starting from the start of the current day.
+            This improves the cache if we have to rerun the tool multiple times in a day, as the
+            oldest date will be the same.
+        */
+        public String getOldest() {
+            return Long.valueOf(LocalDateTime.now(ZoneId.systemDefault())
+                            .toLocalDate()
+                            .atStartOfDay()
+                            .minusDays(getDays())
+                            .atZone(ZoneId.systemDefault())
+                            .toEpochSecond())
+                    .toString();
         }
 
         @SuppressWarnings("NullAway")
