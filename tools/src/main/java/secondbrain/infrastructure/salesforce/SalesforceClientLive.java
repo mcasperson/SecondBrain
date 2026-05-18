@@ -11,6 +11,7 @@ import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.date.DateTruncate;
@@ -184,7 +185,13 @@ public class SalesforceClientLive implements SalesforceClient {
                                 () -> getTasksApi(token, accountId, type, startDate, endDate))
                         .result())
                 .filter(Objects::nonNull)
-                .onFailure(NoSuchElementException.class, ex -> logger.warning("Tasks not found for salesforce account " + accountId))
+                .onFailure(ex -> {
+                    if (ex instanceof NoSuchElementException) {
+                        logger.warning("Tasks not found for salesforce account " + accountId);
+                    } else {
+                        logger.warning("Unexpected exception thrown when getting opportunities for " + accountId + ": " + ExceptionUtils.getRootCauseMessage(ex));
+                    }
+                })
                 .getOrElse(new SalesforceTaskRecord[]{});
     }
 
@@ -210,7 +217,13 @@ public class SalesforceClientLive implements SalesforceClient {
                                 () -> getEmailsApi(token, accountId, startDate, endDate, limit))
                         .result())
                 .filter(Objects::nonNull)
-                .onFailure(NoSuchElementException.class, ex -> logger.warning("Emails not found for salesforce account " + accountId))
+                .onFailure(ex -> {
+                    if (ex instanceof NoSuchElementException) {
+                        logger.warning("Emails not found for salesforce account " + accountId);
+                    } else {
+                        logger.warning("Unexpected exception thrown when getting opportunities for " + accountId + ": " + ExceptionUtils.getRootCauseMessage(ex));
+                    }
+                })
                 .getOrElse(new SalesforceEmailRecord[]{});
     }
 
@@ -296,7 +309,13 @@ public class SalesforceClientLive implements SalesforceClient {
                                 () -> getOpportunityByAccountIdApi(token, accountId))
                         .result())
                 .filter(Objects::nonNull)
-                .onFailure(NoSuchElementException.class, ex -> logger.warning("Opportunity not found for salesforce account " + accountId))
+                .onFailure(ex -> {
+                    if (ex instanceof NoSuchElementException) {
+                        logger.warning("Opportunity not found for salesforce account " + accountId);
+                    } else {
+                        logger.warning("Unexpected exception thrown when getting opportunities for " + accountId + ": " + ExceptionUtils.getRootCauseMessage(ex));
+                    }
+                })
                 .getOrElse(new SalesforceOpportunityQuery(List.of()));
     }
 
