@@ -55,9 +55,10 @@ import java.util.stream.Stream;
 public class SlackChannel implements Tool<Void> {
     public static final String SLACK_CHANEL_ARG = "slackChannel";
     public static final String SLACK_CHANEL_2_ARG = "slackChannel2";
-    public static final String API_DELAY_ARG = "apiDelay";
-    public static final String HISTORY_TTL_ARG = "historyTtl";
-    public static final String TTL_SECONDS_ARG = "ttlSeconds";
+    public static final String SLACK_CHANNEL_2_DAYS = "slackChannel2Days";
+    public static final String API_DELAY_ARG = "slackApiDelay";
+    public static final String HISTORY_TTL_ARG = "slackHistoryTtl";
+    public static final String TTL_SECONDS_ARG = "slackTtlSeconds";
 
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final Pattern USER_PATTERN = Pattern.compile("<@(?<username>\\w+)>");
@@ -120,6 +121,7 @@ public class SlackChannel implements Tool<Void> {
         return List.of(
                 new ToolArguments(SLACK_CHANEL_ARG, "The Slack channel to read", "general"),
                 new ToolArguments(SLACK_CHANEL_2_ARG, "An optional second Slack channel to read", ""),
+                new ToolArguments(SLACK_CHANNEL_2_DAYS, "The number of days worth of messages to return for the second channel (defaults to the first channel's days if not set)", ""),
                 new ToolArguments(CommonArguments.DAYS_ARG, "The number of days worth of messages to return", "7"),
                 new ToolArguments(HISTORY_TTL_ARG, "The number of milliseconds to cache the Slack history", "86400000"),
                 new ToolArguments(API_DELAY_ARG, "The number of milliseconds to delay between Slack API calls", "120000"),
@@ -200,7 +202,7 @@ public class SlackChannel implements Tool<Void> {
         }
 
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
-        return parsedArgs.getChannels().stream().flatMap(c ->
+        return parsedArgs.getChannelDetails().stream().flatMap(c ->
                         Try.of(() -> localStorage.getOrPutGeneric(
                                                 getName(),
                                                 getName(),
@@ -222,13 +224,13 @@ public class SlackChannel implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final AsyncMethodsClient client,
             final SlackChannelConfig.LocalArguments parsedArgs,
-            final String channelName) {
+            final ChannelDays channelDays) {
 
-        if (StringUtils.isBlank(channelName)) {
+        if (StringUtils.isBlank(channelDays.channelName())) {
             return List.of();
         }
 
-        logger.fine("Getting Slack Channel context for " + getName() + " for channel " + channelName);
+        logger.fine("Getting Slack Channel context for " + getName() + " for channel " + channelDays.channelName());
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<SlackChannelResource>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
@@ -236,22 +238,13 @@ public class SlackChannel implements Tool<Void> {
 
         // you can get this instance via ctx.client() in a Bolt app
 
-        final Try<List<RagDocumentContext<SlackChannelResource>>> result = getChannelRagDocs(client, parsedArgs, channelName, parsedArgs.getOldest());
+        final Try<List<RagDocumentContext<SlackChannelResource>>> result = getChannelRagDocs(client, parsedArgs, channelDays.channelName(), channelDays.oldest());
 
         final List<RagDocumentContext<SlackChannelResource>> ragDocs = exceptionMapping.map(result).get();
 
-        final List<RagDocumentContext<SlackChannelResource>> ragDocs2 = StringUtils.isBlank(parsedArgs.getChannel2())
-                ? List.of()
-                : exceptionMapping.map(getChannelRagDocs(client, parsedArgs, parsedArgs.getChannel2(), parsedArgs.getOldest())).get();
-
-        // Combine preinitialization hooks with ragDocs from both channels
-        final List<RagDocumentContext<SlackChannelResource>> combinedDocs = Stream.concat(
-                preinitHooks.stream(),
-                Stream.concat(ragDocs.stream(), ragDocs2.stream())).toList();
-
         // Apply preprocessing hooks
         final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
-                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
+                .foldLeft(ragDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
                 .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
                 .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
@@ -395,6 +388,10 @@ class SlackChannelConfig {
     private Optional<String> configChannel2;
 
     @Inject
+    @ConfigProperty(name = "sb.slack.channel2days")
+    private Optional<String> configChannel2Days;
+
+    @Inject
     @ConfigProperty(name = "sb.slack.days")
     private Optional<String> configDays;
 
@@ -482,6 +479,10 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigChannel2() {
         return configChannel2;
+    }
+
+    public Optional<String> getConfigChannel2Days() {
+        return configChannel2Days;
     }
 
     public Optional<String> getConfigDays() {
@@ -591,6 +592,13 @@ class SlackChannelConfig {
             return getToStringGenerator().generateHashGetterConfig(this);
         }
 
+        public List<ChannelDays> getChannelDetails() {
+            return Stream.of(new ChannelDays(getChannel(), getOldest()),
+                            new ChannelDays(getChannel2(), getOldest2()))
+                    .filter(c -> StringUtils.isNotBlank(c.channelName()))
+                    .toList();
+        }
+
         public List<String> getChannels() {
             return Stream.of(getChannel(), getChannel2())
                     .filter(StringUtils::isNotBlank)
@@ -645,6 +653,43 @@ class SlackChannelConfig {
                             .toLocalDate()
                             .atStartOfDay()
                             .minusDays(getDays())
+                            .atZone(ZoneId.systemDefault())
+                            .toEpochSecond())
+                    .toString();
+        }
+
+        public int getDays2() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigChannel2Days()::get,
+                    arguments,
+                    context,
+                    SlackChannel.SLACK_CHANNEL_2_DAYS,
+                    SlackChannel.SLACK_CHANNEL_2_DAYS,
+                    "");
+
+            return Try.of(argument::getSafeValue)
+                    .filter(StringUtils::isNotBlank)
+                    .map(i -> Math.max(0, Integer.parseInt(i)))
+                    .getOrElse(this::getDays);
+        }
+
+        public String getOldest2() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigChannel2Days()::get,
+                    arguments,
+                    context,
+                    SlackChannel.SLACK_CHANNEL_2_DAYS,
+                    SlackChannel.SLACK_CHANNEL_2_DAYS,
+                    "");
+
+            if (StringUtils.isBlank(argument.getSafeValue())) {
+                return getOldest();
+            }
+
+            return Long.valueOf(LocalDateTime.now(ZoneId.systemDefault())
+                            .toLocalDate()
+                            .atStartOfDay()
+                            .minusDays(getDays2())
                             .atZone(ZoneId.systemDefault())
                             .toEpochSecond())
                     .toString();
