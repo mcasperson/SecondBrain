@@ -169,6 +169,8 @@ public class SlackChannel implements Tool<Void> {
             return List.of();
         }
 
+        logger.fine("Getting Slack Channel context for " + getName() + " for channels " + parsedArgs.getChannels());
+
         // Create the client once and reuse it across the early-out check and the main retrieval
         final AsyncMethodsClient client = Slack.getInstance().methodsAsync();
 
