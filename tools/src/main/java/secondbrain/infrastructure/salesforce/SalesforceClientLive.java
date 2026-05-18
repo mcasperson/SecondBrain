@@ -23,12 +23,7 @@ import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.web.ClientConstructor;
-import secondbrain.infrastructure.salesforce.api.SalesforceEmailQuery;
-import secondbrain.infrastructure.salesforce.api.SalesforceEmailRecord;
-import secondbrain.infrastructure.salesforce.api.SalesforceOauthTokenResponse;
-import secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery;
-import secondbrain.infrastructure.salesforce.api.SalesforceTaskQuery;
-import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
+import secondbrain.infrastructure.salesforce.api.*;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -190,7 +185,7 @@ public class SalesforceClientLive implements SalesforceClient {
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Tasks not found for salesforce account " + accountId))
-                .get();
+                .getOrElse(new SalesforceTaskRecord[]{});
     }
 
 
@@ -216,7 +211,7 @@ public class SalesforceClientLive implements SalesforceClient {
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Emails not found for salesforce account " + accountId))
-                .get();
+                .getOrElse(new SalesforceEmailRecord[]{});
     }
 
     private SalesforceEmailRecord[] getEmailsApi(final String token, final String accountId, final String startDate, final String endDate, final int limit) {
@@ -302,7 +297,7 @@ public class SalesforceClientLive implements SalesforceClient {
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Opportunity not found for salesforce account " + accountId))
-                .get();
+                .getOrElse(new SalesforceOpportunityQuery(List.of()));
     }
 
     private SalesforceOpportunityQuery getOpportunityByAccountIdApi(final String token, final String accountId) {
