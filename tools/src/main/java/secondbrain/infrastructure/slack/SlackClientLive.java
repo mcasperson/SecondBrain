@@ -31,7 +31,6 @@ import secondbrain.infrastructure.slack.api.SlackChannelWithReplies;
 import secondbrain.infrastructure.slack.api.SlackConversationResource;
 import secondbrain.infrastructure.slack.api.SlackSearchResultResource;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -39,9 +38,9 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
-
+import static com.google.common.base.Preconditions.checkArgument;
 import static io.vavr.Predicates.instanceOf;
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class SlackClientLive implements SlackClient {
@@ -124,6 +123,10 @@ public class SlackClientLive implements SlackClient {
             final int ttlSeconds,
             final int apiDelay,
             final String source) {
+        checkArgument(StringUtils.isNotBlank(accessToken));
+        checkArgument(StringUtils.isNotBlank(channelId));
+        checkArgument(StringUtils.isNotBlank(oldest));
+
         /*
             The Slack API enforces a lot of API rate limits. So we will cache the results of a channel lookup
             based on a hash of the channel name and the access token.
