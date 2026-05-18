@@ -165,6 +165,7 @@ public class SlackChannel implements Tool<Void> {
 
         // Quick exit when there are no channels
         if (parsedArgs.getChannels().isEmpty()) {
+            logger.fine("No channels defined, so " + getName() + " is returning an empty list");
             return List.of();
         }
 
@@ -201,14 +202,13 @@ public class SlackChannel implements Tool<Void> {
             }
         }
 
-        final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
         return parsedArgs.getChannelDetails()
                 .stream()
                 .flatMap(c ->
                         Try.of(() -> localStorage.getOrPutGeneric(
                                                 getName(),
                                                 getName(),
-                                                Integer.toString(cacheKey.hashCode()),
+                                                Integer.toString((parsedArgs + prompt).hashCode()),
                                                 parsedArgs.getCacheTtl(),
                                                 List.class,
                                                 RagDocumentContext.class,
