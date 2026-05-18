@@ -205,6 +205,7 @@ public class Gong implements Tool<Void> {
                         RagDocumentContext.class,
                         GongCallDetails.class,
                         () -> getContextPrivate(environmentSettings, prompt, parsedArgs)).result())
+                .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to generate Gong context: " + ExceptionUtils.getRootCauseMessage(ex)))
                 .getOrElse(List.of());
     }
