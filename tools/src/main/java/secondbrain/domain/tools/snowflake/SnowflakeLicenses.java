@@ -14,6 +14,7 @@ import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
@@ -114,6 +115,7 @@ public class SnowflakeLicenses implements Tool<Void> {
                         details,
                         null,
                         List.of()))
+                .map(ragDoc -> ragDoc.addIntermediateResult(new IntermediateResult(ragDoc.document(), "Data-Snowflake-" + ragDoc.id() + "-" + parsedArgs.getCompanyId() + ".txt")))
                 .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
 
