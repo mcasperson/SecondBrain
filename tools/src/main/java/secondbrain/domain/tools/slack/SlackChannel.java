@@ -180,6 +180,7 @@ public class SlackChannel implements Tool<Void> {
                                 c,
                                 parsedArgs.getApiDelay()))
                         .map(SlackChannelResource::channelId)
+                        .onFailure(ex -> logger.warning("Failed to get Slack channel ID for " + c + ": " + ExceptionUtils.getRootCauseMessage(ex)))
                         .getOrElse(""))
                 .filter(StringUtils::isNotBlank)
                 .toList();
