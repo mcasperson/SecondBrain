@@ -189,17 +189,19 @@ public class SlackChannel implements Tool<Void> {
 
         // Early out if we haven't seen any items in the last month
         if (parsedArgs.isSkipEmptyInLastDuration()) {
-            final boolean allEmpty = channelIds.
-                    stream()
-                    .noneMatch(c -> slackClient.anyItemsInDuration(
-                            client,
-                            parsedArgs.getSecretAccessToken(),
-                            c,
-                            parsedArgs.getApiDelay(),
-                            ChronoUnit.YEARS,
-                            ChronoUnit.MONTHS));
+            final boolean anyPresent = Try.of(() -> channelIds.
+                            stream()
+                            .noneMatch(c -> slackClient.anyItemsInDuration(
+                                    client,
+                                    parsedArgs.getSecretAccessToken(),
+                                    c,
+                                    parsedArgs.getApiDelay(),
+                                    ChronoUnit.YEARS,
+                                    ChronoUnit.MONTHS)))
+                    .onFailure(ex -> logger.warning("Failed to get anyItemsInDuration: " + ExceptionUtils.getRootCauseMessage(ex)))
+                    .getOrElse(true);
 
-            if (allEmpty) {
+            if (!anyPresent) {
                 logger.info("Skipping SlackChannel context retrieval because skipEmptyInLastDuration is set and there are no Slack messages in the specified duration");
                 return List.of();
             }
