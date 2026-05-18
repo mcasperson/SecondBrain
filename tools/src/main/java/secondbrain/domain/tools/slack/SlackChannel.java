@@ -153,7 +153,7 @@ public class SlackChannel implements Tool<Void> {
     }
 
     public String getContextLabelWithChannelName(final String channelName) {
-        return "Slack Messages " + channelName;
+        return "Slack Messages from #" + channelName;
     }
 
     @Override
@@ -202,7 +202,9 @@ public class SlackChannel implements Tool<Void> {
         }
 
         final String cacheKey = parsedArgs.toString().hashCode() + "_" + prompt.hashCode();
-        return parsedArgs.getChannelDetails().stream().flatMap(c ->
+        return parsedArgs.getChannelDetails()
+                .stream()
+                .flatMap(c ->
                         Try.of(() -> localStorage.getOrPutGeneric(
                                                 getName(),
                                                 getName(),
@@ -262,7 +264,7 @@ public class SlackChannel implements Tool<Void> {
                 .map(RagDocumentContext::convertToRagDocumentContextVoid)
                 .toList();
 
-        logger.info("Found " + context.size() + " Slack channel messages");
+        logger.info("Found " + context.size() + " Slack channel message block in #" + channelDays.channelName());
 
         return context;
     }
