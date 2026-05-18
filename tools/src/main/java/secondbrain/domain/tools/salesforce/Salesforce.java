@@ -21,7 +21,6 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.date.DateParser;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
-import secondbrain.domain.exceptions.InsufficientContext;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
@@ -254,10 +253,6 @@ public class Salesforce implements Tool<Void> {
         // Apply preprocessing hooks
         final List<RagDocumentContext<SalesforceEmailRecord>> filteredDocs = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
-
-        if (filteredDocs.isEmpty()) {
-            throw new InsufficientContext("No Salesforce emails found.");
-        }
 
         // Only do the post-processing after the hooks, in parallel
         final List<RagDocumentContext<SalesforceEmailRecord>> records = filteredDocs.stream()
