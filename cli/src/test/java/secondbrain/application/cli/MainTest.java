@@ -1,13 +1,20 @@
 package secondbrain.application.cli;
 
+import io.smallrye.config.PropertiesConfigSource;
+import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
+import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.enterprise.inject.spi.InjectionPoint;
 import jakarta.inject.Inject;
+import org.apache.tika.utils.StringUtils;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.WeldInitiator;
 import org.jboss.weld.junit5.WeldJunit5Extension;
 import org.jboss.weld.junit5.WeldSetup;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +49,7 @@ import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -112,6 +120,39 @@ class MainTest {
      */
     @Inject
     private Main main;
+
+    @BeforeAll
+    static void registerConfig() {
+        final String autodiscovery = System.getenv("SB_COSMOS_AUTODISCOVERY");
+        final String gatewayMode = System.getenv("SB_COSMOS_GATEWAYMODE");
+
+        final var configSource = new PropertiesConfigSource(
+                Map.of(
+                        "sb.cache.disable", "false",
+                        "sb.cosmos.endpoint", "https://localhost:9081",
+                        "sb.cosmos.key", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
+                        "sb.cosmos.database", "testdb",
+                        "sb.cosmos.container", "testcontainer",
+                        "sb.encryption.password", "1234567890",
+                        "sb.encryption.salt", "1234567890",
+                        "sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery,
+                        "sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode
+                ),
+                "TestConfig",
+                Integer.MAX_VALUE
+        );
+        final Config newConfig = new SmallRyeConfigBuilder()
+                .withSources(configSource)
+                .build();
+
+        final var configProviderResolver = ConfigProviderResolver.instance();
+        Try.run(() -> configProviderResolver.releaseConfig(configProviderResolver.getConfig()))
+                .onFailure(ex -> { /* ignore if no config registered yet */ });
+        configProviderResolver.registerConfig(
+                newConfig,
+                Thread.currentThread().getContextClassLoader()
+        );
+    }
 
     @BeforeEach
     void resetMocks() {
