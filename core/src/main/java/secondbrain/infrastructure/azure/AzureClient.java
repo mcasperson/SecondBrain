@@ -289,6 +289,8 @@ public class AzureClient implements LlmClient {
         final int ttl = NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60;
         final String cacheSource = "AzureLLMV3";
 
+        logger.fine(cacheSource + " prompt hash " + promptHash);
+
         // Bypass cache altogether if both read and write are disabled.
         if (getDisableToolReadCache().contains(tool) && getDisableToolWriteCache().contains(tool)) {
             return new CacheResult<String>(call(request, resolvedUrl), null, false);
