@@ -50,6 +50,7 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
 @ApplicationScoped
 public class CosmosLocalStorage implements LocalStorage {
 
+    private static final int FLUSH_WAIT_MINUTES = 10;
     private static final int BATCH_SIZE = 5;
     private static final String CONTAINER_NAME = "localstoragezipped";
     private static final String DATABASE_NAME = "secondbrain";
@@ -197,11 +198,11 @@ public class CosmosLocalStorage implements LocalStorage {
         logger.fine("Waiting for " + toWait.size() + " pending background writes to complete");
         final CompletableFuture<?>[] waitFutures = toWait.stream()
                 .map(f -> CompletableFuture.runAsync(
-                        () -> Try.run(() -> f.get(2, TimeUnit.MINUTES))
+                        () -> Try.run(() -> f.get(FLUSH_WAIT_MINUTES, TimeUnit.MINUTES))
                                 .onFailure(ex -> logger.warning("Error waiting for pending write: " + exceptionHandler.getExceptionMessage(ex))),
                         sharedVirtualThreadExecutor.getExecutor()))
                 .toArray(CompletableFuture[]::new);
-        Try.run(() -> CompletableFuture.allOf(waitFutures).get(2, TimeUnit.MINUTES))
+        Try.run(() -> CompletableFuture.allOf(waitFutures).get(FLUSH_WAIT_MINUTES, TimeUnit.MINUTES))
                 .onFailure(ex -> logger.warning("Timed out or failed waiting for all pending writes: " + exceptionHandler.getExceptionMessage(ex)));
     }
 

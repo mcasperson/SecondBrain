@@ -14,6 +14,7 @@ import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerOutput;
 import secondbrain.domain.handler.PromptHandlerResponse;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.toolbuilder.ToolSelector;
 
 import java.nio.file.Files;
@@ -48,6 +49,9 @@ public class Main {
 
     @Inject
     private PromptHandlerOutput promptHandlerOutput;
+
+    @Inject
+    private LocalStorage localStorage;
 
     public static Try.WithResources1<WeldContainer> getContainer() {
         final Weld weld = new Weld();
@@ -91,6 +95,7 @@ public class Main {
                 .onSuccess(content -> promptHandlerOutput.saveMetadata(content, context))
                 .onSuccess(content -> promptHandlerOutput.saveIntermediateResults(content, context))
                 .onFailure(e -> logger.severe("Failed to process prompt: " + e.getMessage()))
+                .andFinally(localStorage::flush)
                 .get();
     }
 
