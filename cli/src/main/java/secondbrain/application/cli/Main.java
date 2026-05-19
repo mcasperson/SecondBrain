@@ -14,6 +14,7 @@ import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.handler.PromptHandlerOutput;
 import secondbrain.domain.handler.PromptHandlerResponse;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.toolbuilder.ToolSelector;
 
@@ -51,6 +52,7 @@ public class Main {
     private PromptHandlerOutput promptHandlerOutput;
 
     @Inject
+    @Preferred
     private LocalStorage localStorage;
 
     public static Try.WithResources1<WeldContainer> getContainer() {

@@ -13,8 +13,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import secondbrain.domain.args.ArgsAccessorSimple;
+import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.converter.StringConverterSelector;
+import secondbrain.domain.encryption.AesEncryptor;
+import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.files.FileWriter;
 import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.DefaultPromptHandlerOutput;
@@ -23,11 +26,19 @@ import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.handler.PromptResponseSimple;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.SecretGetterGenerator;
+import secondbrain.domain.persist.CosmosLocalStorage;
+import secondbrain.domain.persist.H2LocalStorage;
+import secondbrain.domain.persist.LocalStorageProducer;
 import secondbrain.domain.persist.LocalStorageReadWrite;
+import secondbrain.domain.persist.config.LocalStorageCacheDisable;
+import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
+import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
+import secondbrain.domain.persist.config.LocalStorageDisableTool;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.validate.ValidateStringBlank;
+import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -79,7 +90,19 @@ class MainTest {
                             SecretGetterGenerator.class,
                             FinancialLocationContactRedaction.class,
                             MockBeans.class,
-                            DefaultPromptHandlerOutput.class)
+                            DefaultPromptHandlerOutput.class,
+                            H2LocalStorage.class,
+                            CosmosLocalStorage.class,
+                            LocalStorageCacheDisable.class,
+                            LocalStorageDisableTool.class,
+                            LocalStorageCacheReadOnly.class,
+                            LocalStorageCacheWriteOnly.class,
+                            LocalStorageReadWrite.class,
+                            LocalStorageProducer.class,
+                            LoggingExceptionHandler.class,
+                            SharedVirtualThreadExecutor.class,
+                            ApacheCommonsZStdZipper.class,
+                            AesEncryptor.class)
                     .addExtension(new ConfigExtension()))
             .activate(ApplicationScoped.class)
             .build();
