@@ -52,6 +52,8 @@ import static com.google.common.base.Preconditions.*;
  */
 @ApplicationScoped
 public class AzureClient implements LlmClient {
+    private final static String cacheSource = "AzureLLMV3";
+
     /**
      * We need to trim the input to ensure the LLM can handle it.
      * This value is an assumption about the size of the generated output.
@@ -279,6 +281,10 @@ public class AzureClient implements LlmClient {
 
         final CacheResult<String> result = handleCaching(request, tool, promptHash, resolvedUrl, environmentSettings);
 
+        if (!result.fromCache()) {
+            logger.info("Cache ID: " + tool + "_" + cacheSource + "_" + promptHash);
+        }
+
         logger.info("LLM Response from " + modelName + (result.fromCache() ? " (from cache)" : ""));
         logger.info(result.result());
 
@@ -287,9 +293,6 @@ public class AzureClient implements LlmClient {
 
     private CacheResult<String> handleCaching(final PromptTextGenerator request, final String tool, final String promptHash, final String resolvedUrl, final Map<String, String> environmentSettings) {
         final int ttl = NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60;
-        final String cacheSource = "AzureLLMV3";
-
-        logger.fine(cacheSource + " prompt hash " + promptHash);
 
         // Bypass cache altogether if both read and write are disabled.
         if (getDisableToolReadCache().contains(tool) && getDisableToolWriteCache().contains(tool)) {
