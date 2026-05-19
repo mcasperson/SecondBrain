@@ -500,7 +500,13 @@ public class CosmosLocalStorage implements LocalStorage {
                         partitionKey,
                         CacheItem.class
                 ))
-                .onFailure(ex -> logger.warning("Failed to read item from container: " + exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(ex -> {
+                    if (ex instanceof CosmosException && ((CosmosException) ex).getStatusCode() == 404) {
+                        logger.fine("Failed to read item from container: " + exceptionHandler.getExceptionMessage(ex));
+                    } else {
+                        logger.warning("Failed to read item from container: " + exceptionHandler.getExceptionMessage(ex));
+                    }
+                })
                 .get();
 
         // Check if item has expired (if timestamp is set)
