@@ -74,6 +74,6 @@ public class SecretGetterGenerator implements ToStringGenerator {
                 .filter(Objects::nonNull)
                 .toList();
 
-        return Objects.hash(values.toArray());
+        return values.hashCode();
     }
 }
