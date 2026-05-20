@@ -259,7 +259,7 @@ public class SalesforceClientLive implements SalesforceClient {
                     .onFailure(e -> logger.warning("Failed to parse end date " + endDate))
                     .onSuccess(date -> soql.append(" AND MessageDate<=").append(DateTimeFormatter.ISO_INSTANT.format(date)));
         }
-        soql.append(" ORDER BY MessageDate DESC Limit ").append(limit);
+        soql.append(" ORDER BY MessageDate DESC, Id DESC Limit ").append(limit);
 
         return Try.of(() -> httpClientCaller.call(
                         clientConstructor::getClient,
