@@ -149,11 +149,10 @@ public class RatingTool implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        final String cacheKey = parsedArgs.toString() + prompt.hashCode();
         return Try.of(() -> localStorage.getOrPutObject(
                                 getName(),
                                 getName(),
-                                Integer.toString(cacheKey.hashCode()),
+                                Integer.toString((parsedArgs + prompt).hashCode()),
                                 TTL_SECONDS,
                                 RagMultiDocumentContext.class,
                                 () -> callPrivate(environmentSettings, prompt, arguments))
