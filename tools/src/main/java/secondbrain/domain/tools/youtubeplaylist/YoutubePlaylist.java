@@ -545,9 +545,9 @@ class YoutubeConfig {
         private final Map<String, String> context;
 
         public LocalArguments(List<ToolArgs> arguments, String prompt, Map<String, String> context) {
-            this.arguments = arguments;
+            this.arguments = List.copyOf(arguments);
             this.prompt = prompt;
-            this.context = context;
+            this.context = Map.copyOf(context);
         }
 
         @Override

@@ -78,9 +78,9 @@ class SmokeTestConfig {
         private final Map<String, String> context;
 
         public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
-            this.arguments = arguments;
+            this.arguments = List.copyOf(arguments);
             this.prompt = prompt;
-            this.context = context;
+            this.context = Map.copyOf(context);
         }
 
         @Override
