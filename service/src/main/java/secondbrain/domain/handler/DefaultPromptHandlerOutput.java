@@ -275,7 +275,7 @@ public class DefaultPromptHandlerOutput implements PromptHandlerOutput {
                 .stream()
                 .filter(Objects::nonNull)
                 .filter(meta -> StringUtils.isNotBlank(meta.filename()) && meta.content() != null)
-                .peek(meta -> logger.info("Saving intermediate result: " + pathBuilder.getFilePath(getDirectory(context).get(), meta.filename())))
+                .peek(meta -> logger.info("Saving intermediate result: dir " + getDirectory(context).get() + " file " + meta.filename() + " final path " + pathBuilder.getFilePath(getDirectory(context).get(), meta.filename())))
                 .forEach(meta -> Try.run(() -> fileWriter.write(
                                 pathBuilder.getFilePath(getDirectory(context).get(), meta.filename()),
                                 Objects.requireNonNullElse(sanitizeDocument.sanitize(meta.content()), "")))
