@@ -150,10 +150,6 @@ public class RatingTool implements Tool<Void> {
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
-        logger.info("RatingTool parsedArgs hash: " + parsedArgs.hashCode());
-        logger.info("RatingTool parsedArgs string: " + parsedArgs.toString());
-        logger.info("RatingTool prompt hash: " + prompt.hashCode());
-
         return Try.of(() -> localStorage.getOrPutObject(
                                 getName(),
                                 getName(),
