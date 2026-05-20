@@ -86,6 +86,8 @@ public class Main {
     }
 
     public PromptHandlerResponse entry(final String prompt, final String format, final Map<String, String> context) {
+        logger.info("Context: \n" + context);
+
         final StringConverter converter = stringConverterSelector.getStringConverter(format);
         return Try.of(() -> promptHandler.handlePrompt(context, prompt))
                 .map(response -> response.updateResponseText(converter))
