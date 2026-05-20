@@ -18,6 +18,7 @@ import secondbrain.domain.exceptions.InvalidAnswer;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
@@ -27,10 +28,7 @@ import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.validate.ValidateList;
 import secondbrain.infrastructure.llm.LlmClient;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -52,6 +50,8 @@ enum LLMServerType {
  */
 @ApplicationScoped
 public class RatingTool implements Tool<Void> {
+    private static final int TTL_SECONDS = 60 * 60 * 24 * 365;
+
     public static final String RATING_TOOL_CONTEXT_ARG = "ratingTool";
     public static final String RATING_ID_CONTEXT_ARG = "ratingId";
     public static final String RATING_DOCUMENT_CONTEXT_ARG = "ratingDocument";
@@ -109,6 +109,10 @@ public class RatingTool implements Tool<Void> {
     @Inject
     private SharedVirtualThreadExecutor sharedExecutor;
 
+    @Inject
+    @Preferred
+    private LocalStorage localStorage;
+
     @Override
     public String getName() {
         return RatingTool.class.getSimpleName();
@@ -144,6 +148,25 @@ public class RatingTool implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+        final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String cacheKey = parsedArgs.toString() + prompt.hashCode();
+        return Try.of(() -> localStorage.getOrPutObject(
+                                getName(),
+                                getName(),
+                                Integer.toString(cacheKey.hashCode()),
+                                TTL_SECONDS,
+                                RagMultiDocumentContext.class,
+                                () -> callPrivate(environmentSettings, prompt, arguments))
+                        .result())
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get rating from cache: " + ex.getMessage()))
+                .getOrElse(() -> new RagMultiDocumentContext<Void>(
+                        prompt,
+                        INSTRUCTIONS,
+                        List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of()))).updateResponse("-1"));
+    }
+
+
+    private RagMultiDocumentContext<Void> callPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
         final HashMapEnvironmentSettings myEnvironmentSettings = new HashMapEnvironmentSettings(environmentSettings);
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
 
