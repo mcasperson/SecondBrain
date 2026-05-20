@@ -1,11 +1,13 @@
 package secondbrain.domain.sanitize;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.json.JsonDeserializerJackson;
 
 import java.lang.reflect.Field;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -103,6 +105,7 @@ class FinancialLocationContactRedactionTest {
         assertTrue(result.contains("{{{REDACTED-EMAIL}}}"), "Email in JSON value should be redacted");
         assertTrue(!result.contains("john.doe@example.com"), "Original email should not appear in JSON output");
         assertTrue(result.contains("\"contact\""), "JSON key should be preserved");
+        assertDoesNotThrow(() -> new ObjectMapper().readTree(result), "Result should be valid JSON");
     }
 
     @Test
