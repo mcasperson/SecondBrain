@@ -31,7 +31,6 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.persist.LocalStorage;
-import secondbrain.domain.persist.LocalStorageReadWrite;
 import secondbrain.domain.reader.FileReader;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.*;
@@ -196,9 +195,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     @Inject
     private SharedVirtualThreadExecutor sharedExecutor;
 
-    @Inject
-    LocalStorageReadWrite localStorageReadWrite;
-
     @Override
     public String getName() {
         return MultiSlackZenGoogle.class.getSimpleName();
@@ -297,7 +293,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     private String generateCacheKey(final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt) {
         // We need to exclude some static values that do not affect the output from the string that generates the cache key
-        return toStringGenerator.generateGetterConfig(parsedArgs, parsedArgs.getExcludeCacheGetters()).hashCode() + "_" + prompt.hashCode();
+        return Integer.toString((toStringGenerator.generateGetterConfig(parsedArgs, parsedArgs.getExcludeCacheGetters()) + "_" + prompt).hashCode());
     }
 
     private RagMultiDocumentContext<Void> callPrivate(
