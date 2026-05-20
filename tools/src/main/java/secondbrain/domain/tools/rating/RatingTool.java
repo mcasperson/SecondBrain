@@ -470,9 +470,9 @@ class RatingConfig {
         private final Map<String, String> environmentSettings;
 
         public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> environmentSettings) {
-            this.arguments = arguments;
+            this.arguments = List.copyOf(arguments);
             this.prompt = prompt;
-            this.environmentSettings = environmentSettings;
+            this.environmentSettings = Map.copyOf(environmentSettings);
         }
 
         @Override
