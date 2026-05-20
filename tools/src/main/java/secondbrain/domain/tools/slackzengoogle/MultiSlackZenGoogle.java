@@ -319,12 +319,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                     Se we do this manually if required.
                  */
                 .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))) : ragDoc)
-                /*
-                    InsufficientContext is expected when there is not enough information to answer the prompt.
-                    It is not passed up though, as it is not a failure, but rather a lack of information.
-                 */
-                .filter(regDoc -> resultMatchesRating(regDoc.getResponse(), parsedArgs))
-
                 .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<Void>(prompt)
                         .updateResponse(e.getClass().getSimpleName() + ": No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found."))
                 .recover(NoSuchElementException.class, e -> new RagMultiDocumentContext<Void>(prompt)
