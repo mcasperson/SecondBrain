@@ -135,6 +135,57 @@ class SecretGetterGeneratorTest {
         assertEquals(hash1, hash2, "Hash should be same if name is excluded");
     }
 
+    @Test
+    void generateHashGetterConfig_withIntAndBooleanProperties() {
+        PrimitivesObject obj1 = new PrimitivesObject(42, true);
+        PrimitivesObject obj2 = new PrimitivesObject(42, true);
+        PrimitivesObject obj3 = new PrimitivesObject(99, true);
+        PrimitivesObject obj4 = new PrimitivesObject(42, false);
+
+        assertEquals(generator.generateHashGetterConfig(obj1), generator.generateHashGetterConfig(obj2),
+                "Same int and boolean values should produce same hash");
+        assertNotEquals(generator.generateHashGetterConfig(obj1), generator.generateHashGetterConfig(obj3),
+                "Different int values should produce different hash");
+        assertNotEquals(generator.generateHashGetterConfig(obj1), generator.generateHashGetterConfig(obj4),
+                "Different boolean values should produce different hash");
+    }
+
+    @Test
+    void generateHashGetterConfig_withListProperty() {
+        ListObject obj1 = new ListObject(List.of("a", "b", "c"));
+        ListObject obj2 = new ListObject(List.of("a", "b", "c"));
+        ListObject obj3 = new ListObject(List.of("x", "y"));
+
+        assertEquals(generator.generateHashGetterConfig(obj1), generator.generateHashGetterConfig(obj2),
+                "Same List contents should produce same hash");
+        assertNotEquals(generator.generateHashGetterConfig(obj1), generator.generateHashGetterConfig(obj3),
+                "Different List contents should produce different hash");
+    }
+
+    @Test
+    void generateHashGetterConfig_withIntArrayProperty() {
+        IntArrayObject obj1 = new IntArrayObject(new int[]{1, 2, 3});
+        IntArrayObject obj2 = new IntArrayObject(new int[]{1, 2, 3});
+        IntArrayObject obj3 = new IntArrayObject(new int[]{4, 5, 6});
+
+        assertEquals(generator.generateHashGetterConfig(obj1), generator.generateHashGetterConfig(obj2),
+                "int[] with same content should produce same hash (content-based, not identity-based)");
+        assertNotEquals(generator.generateHashGetterConfig(obj1), generator.generateHashGetterConfig(obj3),
+                "int[] with different content should produce different hash");
+    }
+
+    @Test
+    void generateHashGetterConfig_withStringArrayProperty() {
+        StringArrayObject obj1 = new StringArrayObject(new String[]{"a", "b", "c"});
+        StringArrayObject obj2 = new StringArrayObject(new String[]{"a", "b", "c"});
+        StringArrayObject obj3 = new StringArrayObject(new String[]{"x", "y"});
+
+        assertEquals(generator.generateHashGetterConfig(obj1), generator.generateHashGetterConfig(obj2),
+                "String[] with same content should produce same hash (content-based, not identity-based)");
+        assertNotEquals(generator.generateHashGetterConfig(obj1), generator.generateHashGetterConfig(obj3),
+                "String[] with different content should produce different hash");
+    }
+
     // Test helper classes
     record TestObject(String name, int age, String secretPassword) {
 
@@ -170,6 +221,60 @@ class SecretGetterGeneratorTest {
     static class ThrowingObject {
         public String getThrowingValue() {
             throw new RuntimeException("This getter always throws");
+        }
+    }
+
+    static class PrimitivesObject {
+        private final int count;
+        private final boolean active;
+
+        PrimitivesObject(int count, boolean active) {
+            this.count = count;
+            this.active = active;
+        }
+
+        public int getCount() {
+            return count;
+        }
+
+        public boolean isActive() {
+            return active;
+        }
+    }
+
+    static class ListObject {
+        private final List<String> items;
+
+        ListObject(List<String> items) {
+            this.items = items;
+        }
+
+        public List<String> getItems() {
+            return items;
+        }
+    }
+
+    static class IntArrayObject {
+        private final int[] values;
+
+        IntArrayObject(int[] values) {
+            this.values = values;
+        }
+
+        public int[] getValues() {
+            return values;
+        }
+    }
+
+    static class StringArrayObject {
+        private final String[] names;
+
+        StringArrayObject(String[] names) {
+            this.names = names;
+        }
+
+        public String[] getNames() {
+            return names;
         }
     }
 }

@@ -69,11 +69,29 @@ public class SecretGetterGenerator implements ToStringGenerator {
                         !method.getName().startsWith("getSensitive") &&
                         method.getParameterCount() == 0 &&
                         method.getReturnType() != void.class)
-                .map(getterMethod -> Try.of(() -> getterMethod.invoke(obj))
+                .map(getterMethod -> Try.of(() -> normalizeForHash(getterMethod.invoke(obj)))
                         .getOrNull())
                 .filter(Objects::nonNull)
                 .toList();
 
         return values.hashCode();
+    }
+
+    /**
+     * Arrays use identity-based hashCode, so two different array instances with the same content
+     * would produce different hashes. This method normalizes arrays to their content-based hash
+     * so that the overall hash is stable for objects with the same values.
+     */
+    private static Object normalizeForHash(final Object value) {
+        if (value instanceof int[] a) return Arrays.hashCode(a);
+        if (value instanceof long[] a) return Arrays.hashCode(a);
+        if (value instanceof double[] a) return Arrays.hashCode(a);
+        if (value instanceof float[] a) return Arrays.hashCode(a);
+        if (value instanceof boolean[] a) return Arrays.hashCode(a);
+        if (value instanceof byte[] a) return Arrays.hashCode(a);
+        if (value instanceof short[] a) return Arrays.hashCode(a);
+        if (value instanceof char[] a) return Arrays.hashCode(a);
+        if (value instanceof Object[] a) return Arrays.deepHashCode(a);
+        return value;
     }
 }
