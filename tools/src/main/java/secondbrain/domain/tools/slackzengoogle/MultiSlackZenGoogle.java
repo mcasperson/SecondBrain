@@ -219,7 +219,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 new ToolArguments(CommonArguments.AUTO_GENERATE_KEYWORDS_ARG, "Set to true to automatically generate keywords from the prompt using the Keywords LLM tool", "false"),
                 new ToolArguments(CommonArguments.ENTITY_NAME_CONTEXT_ARG, "The optional name of the entity to query", ""),
                 new ToolArguments(MULTI_SLACK_ZEN_MAX_ENTITIES_ARG, "The optional maximum number of entities to process", "0"),
-                new ToolArguments(CommonArguments.DAYS_ARG, "The number of days to query", ""));
+                new ToolArguments(CommonArguments.DAYS_ARG, "The number of days to query", ""),
+                new ToolArguments(CommonArguments.MINIMUM_CONTENT_LENGTH, "The minimum number of characters a context item must have to be included (0 = no minimum)", "0"));
     }
 
     @Override
@@ -617,6 +618,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return Try
                 // Combine all the keywords we are going to search for
                 .of(() -> List.of(
+                        new ToolArgs(CommonArguments.MINIMUM_CONTENT_LENGTH, parsedArgs.getMinimumContentLength() + "", true),
                         new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
@@ -652,6 +654,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(CommonArguments.MINIMUM_CONTENT_LENGTH, parsedArgs.getMinimumContentLength() + "", true),
                         new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
@@ -688,6 +691,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(CommonArguments.MINIMUM_CONTENT_LENGTH, parsedArgs.getMinimumContentLength() + "", true),
                         new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
@@ -723,6 +727,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(CommonArguments.MINIMUM_CONTENT_LENGTH, parsedArgs.getMinimumContentLength() + "", true),
                         new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
@@ -757,6 +762,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(CommonArguments.MINIMUM_CONTENT_LENGTH, parsedArgs.getMinimumContentLength() + "", true),
                         new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, id, true)))
                 .flatMap(args -> Try.of(() -> planHatUsage.getContext(envSettings, prompt, args))
                         // We continue on even if one tool fails, so log and swallow the exception
@@ -780,6 +786,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(CommonArguments.MINIMUM_CONTENT_LENGTH, parsedArgs.getMinimumContentLength() + "", true),
                         new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_ARG, "" + !parsedArgs.getIndividualContextSummaryPrompt().isBlank(), true),
@@ -809,6 +816,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(CommonArguments.MINIMUM_CONTENT_LENGTH, parsedArgs.getMinimumContentLength() + "", true),
                         new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating() + "", true),
                         new ToolArgs(CommonArguments.DEFAULT_RATING_ARG, parsedArgs.getDefaultRating() + "", true),
@@ -845,6 +853,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
+                        new ToolArgs(CommonArguments.MINIMUM_CONTENT_LENGTH, parsedArgs.getMinimumContentLength() + "", true),
                         new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, parsedArgs.getIndividualContextFilterQuestion(), true),
                         new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, parsedArgs.getIndividualContextFilterMinimumRating().toString(), true),
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
@@ -1219,6 +1228,10 @@ class MultiSlackZenGoogleConfig {
     @ConfigProperty(name = "sb.multislackzengoogle.skipEmptyInLastDuration", defaultValue = "")
     private Optional<String> configSkipEmptyInLastDuration;
 
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.minimumContentLength", defaultValue = "0")
+    private Optional<String> configMinimumContentLength;
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -1486,6 +1499,10 @@ class MultiSlackZenGoogleConfig {
 
     public Optional<String> getConfigExcludeConfigCacheGetters() {
         return configExcludeConfigCacheGetters;
+    }
+
+    public Optional<String> getConfigMinimumContentLength() {
+        return configMinimumContentLength;
     }
 
     public Keywords getKeywordsTool() {
@@ -2221,6 +2238,18 @@ class MultiSlackZenGoogleConfig {
                     DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
+        }
+
+        public int getMinimumContentLength() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigMinimumContentLength()::get,
+                    arguments,
+                    context,
+                    CommonArguments.MINIMUM_CONTENT_LENGTH,
+                    CommonArguments.MINIMUM_CONTENT_LENGTH,
+                    "0");
+
+            return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), 0));
         }
 
         @Override
