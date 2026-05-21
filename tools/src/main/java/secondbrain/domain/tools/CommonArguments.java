@@ -91,4 +91,10 @@ public class CommonArguments {
      * keywords via the {@link #KEYWORDS_ARG} argument.
      */
     public static final String AUTO_GENERATE_KEYWORDS_ARG = "autoGenerateKeywords";
+    /**
+     * This setting deines the minimum amount of content that a tool must return to be included.
+     * It is up to every individual tool to implement this, as some tools return metadata (like
+     * counts or tables) that are not expected to have a minimum size.
+     */
+    public static final String MINIMUM_CONTENT_LENGTH = "minimumContentLength";
 }

@@ -185,7 +185,8 @@ public class PlanHat implements Tool<Void> {
                 new ToolArguments(CommonArguments.PREPROCESSOR_HOOKS_ARG, "The names of pre-processor hooks to apply before processing the conversations", ""),
                 new ToolArguments(CommonArguments.POSTINFERENCE_HOOKS_ARG, "The names of post-inference hooks to apply after the LLM has processed the conversations", ""),
                 new ToolArguments(PLANHAT_TTL_SECONDS_ARG, "The number of seconds to cache the PlanHat conversation results", "86400"),
-                new ToolArguments(SEARCH_TTL_ARG, "The time-to-live in milliseconds for the PlanHat search query cache", "")
+                new ToolArguments(SEARCH_TTL_ARG, "The time-to-live in milliseconds for the PlanHat search query cache", ""),
+                new ToolArguments(CommonArguments.MINIMUM_CONTENT_LENGTH, "The minimum number of characters a conversation must have to be included (0 = no minimum)", "0")
         );
     }
 
@@ -261,6 +262,7 @@ public class PlanHat implements Tool<Void> {
                         .recover(ex -> List.of())
                         .get()
                         .stream())
+                .filter(c -> parsedArgs.getMinimumContentLength() > 0 || c.getSnippet().length() >= parsedArgs.getMinimumContentLength())
                 .toList();
 
         final List<RagDocumentContext<Conversation>> ragDocs = conversations.stream()
@@ -469,6 +471,10 @@ class PlanHatConfig {
     @ConfigProperty(name = "sb.planhat.postinferenceHooks", defaultValue = "")
     private Optional<String> configPostInferenceHooks;
 
+    @Inject
+    @ConfigProperty(name = "sb.planhat.minimumContentLength", defaultValue = "0")
+    private Optional<String> configMinimumContentLength;
+
     public Optional<String> getConfigCompany() {
         return configCompany;
     }
@@ -563,6 +569,10 @@ class PlanHatConfig {
 
     public Optional<String> getConfigPostInferenceHooks() {
         return configPostInferenceHooks;
+    }
+
+    public Optional<String> getConfigMinimumContentLength() {
+        return configMinimumContentLength;
     }
 
     public Optional<String> getConfigTtlSeconds() {
@@ -893,6 +903,18 @@ class PlanHatConfig {
                     DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
+        }
+
+        public int getMinimumContentLength() {
+            final Argument argument = getArgsAccessor().getArgument(
+                    getConfigMinimumContentLength()::get,
+                    arguments,
+                    context,
+                    CommonArguments.MINIMUM_CONTENT_LENGTH,
+                    CommonArguments.MINIMUM_CONTENT_LENGTH,
+                    "0");
+
+            return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), 0));
         }
 
         @Override
