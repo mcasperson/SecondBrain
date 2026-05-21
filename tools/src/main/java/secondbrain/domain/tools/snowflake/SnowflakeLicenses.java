@@ -143,20 +143,28 @@ public class SnowflakeLicenses implements Tool<Void> {
                 + "- Last Recorded At: " + details.getLastRecordedAt() + "\n"
                 + "- Projects: " + details.getProjects() + "\n"
                 + "- Projects (30 days prior): " + details.getProjects30dPrior() + "\n"
+                + "- Projects (% change): " + details.getProjectsPercentChange() + "%\n"
                 + "- Tenants: " + details.getTenants() + "\n"
                 + "- Tenants (30 days prior): " + details.getTenants30dPrior() + "\n"
+                + "- Tenants (% change): " + details.getTenantsPercentChange() + "%\n"
                 + "- Machines: " + details.getMachines() + "\n"
                 + "- Machines (30 days prior): " + details.getMachines30dPrior() + "\n"
+                + "- Machines (% change): " + details.getMachinesPercentChange() + "%\n"
                 + "- Monthly Active Users: " + details.getMonthlyActiveUsers() + "\n"
                 + "- Monthly Active Users (30 days prior): " + details.getMonthlyActiveUsers30dPrior() + "\n"
+                + "- Monthly Active Users (% change): " + details.getMonthlyActiveUsersPercentChange() + "%\n"
                 + "- Active Projects: " + details.getProjectsActive() + "\n"
                 + "- Active Projects (30 days prior): " + details.getProjectsActive30dPrior() + "\n"
+                + "- Active Projects (% change): " + details.getProjectsActivePercentChange() + "%\n"
                 + "- Active Tenants: " + details.getTenantsActive() + "\n"
                 + "- Active Tenants (30 days prior): " + details.getTenantsActive30dPrior() + "\n"
+                + "- Active Tenants (% change): " + details.getTenantsActivePercentChange() + "%\n"
                 + "- Active Machines: " + details.getMachinesActive() + "\n"
                 + "- Active Machines (30 days prior): " + details.getMachinesActive30dPrior() + "\n"
+                + "- Active Machines (% change): " + details.getMachinesActivePercentChange() + "%\n"
                 + "- Deployments Per Day (current): " + details.getDeploymentsPerDayCurrent() + "\n"
-                + "- Deployments Per Day (30 days prior): " + details.getDeploymentsPerDay30dPrior() + "\n";
+                + "- Deployments Per Day (30 days prior): " + details.getDeploymentsPerDay30dPrior() + "\n"
+                + "- Deployments Per Day (% change): " + details.getDeploymentsPerDayPercentChange() + "%\n";
     }
 }
 

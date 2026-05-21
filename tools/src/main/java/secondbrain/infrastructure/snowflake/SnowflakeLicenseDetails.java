@@ -103,6 +103,38 @@ public record SnowflakeLicenseDetails(
         return Objects.requireNonNullElse(deploymentsPerDay30dPrior, 0.0);
     }
 
+    public int getProjectsPercentChange() {
+        return getProjects30dPrior() == 0 ? 0 : (int) ((getProjects() - getProjects30dPrior()) * 100.0 / getProjects30dPrior());
+    }
+
+    public int getTenantsPercentChange() {
+        return getTenants30dPrior() == 0 ? 0 : (int) ((getTenants() - getTenants30dPrior()) * 100.0 / getTenants30dPrior());
+    }
+
+    public int getMachinesPercentChange() {
+        return getMachines30dPrior() == 0 ? 0 : (int) ((getMachines() - getMachines30dPrior()) * 100.0 / getMachines30dPrior());
+    }
+
+    public int getMonthlyActiveUsersPercentChange() {
+        return getMonthlyActiveUsers30dPrior() == 0 ? 0 : (int) ((getMonthlyActiveUsers() - getMonthlyActiveUsers30dPrior()) * 100.0 / getMonthlyActiveUsers30dPrior());
+    }
+
+    public int getProjectsActivePercentChange() {
+        return getProjectsActive30dPrior() == 0 ? 0 : (int) ((getProjectsActive() - getProjectsActive30dPrior()) * 100.0 / getProjectsActive30dPrior());
+    }
+
+    public int getTenantsActivePercentChange() {
+        return getTenantsActive30dPrior() == 0 ? 0 : (int) ((getTenantsActive() - getTenantsActive30dPrior()) * 100.0 / getTenantsActive30dPrior());
+    }
+
+    public int getMachinesActivePercentChange() {
+        return getMachinesActive30dPrior() == 0 ? 0 : (int) ((getMachinesActive() - getMachinesActive30dPrior()) * 100.0 / getMachinesActive30dPrior());
+    }
+
+    public int getDeploymentsPerDayPercentChange() {
+        return getDeploymentsPerDay30dPrior() == 0.0 ? 0 : (int) ((getDeploymentsPerDayCurrent() - getDeploymentsPerDay30dPrior()) * 100.0 / getDeploymentsPerDay30dPrior());
+    }
+
     public static SnowflakeLicenseDetails fromResultSet(final java.sql.ResultSet rs) throws java.sql.SQLException {
         final java.sql.Date lastRecordedAtDate = rs.getDate("LAST_RECORDED_AT");
         return new SnowflakeLicenseDetails(
