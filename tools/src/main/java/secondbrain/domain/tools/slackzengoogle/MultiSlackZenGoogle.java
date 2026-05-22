@@ -279,60 +279,64 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         logger.fine(parsedArgs.toString());
 
-        final List<String> responses = prompts.stream().map(prompt -> {
-            final String cacheKey = generateCacheKey(parsedArgs, prompt);
+        final String cacheKey = generateCacheKey(parsedArgs, prompts);
 
-            @SuppressWarnings("unchecked")
-            final RagMultiDocumentContext<Void> result = (RagMultiDocumentContext<Void>) Try.of(() -> localStorage.getOrPutObject(
-                                    getName(),
-                                    getName(),
-                                    cacheKey,
-                                    parsedArgs.getCacheTtl(),
-                                    RagMultiDocumentContext.class,
-                                    () -> callPrivate(environmentSettings, prompt, arguments))
-                            .result())
-                    .filter(Objects::nonNull)
-                    .onFailure(NoSuchElementException.class, ex -> logger.info("No value found for " + getName() + " " + cacheKey))
-                    .get();
-            return result.getResponse();
-        }).toList();
-        return new RagMultiDocumentContext<Void>(firstPrompt).updateResponses(responses);
+        @SuppressWarnings("unchecked")
+        final RagMultiDocumentContext<Void> result = (RagMultiDocumentContext<Void>) Try.of(() -> localStorage.getOrPutObject(
+                                getName(),
+                                getName(),
+                                cacheKey,
+                                parsedArgs.getCacheTtl(),
+                                RagMultiDocumentContext.class,
+                                () -> callPrivate(environmentSettings, prompts, arguments))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.info("No value found for " + getName() + " " + cacheKey))
+                .get();
+        return result;
     }
 
-    private String generateCacheKey(final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt) {
+    private String generateCacheKey(final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final List<String> prompts) {
         // We need to exclude some static values that do not affect the output from the string that generates the cache key
-        return Integer.toString((toStringGenerator.generateGetterConfig(parsedArgs, parsedArgs.getExcludeCacheGetters()) + "_" + prompt).hashCode());
+        return Integer.toString((toStringGenerator.generateGetterConfig(parsedArgs, parsedArgs.getExcludeCacheGetters()) + "_" + String.join("_", prompts)).hashCode());
     }
 
     private RagMultiDocumentContext<Void> callPrivate(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
-        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragContext -> mergeContext(
-                        prompt,
-                        getInstructions(ragContext)
-                                + "\n" + parsedArgs.getAdditionalSystemPrompt(),
-                        ragContext,
-                        parsedArgs))
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()))
-                /*
-                    Some LLMs, like Gemini flash, just will not strip the markdown code block.
-                    See https://community.n8n.io/t/psa-extracting-output-from-gemini-models/83374
-                    Se we do this manually if required.
-                 */
-                .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))) : ragDoc)
-                .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<Void>(prompt)
-                        .updateResponse(e.getClass().getSimpleName() + ": No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found."))
-                .recover(NoSuchElementException.class, e -> new RagMultiDocumentContext<Void>(prompt)
-                        .updateResponse(e.getClass().getSimpleName() + ": Resulting content does meet minimum context rating."));
+        final Try<List<RagDocumentContext<Void>>> contextTry = Try.of(() -> getContext(environmentSettings, firstPrompt, arguments));
 
-        return exceptionMapping.map(result).get();
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = contextTry
+                    .map(ragContext -> mergeContext(
+                            prompt,
+                            getInstructions(ragContext)
+                                    + "\n" + parsedArgs.getAdditionalSystemPrompt(),
+                            ragContext,
+                            parsedArgs))
+                    .map(ragDoc -> llmClient.callWithCache(
+                            ragDoc,
+                            environmentSettings,
+                            getName()))
+                    /*
+                        Some LLMs, like Gemini flash, just will not strip the markdown code block.
+                        See https://community.n8n.io/t/psa-extracting-output-from-gemini-models/83374
+                        Se we do this manually if required.
+                     */
+                    .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))) : ragDoc)
+                    .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<Void>(prompt)
+                            .updateResponse(e.getClass().getSimpleName() + ": No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found."))
+                    .recover(NoSuchElementException.class, e -> new RagMultiDocumentContext<Void>(prompt)
+                            .updateResponse(e.getClass().getSimpleName() + ": Resulting content does meet minimum context rating."));
+
+            return exceptionMapping.map(result).get().getResponse();
+        }).toList();
+
+        return new RagMultiDocumentContext<Void>(firstPrompt).updateResponses(responses);
     }
 
     private String getInstructions(final List<RagDocumentContext<Void>> individualContexts) {

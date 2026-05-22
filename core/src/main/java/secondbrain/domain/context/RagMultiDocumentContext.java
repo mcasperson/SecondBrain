@@ -129,27 +129,6 @@ public record RagMultiDocumentContext<T>(@Nullable String prompt,
         return new RagMultiDocumentContext<T>(prompt, instructions, individualContexts, response, debug, annotationPrefix, metadata, responses);
     }
 
-    @JsonIgnore
-    public String generateDocumentLeft(final int length) {
-        if (length <= 0) {
-            return "";
-        }
-
-        return getResponse().substring(0, Math.min(getResponse().length(), length));
-    }
-
-    @JsonIgnore
-    public String generateDocumentRight(final int length) {
-        if (length <= 0) {
-            return "";
-        }
-
-        final int start = Math.max(0, getResponse().length() - length);
-        final int end = start + Math.min(getResponse().length(), length);
-
-        return getResponse().substring(start, end);
-    }
-
     /**
      * Annotate the document with the closest matching sentence from the source sentences.
      * This overcomes one of the problems with LLMs where you are not quite sure where it

@@ -192,9 +192,7 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
                     // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
                     .map(tickets -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, tickets))
                     // Call Ollama with the final prompt
-                    .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
-                    // Clean up the response
-                    .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())));
+                    .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
             return exceptionMapping.map(result).get().getResponse();
         }).toList();

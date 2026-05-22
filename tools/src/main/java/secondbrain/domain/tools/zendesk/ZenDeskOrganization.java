@@ -372,8 +372,6 @@ public class ZenDeskOrganization implements Tool<Void> {
                     .map(tickets -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, tickets))
                     // Call Ollama with the final prompt
                     .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
-                    // Clean up the response
-                    .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())))
                     .recover(EmptyString.class, e -> new RagMultiDocumentContext<>(
                             "",
                             "",
