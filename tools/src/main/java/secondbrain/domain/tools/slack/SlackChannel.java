@@ -286,21 +286,18 @@ public class SlackChannel implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        final List<String> responses = prompts.stream().map(prompt -> {
-            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                    .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                    .map(ragDoc -> llmClient.callWithCache(
-                            ragDoc,
-                            environmentSettings,
-                            getName()));
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompts, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> llmClient.callWithCache(
+                        ragDoc,
+                        environmentSettings,
+                        getName()));
 
-            final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
-            // Apply postinference hooks
-            return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
-                    .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs)).getResponse();
-        }).toList();
-        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     private Try<List<RagDocumentContext<SlackChannelResource>>> getChannelRagDocs(

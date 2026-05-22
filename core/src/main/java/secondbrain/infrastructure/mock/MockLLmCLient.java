@@ -5,6 +5,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.infrastructure.llm.LlmClient;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -30,14 +31,9 @@ public class MockLLmCLient implements LlmClient {
 
     @Override
     public <T> RagMultiDocumentContext<T> callWithCache(final RagMultiDocumentContext<T> ragDoc, final Map<String, String> environmentSettings, final String tool) {
-        return new RagMultiDocumentContext<T>(
-                ragDoc.prompt(),
-                ragDoc.instructions(),
-                ragDoc.individualContexts(),
-                mockResponse,
-                "debug",
-                "",
-                null
-        );
+        final List<String> responses = ragDoc.getPrompts().stream()
+                .map(prompt -> Objects.requireNonNullElse(mockResponse, ""))
+                .toList();
+        return ragDoc.updateResponses(responses);
     }
 }

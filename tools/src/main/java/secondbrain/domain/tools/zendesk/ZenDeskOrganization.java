@@ -365,29 +365,26 @@ public class ZenDeskOrganization implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        final List<String> responses = prompts.stream().map(prompt -> {
-            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                    .map(validateList::throwIfEmpty)
-                    // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                    .map(tickets -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, tickets))
-                    // Call Ollama with the final prompt
-                    .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
-                    .recover(EmptyString.class, e -> new RagMultiDocumentContext<>(
-                            "",
-                            "",
-                            null,
-                            "No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'",
-                            null,
-                            null,
-                            null));
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(validateList::throwIfEmpty)
+                // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
+                .map(tickets -> new RagMultiDocumentContext<Void>(prompts, INSTRUCTIONS, tickets))
+                // Call Ollama with the final prompt
+                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
+                .recover(EmptyString.class, e -> new RagMultiDocumentContext<>(
+                        List.of(),
+                        "",
+                        null,
+                        "No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'",
+                        null,
+                        null,
+                        null));
 
-            final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
-            // Apply postinference hooks
-            return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
-                    .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs)).getResponse();
-        }).toList();
-        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     private List<ZenDeskTicket> filterResponse(

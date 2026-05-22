@@ -57,7 +57,7 @@ public class SmokeTest implements Tool<Void> {
         final List<String> responses = prompts.stream()
                 .map(prompt -> "Test succeeded!")
                 .toList();
-        return new RagMultiDocumentContext<Void>(prompts.isEmpty() ? "" : prompts.get(0))
+        return new RagMultiDocumentContext<Void>(prompts)
                 .updateResponses(responses);
     }
 

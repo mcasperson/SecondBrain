@@ -187,16 +187,13 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
         validateList.throwIfEmpty(contextList);
 
-        final List<String> responses = prompts.stream().map(prompt -> {
-            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                    // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                    .map(tickets -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, tickets))
-                    // Call Ollama with the final prompt
-                    .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
+                .map(tickets -> new RagMultiDocumentContext<Void>(prompts, INSTRUCTIONS, tickets))
+                // Call Ollama with the final prompt
+                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-            return exceptionMapping.map(result).get().getResponse();
-        }).toList();
-        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
+        return exceptionMapping.map(result).get();
     }
 
     /**

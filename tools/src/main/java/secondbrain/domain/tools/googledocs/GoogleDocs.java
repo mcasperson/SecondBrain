@@ -238,21 +238,18 @@ public class GoogleDocs implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        final List<String> responses = prompts.stream().map(prompt -> {
-            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                    .map(ragDoc -> mergeContext(prompt, INSTRUCTIONS, ragDoc))
-                    .map(ragDoc -> llmClient.callWithCache(
-                            ragDoc,
-                            environmentSettings,
-                            getName()));
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragDoc -> mergeContext(prompts, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> llmClient.callWithCache(
+                        ragDoc,
+                        environmentSettings,
+                        getName()));
 
-            final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
-            // Apply postinference hooks
-            return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
-                    .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs)).getResponse();
-        }).toList();
-        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override
@@ -261,9 +258,9 @@ public class GoogleDocs implements Tool<Void> {
         return parsedArgs.hashCode();
     }
 
-    private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context) {
+    private RagMultiDocumentContext<Void> mergeContext(final List<String> prompts, final String instructions, final List<RagDocumentContext<Void>> context) {
         return new RagMultiDocumentContext<>(
-                prompt,
+                prompts,
                 instructions,
                 context);
     }

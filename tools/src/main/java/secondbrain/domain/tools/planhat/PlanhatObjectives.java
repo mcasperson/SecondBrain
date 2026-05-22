@@ -150,14 +150,11 @@ public class PlanhatObjectives implements Tool<Void> {
         final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        final List<String> responses = prompts.stream().map(prompt -> {
-            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                    .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                    .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompts, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-            return exceptionMapping.map(result).get().getResponse();
-        }).toList();
-        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
+        return exceptionMapping.map(result).get();
     }
 
     private String toDocument(final Objective objective) {

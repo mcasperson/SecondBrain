@@ -262,30 +262,25 @@ public class SlackSearch implements Tool<Void> {
 
         final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
-        final List<String> responses = prompts.stream().map(prompt -> {
-            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, contextList))
-                    .map(ragDoc -> llmClient.callWithCache(
-                            ragDoc,
-                            environmentSettings,
-                            getName()));
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> new RagMultiDocumentContext<>(prompts, INSTRUCTIONS, contextList))
+                .map(ragDoc -> llmClient.callWithCache(
+                        ragDoc,
+                        environmentSettings,
+                        getName()));
 
-            // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
-            // https://github.com/vavr-io/vavr/issues/2411
-            final RagMultiDocumentContext<Void> mappedResult = result
-                    .mapFailure(
-                            API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Slack channel had no matching messages")),
-                            API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
-                            API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
-                            API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
-                    .get();
+        // Handle mapFailure in isolation to avoid intellij making a mess of the formatting
+        // https://github.com/vavr-io/vavr/issues/2411
+        final RagMultiDocumentContext<Void> mappedResult = result
+                .mapFailure(
+                        API.Case(API.$(instanceOf(EmptyString.class)), throwable -> new InternalFailure("The Slack channel had no matching messages")),
+                        API.Case(API.$(instanceOf(InternalFailure.class)), throwable -> throwable),
+                        API.Case(API.$(instanceOf(FailedOllama.class)), throwable -> new InternalFailure(throwable.getMessage(), throwable)),
+                        API.Case(API.$(), ex -> new ExternalFailure(getName() + " failed to call Ollama", ex)))
+                .get();
 
-            // Apply postinference hooks
-            return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
-                    .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs))
-                    .getResponse();
-        }).toList();
-
-        return new RagMultiDocumentContext<Void>(firstPrompt, INSTRUCTIONS, contextList).updateResponses(responses);
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 }
 

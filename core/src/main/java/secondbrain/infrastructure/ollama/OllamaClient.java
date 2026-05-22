@@ -33,6 +33,7 @@ import secondbrain.infrastructure.ollama.api.OllamaGenerateBodyWithContext;
 import secondbrain.infrastructure.ollama.api.OllamaResponse;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -120,30 +121,30 @@ public class OllamaClient implements LlmClient {
         final Integer contextWindow = modelConfig.getCalculatedContextWindow(environmentSettings);
         final String resolvedUri = environmentSettings.getOrDefault(LlmClient.URL_OVERRIDE_ENV, uri);
 
-        final String prompt = getPromptFromDocument(ragDoc);
+        final List<String> responses = ragDoc.getPrompts().stream().map(prompt -> {
+            final String fullPrompt = getPromptFromDocument(ragDoc, prompt);
 
-        final String promptHash = DigestUtils.sha256Hex(prompt + model + contextWindow + resolvedUri);
+            final String promptHash = DigestUtils.sha256Hex(fullPrompt + model + contextWindow + resolvedUri);
 
-        final String result = Try.of(() -> localStorage.getOrPutString(
-                        tool,
-                        "LLM",
-                        promptHash,
-                        NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60L,
-                        () -> {
-                            final RagMultiDocumentContext<T> response = callOllama(ragDoc, model, contextWindow, resolvedUri);
-                            final String responseText = response.getResponse();
+            return Try.of(() -> localStorage.getOrPutString(
+                            tool,
+                            "LLM",
+                            promptHash,
+                            NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60L,
+                            () -> {
+                                final RagMultiDocumentContext<T> response = callOllama(ragDoc, prompt, model, contextWindow, resolvedUri);
+                                final String responseText = response.getResponse();
 
-                            // Don't cache errors
-                            return resultOrDefaultOnError(responseText, null);
-                        }).result())
-                .filter(Objects::nonNull)
-                .onFailure(ex -> logger.warning("Ollama cache failure: " + ex.getMessage()))
-                .get();
+                                // Don't cache errors
+                                return resultOrDefaultOnError(responseText, null);
+                            }).result())
+                    .filter(Objects::nonNull)
+                    .onFailure(ex -> logger.warning("Ollama cache failure: " + ex.getMessage()))
+                    .map(result -> valueOrDefaultOnError(result, result, callOllama(ragDoc, prompt, model, contextWindow, resolvedUri).getResponse()))
+                    .get();
+        }).toList();
 
-        // Don't return cached errors
-        return valueOrDefaultOnError(result,
-                ragDoc.updateResponse(result),
-                ragDoc.updateResponse(callOllama(ragDoc, model, contextWindow, resolvedUri).response()));
+        return ragDoc.updateResponses(responses);
     }
 
     /**
@@ -206,7 +207,8 @@ public class OllamaClient implements LlmClient {
 
     private <T> RagMultiDocumentContext<T> callOllama(
             final Client client, final OllamaGenerateBodyWithContext<T> body) {
-        final String prompt = getPromptFromDocument(body.prompt());
+        final String firstPrompt = body.prompt().getPrompts().isEmpty() ? "" : body.prompt().getPrompts().getFirst();
+        final String prompt = getPromptFromDocument(body.prompt(), firstPrompt);
 
         final OllamaResponse response = callOllama(client, new OllamaGenerateBody(
                 body.model(),
@@ -218,7 +220,8 @@ public class OllamaClient implements LlmClient {
 
     private <T> RagMultiDocumentContext<T> callOllama(
             final Client client, final OllamaGenerateBodyWithContext<T> body, final String resolvedUri) {
-        final String prompt = getPromptFromDocument(body.prompt());
+        final String firstPrompt = body.prompt().getPrompts().isEmpty() ? "" : body.prompt().getPrompts().getFirst();
+        final String prompt = getPromptFromDocument(body.prompt(), firstPrompt);
 
         final OllamaResponse response = callOllama(client, new OllamaGenerateBody(
                 body.model(),
@@ -232,19 +235,25 @@ public class OllamaClient implements LlmClient {
             final RagMultiDocumentContext<T> ragDoc,
             final String model,
             @Nullable final Integer contextWindow) {
-        return callOllama(ragDoc, model, contextWindow, uri);
+        return callOllama(ragDoc, ragDoc.getPrompts().isEmpty() ? "" : ragDoc.getPrompts().getFirst(), model, contextWindow, uri);
     }
 
     private <T> RagMultiDocumentContext<T> callOllama(
             final RagMultiDocumentContext<T> ragDoc,
+            final String prompt,
             final String model,
             @Nullable final Integer contextWindow,
             final String resolvedUri) {
         return Try.withResources(ClientBuilder::newClient)
-                .of(client -> timeoutService.executeWithTimeout(() -> callOllama(
-                                client,
-                                new OllamaGenerateBodyWithContext<>(model, contextWindow, ragDoc, false),
-                                resolvedUri),
+                .of(client -> timeoutService.executeWithTimeout(() -> {
+                                final String fullPrompt = getPromptFromDocument(ragDoc, prompt);
+                                final OllamaResponse response = callOllama(client, new OllamaGenerateBody(
+                                        model,
+                                        fullPrompt,
+                                        false,
+                                        new OllamaGenerateBodyOptions(contextWindow)), resolvedUri);
+                                return ragDoc.updateResponse(response.response());
+                            },
                         () -> ragDoc.updateResponse(API_CALL_TIMEOUT_MESSAGE),
                         API_CALL_TIMEOUT_SECONDS))
                 .get();
@@ -263,7 +272,7 @@ public class OllamaClient implements LlmClient {
         return resultIsError(result) ? defaultValue : result;
     }
 
-    private String getPromptFromDocument(final RagMultiDocumentContext<?> ragDoc) {
+    private String getPromptFromDocument(final RagMultiDocumentContext<?> ragDoc, final String prompt) {
         final PromptBuilder promptBuilder = promptBuilderSelector.getPromptBuilder(modelConfig.getModel());
 
         final String promptContent = ragDoc.getIndividualContexts()
@@ -274,6 +283,6 @@ public class OllamaClient implements LlmClient {
         return promptBuilder.buildFinalPrompt(
                 ragDoc.instructions(),
                 promptContent,
-                ragDoc.getPrompt());
+                prompt);
     }
 }

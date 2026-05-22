@@ -312,17 +312,14 @@ public class PlanHatUsage implements Tool<Void> {
             throw new InternalFailure("You must provide a company to query");
         }
 
-        final List<String> responses = prompts.stream().map(prompt -> {
-            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                    .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                    .map(ragDoc -> llmClient.callWithCache(
-                            ragDoc,
-                            environmentSettings,
-                            getName()));
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompts, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> llmClient.callWithCache(
+                        ragDoc,
+                        environmentSettings,
+                        getName()));
 
-            return exceptionMapping.map(result).get().getResponse();
-        }).toList();
-        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
+        return exceptionMapping.map(result).get();
     }
 }
 

@@ -115,35 +115,38 @@ public class GoogleClient implements LlmClient {
         checkNotNull(environmentSettings);
         checkArgument(StringUtils.isNotBlank(tool));
 
-        final List<GoogleRequestContentsParts> parts = ragDocs.getIndividualContexts().stream()
-                .map(ragDoc -> new GoogleRequestContentsParts(ragDoc.contextLabel() + ": " + ragDoc.document()))
-                .collect(Collectors.toCollection(ArrayList::new));
-
-        parts.add(new GoogleRequestContentsParts(ragDocs.prompt()));
-
-        final GoogleRequest request = new GoogleRequest(
-                List.of(new GoogleRequestContents(parts)
-                ),
-                new GoogleRequestSystemInstruction(
-                        List.of(
-                                new GoogleRequestContentsParts(ragDocs.instructions())
-                        )
-                )
-        );
-
         final String resolvedUrl = environmentSettings.getOrDefault(URL_OVERRIDE_ENV, this.url.orElse(""));
         final String resolvedModel = environmentSettings.getOrDefault(MODEL_OVERRIDE_ENV, this.model.orElse(DEFAULT_MODEL));
 
-        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + resolvedModel + resolvedUrl);
+        final List<String> responses = ragDocs.getPrompts().stream().map(prompt -> {
+            final List<GoogleRequestContentsParts> parts = ragDocs.getIndividualContexts().stream()
+                    .map(ragDoc -> new GoogleRequestContentsParts(ragDoc.contextLabel() + ": " + ragDoc.document()))
+                    .collect(Collectors.toCollection(ArrayList::new));
 
-        final String result = localStorage.getOrPutString(
-                        tool,
-                        "GoogleLLM",
-                        promptHash,
-                        NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60L,
-                        () -> call(request, resolvedUrl, resolvedModel))
-                .result();
-        return ragDocs.updateResponse(result);
+            parts.add(new GoogleRequestContentsParts(prompt));
+
+            final GoogleRequest request = new GoogleRequest(
+                    List.of(new GoogleRequestContents(parts)
+                    ),
+                    new GoogleRequestSystemInstruction(
+                            List.of(
+                                    new GoogleRequestContentsParts(ragDocs.instructions())
+                            )
+                    )
+            );
+
+            final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + resolvedModel + resolvedUrl);
+
+            return localStorage.getOrPutString(
+                            tool,
+                            "GoogleLLM",
+                            promptHash,
+                            NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24 * 60 * 60L,
+                            () -> call(request, resolvedUrl, resolvedModel))
+                    .result();
+        }).toList();
+
+        return ragDocs.updateResponses(responses);
     }
 
     private String call(final GoogleRequest request) {

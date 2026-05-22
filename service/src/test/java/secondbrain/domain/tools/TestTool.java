@@ -44,7 +44,7 @@ public class TestTool implements Tool<Void> {
         final List<String> responses = prompts.stream()
                 .map(prompt -> "")
                 .toList();
-        return new RagMultiDocumentContext<Void>("").updateResponses(responses);
+        return new RagMultiDocumentContext<Void>(prompts).updateResponses(responses);
     }
 
     @Override

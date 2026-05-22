@@ -155,7 +155,7 @@ public class RatingTool implements Tool<Void> {
         final List<String> responses = prompts.stream().map(prompt ->
                 (RagMultiDocumentContext<Void>) Try.of(() -> localStorage.getOrPutObject(
                                         getName(),
-                                        getName(),
+                                        getName() + "V2",
                                         Integer.toString((parsedArgs + prompt).hashCode()),
                                         TTL_SECONDS,
                                         RagMultiDocumentContext.class,
@@ -168,7 +168,7 @@ public class RatingTool implements Tool<Void> {
                                 List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of()))).updateResponse("-1"))
         ).map(RagMultiDocumentContext::getResponse).toList();
 
-        return new RagMultiDocumentContext<Void>(firstPrompt).updateResponses(responses);
+        return new RagMultiDocumentContext<Void>(prompts).updateResponses(responses);
     }
 
 

@@ -70,7 +70,7 @@ public class HelloWorld implements Tool<Void> {
             final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> new RagMultiDocumentContext<Void>(prompt).updateResponse("Hello, " + parsedArgs.getMessage() + "!"));
             return exceptionMapping.map(result).get().getResponse();
         }).toList();
-        return new RagMultiDocumentContext<Void>(firstPrompt).updateResponses(responses);
+        return new RagMultiDocumentContext<Void>(prompts).updateResponses(responses);
     }
 
     @Override

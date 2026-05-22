@@ -131,7 +131,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
         final List<String> responses = prompts.stream().map(prompt -> "Cache has been warmed").toList();
 
         return new RagMultiDocumentContext<Void>(
-                null,
+                prompts,
                 null,
                 contextList,
                 "Cache has been warmed",

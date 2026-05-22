@@ -284,7 +284,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         @SuppressWarnings("unchecked")
         final RagMultiDocumentContext<Void> result = (RagMultiDocumentContext<Void>) Try.of(() -> localStorage.getOrPutObject(
                                 getName(),
-                                getName(),
+                                getName() + "V2",
                                 cacheKey,
                                 parsedArgs.getCacheTtl(),
                                 RagMultiDocumentContext.class,
@@ -308,35 +308,29 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
-        final Try<List<RagDocumentContext<Void>>> contextTry = Try.of(() -> getContext(environmentSettings, firstPrompt, arguments));
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, firstPrompt, arguments))
+                .map(ragContext -> mergeContext(
+                        prompts,
+                        getInstructions(ragContext)
+                                + "\n" + parsedArgs.getAdditionalSystemPrompt(),
+                        ragContext,
+                        parsedArgs))
+                .map(ragDoc -> llmClient.callWithCache(
+                        ragDoc,
+                        environmentSettings,
+                        getName()))
+                /*
+                    Some LLMs, like Gemini flash, just will not strip the markdown code block.
+                    See https://community.n8n.io/t/psa-extracting-output-from-gemini-models/83374
+                    Se we do this manually if required.
+                 */
+                .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))) : ragDoc)
+                .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<Void>(prompts)
+                        .updateResponse(e.getClass().getSimpleName() + ": No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found."))
+                .recover(NoSuchElementException.class, e -> new RagMultiDocumentContext<Void>(prompts)
+                        .updateResponse(e.getClass().getSimpleName() + ": Resulting content does meet minimum context rating."));
 
-        final List<String> responses = prompts.stream().map(prompt -> {
-            final Try<RagMultiDocumentContext<Void>> result = contextTry
-                    .map(ragContext -> mergeContext(
-                            prompt,
-                            getInstructions(ragContext)
-                                    + "\n" + parsedArgs.getAdditionalSystemPrompt(),
-                            ragContext,
-                            parsedArgs))
-                    .map(ragDoc -> llmClient.callWithCache(
-                            ragDoc,
-                            environmentSettings,
-                            getName()))
-                    /*
-                        Some LLMs, like Gemini flash, just will not strip the markdown code block.
-                        See https://community.n8n.io/t/psa-extracting-output-from-gemini-models/83374
-                        Se we do this manually if required.
-                     */
-                    .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))) : ragDoc)
-                    .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<Void>(prompt)
-                            .updateResponse(e.getClass().getSimpleName() + ": No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found."))
-                    .recover(NoSuchElementException.class, e -> new RagMultiDocumentContext<Void>(prompt)
-                            .updateResponse(e.getClass().getSimpleName() + ": Resulting content does meet minimum context rating."));
-
-            return exceptionMapping.map(result).get().getResponse();
-        }).toList();
-
-        return new RagMultiDocumentContext<Void>(firstPrompt).updateResponses(responses);
+        return exceptionMapping.map(result).get();
     }
 
     private String getInstructions(final List<RagDocumentContext<Void>> individualContexts) {
@@ -888,7 +882,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .toList();
     }
 
-    private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+    private RagMultiDocumentContext<Void> mergeContext(final List<String> prompts, final String instructions, final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
 
         // Elevate the metadata extracted from the child documents to the top level
         final List<MetaObjectResult> metadata = context
@@ -905,7 +899,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         results.addAll(getMetaResults(context, parsedArgs));
 
         return new RagMultiDocumentContext<>(
-                prompt,
+                prompts,
                 instructions,
                 context,
                 null,

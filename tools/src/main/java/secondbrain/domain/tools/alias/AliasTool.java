@@ -100,25 +100,22 @@ public class AliasTool implements Tool<Void> {
 
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        final List<String> responses = prompts.stream().map(prompt -> {
-            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                    .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                    .map(ragDoc -> llmClient.callWithCache(
-                            ragDoc,
-                            environmentSettings,
-                            getName()))
-                    /*
-                     We expect a JSON array, but some LLMs return markdown blocks, which we
-                     */
-                    .map(ragDoc -> ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))));
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompts, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> llmClient.callWithCache(
+                        ragDoc,
+                        environmentSettings,
+                        getName()))
+                /*
+                 We expect a JSON array, but some LLMs return markdown blocks, which we
+                 */
+                .map(ragDoc -> ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))));
 
-            final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
-            // Apply postinference hooks
-            return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
-                    .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs)).getResponse();
-        }).toList();
-        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
+        // Apply postinference hooks
+        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
     @Override

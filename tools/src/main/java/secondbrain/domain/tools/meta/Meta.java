@@ -233,7 +233,7 @@ public class Meta implements Tool<Void> {
         ).toList();
 
         return Try.of(() -> callPrivate(environmentSettings, firstPrompt, arguments, parsedArgs))
-                .map(result -> result.convertToRagMultiDocumentContextVoid().updateResponses(responses))
+                .map(result -> result.convertToRagMultiDocumentContextVoid().updatePrompts(prompts).updateResponses(responses))
                 .get();
     }
 
@@ -260,7 +260,7 @@ public class Meta implements Tool<Void> {
             return contextResult
                     .filter(Objects::nonNull)
                     .map(context -> new RagMultiDocumentContext<Void>(
-                            prompt,
+                            List.of(prompt),
                             "Unused",
                             context,
                             "Unused",
@@ -272,7 +272,7 @@ public class Meta implements Tool<Void> {
 
         final Try<RagMultiDocumentContext<Void>> result = contextResult
                 .map(context -> new RagMultiDocumentContext<Void>(
-                        prompt,
+                        List.of(prompt),
                         "You are a helpful agent. You have information from multiple tools. Answer the prompt based on the provided information.",
                         context,
                         null,
