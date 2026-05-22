@@ -41,10 +41,10 @@ public class RatingToolRatingMetadata implements RatingMetadata {
                 .addToolCall(toolName, Objects.requireNonNullElse(activity.id(), "unknownId"));
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final RatingIntermediateResult filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()))
+            final RatingIntermediateResult filterRating = Try.of(() -> ratingTool.call(envSettings, List.of(parsedArgs.getContextFilterQuestion()), List.of()))
                     .map(rating -> new RatingIntermediateResult(
                             // convert the result into an integer
-                            Integer.parseInt(rating.getResponse().trim()),
+                            Integer.parseInt(rating.getResponses().get(0).trim()),
                             // Merge all the individual contexts into one list
                             rating.getIndividualContexts()
                                             .stream()

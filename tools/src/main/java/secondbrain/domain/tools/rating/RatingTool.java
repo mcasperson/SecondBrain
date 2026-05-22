@@ -146,23 +146,29 @@ public class RatingTool implements Tool<Void> {
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs));
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
-        return Try.of(() -> localStorage.getOrPutObject(
-                                getName(),
-                                getName(),
-                                Integer.toString((parsedArgs + prompt).hashCode()),
-                                TTL_SECONDS,
-                                RagMultiDocumentContext.class,
-                                () -> callPrivate(environmentSettings, prompt, arguments))
-                        .result())
-                .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get rating from cache: " + ex.getMessage()))
-                .getOrElse(() -> new RagMultiDocumentContext<Void>(
-                        prompt,
-                        INSTRUCTIONS,
-                        List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of()))).updateResponse("-1"));
+        final List<String> responses = prompts.stream().map(prompt ->
+                (RagMultiDocumentContext<Void>) Try.of(() -> localStorage.getOrPutObject(
+                                        getName(),
+                                        getName(),
+                                        Integer.toString((parsedArgs + prompt).hashCode()),
+                                        TTL_SECONDS,
+                                        RagMultiDocumentContext.class,
+                                        () -> callPrivate(environmentSettings, prompt, arguments))
+                                .result())
+                        .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get rating from cache: " + ex.getMessage()))
+                        .getOrElse(() -> new RagMultiDocumentContext<Void>(
+                                prompt,
+                                INSTRUCTIONS,
+                                List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of()))).updateResponse("-1"))
+        ).map(RagMultiDocumentContext::getResponse).toList();
+
+        return new RagMultiDocumentContext<Void>(firstPrompt).updateResponses(responses);
     }
 
 

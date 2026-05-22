@@ -302,23 +302,27 @@ public class PlanHatUsage implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompany())) {
             throw new InternalFailure("You must provide a company to query");
         }
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()));
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                    .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
+                    .map(ragDoc -> llmClient.callWithCache(
+                            ragDoc,
+                            environmentSettings,
+                            getName()));
 
-        return exceptionMapping.map(result).get();
+            return exceptionMapping.map(result).get().getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
     }
 }
 

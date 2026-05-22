@@ -215,18 +215,26 @@ public class Meta implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final MetaConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final MetaConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
         logger.fine(parsedArgs.toString());
 
-        return Try.of(() -> callPrivate(environmentSettings, prompt, arguments, parsedArgs))
-                .filter(Objects::nonNull)
-                .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to generate meta tool result: " + ex.getMessage()))
-                .get()
-                .convertToRagMultiDocumentContextVoid();
+        final List<String> responses = prompts.stream().map(prompt ->
+                Try.of(() -> callPrivate(environmentSettings, prompt, arguments, parsedArgs))
+                        .filter(Objects::nonNull)
+                        .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to generate meta tool result: " + ex.getMessage()))
+                        .get()
+                        .convertToRagMultiDocumentContextVoid()
+                        .getResponse()
+        ).toList();
+
+        return Try.of(() -> callPrivate(environmentSettings, firstPrompt, arguments, parsedArgs))
+                .map(result -> result.convertToRagMultiDocumentContextVoid().updateResponses(responses))
+                .get();
     }
 
     private RagMultiDocumentContext<Void> callPrivate(

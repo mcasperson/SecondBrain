@@ -60,14 +60,17 @@ public class HelloWorld implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final HelloWorldConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final HelloWorldConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> new RagMultiDocumentContext<Void>(prompt).updateResponse("Hello, " + parsedArgs.getMessage() + "!"));
-
-        return exceptionMapping.map(result).get();
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> new RagMultiDocumentContext<Void>(prompt).updateResponse("Hello, " + parsedArgs.getMessage() + "!"));
+            return exceptionMapping.map(result).get().getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(firstPrompt).updateResponses(responses);
     }
 
     @Override

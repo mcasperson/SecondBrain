@@ -355,35 +355,41 @@ public class ZenDeskOrganization implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(validateList::throwIfEmpty)
-                // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                .map(tickets -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, tickets))
-                // Call Ollama with the final prompt
-                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
-                // Clean up the response
-                .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())))
-                .recover(EmptyString.class, e -> new RagMultiDocumentContext<>(
-                        "",
-                        "",
-                        null,
-                        "No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'",
-                        null,
-                        null,
-                        null));
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                    .map(validateList::throwIfEmpty)
+                    // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
+                    .map(tickets -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, tickets))
+                    // Call Ollama with the final prompt
+                    .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
+                    // Clean up the response
+                    .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())))
+                    .recover(EmptyString.class, e -> new RagMultiDocumentContext<>(
+                            "",
+                            "",
+                            null,
+                            "No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'",
+                            null,
+                            null,
+                            null));
 
-        // Apply postinference hooks
-        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
-                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
+            final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+
+            // Apply postinference hooks
+            return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                    .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs)).getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
     }
 
     private List<ZenDeskTicket> filterResponse(

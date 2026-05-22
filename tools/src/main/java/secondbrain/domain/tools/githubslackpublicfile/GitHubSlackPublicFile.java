@@ -142,14 +142,20 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragContext -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragContext))
-                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        return exceptionMapping.map(result).get();
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                    .map(ragContext -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragContext))
+                    .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
+
+            return exceptionMapping.map(result).get().getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
     }
 
     @Override

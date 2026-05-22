@@ -39,9 +39,12 @@ public class TestTool implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
-        return new RagMultiDocumentContext<>("");
+        final List<String> responses = prompts.stream()
+                .map(prompt -> "")
+                .toList();
+        return new RagMultiDocumentContext<Void>("").updateResponses(responses);
     }
 
     @Override

@@ -52,9 +52,13 @@ public class SmokeTest implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
-        return new RagMultiDocumentContext<Void>(prompt).updateResponse("Test succeeded!");
+        final List<String> responses = prompts.stream()
+                .map(prompt -> "Test succeeded!")
+                .toList();
+        return new RagMultiDocumentContext<Void>(prompts.isEmpty() ? "" : prompts.get(0))
+                .updateResponses(responses);
     }
 
     @Override

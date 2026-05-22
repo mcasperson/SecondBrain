@@ -122,17 +122,22 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        return new RagMultiDocumentContext<>(
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
+
+        final List<String> responses = prompts.stream().map(prompt -> "Cache has been warmed").toList();
+
+        return new RagMultiDocumentContext<Void>(
                 null,
                 null,
-                getContext(environmentSettings, prompt, arguments),
+                contextList,
                 "Cache has been warmed",
                 null,
                 null,
-                null);
+                null).updateResponses(responses);
     }
 
 

@@ -195,28 +195,33 @@ public class DirectoryScan implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try
-                .of(() -> getContext(environmentSettings, prompt, arguments))
-                // Make sure we had some content for the prompt
-                .map(validateList::throwIfEmpty)
-                .map(ragDocs -> mergeContext(prompt, INSTRUCTIONS, ragDocs, debugArgs))
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()));
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
+        validateList.throwIfEmpty(contextList);
 
-        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = Try
+                    .of(() -> contextList)
+                    .map(ragDocs -> mergeContext(prompt, INSTRUCTIONS, ragDocs, debugArgs))
+                    .map(ragDoc -> llmClient.callWithCache(
+                            ragDoc,
+                            environmentSettings,
+                            getName()));
 
-        // Apply postinference hooks
-        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
-                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
+            final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+
+            // Apply postinference hooks
+            return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                    .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs)).getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
     }
 
     @Override

@@ -69,17 +69,20 @@ public interface Tool<T> {
      * Calls the tool. Typically, this function will call getContext() to get the context for the prompt, and then
      * pass the context and the prompt to the LLM for the final answer.
      * <p>
+     * Context is collected once using the first prompt, and then each prompt is run against that context.
+     * The responses for each prompt are stored in the responses list of the returned RagMultiDocumentContext.
+     * <p>
      * This function can either throw an InternalException or an ExternalException. An InternalException indicates that
      * there is an unrecoverable error, and there is no point in retrying. An ExternalException indicates that an
      * external service (like a REST API) is down, and a retry may succeed later.
      *
      * @param environmentSettings The environmentSettings associated with the prompt. These are values that come from the environment (like credentials) rather than from the prompt.
-     * @param prompt              The prompt.
+     * @param prompts             The list of prompts. Context is collected using the first prompt, and then each prompt is run against that context.
      * @param arguments           The arguments extracted from the prompt.
-     * @return The result from the LLM and the contents that was used to generate the result.
+     * @return The result from the LLM containing responses for each prompt in the responses list.
      */
     RagMultiDocumentContext<T> call(Map<String, String> environmentSettings,
-                                    String prompt,
+                                    List<String> prompts,
                                     List<ToolArgs> arguments);
 
     /**

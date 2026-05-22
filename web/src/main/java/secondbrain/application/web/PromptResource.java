@@ -16,6 +16,7 @@ import secondbrain.domain.handler.PromptHandler;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -66,7 +67,7 @@ public class PromptResource {
         final String resultKey = UUID.randomUUID().toString();
 
         Thread.startVirtualThread(() -> {
-            Try.of(() -> promptHandler.handlePrompt(combinedContext, Objects.requireNonNullElse(prompt, "")))
+            Try.of(() -> promptHandler.handlePrompt(combinedContext, List.of(Objects.requireNonNullElse(prompt, ""))))
                     .onSuccess(result -> asyncResults.addResult(
                             resultKey,
                             result.getResponseText()

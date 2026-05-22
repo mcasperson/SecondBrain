@@ -168,16 +168,20 @@ public class PlanhatConversationStats implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                    .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
+                    .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
-        return exceptionMapping.map(result).get();
+            return exceptionMapping.map(result).get().getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
     }
 
     private String buildDocument(final String companyId, final Map<String, Long> countsByType, final long total) {

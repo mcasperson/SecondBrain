@@ -177,22 +177,28 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
 
-        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(validateList::throwIfEmpty)
-                // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                .map(tickets -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, tickets))
-                // Call Ollama with the final prompt
-                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
-                // Clean up the response
-                .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())));
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
+        validateList.throwIfEmpty(contextList);
 
-        return exceptionMapping.map(result).get();
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                    // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
+                    .map(tickets -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, tickets))
+                    // Call Ollama with the final prompt
+                    .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
+                    // Clean up the response
+                    .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())));
+
+            return exceptionMapping.map(result).get().getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
     }
 
     /**

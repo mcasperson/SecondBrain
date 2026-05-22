@@ -244,8 +244,8 @@ public class MetaDataHook implements PostInferenceHook {
 
             final int value = Try.of(() -> ratingTool.call(
                             Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, content),
-                            metaField.getRight(),
-                            List.of()).getResponse())
+                            List.of(metaField.getRight()),
+                            List.of()).getResponses().get(0))
                     .map(rating -> Integer.parseInt(rating.trim()))
                     .onFailure(ex -> logger.warning("Rating tool failed for " + metaField.getLeft() + ": " + ex.getMessage()))
                     .recover(ex -> 0)

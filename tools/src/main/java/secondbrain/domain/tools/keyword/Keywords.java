@@ -123,8 +123,8 @@ public class Keywords implements Tool<Void> {
                 return doubleCheckedCachedKeywords;
             }
 
-            final List<String> generatedKeywords = Try.of(() -> call(environmentSettings, prompt, List.of()))
-                    .map(RagMultiDocumentContext::getResponse)
+            final List<String> generatedKeywords = Try.of(() -> call(environmentSettings, List.of(prompt), List.of()))
+                    .map(result -> result.getResponses().get(0))
                     .map(list -> jsonDeserializer.deserializeCollection(list, String.class))
                     .map(List::copyOf)
                     .getOrElse(List.of());
@@ -181,24 +181,30 @@ public class Keywords implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()))
-                // Some models return markdown wrappers around the JSON array.
-                .map(ragDoc -> ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))))
-                .map(ragDoc -> ragDoc.updateResponse(applyExclusionsToResponse(ragDoc.getResponse(), parsedArgs.getExcludeKeywords())));
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                    .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
+                    .map(ragDoc -> llmClient.callWithCache(
+                            ragDoc,
+                            environmentSettings,
+                            getName()))
+                    // Some models return markdown wrappers around the JSON array.
+                    .map(ragDoc -> ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))))
+                    .map(ragDoc -> ragDoc.updateResponse(applyExclusionsToResponse(ragDoc.getResponse(), parsedArgs.getExcludeKeywords())));
 
-        // Apply postinference hooks
-        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
-                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
+            final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+
+            // Apply postinference hooks
+            return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                    .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs)).getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
     }
 
     static List<String> parseKeywords(final String jsonResponse) {

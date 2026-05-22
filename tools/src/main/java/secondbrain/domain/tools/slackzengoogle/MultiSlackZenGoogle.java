@@ -266,30 +266,37 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return ragContext;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
         logger.fine(parsedArgs.toString());
 
-        final String cacheKey = generateCacheKey(parsedArgs, prompt);
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final String cacheKey = generateCacheKey(parsedArgs, prompt);
 
-        return Try.of(() -> localStorage.getOrPutObject(
-                                getName(),
-                                getName(),
-                                cacheKey,
-                                parsedArgs.getCacheTtl(),
-                                RagMultiDocumentContext.class,
-                                () -> callPrivate(environmentSettings, prompt, arguments))
-                        .result())
-                .filter(Objects::nonNull)
-                .onFailure(NoSuchElementException.class, ex -> logger.info("No value found for " + getName() + " " + cacheKey))
-                .get();
+            @SuppressWarnings("unchecked")
+            final RagMultiDocumentContext<Void> result = (RagMultiDocumentContext<Void>) Try.of(() -> localStorage.getOrPutObject(
+                                    getName(),
+                                    getName(),
+                                    cacheKey,
+                                    parsedArgs.getCacheTtl(),
+                                    RagMultiDocumentContext.class,
+                                    () -> callPrivate(environmentSettings, prompt, arguments))
+                            .result())
+                    .filter(Objects::nonNull)
+                    .onFailure(NoSuchElementException.class, ex -> logger.info("No value found for " + getName() + " " + cacheKey))
+                    .get();
+            return result.getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(firstPrompt).updateResponses(responses);
     }
 
     private String generateCacheKey(final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt) {
@@ -567,8 +574,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
                 final int value = Try.of(() -> ratingTool.call(
                                 Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, content),
-                                metaField.getRight(),
-                                List.of()).getResponse())
+                                List.of(metaField.getRight()),
+                                List.of()).getResponses().get(0))
                         .map(rating -> Integer.parseInt(rating.trim()))
                         .onFailure(ex -> logger.warning("Rating tool failed for " + metaField.getLeft() + ": " + exceptionHandler.getExceptionMessage(ex)))
                         // Meta-fields are a best effort, and we default to 0
@@ -589,8 +596,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final int value = Try.of(() -> ratingTool.call(
                         Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, result),
-                        parsedArgs.getContextFilterQuestion(),
-                        List.of()).getResponse())
+                        List.of(parsedArgs.getContextFilterQuestion()),
+                        List.of()).getResponses().get(0))
                 .map(rating -> Integer.parseInt(rating.trim()))
                 .onFailure(ex -> logger.warning("Rating tool failed for " + getName() + ": " + exceptionHandler.getExceptionMessage(ex)))
                 // Meta-fields are a best effort, and we default to 0

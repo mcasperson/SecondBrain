@@ -262,12 +262,13 @@ public class YoutubePlaylist implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
         if (parsedArgs.getPlaylistId().isEmpty() && StringUtils.isBlank(parsedArgs.getChannelId()) && StringUtils.isBlank(parsedArgs.getQuery())) {
             throw new InternalFailure("No playlist ID, channel ID or query provided to YoutubePlaylist tool");
@@ -275,18 +276,21 @@ public class YoutubePlaylist implements Tool<Void> {
 
         final String instructions = parsedArgs.getSummarizeTranscript() ? SUMMARY_INSTRUCTIONS : INSTRUCTIONS;
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, instructions, ragDoc))
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()));
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                    .map(ragDoc -> new RagMultiDocumentContext<>(prompt, instructions, ragDoc))
+                    .map(ragDoc -> llmClient.callWithCache(
+                            ragDoc,
+                            environmentSettings,
+                            getName()));
 
-        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+            final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
-        // Apply postinference hooks
-        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
-                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
+            // Apply postinference hooks
+            return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                    .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs)).getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
     }
 
     @Override
@@ -341,7 +345,7 @@ public class YoutubePlaylist implements Tool<Void> {
                 .addToolCall(getName(), youtubeVideo.getId());
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
+            final int filterRating = Try.of(() -> ratingTool.call(envSettings, List.of(parsedArgs.getContextFilterQuestion()), List.of()).getResponses().get(0))
                     .map(rating -> Integer.parseInt(rating.trim()))
                     .onFailure(e -> logger.warning("Failed to get Youtube rating for video " + youtubeVideo.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures

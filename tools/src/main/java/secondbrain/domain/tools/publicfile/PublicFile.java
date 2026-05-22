@@ -171,29 +171,33 @@ public class PublicFile implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
 
-        final PublicWebConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final PublicWebConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getUrl())) {
             throw new InternalFailure("You must provide a URL to download");
         }
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
-                .map(ragDoc -> llmClient.callWithCache(
-                        ragDoc,
-                        environmentSettings,
-                        getName()));
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                    .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
+                    .map(ragDoc -> llmClient.callWithCache(
+                            ragDoc,
+                            environmentSettings,
+                            getName()));
 
-        final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
+            final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
-        // Apply postinference hooks
-        return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
-                .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
+            // Apply postinference hooks
+            return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
+                    .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs)).getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(firstPrompt, "", contextList).updateResponses(responses);
     }
 }
 
