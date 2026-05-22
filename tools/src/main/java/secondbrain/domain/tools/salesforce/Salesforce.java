@@ -334,9 +334,10 @@ public class Salesforce implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
     @Override

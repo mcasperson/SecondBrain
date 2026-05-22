@@ -94,6 +94,6 @@ public interface Tool<T> {
      * Generate a hash code based on the inputs that are passed to call.
      */
     int contextHashCode(Map<String, String> environmentSettings,
-                        String prompt,
+                        List<String> prompts,
                         List<ToolArgs> arguments);
 }
