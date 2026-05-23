@@ -199,16 +199,13 @@ public class DirectoryScan implements Tool<Void> {
             final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
-        validateList.throwIfEmpty(contextList);
-
         final Try<RagMultiDocumentContext<Void>> result = Try
-                .of(() -> contextList)
+                .of(() -> getContext(environmentSettings, prompts, arguments))
+                .map(validateList::throwIfEmpty)
                 .map(ragDocs -> mergeContext(prompts, INSTRUCTIONS, ragDocs, debugArgs))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,

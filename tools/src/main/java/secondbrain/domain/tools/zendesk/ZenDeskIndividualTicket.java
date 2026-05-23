@@ -180,15 +180,8 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
-        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
-
-        final String debugArgs = debugToolArgs.debugArgs(arguments);
-
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
-        validateList.throwIfEmpty(contextList);
-
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompts, arguments))
+                .map(validateList::throwIfEmpty)
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
                 .map(tickets -> new RagMultiDocumentContext<Void>(prompts, INSTRUCTIONS, tickets))
                 // Call Ollama with the final prompt
