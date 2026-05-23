@@ -167,7 +167,6 @@ public class RatingTool implements Tool<Void> {
 
 
     private RagMultiDocumentContext<Void> callPrivate(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final HashMapEnvironmentSettings myEnvironmentSettings = new HashMapEnvironmentSettings(environmentSettings);
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
@@ -185,7 +184,7 @@ public class RatingTool implements Tool<Void> {
                         LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort(), parsedArgs.getThirdUrl())
                 )
                 .filter(server -> server.type() != LLMServerType.UNDEFINED)
-                .collect(parallelToStream(server -> getRating(server, environmentSettings, firstPrompt, arguments), sharedExecutor.getExecutor(), 3))
+                .collect(parallelToStream(server -> getRating(server, environmentSettings, prompts, arguments), sharedExecutor.getExecutor(), 3))
                 .toList();
 
 
@@ -238,8 +237,8 @@ public class RatingTool implements Tool<Void> {
                 .foldLeft(retvalue, (docs, hook) -> hook.process(getName(), docs));
     }
 
-    private RatingDetails getRating(final LLMServerDetails server, final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final Try<RagMultiDocumentContext<Void>> result = callLLM(getEnvironmentOverrides(server, environmentSettings), prompt, arguments);
+    private RatingDetails getRating(final LLMServerDetails server, final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final Try<RagMultiDocumentContext<Void>> result = callLLM(getEnvironmentOverrides(server, environmentSettings), prompts, arguments);
         return resultToRatingDetails(server, result);
     }
 
@@ -263,23 +262,34 @@ public class RatingTool implements Tool<Void> {
 
     private RatingDetails resultToRatingDetails(final LLMServerDetails server, final Try<RagMultiDocumentContext<Void>> result) {
         return result.map(doc -> {
-                    final String response = doc.getResponses().isEmpty() ? doc.getResponse() : doc.getResponses().get(0);
+                    final List<String> responses = doc.getResponses();
+                    if (responses.isEmpty()) {
+                        return new RatingDetails(-1, "", server.model());
+                    }
+
+                    final List<Integer> ratings = responses.stream()
+                            .map(this::getRatingFromResponse)
+                            .map(Integer::parseInt)
+                            .toList();
+
+                    final int average = (int) ratings.stream()
+                            .mapToInt(Integer::intValue)
+                            .average()
+                            .orElse(-1.0);
+
                     return new RatingDetails(
-                            // Extract just the number, which is the rating
-                            Integer.parseInt(getRatingFromResponse(response)),
-                            // Capture the full response, which may include an explanation
-                            response,
-                            // Note the model that generated the result
+                            average,
+                            String.join("\n\n", responses),
                             server.model());
                 })
                 .recover(ex -> new RatingDetails(-1, "", server.model()))
                 .get();
     }
 
-    private Try<RagMultiDocumentContext<Void>> callLLM(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, List.of(prompt), arguments))
+    private Try<RagMultiDocumentContext<Void>> callLLM(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompts, arguments))
                 .map(list -> validateList.throwIfEmpty(list, RagDocumentContext::document))
-                .map(ragDoc -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> new RagMultiDocumentContext<Void>(prompts, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
                 .onFailure(ex -> logger.warning("Failed to get rating for document: " + ex.getMessage()));
 
