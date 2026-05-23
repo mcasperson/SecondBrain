@@ -376,10 +376,10 @@ public class ZenDeskOrganization implements Tool<Void> {
                         List.of(),
                         "",
                         null,
-                        "No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'",
                         null,
                         null,
-                        null));
+                        null,
+                        List.of("No tickets found after " + parsedArgs.getStartDate() + " for organization '" + parsedArgs.getOrganization() + "'")));
 
         final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
