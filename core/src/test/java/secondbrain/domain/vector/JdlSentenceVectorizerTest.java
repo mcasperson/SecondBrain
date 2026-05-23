@@ -13,6 +13,7 @@ import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import secondbrain.domain.config.MockConfig;
 import secondbrain.domain.context.JdlSentenceVectorizer;
 import secondbrain.domain.context.RagStringContext;
 import secondbrain.domain.encryption.AesEncryptor;
@@ -20,9 +21,12 @@ import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.persist.CosmosLocalStorage;
 import secondbrain.domain.persist.FileLocalStorageReadWrite;
 import secondbrain.domain.persist.H2LocalStorage;
 import secondbrain.domain.persist.LocalStorageProducer;
+import secondbrain.domain.persist.LocalStorageReadWriteProducer;
+import secondbrain.domain.persist.MockLocalStorageReadWrite;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
@@ -36,7 +40,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(JdlSentenceVectorizer.class)
 @AddBeanClasses(H2LocalStorage.class)
 @AddBeanClasses(LocalStorageProducer.class)
+@AddBeanClasses(CosmosLocalStorage.class)
 @AddBeanClasses(FileLocalStorageReadWrite.class)
+@AddBeanClasses(MockLocalStorageReadWrite.class)
+@AddBeanClasses(LocalStorageReadWriteProducer.class)
+@AddBeanClasses(MockConfig.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
 @AddBeanClasses(LoggingExceptionHandler.class)

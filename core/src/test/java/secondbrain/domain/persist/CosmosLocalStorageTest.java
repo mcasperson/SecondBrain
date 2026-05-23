@@ -19,6 +19,7 @@ import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.encryption.JasyptBinaryEncryptor;
 import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
+import secondbrain.domain.config.MockConfig;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
@@ -34,6 +35,9 @@ import java.util.UUID;
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(CosmosLocalStorage.class)
 @AddBeanClasses(FileLocalStorageReadWrite.class)
+@AddBeanClasses(MockLocalStorageReadWrite.class)
+@AddBeanClasses(LocalStorageReadWriteProducer.class)
+@AddBeanClasses(MockConfig.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
