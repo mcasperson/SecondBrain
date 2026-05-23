@@ -29,7 +29,8 @@ public class AnswerFormatterQwenTest {
     @BeforeEach
     void updateConfig() {
         final var configSource = new PropertiesConfigSource(
-                Map.of("sb.answerformatter.qwenregex", ModelRegex.QWEN_REGEX),
+                Map.of("sb.infrastructure.mock", "true",
+                        "sb.answerformatter.qwenregex", ModelRegex.QWEN_REGEX),
                 "TestConfig",
                 Integer.MAX_VALUE
         );

@@ -38,7 +38,8 @@ public class FileLocalStorageReadWriteTest {
     @BeforeEach
     void updateConfig() {
         final var configSource = new PropertiesConfigSource(
-                Map.of("sb.cache.localdir", "testlocalcache"),
+                Map.of("sb.infrastructure.mock", "true",
+                        "sb.cache.localdir", "testlocalcache"),
                 "TestConfig",
                 Integer.MAX_VALUE
         );

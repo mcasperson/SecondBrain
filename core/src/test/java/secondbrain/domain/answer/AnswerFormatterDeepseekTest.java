@@ -29,7 +29,8 @@ public class AnswerFormatterDeepseekTest {
     @BeforeEach
     void updateConfig() {
         final var configSource = new PropertiesConfigSource(
-                Map.of("sb.answerformatter.deepseekregex", ModelRegex.DEEPSEEK_REGEX),
+                Map.of("sb.infrastructure.mock", "true",
+                        "sb.answerformatter.deepseekregex", ModelRegex.DEEPSEEK_REGEX),
                 "TestConfig",
                 Integer.MAX_VALUE
         );

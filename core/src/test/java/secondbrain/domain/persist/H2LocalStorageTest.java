@@ -40,7 +40,8 @@ public class H2LocalStorageTest {
     @BeforeEach
     void updateConfig() {
         final var configSource = new PropertiesConfigSource(
-                Map.of("sb.cache.disable", "false"),
+                Map.of("sb.infrastructure.mock", "true",
+                        "sb.cache.disable", "false"),
                 "TestConfig",
                 Integer.MAX_VALUE
         );

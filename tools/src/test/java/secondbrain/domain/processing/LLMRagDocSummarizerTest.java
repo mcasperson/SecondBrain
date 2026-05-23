@@ -51,6 +51,7 @@ class LLMRagDocSummarizerTest {
     void updateConfig() {
         final var configSource = new PropertiesConfigSource(
                 Map.of(
+                        "sb.infrastructure.mock", "true",
                         "sb.encryption.password", "1234567890",
                         "sb.encryption.salt", "1234567890"
                 ),

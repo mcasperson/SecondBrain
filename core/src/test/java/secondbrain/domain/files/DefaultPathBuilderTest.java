@@ -28,7 +28,7 @@ public class DefaultPathBuilderTest {
     @BeforeEach
     void updateConfig() {
         final var configSource = new PropertiesConfigSource(
-                Map.of(),
+                Map.of("sb.infrastructure.mock", "true"),
                 "TestConfig",
                 Integer.MAX_VALUE
         );
