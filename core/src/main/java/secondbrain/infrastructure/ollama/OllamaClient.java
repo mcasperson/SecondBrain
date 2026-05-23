@@ -136,11 +136,11 @@ public class OllamaClient implements LlmClient {
                                 final String responseText = response.getResponse();
 
                                 // Don't cache errors
-                                return resultOrDefaultOnError(responseText, null);
+                                return resultOrDefaultOnError(responseText, () -> null);
                             }).result())
                     .filter(Objects::nonNull)
                     .onFailure(ex -> logger.warning("Ollama cache failure: " + ex.getMessage()))
-                    .map(result -> valueOrDefaultOnError(result, result, callOllama(ragDoc, prompt, model, contextWindow, resolvedUri).getResponse()))
+                    .map(result -> valueOrDefaultOnError(result, result, () -> callOllama(ragDoc, prompt, model, contextWindow, resolvedUri).getResponse()))
                     .get();
         }).toList();
 
@@ -263,13 +263,13 @@ public class OllamaClient implements LlmClient {
         return CollectionUtils.containsAny(Arrays.asList(ERRORS), result.trim());
     }
 
-    private <T> T valueOrDefaultOnError(final String result, final T value, final T defaultValue) {
-        return resultIsError(result) ? defaultValue : value;
+    private <T> T valueOrDefaultOnError(final String result, final T value, final java.util.function.Supplier<T> defaultValue) {
+        return resultIsError(result) ? defaultValue.get() : value;
     }
 
     @Nullable
-    private String resultOrDefaultOnError(final String result, @Nullable final String defaultValue) {
-        return resultIsError(result) ? defaultValue : result;
+    private String resultOrDefaultOnError(final String result, final java.util.function.Supplier<@Nullable String> defaultValue) {
+        return resultIsError(result) ? defaultValue.get() : result;
     }
 
     private String getPromptFromDocument(final RagMultiDocumentContext<?> ragDoc, final String prompt) {
