@@ -219,7 +219,6 @@ public class Meta implements Tool<Void> {
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final MetaConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         logger.fine(parsedArgs.toString());
@@ -235,7 +234,6 @@ public class Meta implements Tool<Void> {
             final List<ToolArgs> arguments,
             final MetaConfig.LocalArguments parsedArgs) {
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
 
         @SuppressWarnings("unchecked")
         final Try<List<RagDocumentContext<Void>>> contextResult = Try.of(() -> localStorage.getOrPutGeneric(

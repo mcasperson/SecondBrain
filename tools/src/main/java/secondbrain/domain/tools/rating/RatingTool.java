@@ -130,7 +130,6 @@ public class RatingTool implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         // Get preinitialization hooks before ragdocs

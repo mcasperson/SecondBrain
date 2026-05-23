@@ -77,7 +77,6 @@ public class AliasTool implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
         final AliasConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         // Get preinitialization hooks before ragdocs
@@ -96,7 +95,6 @@ public class AliasTool implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final AliasConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);

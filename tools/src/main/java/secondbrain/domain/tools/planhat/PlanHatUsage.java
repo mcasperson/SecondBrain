@@ -304,7 +304,6 @@ public class PlanHatUsage implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
         final PlanHatUsageConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);

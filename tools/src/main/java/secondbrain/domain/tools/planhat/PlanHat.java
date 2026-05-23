@@ -337,7 +337,6 @@ public class PlanHat implements Tool<Void> {
     public RagMultiDocumentContext<Void> call(Map<String, String> environmentSettings, List<String> prompts, List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
         final PlanHatConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);

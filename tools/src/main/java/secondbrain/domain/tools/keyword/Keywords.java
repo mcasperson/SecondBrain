@@ -184,7 +184,6 @@ public class Keywords implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);

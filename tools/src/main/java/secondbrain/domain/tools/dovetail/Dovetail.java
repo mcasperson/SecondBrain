@@ -289,7 +289,6 @@ public class Dovetail implements Tool<Void> {
             final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
         final DovetailConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 

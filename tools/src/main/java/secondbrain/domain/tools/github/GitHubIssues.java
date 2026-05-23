@@ -181,7 +181,6 @@ public class GitHubIssues implements Tool<Void> {
 
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
         final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);

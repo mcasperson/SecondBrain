@@ -266,7 +266,6 @@ public class YoutubePlaylist implements Tool<Void> {
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
         final YoutubeConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);

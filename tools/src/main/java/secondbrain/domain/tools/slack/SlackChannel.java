@@ -282,7 +282,6 @@ public class SlackChannel implements Tool<Void> {
             final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final SlackChannelConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);

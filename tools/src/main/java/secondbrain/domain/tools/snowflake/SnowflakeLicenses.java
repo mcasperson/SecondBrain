@@ -128,7 +128,6 @@ public class SnowflakeLicenses implements Tool<Void> {
             final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)

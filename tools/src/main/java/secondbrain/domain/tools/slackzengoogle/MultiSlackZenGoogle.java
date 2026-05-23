@@ -276,7 +276,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         logger.fine(parsedArgs.toString());
@@ -307,7 +306,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final List<String> prompts,
             final List<ToolArgs> arguments) {
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompts, arguments))

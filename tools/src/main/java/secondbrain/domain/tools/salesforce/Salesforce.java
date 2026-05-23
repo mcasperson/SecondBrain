@@ -314,7 +314,6 @@ public class Salesforce implements Tool<Void> {
 
         logger.fine("Calling " + getName());
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         if (parsedArgs.isRequireCompany() && StringUtils.isBlank(parsedArgs.getAccountId())) {

@@ -54,7 +54,6 @@ public class HelloWorld implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final List<String> prompts,
             final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
         return List.of();
     }
 
@@ -64,7 +63,6 @@ public class HelloWorld implements Tool<Void> {
             final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final HelloWorldConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final List<String> responses = prompts.stream().map(prompt -> {

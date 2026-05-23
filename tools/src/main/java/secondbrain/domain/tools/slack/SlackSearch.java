@@ -258,7 +258,6 @@ public class SlackSearch implements Tool<Void> {
 
         logger.fine("Calling " + getName());
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
         final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);

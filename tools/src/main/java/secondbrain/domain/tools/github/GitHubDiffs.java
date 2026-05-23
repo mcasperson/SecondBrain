@@ -216,7 +216,6 @@ public class GitHubDiffs implements Tool<Void> {
             final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
         final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);

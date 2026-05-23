@@ -359,7 +359,6 @@ public class ZenDeskOrganization implements Tool<Void> {
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);

@@ -157,7 +157,6 @@ public class UploadedDoc implements Tool<Void> {
             final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final UploadDocConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
