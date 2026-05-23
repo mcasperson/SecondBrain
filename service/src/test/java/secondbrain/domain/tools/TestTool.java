@@ -31,7 +31,7 @@ public class TestTool implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompt,
             final List<ToolArgs> arguments) {
         return List.of();
     }
