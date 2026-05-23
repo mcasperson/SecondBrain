@@ -157,7 +157,6 @@ public class GitHubIssues implements Tool<Void> {
 
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
         final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
@@ -263,14 +262,15 @@ public class GitHubIssues implements Tool<Void> {
                 List.of()
         );
 
-        final String response = llmClient.callWithCache(
+        final var llmResult = llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getIssueSummaryPrompt(),
                         "You are a helpful agent",
                         List.of(context)),
                 environmentSettings,
                 getName()
-        ).getResponse();
+        );
+        final String response = llmResult.getResponses().isEmpty() ? llmResult.getResponse() : llmResult.getResponses().get(0);
 
         return ragDoc.updateDocument(response)
                 .addIntermediateResult(new IntermediateResult(

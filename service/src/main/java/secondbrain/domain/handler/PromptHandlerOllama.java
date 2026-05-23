@@ -132,13 +132,10 @@ public class PromptHandlerOllama implements PromptHandler {
             links to the context items, and annotations that link the LLM output to the original context.
          */
         return Try.of(() -> toolCall.call(context, prompts, logger))
-                .map(document -> {
-                    var accumulated = document.updateResponse("").appendResponses(document.getResponses());
-                    return generateAnnotatedResponse(
-                            accumulated,
-                            parsedMinSimilarity,
-                            parsedMinWords);
-                })
+                .map(document -> generateAnnotatedResponse(
+                        document,
+                        parsedMinSimilarity,
+                        parsedMinWords))
                 .recover(InternalFailure.class, ex -> new PromptResponseSimple(exceptionHandler.getExceptionMessage(ex)))
                 .get();
     }

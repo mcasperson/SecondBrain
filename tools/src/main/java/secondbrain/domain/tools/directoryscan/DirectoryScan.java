@@ -224,7 +224,6 @@ public class DirectoryScan implements Tool<Void> {
 
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
         final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
@@ -360,14 +359,15 @@ public class DirectoryScan implements Tool<Void> {
                 List.of()
         );
 
-        return llmClient.callWithCache(
+        final var llmResult = llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getIndividualDocumentPrompt(),
                         FILE_INSTRUCTIONS,
                         List.of(context)),
                 environmentSettings,
                 getName()
-        ).getResponse();
+        );
+        return llmResult.getResponses().isEmpty() ? llmResult.getResponse() : llmResult.getResponses().get(0);
     }
 }
 

@@ -196,8 +196,10 @@ public class Keywords implements Tool<Void> {
                         environmentSettings,
                         getName()))
                 // Some models return markdown wrappers around the JSON array.
-                .map(ragDoc -> ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))))
-                .map(ragDoc -> ragDoc.updateResponse(applyExclusionsToResponse(ragDoc.getResponse(), parsedArgs.getExcludeKeywords())));
+                .map(ragDoc -> ragDoc.updateResponses(ragDoc.getResponses().stream()
+                        .map(r -> StringUtils.trim(findFirstMarkdownBlock.sanitize(r)))
+                        .map(r -> applyExclusionsToResponse(r, parsedArgs.getExcludeKeywords()))
+                        .toList()));
 
         final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
@@ -258,7 +260,6 @@ public class Keywords implements Tool<Void> {
 
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
         final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }

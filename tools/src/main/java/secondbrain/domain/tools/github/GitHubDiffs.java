@@ -237,7 +237,6 @@ public class GitHubDiffs implements Tool<Void> {
 
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
         final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
@@ -291,14 +290,15 @@ public class GitHubDiffs implements Tool<Void> {
                 List.of()
         );
 
-        return llmClient.callWithCache(
+        final var llmResult = llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getDiffSummaryPrompt(),
                         "You are a helpful agent",
                         List.of(context)),
                 environmentSettings,
                 getName()
-        ).getResponse();
+        );
+        return llmResult.getResponses().isEmpty() ? llmResult.getResponse() : llmResult.getResponses().get(0);
     }
 
     private List<GitHubCommitAndDiff> getCommits(

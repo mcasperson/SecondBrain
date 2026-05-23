@@ -326,7 +326,11 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                     See https://community.n8n.io/t/psa-extracting-output-from-gemini-models/83374
                     Se we do this manually if required.
                  */
-                .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))) : ragDoc)
+                .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock()
+                        ? ragDoc.updateResponses(ragDoc.getResponses().stream()
+                                .map(r -> StringUtils.trim(findFirstMarkdownBlock.sanitize(r)))
+                                .toList())
+                        : ragDoc)
                 .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<Void>(prompts)
                         .updateResponse(e.getClass().getSimpleName() + ": No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found."))
                 .recover(NoSuchElementException.class, e -> new RagMultiDocumentContext<Void>(prompts)
@@ -474,7 +478,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
         final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
@@ -901,14 +904,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // The overall ratings are also top-level metadata
         results.addAll(getMetaResults(context, parsedArgs));
 
-        return new RagMultiDocumentContext<>(
-                prompts,
-                instructions,
-                context,
-                null,
-                null,
-                parsedArgs.getAnnotationPrefix(),
-                new MetaObjectResults(results, parsedArgs.getMetaReport(), ""));
+        return new RagMultiDocumentContext<Void>(prompts, instructions, context)
+                .withAnnotationPrefix(parsedArgs.getAnnotationPrefix())
+                .updateMetadata(new MetaObjectResults(results, parsedArgs.getMetaReport(), ""));
     }
 
     record PositionalEntity(Entity entity, int position, int total) {

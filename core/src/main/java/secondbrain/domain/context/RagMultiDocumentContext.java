@@ -12,6 +12,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * RagDocumentContext captures the details of a single document to be passed to the LLM. RagMultiDocumentContext
@@ -26,51 +27,41 @@ import java.util.stream.Collectors;
  * @param debug              General debug information
  * @param annotationPrefix   The prefix to use when annotating the document with the source sentence
  * @param metadata           The metadata associated with the individual contexts, such as the source, author
+ * @param responses          The LLM responses, one per prompt
  */
 public record RagMultiDocumentContext<T>(@Nullable List<String> prompts,
                                          @Nullable String instructions,
                                          @Nullable List<RagDocumentContext<T>> individualContexts,
-                                         @Nullable String response,
                                          @Nullable String debug,
                                          @Nullable String annotationPrefix,
                                          @Nullable MetaObjectResults metadata,
                                          @Nullable List<String> responses) {
     public RagMultiDocumentContext(final String prompt) {
-        this(List.of(prompt), null, List.of(), null, null, null, null, null);
+        this(List.of(prompt), null, List.of(), null, null, null, null);
     }
 
     public RagMultiDocumentContext(final List<String> prompts) {
-        this(prompts, null, List.of(), null, null, null, null, null);
+        this(prompts, null, List.of(), null, null, null, null);
     }
 
     public RagMultiDocumentContext(final String prompt, final String instructions) {
-        this(List.of(prompt), instructions, List.of(), null, null, null, null, null);
+        this(List.of(prompt), instructions, List.of(), null, null, null, null);
     }
 
     public RagMultiDocumentContext(final String prompt, final String instructions, final List<RagDocumentContext<T>> individualContexts) {
-        this(List.of(prompt), instructions, individualContexts, null, null, null, null, null);
+        this(List.of(prompt), instructions, individualContexts, null, null, null, null);
     }
 
     public RagMultiDocumentContext(final List<String> prompts, final String instructions, final List<RagDocumentContext<T>> individualContexts) {
-        this(prompts, instructions, individualContexts, null, null, null, null, null);
+        this(prompts, instructions, individualContexts, null, null, null, null);
     }
 
     public RagMultiDocumentContext(final String prompt, final String instructions, final List<RagDocumentContext<T>> individualContexts, final String debug) {
-        this(List.of(prompt), instructions, individualContexts, null, debug, null, null, null);
+        this(List.of(prompt), instructions, individualContexts, debug, null, null, null);
     }
 
     public RagMultiDocumentContext(final List<String> prompts, final String instructions, final List<RagDocumentContext<T>> individualContexts, final String debug) {
-        this(prompts, instructions, individualContexts, null, debug, null, null, null);
-    }
-
-    public RagMultiDocumentContext(@Nullable List<String> prompts,
-                                   @Nullable String instructions,
-                                   @Nullable List<RagDocumentContext<T>> individualContexts,
-                                   @Nullable String response,
-                                   @Nullable String debug,
-                                   @Nullable String annotationPrefix,
-                                   @Nullable MetaObjectResults metadata) {
-        this(prompts, instructions, individualContexts, response, debug, annotationPrefix, metadata, null);
+        this(prompts, instructions, individualContexts, debug, null, null, null);
     }
 
     public List<String> getPrompts() {
@@ -81,9 +72,12 @@ public record RagMultiDocumentContext<T>(@Nullable List<String> prompts,
         return Objects.requireNonNullElse(individualContexts, List.of());
     }
 
-
+    /**
+     * Returns all responses joined by double newlines. This is a derived value from the responses list.
+     */
+    @JsonIgnore
     public String getResponse() {
-        return Objects.requireNonNullElse(response, "");
+        return String.join("\n\n", getResponses());
     }
 
     public List<String> getResponses() {
@@ -108,42 +102,54 @@ public record RagMultiDocumentContext<T>(@Nullable List<String> prompts,
     }
 
     /**
-     * The document held by this object often needs to undergo some transformation, from raw text, to being sanitized,
-     * to being marked up, as part of a LLM template. The individual contexts neve change though.
+     * Replaces the responses list with a single response.
      *
-     * @param response The new document
-     * @return A new copy of this object with the new document
+     * @param response The new response
+     * @return A new copy of this object with the response as the sole entry in the responses list
      */
     public RagMultiDocumentContext<T> updateResponse(@Nullable final String response) {
-        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, response, debug, annotationPrefix, metadata, responses);
+        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, debug, annotationPrefix, metadata,
+                response == null ? null : List.of(response));
     }
 
     public RagMultiDocumentContext<T> updateResponses(@Nullable final List<String> responses) {
-        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, response, debug, annotationPrefix, metadata, responses);
+        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, debug, annotationPrefix, metadata, responses);
     }
 
     public RagMultiDocumentContext<T> updatePrompts(@Nullable final List<String> prompts) {
-        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, response, debug, annotationPrefix, metadata, responses);
+        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, debug, annotationPrefix, metadata, responses);
     }
 
+    /**
+     * Appends a response to the responses list.
+     */
     public RagMultiDocumentContext<T> appendResponse(@Nullable final String newResponse) {
-        final String current = Objects.requireNonNullElse(response, "");
-        final String appended = current.isEmpty()
-                ? Objects.requireNonNullElse(newResponse, "")
-                : current + "\n\n" + Objects.requireNonNullElse(newResponse, "");
-        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, appended, debug, annotationPrefix, metadata, responses);
+        if (newResponse == null) {
+            return this;
+        }
+        final List<String> current = new ArrayList<>(getResponses());
+        current.add(newResponse);
+        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, debug, annotationPrefix, metadata, current);
     }
 
+    /**
+     * Appends multiple responses to the responses list.
+     */
     public RagMultiDocumentContext<T> appendResponses(@Nullable final List<String> newResponses) {
         if (newResponses == null || newResponses.isEmpty()) {
             return this;
         }
-        return io.vavr.collection.List.ofAll(newResponses)
-                .foldLeft(this, RagMultiDocumentContext::appendResponse);
+        final List<String> current = new ArrayList<>(getResponses());
+        current.addAll(newResponses);
+        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, debug, annotationPrefix, metadata, current);
     }
 
     public RagMultiDocumentContext<T> updateMetadata(@Nullable final MetaObjectResults metadata) {
-        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, response, debug, annotationPrefix, metadata, responses);
+        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, debug, annotationPrefix, metadata, responses);
+    }
+
+    public RagMultiDocumentContext<T> withAnnotationPrefix(@Nullable final String annotationPrefix) {
+        return new RagMultiDocumentContext<T>(prompts, instructions, individualContexts, debug, annotationPrefix, metadata, responses);
     }
 
     /**
@@ -277,7 +283,6 @@ public record RagMultiDocumentContext<T>(@Nullable List<String> prompts,
                 getIndividualContexts().stream()
                         .map(RagDocumentContext::convertToRagDocumentContextVoid)
                         .toList(),
-                response,
                 debug,
                 annotationPrefix,
                 metadata,

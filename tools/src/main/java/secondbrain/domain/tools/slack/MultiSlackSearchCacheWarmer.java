@@ -131,20 +131,13 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
 
         final List<String> responses = prompts.stream().map(prompt -> "Cache has been warmed").toList();
 
-        return new RagMultiDocumentContext<Void>(
-                prompts,
-                null,
-                contextList,
-                "Cache has been warmed",
-                null,
-                null,
-                null).updateResponses(responses);
+        return new RagMultiDocumentContext<Void>(prompts, "", contextList)
+                .updateResponses(responses);
     }
 
 
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
         final MultiSlackSearchCacheWarmerConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }

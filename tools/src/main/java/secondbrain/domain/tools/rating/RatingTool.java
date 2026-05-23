@@ -268,13 +268,16 @@ public class RatingTool implements Tool<Void> {
     }
 
     private RatingDetails resultToRatingDetails(final LLMServerDetails server, final Try<RagMultiDocumentContext<Void>> result) {
-        return result.map(doc -> new RatingDetails(
-                        // Extract just the number, which is the rating
-                        Integer.parseInt(getRatingFromResponse(doc.getResponse())),
-                        // Capture the full response, which may include an explanation
-                        doc.getResponse(),
-                        // Note the model that generated the result
-                        server.model()))
+        return result.map(doc -> {
+                    final String response = doc.getResponses().isEmpty() ? doc.getResponse() : doc.getResponses().get(0);
+                    return new RatingDetails(
+                            // Extract just the number, which is the rating
+                            Integer.parseInt(getRatingFromResponse(response)),
+                            // Capture the full response, which may include an explanation
+                            response,
+                            // Note the model that generated the result
+                            server.model());
+                })
                 .recover(ex -> new RatingDetails(-1, "", server.model()))
                 .get();
     }
@@ -300,7 +303,6 @@ public class RatingTool implements Tool<Void> {
 
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }

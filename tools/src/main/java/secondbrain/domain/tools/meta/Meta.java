@@ -254,14 +254,8 @@ public class Meta implements Tool<Void> {
             logger.info("Prompt has been disabled, returning unprocessed result");
             return contextResult
                     .filter(Objects::nonNull)
-                    .map(context -> new RagMultiDocumentContext<Void>(
-                            prompts,
-                            "Unused",
-                            context,
-                            "Unused",
-                            null,
-                            "",
-                            null))
+                    .map(context -> new RagMultiDocumentContext<Void>(prompts, "Unused", context)
+                            .updateResponses(List.of("Unused")))
                     .get();
         }
 
@@ -269,11 +263,7 @@ public class Meta implements Tool<Void> {
                 .map(context -> new RagMultiDocumentContext<Void>(
                         prompts,
                         "You are a helpful agent. You have information from multiple tools. Answer the prompt based on the provided information.",
-                        context,
-                        null,
-                        null,
-                        "",
-                        null))
+                        context))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
         final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
@@ -285,7 +275,6 @@ public class Meta implements Tool<Void> {
 
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final MetaConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return Seq.seq(getFilteredTools(parsedArgs)).foldLeft(17 + prompts.hashCode(), (hash, tool) -> 31 * tool.contextHashCode(environmentSettings, prompts, arguments) + hash);
     }

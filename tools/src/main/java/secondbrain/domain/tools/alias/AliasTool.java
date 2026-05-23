@@ -110,7 +110,9 @@ public class AliasTool implements Tool<Void> {
                 /*
                  We expect a JSON array, but some LLMs return markdown blocks, which we
                  */
-                .map(ragDoc -> ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))));
+                .map(ragDoc -> ragDoc.updateResponses(ragDoc.getResponses().stream()
+                        .map(r -> StringUtils.trim(findFirstMarkdownBlock.sanitize(r)))
+                        .toList()));
 
         final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
@@ -126,7 +128,6 @@ public class AliasTool implements Tool<Void> {
 
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
         final AliasConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }

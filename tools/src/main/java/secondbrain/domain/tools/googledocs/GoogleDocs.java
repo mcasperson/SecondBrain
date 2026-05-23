@@ -255,7 +255,6 @@ public class GoogleDocs implements Tool<Void> {
 
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
         final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
@@ -361,7 +360,8 @@ public class GoogleDocs implements Tool<Void> {
                         multiDoc,
                         environmentSettings,
                         getName()
-                ).response())
+                ))
+                .map(result -> result.getResponses().isEmpty() ? result.getResponse() : result.getResponses().get(0))
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Document summary resulted in no content"))
                 .get();
