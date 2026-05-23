@@ -145,7 +145,6 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final List<String> prompts,
             final List<ToolArgs> arguments) {
-        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
 
         final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
