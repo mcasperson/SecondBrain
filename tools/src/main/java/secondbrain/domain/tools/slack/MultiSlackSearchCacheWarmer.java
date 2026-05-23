@@ -93,8 +93,9 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
         return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
                 .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
                 .getOrElse(List::of);
@@ -105,7 +106,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final MultiSlackSearchCacheWarmerConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final MultiSlackSearchCacheWarmerConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, List.of(prompt), environmentSettings);
 
         final EntityDirectory entityDirectory = Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
@@ -126,7 +127,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
             final List<ToolArgs> arguments) {
 
         final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
         final List<String> responses = prompts.stream().map(prompt -> "Cache has been warmed").toList();
 
@@ -144,7 +145,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
-        final MultiSlackSearchCacheWarmerConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final MultiSlackSearchCacheWarmerConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
@@ -178,7 +179,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(
                         addItemToMap(context, CommonArguments.ENTITY_NAME_CONTEXT_ARG, positionalEntity.entity().name()),
-                        prompt,
+                        List.of(prompt),
                         args))
                 // We continue on even if one tool fails, so log and swallow the exception
                 .onFailure(InternalFailure.class, ex -> log.info("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -274,13 +275,13 @@ class MultiSlackSearchCacheWarmerConfig {
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
-        private final String prompt;
+        private final List<String> prompts;
 
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 

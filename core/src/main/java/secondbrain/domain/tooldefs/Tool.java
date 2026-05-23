@@ -56,13 +56,13 @@ public interface Tool<T> {
      * external service (like a REST API) is down, and a retry may succeed later.
      *
      * @param environmentSettings The setting associated with the prompt. These are values that come from the environment (like credentials) rather than from the prompt.
-     * @param prompt              The prompt supplied by the user.
+     * @param prompts             The list of prompts supplied by the user.
      * @param arguments           The arguments extracted from the prompt.
      * @return The individual items that make up the context for the prompt. Can be a single item or multiple items.
      */
     List<RagDocumentContext<T>> getContext(
             Map<String, String> environmentSettings,
-            String prompt,
+            List<String> prompts,
             List<ToolArgs> arguments);
 
     /**

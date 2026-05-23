@@ -130,7 +130,7 @@ public class SlackSearch implements Tool<Void> {
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
-        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
@@ -142,9 +142,10 @@ public class SlackSearch implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
-        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
+        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         // Create the client once and reuse it across the early-out check and the main retrieval
         final com.slack.api.methods.AsyncMethodsClient client = Slack.getInstance().methodsAsync();
@@ -259,9 +260,9 @@ public class SlackSearch implements Tool<Void> {
         logger.fine("Calling " + getName());
 
         final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
-        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
+        final SlackSearchConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> new RagMultiDocumentContext<>(prompts, INSTRUCTIONS, contextList))
                 .map(ragDoc -> llmClient.callWithCache(
@@ -488,12 +489,12 @@ class SlackSearchConfig {
 
     public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredItem, LocalConfigFilteredParent, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
-        private final String prompt;
+        private final List<String> prompts;
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 
@@ -519,7 +520,7 @@ class SlackSearchConfig {
                     .map(Argument::value)
                     .toList();
 
-            final List<String> keywordsGenerated = getGenerateKeywords() ? getKeywordExtractor().getKeywords(prompt) : List.of();
+            final List<String> keywordsGenerated = getGenerateKeywords() ? getKeywordExtractor().getKeywords(String.join("\n", prompts)) : List.of();
 
             final HashSet<String> retValue = new HashSet<>();
             retValue.addAll(keywordslist);
@@ -541,7 +542,7 @@ class SlackSearchConfig {
                     .toList();
 
             if (getGenerateKeywords()) {
-                return CollectionUtils.collate(keywords, getKeywordExtractor().getKeywords(prompt), false);
+                return CollectionUtils.collate(keywords, getKeywordExtractor().getKeywords(String.join("\n", prompts)), false);
             }
 
             return keywords;

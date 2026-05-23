@@ -171,7 +171,7 @@ public class ZenDeskOrganization implements Tool<Void> {
     @Override
     public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         final String prompt = prompts.isEmpty() ? "" : prompts.get(0);
-        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
         return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
@@ -189,8 +189,9 @@ public class ZenDeskOrganization implements Tool<Void> {
 
     @Override
     public List<RagDocumentContext<Void>> getContext(
-            final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+            final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
+        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         // Early out if requireCompany is set but no organization has been supplied
         if (parsedArgs.isRequireCompany() && StringUtils.isBlank(parsedArgs.getOrganization())) {
@@ -224,7 +225,7 @@ public class ZenDeskOrganization implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, List.of(prompt), environmentSettings);
 
         logger.fine("Getting ZenDesk context for " + getName() + " for organization " + parsedArgs.getOrganization());
 
@@ -360,11 +361,11 @@ public class ZenDeskOrganization implements Tool<Void> {
         logger.fine("Calling " + getName());
 
         final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
-        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, firstPrompt, environmentSettings);
+        final ZenDeskConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, firstPrompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
                 .map(validateList::throwIfEmpty)
@@ -429,7 +430,7 @@ public class ZenDeskOrganization implements Tool<Void> {
                 // Get the context associated with the ticket
                 .flatMap(ticket -> ticketTool.getContext(
                         environmentSettings,
-                        parsedArgs.getDocumentSummaryPrompt(),
+                        List.of(parsedArgs.getDocumentSummaryPrompt()),
                         /*
                             We end up passing all the ticket details as arguments to the tool. This is due to the fact
                             that we can only pass strings between tools.
@@ -824,13 +825,13 @@ class ZenDeskConfig {
     public class LocalArguments implements LocalSkipEmptyInLastDuration, LocalConfigFilteredParent, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
 
-        private final String prompt;
+        private final List<String> prompts;
 
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 
@@ -885,17 +886,17 @@ class ZenDeskConfig {
             }
 
             return getValidateInputs().getCommaSeparatedList(
-                    prompt,
+                    String.join("\n", prompts),
                     argument.getSafeValue());
         }
 
         public String getOrganization() {
             // Organization is just a name or number. If the organization is an email address, it was mixed up for the receipt.
-            if (EmailValidator.getInstance().isValid(getSanitizeEmail().sanitize(getRawOrganization(), prompt)) && StringUtils.isBlank(getRecipient())) {
+            if (EmailValidator.getInstance().isValid(getSanitizeEmail().sanitize(getRawOrganization(), String.join("\n", prompts))) && StringUtils.isBlank(getRecipient())) {
                 return "";
             }
 
-            return getSanitizeOrganization().sanitize(getRawOrganization(), prompt);
+            return getSanitizeOrganization().sanitize(getRawOrganization(), String.join("\n", prompts));
         }
 
         public List<String> getExcludedOrganization() {
@@ -909,7 +910,7 @@ class ZenDeskConfig {
 
             final String stringValue = argument.trusted()
                     ? argument.getSafeValue()
-                    : getValidateInputs().getCommaSeparatedList(prompt, argument.getSafeValue());
+                    : getValidateInputs().getCommaSeparatedList(String.join("\n", prompts), argument.getSafeValue());
 
             final List<String> excludedOrganization = Arrays.stream(stringValue.split(","))
                     .map(String::trim)
@@ -933,11 +934,11 @@ class ZenDeskConfig {
 
         public String getRecipient() {
             // Organization is just a name or number. If organization is an email address, it was mixed up for the receipt.
-            if (EmailValidator.getInstance().isValid(getSanitizeEmail().sanitize(getRawOrganization(), prompt)) && StringUtils.isBlank(getRawRecipient())) {
-                return getSanitizeEmail().sanitize(getRawOrganization(), prompt);
+            if (EmailValidator.getInstance().isValid(getSanitizeEmail().sanitize(getRawOrganization(), String.join("\n", prompts))) && StringUtils.isBlank(getRawRecipient())) {
+                return getSanitizeEmail().sanitize(getRawOrganization(), String.join("\n", prompts));
             }
 
-            return getSanitizeEmail().sanitize(getRawRecipient(), prompt);
+            return getSanitizeEmail().sanitize(getRawRecipient(), String.join("\n", prompts));
         }
 
         public List<String> getExcludedSubmitters() {
@@ -998,7 +999,7 @@ class ZenDeskConfig {
                 return getRawHours();
             }
 
-            return switchArguments(prompt, getRawHours(), getRawDays(), "hour", "day");
+            return switchArguments(String.join("\n", prompts), getRawHours(), getRawDays(), "hour", "day");
         }
 
         public int getDays() {
@@ -1006,7 +1007,7 @@ class ZenDeskConfig {
                 return getRawDays();
             }
 
-            return switchArguments(prompt, getRawDays(), getRawHours(), "day", "hour");
+            return switchArguments(String.join("\n", prompts), getRawDays(), getRawHours(), "day", "hour");
         }
 
         public String getStartPeriod() {
@@ -1207,7 +1208,7 @@ class ZenDeskConfig {
                     .toList();
 
             if (getAutoGenerateKeywords()) {
-                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt + "\n" + getContextFilterQuestion(), List.of()), false);
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), Stream.concat(prompts.stream(), Stream.of(getContextFilterQuestion())).toList(), List.of()), false);
             }
 
             return keywords;
