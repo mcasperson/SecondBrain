@@ -232,7 +232,7 @@ public class RatingTool implements Tool<Void> {
                                         result.result(),
                                         "Rating-" + parsedArgs.getRatingTool() + "-" + parsedArgs.getRatingId() + "-" + result.model() + ".txt")))
                         .toList())
-                .updateResponse(average + "");
+                .updateResponses(Collections.nCopies(prompts.size(), average + ""));
 
         return Seq.seq(hooksContainer.getMatchingPostInferenceHooks(parsedArgs.getPostInferenceHooks()))
                 .foldLeft(retvalue, (docs, hook) -> hook.process(getName(), docs));
