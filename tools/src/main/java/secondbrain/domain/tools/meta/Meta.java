@@ -255,7 +255,7 @@ public class Meta implements Tool<Void> {
             return contextResult
                     .filter(Objects::nonNull)
                     .map(context -> new RagMultiDocumentContext<Void>(prompts, "Unused", context)
-                            .updateResponses(List.of("Unused")))
+                            .updateResponses(Collections.nCopies(prompts.size(), "Unused")))
                     .get();
         }
 
