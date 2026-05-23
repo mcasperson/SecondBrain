@@ -162,7 +162,7 @@ public class RatingTool implements Tool<Void> {
                         .result())
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get rating from cache: " + ex.getMessage()))
                 .getOrElse(() -> new RagMultiDocumentContext<Void>(prompts)
-                        .updateResponse("-1"));
+                        .updateResponses(prompts.stream().map(prompt -> "-1").toList()));
     }
 
 
