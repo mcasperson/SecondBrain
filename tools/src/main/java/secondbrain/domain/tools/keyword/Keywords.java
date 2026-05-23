@@ -109,27 +109,28 @@ public class Keywords implements Tool<Void> {
         );
     }
 
-    public List<String> getKeywords(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final List<String> cachedKeywords = keywordCache.get(prompt);
+    public List<String> getKeywords(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final String combinedPrompt = String.join("\n", prompts);
+        final List<String> cachedKeywords = keywordCache.get(combinedPrompt);
         if (cachedKeywords != null) {
             return cachedKeywords;
         }
 
-        final ReentrantLock lock = promptLocks.computeIfAbsent(prompt, k -> new ReentrantLock());
+        final ReentrantLock lock = promptLocks.computeIfAbsent(combinedPrompt, k -> new ReentrantLock());
         lock.lock();
         try {
-            final List<String> doubleCheckedCachedKeywords = keywordCache.get(prompt);
+            final List<String> doubleCheckedCachedKeywords = keywordCache.get(combinedPrompt);
             if (doubleCheckedCachedKeywords != null) {
                 return doubleCheckedCachedKeywords;
             }
 
-            final List<String> generatedKeywords = Try.of(() -> call(environmentSettings, prompt, List.of()))
-                    .map(RagMultiDocumentContext::getResponse)
+            final List<String> generatedKeywords = Try.of(() -> call(environmentSettings, List.of(combinedPrompt), List.of()))
+                    .map(result -> result.getResponses().get(0))
                     .map(list -> jsonDeserializer.deserializeCollection(list, String.class))
                     .map(List::copyOf)
                     .getOrElse(List.of());
 
-            keywordCache.put(prompt, generatedKeywords);
+            keywordCache.put(combinedPrompt, generatedKeywords);
             return generatedKeywords;
         } finally {
             lock.unlock();
@@ -137,7 +138,8 @@ public class Keywords implements Tool<Void> {
     }
 
     @Override
-    public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public List<RagDocumentContext<Void>> getContext(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
 
         // We expect this tool to be called by multiple threads with the same prompt.
         // The first one should generate the value, and others should get the cached result.
@@ -164,7 +166,7 @@ public class Keywords implements Tool<Void> {
     }
 
     private List<RagDocumentContext<Void>> getContextPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, List.of(prompt), environmentSettings);
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<Void>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
@@ -181,18 +183,22 @@ public class Keywords implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
+
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompts, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
                         getName()))
                 // Some models return markdown wrappers around the JSON array.
-                .map(ragDoc -> ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))))
-                .map(ragDoc -> ragDoc.updateResponse(applyExclusionsToResponse(ragDoc.getResponse(), parsedArgs.getExcludeKeywords())));
+                .map(ragDoc -> ragDoc.updateResponses(ragDoc.getResponses().stream()
+                        .map(r -> StringUtils.trim(findFirstMarkdownBlock.sanitize(r)))
+                        .map(r -> applyExclusionsToResponse(r, parsedArgs.getExcludeKeywords()))
+                        .toList()));
 
         final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
 
@@ -252,9 +258,9 @@ public class Keywords implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final KeywordsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 }
 
@@ -309,7 +315,7 @@ class KeywordsConfig {
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
-        private final String prompt;
+        private final List<String> prompts;
 
         private final Map<String, String> environmentSettings;
 
@@ -323,9 +329,9 @@ class KeywordsConfig {
             return getToStringGenerator().generateHashGetterConfig(this);
         }
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> environmentSettings) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> environmentSettings) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.environmentSettings = Map.copyOf(environmentSettings);
         }
 

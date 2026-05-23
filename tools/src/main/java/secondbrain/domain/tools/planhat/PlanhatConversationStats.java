@@ -83,9 +83,9 @@ public class PlanhatConversationStats implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final PlanhatConversationStatsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final PlanhatConversationStatsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
     @Override
@@ -106,8 +106,9 @@ public class PlanhatConversationStats implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
         return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
                 .onFailure(ex -> java.util.logging.Logger.getLogger(getClass().getName()).warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
                 .getOrElse(List::of);
@@ -118,7 +119,7 @@ public class PlanhatConversationStats implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final PlanhatConversationStatsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final PlanhatConversationStatsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, List.of(prompt), environmentSettings);
 
         if (StringUtils.isBlank(parsedArgs.getCompanyId())) {
             throw new InternalFailure("You must provide a company ID to query PlanHat conversation statistics");
@@ -168,13 +169,13 @@ public class PlanhatConversationStats implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompts, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
         return exceptionMapping.map(result).get();
@@ -293,15 +294,15 @@ class PlanhatConversationStatsConfig {
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
-        private final String prompt;
+        private final List<String> prompts;
         private final Map<String, String> context;
 
         public LocalArguments(
                 final List<ToolArgs> arguments,
-                final String prompt,
+                final List<String> prompts,
                 final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 
@@ -395,14 +396,14 @@ class PlanhatConversationStatsConfig {
             if (getHoursArgument().trusted() && getDaysArgument().trusted()) {
                 return getRawHours();
             }
-            return switchArguments(prompt, getRawHours(), getRawDays(), "hour", "day");
+            return switchArguments(String.join("\n", prompts), getRawHours(), getRawDays(), "hour", "day");
         }
 
         public int getDays() {
             if (getHoursArgument().trusted() && getDaysArgument().trusted()) {
                 return getRawDays();
             }
-            return switchArguments(prompt, getRawDays(), getRawHours(), "day", "hour");
+            return switchArguments(String.join("\n", prompts), getRawDays(), getRawHours(), "day", "hour");
         }
 
         public String getStartPeriod() {
@@ -479,11 +480,11 @@ class PlanhatConversationStatsConfig {
         private int switchArguments(final String prompt, final int a, final int b, final String aKeyword, final String bKeyword) {
             final java.util.Locale locale = java.util.Locale.getDefault();
 
-            if (!prompt.toLowerCase(locale).contains(aKeyword.toLowerCase(locale))) {
+            if (!String.join("\n", prompts).toLowerCase(locale).contains(aKeyword.toLowerCase(locale))) {
                 return 0;
             }
 
-            if (!prompt.toLowerCase(locale).contains(bKeyword.toLowerCase(locale)) && a == 0) {
+            if (!String.join("\n", prompts).toLowerCase(locale).contains(bKeyword.toLowerCase(locale)) && a == 0) {
                 return b;
             }
 

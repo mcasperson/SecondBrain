@@ -52,6 +52,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 
@@ -226,11 +227,12 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
         logger.fine("Getting context for " + getName());
 
-        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         logger.fine("Settings are:\n" + parsedArgs);
 
@@ -266,46 +268,49 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         return ragContext;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         logger.fine(parsedArgs.toString());
 
-        final String cacheKey = generateCacheKey(parsedArgs, prompt);
+        final String cacheKey = generateCacheKey(parsedArgs, prompts);
 
-        return Try.of(() -> localStorage.getOrPutObject(
+        @SuppressWarnings("unchecked")
+        final RagMultiDocumentContext<Void> result = (RagMultiDocumentContext<Void>) Try.of(() -> localStorage.getOrPutObject(
                                 getName(),
-                                getName(),
+                                getName() + "V2",
                                 cacheKey,
                                 parsedArgs.getCacheTtl(),
                                 RagMultiDocumentContext.class,
-                                () -> callPrivate(environmentSettings, prompt, arguments))
+                                () -> callPrivate(environmentSettings, prompts, arguments))
                         .result())
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.info("No value found for " + getName() + " " + cacheKey))
                 .get();
+        return result;
     }
 
-    private String generateCacheKey(final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final String prompt) {
+    private String generateCacheKey(final MultiSlackZenGoogleConfig.LocalArguments parsedArgs, final List<String> prompts) {
         // We need to exclude some static values that do not affect the output from the string that generates the cache key
-        return Integer.toString((toStringGenerator.generateGetterConfig(parsedArgs, parsedArgs.getExcludeCacheGetters()) + "_" + prompt).hashCode());
+        return Integer.toString((toStringGenerator.generateGetterConfig(parsedArgs, parsedArgs.getExcludeCacheGetters()) + "_" + String.join("_", prompts)).hashCode());
     }
 
     private RagMultiDocumentContext<Void> callPrivate(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
-        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompts, arguments))
                 .map(ragContext -> mergeContext(
-                        prompt,
+                        prompts,
                         getInstructions(ragContext)
                                 + "\n" + parsedArgs.getAdditionalSystemPrompt(),
                         ragContext,
@@ -319,10 +324,14 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                     See https://community.n8n.io/t/psa-extracting-output-from-gemini-models/83374
                     Se we do this manually if required.
                  */
-                .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock() ? ragDoc.updateResponse(StringUtils.trim(findFirstMarkdownBlock.sanitize(ragDoc.getResponse()))) : ragDoc)
-                .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<Void>(prompt)
+                .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock()
+                        ? ragDoc.updateResponses(ragDoc.getResponses().stream()
+                                .map(r -> StringUtils.trim(findFirstMarkdownBlock.sanitize(r)))
+                                .toList())
+                        : ragDoc)
+                .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<Void>(prompts)
                         .updateResponse(e.getClass().getSimpleName() + ": No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found."))
-                .recover(NoSuchElementException.class, e -> new RagMultiDocumentContext<Void>(prompt)
+                .recover(NoSuchElementException.class, e -> new RagMultiDocumentContext<Void>(prompts)
                         .updateResponse(e.getClass().getSimpleName() + ": Resulting content does meet minimum context rating."));
 
         return exceptionMapping.map(result).get();
@@ -466,9 +475,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final MultiSlackZenGoogleConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
     @Override
@@ -567,8 +576,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
                 final int value = Try.of(() -> ratingTool.call(
                                 Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, content),
-                                metaField.getRight(),
-                                List.of()).getResponse())
+                                List.of(metaField.getRight()),
+                                List.of()).getResponses().get(0))
                         .map(rating -> Integer.parseInt(rating.trim()))
                         .onFailure(ex -> logger.warning("Rating tool failed for " + metaField.getLeft() + ": " + exceptionHandler.getExceptionMessage(ex)))
                         // Meta-fields are a best effort, and we default to 0
@@ -589,8 +598,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final int value = Try.of(() -> ratingTool.call(
                         Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, result),
-                        parsedArgs.getContextFilterQuestion(),
-                        List.of()).getResponse())
+                        List.of(parsedArgs.getContextFilterQuestion()),
+                        List.of()).getResponses().get(0))
                 .map(rating -> Integer.parseInt(rating.trim()))
                 .onFailure(ex -> logger.warning("Rating tool failed for " + getName() + ": " + exceptionHandler.getExceptionMessage(ex)))
                 // Meta-fields are a best effort, and we default to 0
@@ -629,7 +638,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 // Search for the keywords
-                .map(args -> slackSearch.getContext(envSettings, prompt, args))
+                .map(args -> slackSearch.getContext(envSettings, List.of(prompt), args))
                 // We continue on even if one tool fails, so log and swallow the exception
                 .onFailure(InternalFailure.class, ex -> logger.severe("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                 .onFailure(ExternalFailure.class, ex -> logger.warning("Slack keyword search failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -667,7 +676,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
-                .flatMap(args -> Try.of(() -> gong.getContext(envSettings, prompt, args))
+                .flatMap(args -> Try.of(() -> gong.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.severe("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -704,7 +713,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
-                .flatMap(args -> Try.of(() -> salesforce.getContext(envSettings, prompt, args))
+                .flatMap(args -> Try.of(() -> salesforce.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.severe("Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -740,7 +749,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
-                .flatMap(args -> Try.of(() -> planHat.getContext(envSettings, prompt, args))
+                .flatMap(args -> Try.of(() -> planHat.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.severe("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -764,7 +773,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .map(id -> List.of(
                         new ToolArgs(CommonArguments.MINIMUM_CONTENT_LENGTH, parsedArgs.getMinimumContentLength() + "", true),
                         new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, id, true)))
-                .flatMap(args -> Try.of(() -> planHatUsage.getContext(envSettings, prompt, args))
+                .flatMap(args -> Try.of(() -> planHatUsage.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(ex -> logger.warning("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
@@ -794,7 +803,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", parsedArgs.getKeywords()), true),
                         new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true)))
-                .flatMap(args -> Try.of(() -> googleDocs.getContext(envSettings, prompt, args))
+                .flatMap(args -> Try.of(() -> googleDocs.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.info("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -830,7 +839,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
-                .flatMap(args -> Try.of(() -> slackChannel.getContext(envSettings, prompt, args))
+                .flatMap(args -> Try.of(() -> slackChannel.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.info("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -865,7 +874,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
-                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(envSettings, prompt, args))
+                .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.info("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -877,7 +886,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .toList();
     }
 
-    private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
+    private RagMultiDocumentContext<Void> mergeContext(final List<String> prompts, final String instructions, final List<RagDocumentContext<Void>> context, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
 
         // Elevate the metadata extracted from the child documents to the top level
         final List<MetaObjectResult> metadata = context
@@ -893,14 +902,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         // The overall ratings are also top-level metadata
         results.addAll(getMetaResults(context, parsedArgs));
 
-        return new RagMultiDocumentContext<>(
-                prompt,
-                instructions,
-                context,
-                null,
-                null,
-                parsedArgs.getAnnotationPrefix(),
-                new MetaObjectResults(results, parsedArgs.getMetaReport(), ""));
+        return new RagMultiDocumentContext<Void>(prompts, instructions, context)
+                .withAnnotationPrefix(parsedArgs.getAnnotationPrefix())
+                .updateMetadata(new MetaObjectResults(results, parsedArgs.getMetaReport(), ""));
     }
 
     record PositionalEntity(Entity entity, int position, int total) {
@@ -1512,13 +1516,13 @@ class MultiSlackZenGoogleConfig {
     public class LocalArguments implements LocalSkipEmptyInLastDuration {
         private final List<ToolArgs> arguments;
 
-        private final String prompt;
+        private final List<String> prompts;
 
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 
@@ -1655,7 +1659,7 @@ class MultiSlackZenGoogleConfig {
                     .toList();
 
             if (getAutoGenerateKeywords()) {
-                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt + "\n" + getContextFilterQuestion(), List.of()), false);
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), Stream.concat(prompts.stream(), Stream.of(getContextFilterQuestion())).toList(), List.of()), false);
             }
 
             return keywords;

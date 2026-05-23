@@ -123,9 +123,9 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
     @Override
@@ -143,10 +143,10 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final Try<List<RagDocumentContext<Void>>> result = Try.of(() -> ticketToComments(
                         parsedArgs.getSecretAuthHeader(),
@@ -177,20 +177,14 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
 
-        final ZenDeskTicketConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-
-        final String debugArgs = debugToolArgs.debugArgs(arguments);
-
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompts, arguments))
                 .map(validateList::throwIfEmpty)
                 // Combine the individual zen desk tickets into a parent RagMultiDocumentContext
-                .map(tickets -> new RagMultiDocumentContext<Void>(prompt, INSTRUCTIONS, tickets))
+                .map(tickets -> new RagMultiDocumentContext<Void>(prompts, INSTRUCTIONS, tickets))
                 // Call Ollama with the final prompt
-                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
-                // Clean up the response
-                .map(response -> response.updateResponse(removeSpacing.sanitize(response.getResponse())));
+                .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
         return exceptionMapping.map(result).get();
     }
@@ -511,13 +505,13 @@ class ZenDeskTicketConfig {
     public class LocalArguments implements LocalConfigFilteredItem, LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
-        private final String prompt;
+        private final List<String> prompts;
 
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 
@@ -743,7 +737,7 @@ class ZenDeskTicketConfig {
                     .toList();
 
             if (getAutoGenerateKeywords()) {
-                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt + "\n" + getContextFilterQuestion(), List.of()), false);
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), Stream.concat(prompts.stream(), Stream.of(getContextFilterQuestion())).toList(), List.of()), false);
             }
 
             return keywords;

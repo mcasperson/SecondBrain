@@ -89,6 +89,9 @@ public class CommonArguments {
      * When set to true, the tool automatically generates a set of keywords from the prompt using the
      * Keywords LLM tool, and uses them for document filtering. This removes the need to supply explicit
      * keywords via the {@link #KEYWORDS_ARG} argument.
+     * <p>
+     * Keywords are generated from the combined prompt and filter-question input provided for keyword
+     * generation, so subsequent prompts can also contribute to the set of keywords.
      */
     public static final String AUTO_GENERATE_KEYWORDS_ARG = "autoGenerateKeywords";
     /**

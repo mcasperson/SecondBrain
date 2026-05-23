@@ -34,14 +34,15 @@ public class LLMRagDocSummarizer implements RagDocSummarizer {
                 List.of()
         );
 
-        final String response = llmClient.callWithCache(
+        final var llmResult = llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getDocumentSummaryPrompt(),
                         "You are a helpful agent",
                         List.of(context)),
                 environmentSettings,
                 toolName
-        ).getResponse();
+        );
+        final String response = llmResult.getResponse();
 
         return ragDoc.updateDocument(response)
                 .addIntermediateResult(new IntermediateResult(

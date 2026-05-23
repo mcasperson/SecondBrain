@@ -137,8 +137,9 @@ public class GitHubDiffs implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
         return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
                 .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
                 .getOrElse(List::of);
@@ -149,7 +150,7 @@ public class GitHubDiffs implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, List.of(prompt), environmentSettings);
 
         final String authHeader = "Bearer " + parsedArgs.getSecretToken();
 
@@ -212,16 +213,18 @@ public class GitHubDiffs implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
         final Try<RagMultiDocumentContext<Void>> result = Try
-                .of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragDocs -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDocs, debugArgs))
+                .of(() -> contextList)
+                .map(ragDocs -> new RagMultiDocumentContext<>(prompts, INSTRUCTIONS, ragDocs, debugArgs))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
         final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
@@ -232,9 +235,9 @@ public class GitHubDiffs implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final GitHubDiffConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
     private List<RagDocumentContext<GitHubCommitAndDiff>> convertCommitsToDiffSummaries(
@@ -286,14 +289,15 @@ public class GitHubDiffs implements Tool<Void> {
                 List.of()
         );
 
-        return llmClient.callWithCache(
+        final var llmResult = llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getDiffSummaryPrompt(),
                         "You are a helpful agent",
                         List.of(context)),
                 environmentSettings,
                 getName()
-        ).getResponse();
+        );
+        return llmResult.getResponses().isEmpty() ? llmResult.getResponse() : llmResult.getResponses().get(0);
     }
 
     private List<GitHubCommitAndDiff> getCommits(
@@ -480,13 +484,13 @@ class GitHubDiffConfig {
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
-        private final String prompt;
+        private final List<String> prompts;
 
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 

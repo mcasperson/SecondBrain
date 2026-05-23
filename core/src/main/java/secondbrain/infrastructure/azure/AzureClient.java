@@ -245,9 +245,6 @@ public class AzureClient implements LlmClient {
 
         final int maxChars = getMaxChars(modelContextWindow);
 
-        final List<AzureRequestMessage> messages = new ArrayList<>();
-        messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
-
         // No individual context can be longer than the maxChars.
         // This ensures we always have at least some context available.
         final List<RagDocumentContext<T>> trimmedItems = ragDocs.getIndividualContexts().stream()
@@ -259,36 +256,43 @@ public class AzureClient implements LlmClient {
                 RagDocumentContext::document,
                 maxChars);
 
-        messages.addAll(trimmedList.stream()
-                .map(ragDoc -> new AzureRequestMessage(
-                        "user",
-                        ragDoc.contextLabel() + ": " + ragDoc.document()))
-                .collect(Collectors.toCollection(ArrayList::new)));
+        final List<String> responses = ragDocs.getPrompts().stream().map(prompt -> {
+            final List<AzureRequestMessage> messages = new ArrayList<>();
+            messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
 
-        messages.add(new AzureRequestMessage("user", ragDocs.prompt()));
+            messages.addAll(trimmedList.stream()
+                    .map(ragDoc -> new AzureRequestMessage(
+                            "user",
+                            ragDoc.contextLabel() + ": " + ragDoc.document()))
+                    .collect(Collectors.toCollection(ArrayList::new)));
 
-        final PromptTextGenerator request = AzureRequestMaxCompletionTokensFactory.generateRequest(
-                messages,
-                maxOutputTokens,
-                resolvedReasoningEffort,
-                modelName,
-                UrlUtils.getQueryString(resolvedUrl, "api-version"));
+            messages.add(new AzureRequestMessage("user", prompt));
 
-        final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + resolvedUrl);
+            final PromptTextGenerator request = AzureRequestMaxCompletionTokensFactory.generateRequest(
+                    messages,
+                    maxOutputTokens,
+                    resolvedReasoningEffort,
+                    modelName,
+                    UrlUtils.getQueryString(resolvedUrl, "api-version"));
 
-        logger.fine("Calling Azure LLM");
-        logger.fine(request.generatePromptText());
+            final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + resolvedUrl);
 
-        final CacheResult<String> result = handleCaching(request, tool, promptHash, resolvedUrl, environmentSettings);
+            logger.fine("Calling Azure LLM");
+            logger.fine(request.generatePromptText());
 
-        if (!result.fromCache()) {
-            logger.info("Cache ID: " + tool + "_" + cacheSource + "_" + promptHash);
-        }
+            final CacheResult<String> result = handleCaching(request, tool, promptHash, resolvedUrl, environmentSettings);
 
-        logger.info("LLM Response from " + modelName + (result.fromCache() ? " (from cache)" : ""));
-        logger.info(result.result());
+            if (!result.fromCache()) {
+                logger.info("Cache ID: " + tool + "_" + cacheSource + "_" + promptHash);
+            }
 
-        return ragDocs.updateResponse(result.result());
+            logger.info("LLM Response from " + modelName + (result.fromCache() ? " (from cache)" : ""));
+            logger.info(result.result());
+
+            return result.result();
+        }).toList();
+
+        return ragDocs.updateResponses(responses);
     }
 
     private CacheResult<String> handleCaching(final PromptTextGenerator request, final String tool, final String promptHash, final String resolvedUrl, final Map<String, String> environmentSettings) {

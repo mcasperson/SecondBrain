@@ -52,7 +52,7 @@ public class HelloWorld implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
         return List.of();
     }
@@ -60,20 +60,22 @@ public class HelloWorld implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final HelloWorldConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final HelloWorldConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> new RagMultiDocumentContext<Void>(prompt).updateResponse("Hello, " + parsedArgs.getMessage() + "!"));
-
-        return exceptionMapping.map(result).get();
+        final List<String> responses = prompts.stream().map(prompt -> {
+            final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> new RagMultiDocumentContext<Void>(prompt).updateResponse("Hello, " + parsedArgs.getMessage() + "!"));
+            return exceptionMapping.map(result).get().getResponse();
+        }).toList();
+        return new RagMultiDocumentContext<Void>(prompts).updateResponses(responses);
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final HelloWorldConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final HelloWorldConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
     @Override
@@ -129,13 +131,13 @@ class HelloWorldConfig {
     public class LocalArguments {
         private final List<ToolArgs> arguments;
 
-        private final String prompt;
+        private final List<String> prompts;
 
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 

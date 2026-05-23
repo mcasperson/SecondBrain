@@ -112,8 +112,9 @@ public class GitHubIssues implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
         return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
                 .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
                 .getOrElse(List::of);
@@ -123,7 +124,7 @@ public class GitHubIssues implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, List.of(prompt), environmentSettings);
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<GitHubIssue>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
@@ -155,9 +156,9 @@ public class GitHubIssues implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
     private List<RagDocumentContext<GitHubIssue>> convertIssueToRagDoc(
@@ -179,15 +180,17 @@ public class GitHubIssues implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
-        final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final GitHubIssueConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
         final Try<RagMultiDocumentContext<Void>> result = Try
-                .of(() -> getContext(environmentSettings, prompt, arguments))
+                .of(() -> contextList)
                 .map(ragDocs -> new RagMultiDocumentContext<>(
-                        prompt,
+                        prompts,
                         INSTRUCTIONS,
                         ragDocs,
                         debugArgs))
@@ -225,9 +228,9 @@ public class GitHubIssues implements Tool<Void> {
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
             final int filterRating = Try.of(() -> ratingTool.call(
                                     Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, issue.document()),
-                                    parsedArgs.getContextFilterQuestion(),
+                                    List.of(parsedArgs.getContextFilterQuestion()),
                                     List.of())
-                            .getResponse())
+                            .getResponses().get(0))
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(ex -> parsedArgs.getDefaultRating())
@@ -258,14 +261,15 @@ public class GitHubIssues implements Tool<Void> {
                 List.of()
         );
 
-        final String response = llmClient.callWithCache(
+        final var llmResult = llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getIssueSummaryPrompt(),
                         "You are a helpful agent",
                         List.of(context)),
                 environmentSettings,
                 getName()
-        ).getResponse();
+        );
+        final String response = llmResult.getResponses().isEmpty() ? llmResult.getResponse() : llmResult.getResponses().get(0);
 
         return ragDoc.updateDocument(response)
                 .addIntermediateResult(new IntermediateResult(
@@ -438,12 +442,12 @@ class GitHubIssueConfig {
 
     public class LocalArguments implements LocalConfigFilteredItem {
         private final List<ToolArgs> arguments;
-        private final String prompt;
+        private final List<String> prompts;
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 

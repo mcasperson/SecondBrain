@@ -146,8 +146,9 @@ public class GoogleDocs implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
         return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
                 .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
                 .getOrElse(List::of);
@@ -159,7 +160,7 @@ public class GoogleDocs implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, List.of(prompt), environmentSettings);
 
         // Get preinitialization hooks before ragdocs
         final List<RagDocumentContext<Void>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
@@ -232,11 +233,13 @@ public class GoogleDocs implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragDoc -> mergeContext(prompt, INSTRUCTIONS, ragDoc))
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
+
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragDoc -> mergeContext(prompts, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
@@ -250,14 +253,14 @@ public class GoogleDocs implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final GoogleDocsConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
-    private RagMultiDocumentContext<Void> mergeContext(final String prompt, final String instructions, final List<RagDocumentContext<Void>> context) {
+    private RagMultiDocumentContext<Void> mergeContext(final List<String> prompts, final String instructions, final List<RagDocumentContext<Void>> context) {
         return new RagMultiDocumentContext<>(
-                prompt,
+                prompts,
                 instructions,
                 context);
     }
@@ -347,8 +350,8 @@ public class GoogleDocs implements Tool<Void> {
         );
 
         final RagMultiDocumentContext<String> multiDoc = new RagMultiDocumentContext<>(
-                "You are a helpful agent",
                 parsedArgs.getDocumentSummaryPrompt(),
+                "You are a helpful agent",
                 List.of(context)
         );
 
@@ -356,7 +359,8 @@ public class GoogleDocs implements Tool<Void> {
                         multiDoc,
                         environmentSettings,
                         getName()
-                ).response())
+                ))
+                .map(result -> result.getResponses().isEmpty() ? result.getResponse() : result.getResponses().get(0))
                 .filter(Objects::nonNull)
                 .onFailure(NoSuchElementException.class, ex -> logger.warning("Document summary resulted in no content"))
                 .get();
@@ -375,7 +379,7 @@ public class GoogleDocs implements Tool<Void> {
                 .addToolCall(getName(), Objects.requireNonNullElse(document.id(), "unknownId"));
 
         if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(envSettings, parsedArgs.getContextFilterQuestion(), List.of()).getResponse())
+            final int filterRating = Try.of(() -> ratingTool.call(envSettings, List.of(parsedArgs.getContextFilterQuestion()), List.of()).getResponses().get(0))
                     .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(ex -> parsedArgs.getDefaultRating())
@@ -536,13 +540,13 @@ class GoogleDocsConfig {
     public class LocalArguments implements LocalConfigKeywordsEntity, LocalConfigSummarizer, LocalConfigFilteredItem {
         private final List<ToolArgs> arguments;
 
-        private final String prompt;
+        private final List<String> prompts;
 
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 
@@ -586,7 +590,7 @@ class GoogleDocsConfig {
                     .toList();
 
             if (getAutoGenerateKeywords()) {
-                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt + "\n" + getContextFilterQuestion(), List.of()), false);
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), Stream.concat(prompts.stream(), Stream.of(getContextFilterQuestion())).toList(), List.of()), false);
             }
 
             return keywords;

@@ -13,6 +13,7 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
 
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -62,8 +63,8 @@ public class PromptHandlerOllama implements PromptHandler {
     private ExceptionHandler exceptionHandler;
 
     @Override
-    public PromptHandlerResponse handlePrompt(final Map<String, String> context, final String prompt) {
-        return handlePromptWithRetry(context, prompt, 1);
+    public PromptHandlerResponse handlePrompt(final Map<String, String> context, final List<String> prompts) {
+        return handlePromptWithRetry(context, prompts, 1);
     }
 
     /**
@@ -71,9 +72,11 @@ public class PromptHandlerOllama implements PromptHandler {
      * quantized to 4 bits, can struggle to generate valid JSON in response to a request to select a tool.
      * So we retry a bunch of times to try and get a valid response.
      */
-    public PromptHandlerResponse handlePromptWithRetry(final Map<String, String> context, final String prompt, final int count) {
-        return Try.of(() -> toolSelector.getTool(prompt, context))
-                .map(toolCall -> callTool(toolCall, context, prompt))
+    public PromptHandlerResponse handlePromptWithRetry(final Map<String, String> context, final List<String> prompts, final int count) {
+        // Use the first prompt to select the tool
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
+        return Try.of(() -> toolSelector.getTool(firstPrompt, context))
+                .map(toolCall -> callTool(toolCall, context, prompts))
                 /*
                     Internal errors are not resolved with retries, so we capture the error message
                     and return it to the user.
@@ -85,7 +88,7 @@ public class PromptHandlerOllama implements PromptHandler {
                 .recoverWith(error -> Try.of(() -> {
                     // Selecting the wrong tool can manifest itself as an exception
                     if (count < TOOL_RETRY) {
-                        return handlePromptWithRetry(context, prompt, count + 1);
+                        return handlePromptWithRetry(context, prompts, count + 1);
                     }
                     throw error;
                 }))
@@ -97,7 +100,7 @@ public class PromptHandlerOllama implements PromptHandler {
     }
 
 
-    private PromptHandlerResponse callTool(@Nullable final ToolCall toolCall, final Map<String, String> context, final String prompt) {
+    private PromptHandlerResponse callTool(@Nullable final ToolCall toolCall, final Map<String, String> context, final List<String> prompts) {
         if (toolCall == null) {
             return new PromptResponseSimple("No tool found");
         }
@@ -122,14 +125,13 @@ public class PromptHandlerOllama implements PromptHandler {
                 + ", argumentDebugging: " + argumentDebugging);
 
         /*
-            The tools respond with a RagMultiDocumentContext, which contains the text response from the LLM
-            and the context that was used to build the prompt, including things like IDs of the context items,
-            URLs, and individual sentences.
+            The tool responds with a single RagMultiDocumentContext that contains a list of responses
+            (one per prompt) and the context that was used to build the prompts.
 
             We use this information to generate a standardized output that includes the text response from the LLM,
             links to the context items, and annotations that link the LLM output to the original context.
          */
-        return Try.of(() -> toolCall.call(context, prompt, logger))
+        return Try.of(() -> toolCall.call(context, prompts, logger))
                 .map(document -> generateAnnotatedResponse(
                         document,
                         parsedMinSimilarity,

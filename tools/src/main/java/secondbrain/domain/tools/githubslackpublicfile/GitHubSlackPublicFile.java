@@ -106,8 +106,9 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
         return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
                 .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
                 .getOrElse(List::of);
@@ -117,7 +118,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
             final Map<String, String> environmentSettings,
             final String prompt,
             final List<ToolArgs> arguments) {
-        final GitHubSlackPublicFileConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final GitHubSlackPublicFileConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, List.of(prompt), environmentSettings);
 
         final EntityDirectory entityDirectory = Try.of(() -> fileReader.read(parsedArgs.getUrl()))
                 .map(file -> yamlDeserializer.deserialize(file, EntityDirectory.class))
@@ -142,11 +143,13 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     }
 
     @Override
-    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         logger.fine("Calling " + getName());
 
-        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> getContext(environmentSettings, prompt, arguments))
-                .map(ragContext -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragContext))
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
+
+        final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
+                .map(ragContext -> new RagMultiDocumentContext<>(prompts, INSTRUCTIONS, ragContext))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
         return exceptionMapping.map(result).get();
@@ -158,9 +161,9 @@ public class GitHubSlackPublicFile implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final GitHubSlackPublicFileConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final GitHubSlackPublicFileConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
     private List<RagDocumentContext<Void>> getEntityContext(
@@ -194,7 +197,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(SlackChannel.SLACK_CHANEL_ARG, id, true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
-                .flatMap(args -> Try.of(() -> slackChannel.getContext(context, prompt, args))
+                .flatMap(args -> Try.of(() -> slackChannel.getContext(context, List.of(prompt), args))
                         .onFailure(InternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Slack channel failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
@@ -220,7 +223,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                         new ToolArgs(GitHubIssues.GITHUB_REPO_ARG, id.repository(), true),
                         new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true))
                 )
-                .flatMap(args -> Try.of(() -> gitHubIssues.getContext(context, prompt, args))
+                .flatMap(args -> Try.of(() -> gitHubIssues.getContext(context, List.of(prompt), args))
                         .onFailure(InternalFailure.class, ex -> logger.warning("GitHub issues failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("GitHub issues failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
@@ -244,7 +247,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                                 new ToolArgs("owner", id.organization(), true),
                                 new ToolArgs("repo", id.repository(), true),
                                 new ToolArgs("days", "" + parsedArgs.getDays(), true)))
-                .flatMap(args -> Try.of(() -> gitHubDiffs.getContext(context, prompt, args))
+                .flatMap(args -> Try.of(() -> gitHubDiffs.getContext(context, List.of(prompt), args))
                         .onFailure(InternalFailure.class, ex -> logger.warning("GitHub diffs failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("GitHub diffs failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
@@ -405,12 +408,12 @@ class GitHubSlackPublicFileConfig {
 
     public class LocalArguments {
         private final List<ToolArgs> arguments;
-        private final String prompt;
+        private final List<String> prompts;
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 

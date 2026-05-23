@@ -31,7 +31,7 @@ public class TestTool implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
         return List.of();
     }
@@ -39,9 +39,12 @@ public class TestTool implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
-        return new RagMultiDocumentContext<>("");
+        final List<String> responses = prompts.stream()
+                .map(prompt -> "")
+                .toList();
+        return new RagMultiDocumentContext<Void>(prompts).updateResponses(responses);
     }
 
     @Override
@@ -50,7 +53,7 @@ public class TestTool implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
         return getName().hashCode();
     }
 }

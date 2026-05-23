@@ -159,9 +159,10 @@ public class Salesforce implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
-        final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
+        final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         // Early out if requireCompany is set but no account ID has been supplied
         if (parsedArgs.isRequireCompany() && StringUtils.isBlank(parsedArgs.getAccountId())) {
@@ -216,7 +217,7 @@ public class Salesforce implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments,
             final SalesforceOauthTokenResponse token) {
-        final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, List.of(prompt), environmentSettings);
 
         logger.info("Getting SalesForce context for " + getName() + " with account ID " + parsedArgs.getAccountId());
 
@@ -308,21 +309,21 @@ public class Salesforce implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
 
         logger.fine("Calling " + getName());
 
-        final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         if (parsedArgs.isRequireCompany() && StringUtils.isBlank(parsedArgs.getAccountId())) {
             throw new InternalFailure("You must provide an account ID to query");
         }
 
-        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompt, arguments);
+        final List<RagDocumentContext<Void>> contextList = getContext(environmentSettings, prompts, arguments);
 
         final Try<RagMultiDocumentContext<Void>> result = Try.of(() -> contextList)
-                .map(ragDoc -> new RagMultiDocumentContext<>(prompt, INSTRUCTIONS, ragDoc))
+                .map(ragDoc -> new RagMultiDocumentContext<>(prompts, INSTRUCTIONS, ragDoc))
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()));
 
         final RagMultiDocumentContext<Void> mappedResult = exceptionMapping.map(result).get();
@@ -333,9 +334,9 @@ public class Salesforce implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final SalesforceConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
     @Override
@@ -623,13 +624,13 @@ class SalesforceConfig {
 
         private final List<ToolArgs> arguments;
 
-        private final String prompt;
+        private final List<String> prompts;
 
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 
@@ -716,7 +717,7 @@ class SalesforceConfig {
                 return getRawHours();
             }
 
-            return switchArguments(prompt, getRawHours(), getRawDays(), "hour", "day");
+            return switchArguments(String.join("\n", prompts), getRawHours(), getRawDays(), "hour", "day");
         }
 
         public int getDays() {
@@ -724,7 +725,7 @@ class SalesforceConfig {
                 return getRawDays();
             }
 
-            return switchArguments(prompt, getRawDays(), getRawHours(), "day", "hour");
+            return switchArguments(String.join("\n", prompts), getRawDays(), getRawHours(), "day", "hour");
         }
 
         public String getStartPeriod() {
@@ -788,13 +789,13 @@ class SalesforceConfig {
             final Locale locale = Locale.getDefault();
 
             // If the prompt did not mention the keyword for the first argument, assume that it was never mentioned, and return 0
-            if (!prompt.toLowerCase(locale).contains(aPromptKeyword.toLowerCase(locale))) {
+            if (!String.join("\n", prompts).toLowerCase(locale).contains(aPromptKeyword.toLowerCase(locale))) {
                 return 0;
             }
 
             // If the prompt did mention the first argument, but did not mention the keyword for the second argument,
             // and the first argument is 0, assume the LLM switched things up, and return the second argument
-            if (!prompt.toLowerCase(locale).contains(bPromptKeyword.toLowerCase(locale)) && a == 0) {
+            if (!String.join("\n", prompts).toLowerCase(locale).contains(bPromptKeyword.toLowerCase(locale)) && a == 0) {
                 return b;
             }
 
@@ -914,7 +915,7 @@ class SalesforceConfig {
                     .toList();
 
             if (getAutoGenerateKeywords()) {
-                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt + "\n" + getContextFilterQuestion(), List.of()), false);
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), Stream.concat(prompts.stream(), Stream.of(getContextFilterQuestion())).toList(), List.of()), false);
             }
 
             return keywords;

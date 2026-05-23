@@ -19,6 +19,7 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.toolbuilder.ToolSelector;
 
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -82,14 +83,18 @@ public class Main {
 
         final String format = args.length > 1 ? args[1] : "no-op";
 
-        return entry(getPrompt(args), format, Map.of());
+        return entry(List.of(getPrompt(args)), format, Map.of());
     }
 
     public PromptHandlerResponse entry(final String prompt, final String format, final Map<String, String> context) {
+        return entry(List.of(prompt), format, context);
+    }
+
+    public PromptHandlerResponse entry(final List<String> prompts, final String format, final Map<String, String> context) {
         logger.info("Context: \n" + context);
 
         final StringConverter converter = stringConverterSelector.getStringConverter(format);
-        return Try.of(() -> promptHandler.handlePrompt(context, prompt))
+        return Try.of(() -> promptHandler.handlePrompt(context, prompts))
                 .map(response -> response.updateResponseText(converter))
                 .onSuccess(content -> promptHandlerOutput.printOutput(content, context))
                 .onSuccess(content -> promptHandlerOutput.writeAnnotations(content, context))

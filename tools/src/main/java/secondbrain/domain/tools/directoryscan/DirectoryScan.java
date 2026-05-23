@@ -156,8 +156,9 @@ public class DirectoryScan implements Tool<Void> {
     @Override
     public List<RagDocumentContext<Void>> getContext(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
+        final String prompt = prompts.isEmpty() ? "" : prompts.getFirst();
         return Try.of(() -> getContextPrivate(environmentSettings, prompt, arguments))
                 .onFailure(ex -> logger.warning("Failed to get context for " + getName() + ": " + ExceptionUtils.getRootCauseMessage(ex)))
                 .getOrElse(List::of);
@@ -168,7 +169,7 @@ public class DirectoryScan implements Tool<Void> {
             final String prompt,
             final List<ToolArgs> arguments) {
 
-        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, List.of(prompt), environmentSettings);
 
         if (parsedArgs.getDirectory().isEmpty()) {
             throw new InternalFailure("You must provide a directory to scan");
@@ -195,18 +196,17 @@ public class DirectoryScan implements Tool<Void> {
     @Override
     public RagMultiDocumentContext<Void> call(
             final Map<String, String> environmentSettings,
-            final String prompt,
+            final List<String> prompts,
             final List<ToolArgs> arguments) {
 
-        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
+        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         final String debugArgs = debugToolArgs.debugArgs(arguments);
 
         final Try<RagMultiDocumentContext<Void>> result = Try
-                .of(() -> getContext(environmentSettings, prompt, arguments))
-                // Make sure we had some content for the prompt
+                .of(() -> getContext(environmentSettings, prompts, arguments))
                 .map(validateList::throwIfEmpty)
-                .map(ragDocs -> mergeContext(prompt, INSTRUCTIONS, ragDocs, debugArgs))
+                .map(ragDocs -> mergeContext(prompts, INSTRUCTIONS, ragDocs, debugArgs))
                 .map(ragDoc -> llmClient.callWithCache(
                         ragDoc,
                         environmentSettings,
@@ -220,9 +220,9 @@ public class DirectoryScan implements Tool<Void> {
     }
 
     @Override
-    public int contextHashCode(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
-        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompt, environmentSettings);
-        return parsedArgs.hashCode();
+    public int contextHashCode(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final DirectoryScanConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
+        return 31 * parsedArgs.hashCode() + prompts.hashCode();
     }
 
     private List<String> getFiles(final DirectoryScanConfig.LocalArguments parsedArgs) {
@@ -245,12 +245,12 @@ public class DirectoryScan implements Tool<Void> {
 
 
     private RagMultiDocumentContext<Void> mergeContext(
-            final String prompt,
+            final List<String> prompts,
             final String instructions,
             final List<RagDocumentContext<Void>> ragContext,
             final String debug) {
         return new RagMultiDocumentContext<>(
-                prompt,
+                prompts,
                 instructions,
                 ragContext,
                 debug);
@@ -356,14 +356,15 @@ public class DirectoryScan implements Tool<Void> {
                 List.of()
         );
 
-        return llmClient.callWithCache(
+        final var llmResult = llmClient.callWithCache(
                 new RagMultiDocumentContext<>(
                         parsedArgs.getIndividualDocumentPrompt(),
                         FILE_INSTRUCTIONS,
                         List.of(context)),
                 environmentSettings,
                 getName()
-        ).getResponse();
+        );
+        return llmResult.getResponses().isEmpty() ? llmResult.getResponse() : llmResult.getResponses().get(0);
     }
 }
 
@@ -523,13 +524,13 @@ class DirectoryScanConfig {
     public class LocalArguments implements LocalConfigKeywordsEntity {
         private final List<ToolArgs> arguments;
 
-        private final String prompt;
+        private final List<String> prompts;
 
         private final Map<String, String> context;
 
-        public LocalArguments(final List<ToolArgs> arguments, final String prompt, final Map<String, String> context) {
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> context) {
             this.arguments = List.copyOf(arguments);
-            this.prompt = prompt;
+            this.prompts = List.copyOf(prompts);
             this.context = Map.copyOf(context);
         }
 
@@ -575,7 +576,7 @@ class DirectoryScanConfig {
                     context,
                     CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
                     CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG,
-                    prompt).getSafeValue();
+                    String.join("\n", prompts)).getSafeValue();
         }
 
         public List<String> getExcluded() {
@@ -618,7 +619,7 @@ class DirectoryScanConfig {
                     .toList();
 
             if (getAutoGenerateKeywords()) {
-                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), prompt + "\n" + getContextFilterQuestion(), List.of()), false);
+                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), Stream.concat(prompts.stream(), Stream.of(getContextFilterQuestion())).toList(), List.of()), false);
             }
 
             return keywords;
