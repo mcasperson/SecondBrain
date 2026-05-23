@@ -23,6 +23,7 @@ import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.*;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.config.LocalStorageCacheDisable;
 import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
@@ -133,6 +134,7 @@ public class CosmosLocalStorage implements LocalStorage {
     private Instance<Zipper> zippers;
 
     @Inject
+    @Preferred
     private LocalStorageReadWrite localStorageReadWrite;
 
     @Inject
