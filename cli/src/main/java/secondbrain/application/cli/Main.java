@@ -86,6 +86,10 @@ public class Main {
         return entry(List.of(getPrompt(args)), format, Map.of());
     }
 
+    public PromptHandlerResponse entry(final String prompt, final String format, final Map<String, String> context) {
+        return entry(List.of(prompt), format, context);
+    }
+
     public PromptHandlerResponse entry(final List<String> prompts, final String format, final Map<String, String> context) {
         logger.info("Context: \n" + context);
 
