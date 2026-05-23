@@ -351,8 +351,8 @@ public class GoogleDocs implements Tool<Void> {
         );
 
         final RagMultiDocumentContext<String> multiDoc = new RagMultiDocumentContext<>(
-                "You are a helpful agent",
                 parsedArgs.getDocumentSummaryPrompt(),
+                "You are a helpful agent",
                 List.of(context)
         );
 

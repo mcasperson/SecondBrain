@@ -150,32 +150,26 @@ public class RatingTool implements Tool<Void> {
     @SuppressWarnings("unchecked")
     @Override
     public RagMultiDocumentContext<Void> call(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
-        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
-        final List<String> responses = prompts.stream().map(prompt ->
-                (RagMultiDocumentContext<Void>) Try.of(() -> localStorage.getOrPutObject(
-                                        getName(),
-                                        getName() + "V2",
-                                        Integer.toString((parsedArgs + prompt).hashCode()),
-                                        TTL_SECONDS,
-                                        RagMultiDocumentContext.class,
-                                        () -> callPrivate(environmentSettings, prompt, arguments))
-                                .result())
-                        .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get rating from cache: " + ex.getMessage()))
-                        .getOrElse(() -> new RagMultiDocumentContext<Void>(
-                                prompt,
-                                INSTRUCTIONS,
-                                List.of(new RagDocumentContext<Void>(getName(), getContextLabel(), parsedArgs.getDocument(), List.of()))).updateResponse("-1"))
-        ).map(RagMultiDocumentContext::getResponse).toList();
-
-        return new RagMultiDocumentContext<Void>(prompts).updateResponses(responses);
+        return (RagMultiDocumentContext<Void>) Try.of(() -> localStorage.getOrPutObject(
+                                getName(),
+                                getName() + "V2",
+                                Integer.toString((parsedArgs.toString() + prompts).hashCode()),
+                                TTL_SECONDS,
+                                RagMultiDocumentContext.class,
+                                () -> callPrivate(environmentSettings, prompts, arguments))
+                        .result())
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Failed to get rating from cache: " + ex.getMessage()))
+                .getOrElse(() -> new RagMultiDocumentContext<Void>(prompts)
+                        .updateResponse("-1"));
     }
 
 
-    private RagMultiDocumentContext<Void> callPrivate(final Map<String, String> environmentSettings, final String prompt, final List<ToolArgs> arguments) {
+    private RagMultiDocumentContext<Void> callPrivate(final Map<String, String> environmentSettings, final List<String> prompts, final List<ToolArgs> arguments) {
+        final String firstPrompt = prompts.isEmpty() ? "" : prompts.get(0);
         final HashMapEnvironmentSettings myEnvironmentSettings = new HashMapEnvironmentSettings(environmentSettings);
-        final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, List.of(prompt), environmentSettings);
+        final RatingConfig.LocalArguments parsedArgs = config.new LocalArguments(arguments, prompts, environmentSettings);
 
         // We use multiple models to catch cases where a single model returns inaccurate responses.
         // For example, I have seen chatgpt-5-mini return a rating of 10 for content that is clearly not a 10.
@@ -191,7 +185,7 @@ public class RatingTool implements Tool<Void> {
                         LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort(), parsedArgs.getThirdUrl())
                 )
                 .filter(server -> server.type() != LLMServerType.UNDEFINED)
-                .collect(parallelToStream(server -> getRating(server, environmentSettings, prompt, arguments), sharedExecutor.getExecutor(), 3))
+                .collect(parallelToStream(server -> getRating(server, environmentSettings, firstPrompt, arguments), sharedExecutor.getExecutor(), 3))
                 .toList();
 
 
@@ -229,7 +223,7 @@ public class RatingTool implements Tool<Void> {
              the results of each individual rating call as an intermediate result.
          */
         final RagMultiDocumentContext<Void> retvalue = new RagMultiDocumentContext<Void>(
-                prompt,
+                prompts,
                 INSTRUCTIONS,
                 filteredResults
                         .stream()
