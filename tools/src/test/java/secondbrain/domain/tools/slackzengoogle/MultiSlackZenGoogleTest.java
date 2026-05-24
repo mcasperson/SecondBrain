@@ -4,6 +4,7 @@ import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.inject.Inject;
+import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
@@ -208,18 +209,24 @@ class MultiSlackZenGoogleTest {
 
     @BeforeAll
     static void registerConfig() {
+        final String autodiscovery = System.getenv("SB_COSMOS_AUTODISCOVERY");
+        final String gatewayMode = System.getenv("SB_COSMOS_GATEWAYMODE");
+
+        final var configMap = new java.util.HashMap<String, String>();
+        configMap.put("sb.cosmos.endpoint", "https://localhost:9081");
+        configMap.put("sb.cosmos.key", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==");
+        configMap.put("sb.infrastructure.mock", "true");
+        configMap.put("sb.gong.accessKey", "testAccessKey");
+        configMap.put("sb.gong.accessSecretKey", "testAccessSecretKey");
+        configMap.put("sb.localstorage.provider", "h2");
+        configMap.put("sb.mutex.provider", "file");
+        configMap.put("sb.encryption.password", "testpassword");
+        configMap.put("sb.encryption.salt", "testsalt1234");
+        configMap.put("sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery);
+        configMap.put("sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode);
+
         final var configSource = new PropertiesConfigSource(
-                Map.of(
-                        "sb.cosmos.endpoint", "https://localhost:9081",
-                        "sb.cosmos.key", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
-                        "sb.infrastructure.mock", "true",
-                        "sb.gong.accessKey", "testAccessKey",
-                        "sb.gong.accessSecretKey", "testAccessSecretKey",
-                        "sb.localstorage.provider", "h2",
-                        "sb.mutex.provider", "file",
-                        "sb.encryption.password", "testpassword",
-                        "sb.encryption.salt", "testsalt1234"
-                ),
+                configMap,
                 "TestConfig",
                 Integer.MAX_VALUE
         );
