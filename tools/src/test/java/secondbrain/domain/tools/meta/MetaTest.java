@@ -9,6 +9,7 @@ import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.args.ArgsAccessorSimple;
@@ -144,8 +145,8 @@ class MetaTest {
     @Inject
     private Meta meta;
 
-    @BeforeEach
-    void updateConfig() {
+    @BeforeAll
+    static void registerConfig() {
         final var configSource = new PropertiesConfigSource(
                 Map.of(
                         "sb.cosmos.endpoint", "https://localhost:9081",
