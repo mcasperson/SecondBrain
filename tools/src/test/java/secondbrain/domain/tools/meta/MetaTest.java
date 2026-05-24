@@ -148,9 +148,9 @@ class MetaTest {
     void updateConfig() {
         final var configSource = new PropertiesConfigSource(
                 Map.of(
+                        "sb.cosmos.endpoint", "https://localhost:9081",
+                        "sb.cosmos.key", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
                         "sb.infrastructure.mock", "true",
-                        "sb.llm.client", "ollama",
-                        "sb.ollama.url", "http://localhost:11434",
                         "sb.gong.accessKey", "testAccessKey",
                         "sb.gong.accessSecretKey", "testAccessSecretKey",
                         "sb.localstorage.provider", "h2",
