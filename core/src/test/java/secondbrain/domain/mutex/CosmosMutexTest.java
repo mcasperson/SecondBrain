@@ -49,7 +49,6 @@ public class CosmosMutexTest {
 
         final var configSource = new PropertiesConfigSource(
                 Map.of(
-                        "sb.infrastructure.mock", "true",
                         "sb.cache.disable", "false",
                         "sb.cosmos.endpoint", "https://localhost:9081",
                         "sb.cosmos.key", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
