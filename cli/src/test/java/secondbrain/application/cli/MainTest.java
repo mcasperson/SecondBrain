@@ -336,6 +336,7 @@ class MainTest {
         }
 
         @Produces
+        @secondbrain.domain.injection.Preferred
         public LocalStorageReadWrite localStorageReadWrite() {
             return localStorageMock;
         }
