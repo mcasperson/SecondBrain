@@ -26,10 +26,7 @@ import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.logger.Loggers;
-import secondbrain.domain.persist.CosmosLocalStorage;
-import secondbrain.domain.persist.FileLocalStorageReadWrite;
-import secondbrain.domain.persist.H2LocalStorage;
-import secondbrain.domain.persist.LocalStorageProducer;
+import secondbrain.domain.persist.*;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
@@ -48,6 +45,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(H2LocalStorage.class)
 @AddBeanClasses(CosmosLocalStorage.class)
 @AddBeanClasses(FileLocalStorageReadWrite.class)
+@AddBeanClasses(LocalStorageReadWriteProducer.class)
+@AddBeanClasses(MockLocalStorageReadWrite.class)
 @AddBeanClasses(LocalStorageProducer.class)
 @AddBeanClasses(JdlSentenceVectorizer.class)
 @AddBeanClasses(DocumentTrimmerExactKeywords.class)
