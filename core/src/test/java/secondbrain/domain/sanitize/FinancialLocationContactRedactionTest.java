@@ -150,6 +150,14 @@ class FinancialLocationContactRedactionTest {
     }
 
     @Test
+    void testJsonArrayStringsRedacted2() {
+        final String json = "[{\"Id\":\"blah\",\"Subject\":\"blah\",\"TextBody\":\"For more information, go to https://example.org\"}]";
+        final String result = redaction.sanitize(json);
+        assertTrue(!result.contains("https://example.org"), "URL in array should be redacted");
+        assertDoesNotThrow(() -> new ObjectMapper().readTree(result), "Result should be valid JSON");
+    }
+
+    @Test
     void testJsonMultiplePiiTypesRedacted() {
         final String json = "{\"email\":\"john@example.com\",\"phone\":\"555-123-4567\",\"card\":\"4111111111111111\"}";
         final String result = redaction.sanitize(json);
@@ -195,4 +203,3 @@ class FinancialLocationContactRedactionTest {
         assertEquals(input, redaction.removeEscapeBeforePlaceholder(input));
     }
 }
-
