@@ -36,6 +36,7 @@ import java.util.logging.Logger;
 /**
  * A Mutex implementation that uses Azure Cosmos DB's optimistic concurrency control
  * to implement distributed locking across multiple processes and machines.
+ * The lock is not reentrant.
  */
 @ApplicationScoped
 public class CosmosMutex implements Mutex {
@@ -294,7 +295,7 @@ public class CosmosMutex implements Mutex {
         final Try<String> etag = Try.of(() -> container.readItem(lockName, new PartitionKey(LOCK_PARTITION_VALUE), LockDocument.class).getItem())
                 // If there are any cosmosdb errors, we want to log them
                 .onFailure(ex -> logReadItemFailure(lockName, ex))
-                // We can proceed if the existing lock is stale
+                // We can proceed if the existing lock is stale through to the map function below.
                 .filter(lockDoc -> lockDoc.isLockStale(getLockTtlSeconds()))
                 // If the existing lock was not found, we create a new lock
                 .recover(NotFoundException.class, ex -> new LockDocument(lockName, LOCK_PARTITION_VALUE, Instant.now(), getLockTtlSeconds()))
@@ -324,7 +325,8 @@ public class CosmosMutex implements Mutex {
             return Try.failure(etag.getCause());
         }
 
-        // If we succeeded, run the callback, and then clean up the lock
+        // If we succeeded, run the callback, and then clean up the lock.
+        // We assume the callback will succeed within the TTL of the lock, but this is not enforced.
         return Try.of(callback::apply)
                 .andFinally(() -> releaseLock(etag.get(), lockName));
     }
@@ -351,7 +353,7 @@ public class CosmosMutex implements Mutex {
                 /*
                     There are a number of reasons for this to fail:
                     1. The lock was already deleted (e.g. due to TTL expiry)
-                    2. The lock expired due to TTL expiry, was deleted by Cosmos DB, and recreated by another process so there is a new etag
+                    2. The lock expired due to TTL expiry, was deleted by Cosmos DB, and recreated by another process, so there is a new etag
 
                     We don't fail the process of releasing a lock, as the locked operation has already completed successfully.
                  */

@@ -3,7 +3,7 @@ package secondbrain.domain.exceptions;
 /**
  * Represents a failure to acquire a lock
  */
-public class LockFail extends RuntimeException implements ExternalException {
+public class LockFail extends RuntimeException implements InternalException {
     public LockFail() {
         super();
     }
