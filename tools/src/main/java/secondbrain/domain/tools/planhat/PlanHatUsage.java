@@ -325,7 +325,7 @@ public class PlanHatUsage implements Tool<Void> {
 
 @ApplicationScoped
 class PlanHatUsageConfig {
-    private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24 * 7) + "";
+    private static final String DEFAULT_TTL = (60 * 60 * 24 * 7) + "";
 
     @Inject
     @ConfigProperty(name = "sb.planhat.company")
