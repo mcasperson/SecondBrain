@@ -22,7 +22,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.list.StringToList;
-import secondbrain.domain.mutex.Mutex;
+import secondbrain.domain.mutex.Semaphore;
 import secondbrain.domain.persist.CacheResult;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseInspector;
@@ -52,6 +52,11 @@ import static com.google.common.base.Preconditions.*;
  */
 @ApplicationScoped
 public class AzureClient implements LlmClient {
+    /**
+     * Defines how many concurrent requests we can make of the Azure client
+     */
+    private static final int AZURE_CLIENT_CONCURRENCY = 2;
+
     private final static String cacheSource = "AzureLLMV3";
 
     /**
@@ -151,7 +156,7 @@ public class AzureClient implements LlmClient {
 
     @Inject
     @Preferred
-    private Mutex mutex;
+    private Semaphore semaphore;
 
     @Inject
     private TimeoutHttpClientCaller httpClientCaller;
@@ -346,7 +351,7 @@ public class AzureClient implements LlmClient {
         checkState(url.isPresent(), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
-        return mutex.acquire(getModelLockFile(request), () -> callLocked(request, url.get(), 0));
+        return semaphore.acquire(AZURE_CLIENT_CONCURRENCY, getModelLockFile(request), () -> callLocked(request, url.get(), 0));
     }
 
     private String call(final PromptTextGenerator request, final String resolvedUrl) {
@@ -354,7 +359,7 @@ public class AzureClient implements LlmClient {
         checkState(org.apache.commons.lang3.StringUtils.isNotBlank(resolvedUrl), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
-        return mutex.acquire(getModelLockFile(request), () -> callLocked(request, resolvedUrl, 0));
+        return semaphore.acquire(AZURE_CLIENT_CONCURRENCY, getModelLockFile(request), () -> callLocked(request, resolvedUrl, 0));
     }
 
     private String callLocked(final PromptTextGenerator request, final String resolvedUrl, int retry) {
