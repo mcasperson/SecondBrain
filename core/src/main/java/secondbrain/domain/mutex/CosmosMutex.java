@@ -287,6 +287,21 @@ public class CosmosMutex implements Mutex {
         return acquire(mutexTimeout.getDefaultTimeout(), lockName, callback);
     }
 
+    @Override
+    public <T> Try<T> tryAcquire(final String lockName, final MutexCallback<T> callback) {
+        final ReentrantLock localMutex = localMutexes.computeIfAbsent(lockName, ignored -> new ReentrantLock());
+
+        if (!localMutex.tryLock()) {
+            return Try.failure(new LockFail("Failed to obtain local lock for: " + lockName));
+        }
+
+        try {
+            return tryAcquireAndExecute(container, lockName, callback);
+        } finally {
+            localMutex.unlock();
+        }
+    }
+
     private <T> Try<T> tryAcquireAndExecute(@Nullable final CosmosContainer container, final String lockName, final MutexCallback<T> callback) {
         if (container == null) {
             return Try.failure(new LocalStorageFailure("Cosmos DB client is not initialized"));

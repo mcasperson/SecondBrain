@@ -9,6 +9,7 @@ import secondbrain.domain.mutex.config.MutexTimeout;
 import secondbrain.domain.tryext.TryExtensions;
 
 import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 import java.util.Map;
@@ -57,6 +58,29 @@ public class FileLockMutex implements Mutex {
     @Override
     public <T> T acquire(final String lockName, final MutexCallback<T> callback) {
         return acquire(mutexTimeout.getDefaultTimeout(), lockName, callback);
+    }
+
+    @Override
+    public <T> Try<T> tryAcquire(final String lockName, final MutexCallback<T> callback) {
+        final ReentrantLock localLock = LOCKS.computeIfAbsent(lockName, k -> new ReentrantLock());
+
+        if (!localLock.tryLock()) {
+            return Try.failure(new LockFail("Failed to obtain local lock for: " + lockName));
+        }
+
+        try {
+            return TryExtensions.withResources(
+                            () -> new RandomAccessFile(lockName, "rw").getChannel(),
+                            FileChannel::tryLock,
+                            lock -> callIfNotNull(lock, callback))
+                    .onFailure(OverlappingFileLockException.class, ex -> {
+                        log.severe("""
+                                Lock file is already locked by this JVM (OverlappingFileLockException).
+                                This implementation is not reentrant.""".stripIndent());
+                    });
+        } finally {
+            localLock.unlock();
+        }
     }
 
     public <T> T establishFileLock(final long timeout, final String lockName, final MutexCallback<T> callback) {
