@@ -37,10 +37,7 @@ import secondbrain.domain.persist.CosmosLocalStorage;
 import secondbrain.domain.persist.H2LocalStorage;
 import secondbrain.domain.persist.LocalStorageProducer;
 import secondbrain.domain.persist.LocalStorageReadWrite;
-import secondbrain.domain.persist.config.LocalStorageCacheDisable;
-import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
-import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
-import secondbrain.domain.persist.config.LocalStorageDisableTool;
+import secondbrain.domain.persist.config.*;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.IntermediateResult;
@@ -108,6 +105,8 @@ class MainTest {
                             LocalStorageReadWrite.class,
                             LocalStorageProducer.class,
                             LoggingExceptionHandler.class,
+                            LocalStorageReadOnlyTool.class,
+                            LocalStorageWriteOnlyTool.class,
                             SharedVirtualThreadExecutor.class,
                             ApacheCommonsZStdZipper.class,
                             AesEncryptor.class)
