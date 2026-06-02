@@ -29,6 +29,8 @@ import secondbrain.domain.persist.config.LocalStorageCacheDisable;
 import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
 import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
 import secondbrain.domain.persist.config.LocalStorageDisableTool;
+import secondbrain.domain.persist.config.LocalStorageReadOnlyTool;
+import secondbrain.domain.persist.config.LocalStorageWriteOnlyTool;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.zip.Zipper;
 
@@ -68,6 +70,12 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Inject
     private LocalStorageDisableTool localStorageDisableTool;
+
+    @Inject
+    private LocalStorageWriteOnlyTool localStorageWriteOnlyTool;
+
+    @Inject
+    private LocalStorageReadOnlyTool localStorageReadOnlyTool;
 
     @Inject
     private LocalStorageCacheDisable localStorageCacheDisable;
@@ -275,7 +283,7 @@ public class CosmosLocalStorage implements LocalStorage {
     @Nullable
     public CacheResult<String> getString(final String tool, final String source, final String promptHash) {
         synchronized (CosmosLocalStorage.class) {
-            if (localStorageCacheDisable.isDisabled() || localStorageDisableTool.isToolDisabled(tool) || localStorageCacheWriteOnly.isWriteOnly() || container == null) {
+            if (localStorageCacheDisable.isDisabled() || localStorageDisableTool.isToolDisabled(tool) || localStorageCacheWriteOnly.isWriteOnly() || localStorageWriteOnlyTool.isToolWriteOnly(tool) || container == null) {
                 return new CacheResult<String>(null, null, false);
             }
 
@@ -849,7 +857,7 @@ public class CosmosLocalStorage implements LocalStorage {
     @SuppressWarnings("NullAway")
     private void putStringSync(final String tool, final String source, final String promptHash, final long ttlSeconds, final String value) {
         synchronized (CosmosLocalStorage.class) {
-            if (localStorageCacheDisable.isDisabled() || localStorageCacheReadOnly.isReadOnly() || container == null) {
+            if (localStorageCacheDisable.isDisabled() || localStorageDisableTool.isToolDisabled(tool) || localStorageCacheReadOnly.isReadOnly() || localStorageReadOnlyTool.isToolReadOnly(tool) || container == null) {
                 return;
             }
 
