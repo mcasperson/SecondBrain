@@ -11,22 +11,16 @@ import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import secondbrain.domain.args.ArgsAccessorSimple;
 import secondbrain.domain.annotations.PropertyLabelReaderNullOnFailure;
 import secondbrain.domain.answer.DefaultAnswerFormatterService;
+import secondbrain.domain.args.ArgsAccessorSimple;
 import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.config.MockConfig;
 import secondbrain.domain.context.JdlSentenceVectorizer;
-import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.SimpleSentenceSplitter;
 import secondbrain.domain.converter.JSoupHtmlToText;
-import secondbrain.domain.date.DateParserEverything;
-import secondbrain.domain.date.DateParserHawking;
-import secondbrain.domain.date.DateParserIso8601;
-import secondbrain.domain.date.DateParserUnix;
-import secondbrain.domain.date.DateParserYyyyMmDd;
+import secondbrain.domain.date.*;
 import secondbrain.domain.debug.DebugToolArgsKeyValue;
 import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
@@ -43,24 +37,16 @@ import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.mutex.CosmosMutex;
 import secondbrain.domain.mutex.FileLockMutex;
 import secondbrain.domain.mutex.MutexProducer;
+import secondbrain.domain.mutex.SemaphoreProducer;
 import secondbrain.domain.objects.SecretGetterGenerator;
-import secondbrain.domain.persist.CosmosLocalStorage;
-import secondbrain.domain.persist.FileLocalStorageReadWrite;
-import secondbrain.domain.persist.H2LocalStorage;
-import secondbrain.domain.persist.LocalStorageProducer;
-import secondbrain.domain.persist.LocalStorageReadWriteProducer;
-import secondbrain.domain.persist.MockLocalStorageReadWrite;
+import secondbrain.domain.persist.*;
 import secondbrain.domain.processing.LLMRagDocSummarizer;
 import secondbrain.domain.processing.RatingToolRatingFilter;
 import secondbrain.domain.processing.RatingToolRatingMetadata;
 import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
 import secondbrain.domain.reader.FileReaderSelector;
 import secondbrain.domain.response.OkResponseValidation;
-import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
-import secondbrain.domain.sanitize.GetFirstDigits;
-import secondbrain.domain.sanitize.GetFirstMarkdownBlock;
-import secondbrain.domain.sanitize.RemoveSpacing;
-import secondbrain.domain.sanitize.SanitizeEmail;
+import secondbrain.domain.sanitize.*;
 import secondbrain.domain.timeout.CompletableFutureTimeoutService;
 import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.googledocs.GoogleDocs;
@@ -104,7 +90,6 @@ import secondbrain.infrastructure.zendesk.ZenDeskClientProducer;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnableAutoWeld
@@ -202,6 +187,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(RemoveSpacing.class)
 @AddBeanClasses(SanitizeEmail.class)
 @AddBeanClasses(Llama32ValidateInputs.class)
+@AddBeanClasses(SemaphoreProducer.class)
 class MultiSlackZenGoogleTest {
 
     @Inject

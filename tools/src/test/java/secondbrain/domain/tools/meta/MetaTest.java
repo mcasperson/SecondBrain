@@ -11,19 +11,15 @@ import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import secondbrain.domain.answer.DefaultAnswerFormatterService;
 import secondbrain.domain.args.ArgsAccessorSimple;
 import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.config.MockConfig;
 import secondbrain.domain.context.JdlSentenceVectorizer;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.SimpleSentenceSplitter;
-import secondbrain.domain.date.DateParserEverything;
-import secondbrain.domain.date.DateParserHawking;
-import secondbrain.domain.date.DateParserIso8601;
-import secondbrain.domain.date.DateParserUnix;
-import secondbrain.domain.date.DateParserYyyyMmDd;
+import secondbrain.domain.date.*;
 import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.exceptionhandling.StandardExceptionMapping;
@@ -38,19 +34,14 @@ import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.mutex.CosmosMutex;
 import secondbrain.domain.mutex.FileLockMutex;
 import secondbrain.domain.mutex.MutexProducer;
+import secondbrain.domain.mutex.SemaphoreProducer;
 import secondbrain.domain.objects.SecretGetterGenerator;
-import secondbrain.domain.persist.CosmosLocalStorage;
-import secondbrain.domain.persist.FileLocalStorageReadWrite;
-import secondbrain.domain.persist.H2LocalStorage;
-import secondbrain.domain.persist.LocalStorageProducer;
-import secondbrain.domain.persist.LocalStorageReadWriteProducer;
-import secondbrain.domain.persist.MockLocalStorageReadWrite;
+import secondbrain.domain.persist.*;
 import secondbrain.domain.processing.LLMRagDocSummarizer;
 import secondbrain.domain.processing.RatingToolRatingFilter;
 import secondbrain.domain.processing.RatingToolRatingMetadata;
 import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
 import secondbrain.domain.response.OkResponseValidation;
-import secondbrain.domain.answer.DefaultAnswerFormatterService;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.sanitize.GetFirstDigits;
 import secondbrain.domain.sanitize.GetFirstMarkdownBlock;
@@ -141,6 +132,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(ApacheCommonsZStdZipper.class)
 @AddBeanClasses(TrimmedCommaSeparatedStringToList.class)
 @AddBeanClasses(MessageTooLongResponseInspector.class)
+@AddBeanClasses(SemaphoreProducer.class)
 class MetaTest {
 
     @Inject
