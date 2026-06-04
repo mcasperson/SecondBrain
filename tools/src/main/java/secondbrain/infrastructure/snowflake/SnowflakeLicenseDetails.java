@@ -25,7 +25,9 @@ public record SnowflakeLicenseDetails(
         @Nullable Integer machinesActive,
         @Nullable Integer machinesActive30dPrior,
         @Nullable Double deploymentsPerDayCurrent,
-        @Nullable Double deploymentsPerDay30dPrior
+        @Nullable Double deploymentsPerDay30dPrior,
+        @Nullable Integer licensedTargets,
+        @Nullable Integer licensedTargets30dPrior
 ) {
     public Integer getTotalLicenseCount() {
         return Objects.requireNonNullElse(totalLicenseCount, 0);
@@ -103,6 +105,14 @@ public record SnowflakeLicenseDetails(
         return Objects.requireNonNullElse(deploymentsPerDay30dPrior, 0.0);
     }
 
+    public Integer getLicensedTargets() {
+        return Objects.requireNonNullElse(licensedTargets, 0);
+    }
+
+    public Integer getLicensedTargets30dPrior() {
+        return Objects.requireNonNullElse(licensedTargets30dPrior, 0);
+    }
+
     public int getProjectsPercentChange() {
         return getProjects30dPrior() == 0 ? 0 : (int) ((getProjects() - getProjects30dPrior()) * 100.0 / getProjects30dPrior());
     }
@@ -135,6 +145,10 @@ public record SnowflakeLicenseDetails(
         return getDeploymentsPerDay30dPrior() == 0.0 ? 0 : (int) ((getDeploymentsPerDayCurrent() - getDeploymentsPerDay30dPrior()) * 100.0 / getDeploymentsPerDay30dPrior());
     }
 
+    public int getLicensedTargetsPercentChange() {
+        return getLicensedTargets30dPrior() == 0 ? 0 : (int) ((getLicensedTargets() - getLicensedTargets30dPrior()) * 100.0 / getLicensedTargets30dPrior());
+    }
+
     public static SnowflakeLicenseDetails fromResultSet(final java.sql.ResultSet rs) throws java.sql.SQLException {
         final java.sql.Date lastRecordedAtDate = rs.getDate("LAST_RECORDED_AT");
         return new SnowflakeLicenseDetails(
@@ -157,8 +171,9 @@ public record SnowflakeLicenseDetails(
                 rs.getObject("MACHINES_ACTIVE", Integer.class),
                 rs.getObject("MACHINES_ACTIVE_30D_PRIOR", Integer.class),
                 rs.getObject("DEPLOYMENTS_PER_DAY_CURRENT", Double.class),
-                rs.getObject("DEPLOYMENTS_PER_DAY_30D_PRIOR", Double.class)
+                rs.getObject("DEPLOYMENTS_PER_DAY_30D_PRIOR", Double.class),
+                rs.getObject("LICENSED_TARGETS", Integer.class),
+                rs.getObject("LICENSED_TARGETS_30D_PRIOR", Integer.class)
         );
     }
 }
-
