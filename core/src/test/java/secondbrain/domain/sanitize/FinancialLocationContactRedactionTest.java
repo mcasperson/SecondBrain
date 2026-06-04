@@ -7,9 +7,7 @@ import secondbrain.domain.json.JsonDeserializerJackson;
 
 import java.lang.reflect.Field;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("NullAway")
 class FinancialLocationContactRedactionTest {
@@ -164,6 +162,16 @@ class FinancialLocationContactRedactionTest {
         assertTrue(result.contains("{{{REDACTED-EMAIL}}}"), "Email in JSON should be redacted");
         assertTrue(result.contains("{{{REDACTED-PHONE}}}"), "Phone in JSON should be redacted");
         assertTrue(result.contains("{{{REDACTED-CREDIT-CARD}}}"), "Credit card in JSON should be redacted");
+    }
+
+    @Test
+    void testJsonMultiplePiiTypesRedacted2() {
+        final String json = "{\"email\":\"john@example.com\",\"phone\":\"555-123-4567\",\"card\":4111111111111111}";
+        final String result = redaction.sanitize(json);
+        assertTrue(result.contains("{{{REDACTED-EMAIL}}}"), "Email in JSON should be redacted");
+        assertTrue(result.contains("{{{REDACTED-PHONE}}}"), "Phone in JSON should be redacted");
+        assertTrue(result.contains("4111111111111111"), "Integer fields are retained");
+        assertDoesNotThrow(() -> new ObjectMapper().readTree(result), "Result should be valid JSON");
     }
 
     // ---- removeEscapeBeforePlaceholder ----
