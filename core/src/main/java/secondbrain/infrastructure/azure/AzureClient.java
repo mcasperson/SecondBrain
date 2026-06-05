@@ -52,10 +52,7 @@ import static com.google.common.base.Preconditions.*;
  */
 @ApplicationScoped
 public class AzureClient implements LlmClient {
-    /**
-     * Defines how many concurrent requests we can make of the Azure client
-     */
-    private static final int AZURE_CLIENT_CONCURRENCY = 2;
+
 
     private final static String cacheSource = "AzureLLMV3";
 
@@ -153,6 +150,13 @@ public class AzureClient implements LlmClient {
     @Inject
     @ConfigProperty(name = "sb.azurellm.lock", defaultValue = "sb_azure.lock")
     private String lockFile;
+
+    /**
+     * Defines how many concurrent requests we can make of the Azure client
+     */
+    @Inject
+    @ConfigProperty(name = "sb.azurellm.concurrency", defaultValue = "2")
+    private Integer concurrency;
 
     @Inject
     @Preferred
@@ -351,7 +355,7 @@ public class AzureClient implements LlmClient {
         checkState(url.isPresent(), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
-        return semaphore.acquire(AZURE_CLIENT_CONCURRENCY, getModelLockFile(request), () -> callLocked(request, url.get(), 0));
+        return semaphore.acquire(concurrency, getModelLockFile(request), () -> callLocked(request, url.get(), 0));
     }
 
     private String call(final PromptTextGenerator request, final String resolvedUrl) {
@@ -359,7 +363,7 @@ public class AzureClient implements LlmClient {
         checkState(org.apache.commons.lang3.StringUtils.isNotBlank(resolvedUrl), "Azure LLM URL is not configured. Please set sb.azurellm.url");
         checkState(model.isPresent(), "Azure LLM model is not configured. Please set sb.azurellm.model");
 
-        return semaphore.acquire(AZURE_CLIENT_CONCURRENCY, getModelLockFile(request), () -> callLocked(request, resolvedUrl, 0));
+        return semaphore.acquire(concurrency, getModelLockFile(request), () -> callLocked(request, resolvedUrl, 0));
     }
 
     private String callLocked(final PromptTextGenerator request, final String resolvedUrl, int retry) {
