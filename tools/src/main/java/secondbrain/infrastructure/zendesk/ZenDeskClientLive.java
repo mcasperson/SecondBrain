@@ -193,7 +193,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final List<ZenDeskTicket> result = new ArrayList<>();
 
-        for (int currentPage = page; currentPage < maxPage; currentPage++) {
+        for (int currentPage = page; currentPage <= maxPage; currentPage++) {
             logger.fine("Getting ZenDesk tickets, page " + currentPage + " for query: " + query);
 
             RATE_LIMITER.acquire();
