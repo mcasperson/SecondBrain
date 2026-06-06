@@ -98,11 +98,11 @@ public class ZenDeskClientLive implements ZenDeskClient {
         // When an organization is defined, we only need 1 page
         if (StringUtils.isNotBlank(organization)) {
             query.add("organization:" + organization);
-            return !getTickets(authorization, url, String.join(" ", query), 1, 1, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
+            return !getTickets(authorization, url, String.join(" ", query), 1, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
         }
 
         // When an organization is not defined, we must return all items
-        return !getTickets(authorization, url, String.join(" ", query), 1, MAX_PAGES, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
+        return !getTickets(authorization, url, String.join(" ", query), MAX_PAGES, "ZenDeskApiTicketsDurationV2", (int) duration.getDuration().toSeconds()).isEmpty();
     }
 
     /**
@@ -120,7 +120,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
             throw new IllegalArgumentException("Query is required");
         }
 
-        return getTickets(authorization, url, query, 1, MAX_PAGES, "ZenDeskApiTicketsV2", ttlSeconds);
+        return getTickets(authorization, url, query, MAX_PAGES, "ZenDeskApiTicketsV2", ttlSeconds);
     }
 
     @Override
@@ -146,7 +146,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
             String authorization,
             String url,
             String query,
-            int page,
             int maxPage,
             String source,
             int ttlSeconds) {
@@ -157,7 +156,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 DigestUtils.sha256Hex(url + query + maxPage),
                 ttlSeconds,
                 ZenDeskTicket[].class,
-                () -> getTicketsApi(authorization, url, query, page, maxPage)).result();
+                () -> getTicketsApi(authorization, url, query, maxPage)).result();
 
         return Arrays.asList(value);
     }
@@ -166,11 +165,10 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String authorization,
             final String url,
             final String query,
-            final int page,
             final int maxPage) {
         return mutex.acquire(
                 lockFile,
-                () -> getTicketsApiLocked(authorization, url, query, page, maxPage));
+                () -> getTicketsApiLocked(authorization, url, query, maxPage));
     }
 
     /**
@@ -184,7 +182,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
             final String authorization,
             final String url,
             final String query,
-            final int page,
             final int maxPage) {
 
         if (StringUtils.isBlank(query)) {
@@ -193,7 +190,7 @@ public class ZenDeskClientLive implements ZenDeskClient {
 
         final List<ZenDeskTicket> result = new ArrayList<>();
 
-        for (int currentPage = page; currentPage <= maxPage; currentPage++) {
+        for (int currentPage = 1; currentPage <= maxPage; currentPage++) {
             logger.fine("Getting ZenDesk tickets, page " + currentPage + " for query: " + query);
 
             RATE_LIMITER.acquire();
@@ -228,10 +225,6 @@ public class ZenDeskClientLive implements ZenDeskClient {
             if (response.next_page() == null) {
                 break;
             }
-        }
-
-        if (page >= maxPage) {
-            logger.warning("Reached maximum offset of " + maxPage + " when fetching Zendesk conversations");
         }
 
         return result.toArray(ZenDeskTicket[]::new);
