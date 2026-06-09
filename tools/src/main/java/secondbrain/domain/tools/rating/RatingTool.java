@@ -175,7 +175,7 @@ public class RatingTool implements Tool<Void> {
         // description rather than a number. I have seen this a lot with Phi-4.
         // If we have additional models, and we are ignoring invalid responses, then we simply filter out
         // any invalid responses and take the average of the valid ones.
-        final List<RatingDetails> results = Stream.of(
+        final List<LLMServerDetails> servers = new ArrayList<>(Stream.of(
                         StringUtils.isBlank(parsedArgs.getFirstModel())
                                 ? LLMServerDetails.fromEnvironment()
                                 : LLMServerDetails.custom(parsedArgs.getFirstModel(), parsedArgs.getFirstContextWindow(), parsedArgs.getFirstReasoningEffort(), parsedArgs.getFirstUrl()),
@@ -183,6 +183,12 @@ public class RatingTool implements Tool<Void> {
                         LLMServerDetails.custom(parsedArgs.getThirdModel(), parsedArgs.getThirdContextWindow(), parsedArgs.getThirdReasoningEffort(), parsedArgs.getThirdUrl())
                 )
                 .filter(server -> server.type() != LLMServerType.UNDEFINED)
+                .toList());
+
+        // Call the rating LLMs in a random order
+        Collections.shuffle(servers);
+
+        final List<RatingDetails> results = servers.stream()
                 .collect(parallelToStream(server -> getRating(server, environmentSettings, prompts, arguments), sharedExecutor.getExecutor(), 3))
                 .toList();
 

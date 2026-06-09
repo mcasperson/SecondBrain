@@ -282,8 +282,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
         final String cacheKey = generateCacheKey(parsedArgs, prompts);
 
-        @SuppressWarnings("unchecked")
-        final RagMultiDocumentContext<Void> result = (RagMultiDocumentContext<Void>) Try.of(() -> localStorage.getOrPutObject(
+        @SuppressWarnings("unchecked") final RagMultiDocumentContext<Void> result = (RagMultiDocumentContext<Void>) Try.of(() -> localStorage.getOrPutObject(
                                 getName(),
                                 getName() + "V2",
                                 cacheKey,
@@ -326,8 +325,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                  */
                 .map(ragDoc -> parsedArgs.getStripMarkdownCodeBlock()
                         ? ragDoc.updateResponses(ragDoc.getResponses().stream()
-                                .map(r -> StringUtils.trim(findFirstMarkdownBlock.sanitize(r)))
-                                .toList())
+                        .map(r -> StringUtils.trim(findFirstMarkdownBlock.sanitize(r)))
+                        .toList())
                         : ragDoc)
                 .recover(InsufficientContext.class, e -> new RagMultiDocumentContext<Void>(prompts)
                         .updateResponse(e.getClass().getSimpleName() + ": No Salesforce emails, ZenDesk tickets, Slack messages, or PlanHat activities found."))
@@ -589,24 +588,6 @@ public class MultiSlackZenGoogle implements Tool<Void> {
         }
 
         return results;
-    }
-
-    private boolean resultMatchesRating(final String result, final MultiSlackZenGoogleConfig.LocalArguments parsedArgs) {
-        if (StringUtils.isBlank(parsedArgs.getContextFilterQuestion())) {
-            return true;
-        }
-
-        final int value = Try.of(() -> ratingTool.call(
-                        Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, result),
-                        List.of(parsedArgs.getContextFilterQuestion()),
-                        List.of()).getResponses().get(0))
-                .map(rating -> Integer.parseInt(rating.trim()))
-                .onFailure(ex -> logger.warning("Rating tool failed for " + getName() + ": " + exceptionHandler.getExceptionMessage(ex)))
-                // Meta-fields are a best effort, and we default to 0
-                .recover(ex -> parsedArgs.getDefaultRating())
-                .get();
-
-        return value >= parsedArgs.getContextFilterMinimumRating();
     }
 
     /**
