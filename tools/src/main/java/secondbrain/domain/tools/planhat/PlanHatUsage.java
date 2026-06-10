@@ -202,12 +202,10 @@ public class PlanHatUsage implements Tool<Void> {
                 ? Map.of()
                 : parsedArgs.getCustomPersons()
                 .filter(StringUtils::isNotBlank)
+                .filter(customFieldKey -> StringUtils.isNotBlank(company.getCustomStringKey(customFieldKey)))
                 .collect(Collectors.toMap(
                         customFieldKey -> customFieldKey,
                         customFieldKey -> {
-                            if (StringUtils.isBlank(company.getCustomStringKey(customFieldKey))) {
-                                return "";
-                            }
                             // Step 2: fetch the user by the resolved ID
                             return Try.withResources(clientConstructor::getClient)
                                     .of(client -> planHatClient.getUser(
@@ -267,11 +265,12 @@ public class PlanHatUsage implements Tool<Void> {
         final List<RagDocumentContext<Company>> companyPeopleContext = propertyLabelDescriptionValues
                 .stream()
                 .filter(p -> "Person".equalsIgnoreCase(p.type()))
+                .filter(p -> StringUtils.isNotBlank(p.getValueString()))
                 .map(p ->
                         Try.withResources(clientConstructor::getClient)
                                 .of(client -> planHatClient.getUser(
                                         client,
-                                        p.value().toString(),
+                                        p.getValueString(),
                                         // TODO: work out a way to identify planhat instances with custom fields. This logic assumes one planhat instance.
                                         tokens.getFirst().getLeft(),
                                         tokens.getFirst().getRight(),
