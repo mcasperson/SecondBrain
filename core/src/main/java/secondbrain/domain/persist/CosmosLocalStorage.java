@@ -25,12 +25,7 @@ import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.*;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializer;
-import secondbrain.domain.persist.config.LocalStorageCacheDisable;
-import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
-import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
-import secondbrain.domain.persist.config.LocalStorageDisableTool;
-import secondbrain.domain.persist.config.LocalStorageReadOnlyTool;
-import secondbrain.domain.persist.config.LocalStorageWriteOnlyTool;
+import secondbrain.domain.persist.config.*;
 import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.zip.Zipper;
 
@@ -658,7 +653,7 @@ public class CosmosLocalStorage implements LocalStorage {
                     }
                 })
                 .mapTry(r -> new CacheResult<T>(deserializer.deserialize(r.result()), null, true))
-                .onFailure(DeserializationFailed.class, ex -> logger.warning("Failed to deserialize cached object: " + exceptionHandler.getExceptionMessage(ex)))
+                .onFailure(DeserializationFailed.class, ex -> logger.warning("Failed to deserialize cached object for tool " + tool + " source " + source + " prompt " + promptHash + ": " + exceptionHandler.getExceptionMessage(ex)))
                 .recoverWith(ex -> Try.of(() -> {
                             logger.fine("Cache lookup missed for tool " + tool + " source " + source + " prompt " + promptHash);
                             logger.fine("Exception: " + exceptionHandler.getExceptionMessage(ex));
