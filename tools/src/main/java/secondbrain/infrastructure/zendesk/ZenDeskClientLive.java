@@ -158,6 +158,10 @@ public class ZenDeskClientLive implements ZenDeskClient {
                 ZenDeskTicket[].class,
                 () -> getTicketsApi(authorization, url, query, maxPage)).result();
 
+        if (value == null) {
+            return Collections.emptyList();
+        }
+
         return Arrays.asList(value);
     }
 

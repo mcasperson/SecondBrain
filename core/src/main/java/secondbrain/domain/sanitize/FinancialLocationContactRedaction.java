@@ -20,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 @ApplicationScoped
 @Identifier("financialLocationContactRedaction")
@@ -36,6 +37,9 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
 
     @Inject
     private Instance<Unredaction> unredactions;
+
+    @Inject
+    private Logger logger;
 
     @PostConstruct
     void construct() {
@@ -131,8 +135,10 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
             return document;
         }
 
+        final Optional<Map<String, Object>> jsonMap = jsonDeserializer.tryDeserializeMap(document, String.class, Object.class);
+
         // Try to parse the document as a JSON object; if successful, filter strings recursively
-        final String redacted = Try.of(() -> jsonDeserializer.tryDeserializeMap(document, String.class, Object.class))
+        final String redacted = Try.of(() -> jsonMap)
                 .filter(Optional::isPresent)
                 .map(map -> filterMap(map.get(), service))
                 .map(jsonDeserializer::serialize)
@@ -143,6 +149,13 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
             // Remove unwanted sanitizations
             return Seq.seq(unredactions).foldLeft(redacted, (current, unredaction) ->
                     unredaction.unredact(document, current));
+        }
+
+        // A sanity check to make sure we still have valid JSON after redaction
+        if (jsonMap.isPresent()) {
+            if (jsonDeserializer.tryDeserializeMap(redacted, String.class, Object.class).isEmpty()) {
+                logger.severe("Failed to deserialize redacted document back into JSON. Original document\n" + document + "\nredacted document\n" + redacted);
+            }
         }
 
         return redacted;
