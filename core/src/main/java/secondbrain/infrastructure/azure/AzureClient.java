@@ -84,6 +84,8 @@ public class AzureClient implements LlmClient {
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
     private static final int API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 30;
 
+    private static final double DEFAULT_RATE_LIMIT_PER_SECOND = 4.0;
+
     // Default rate is around 250 requests per minute.
     private static final Map<String, RateLimiter> RATE_LIMITERS = new ConcurrentHashMap<>();
 
@@ -157,6 +159,10 @@ public class AzureClient implements LlmClient {
     @Inject
     @ConfigProperty(name = "sb.azurellm.concurrency", defaultValue = "2")
     private Integer concurrency;
+
+    @Inject
+    @ConfigProperty(name = "sb.azurellm.rateLimitPerSecond", defaultValue = DEFAULT_RATE_LIMIT_PER_SECOND + "")
+    private Double rateLimitPerSecond;
 
     @Inject
     @Preferred
@@ -372,7 +378,7 @@ public class AzureClient implements LlmClient {
         }
 
         // We limit per model
-        RATE_LIMITERS.getOrDefault(request.getModel(), RateLimiter.create(4)).acquire();
+        RATE_LIMITERS.computeIfAbsent(request.getModel(), k -> RateLimiter.create(rateLimitPerSecond)).acquire();
 
         return Try.of(() -> httpClientCaller.call(
                         () -> clientConstructor.getClient(API_CONNECTION_TIMEOUT_SECONDS_DEFAULT, API_CALL_TIMEOUT_SECONDS_DEFAULT),
