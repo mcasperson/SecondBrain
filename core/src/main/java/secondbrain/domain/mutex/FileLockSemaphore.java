@@ -8,6 +8,7 @@ import secondbrain.domain.mutex.config.MutexTimeout;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -33,9 +34,11 @@ public class FileLockSemaphore implements Semaphore {
     private MutexTimeout mutexTimeout;
 
     @Override
-    public <T> T acquire(final int allowed, final long timeout, final String lockName, final MutexCallback<T> callback) {
+    public <T> T acquire(final int allowed, final long timeoutMilliseconds, final String lockName, final MutexCallback<T> callback) {
         checkArgument(allowed > 0, "Allowed concurrency must be at least 1");
+        checkArgument(timeoutMilliseconds >= 0, "Timeout must be greater than or equal to 0");
 
+        final long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(timeoutMilliseconds);
         final long startTime = System.nanoTime();
 
         while (true) {
@@ -63,13 +66,14 @@ public class FileLockSemaphore implements Semaphore {
                 return result.get(); // This will throw the underlying exception
             }
 
-            final long elapsed = System.nanoTime() - startTime;
-            if (elapsed >= timeout) {
-                throw new LockFail("Failed to obtain semaphore slot within the specified timeout: " + timeout + "ms for lock: " + lockName);
+            final long elapsedNanos = System.nanoTime() - startTime;
+            if (elapsedNanos >= timeoutNanos) {
+                throw new LockFail("Failed to obtain semaphore slot within the specified timeout: " + timeoutMilliseconds + "ms for lock: " + lockName);
             }
 
             // Sleep before retrying
-            final long sleepMs = Math.min(SLEEP_MS, timeout - elapsed);
+            final long remainingMs = TimeUnit.NANOSECONDS.toMillis(timeoutNanos - elapsedNanos);
+            final long sleepMs = Math.min(SLEEP_MS, remainingMs);
             Try.run(() -> Thread.sleep(sleepMs));
         }
     }
