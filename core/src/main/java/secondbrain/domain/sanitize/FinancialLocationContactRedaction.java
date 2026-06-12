@@ -125,7 +125,7 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
     }
 
     @Override
-    public @Nullable String sanitize(@Nullable String document, boolean unsanitize) {
+    public @Nullable String sanitize(@Nullable final String document, final boolean unsanitize) {
         if (StringUtils.isBlank(document)) {
             return "";
         }
@@ -136,12 +136,13 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
         }
 
         final Optional<Map<String, Object>> jsonMap = jsonDeserializer.tryDeserializeMap(document, String.class, Object.class);
+        final Optional<List<Object>> jsonList = jsonDeserializer.tryDeserializeCollection(document, Object.class);
 
         // Try to parse the document as a JSON object; if successful, filter strings recursively
-        final String redacted = Try.of(() -> jsonMap)
-                .filter(Optional::isPresent)
-                .map(map -> filterMap(map.get(), service))
+        final String redacted = Try.of(() -> filterMap(jsonMap.get(), service))
                 .map(jsonDeserializer::serialize)
+                .recoverWith(ex -> Try.of(() -> filterValue(jsonList.get(), service))
+                        .map(jsonDeserializer::serialize))
                 .recover(ex -> filterPlainText(document, service))
                 .get();
 
@@ -152,7 +153,7 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
         }
 
         // A sanity check to make sure we still have valid JSON after redaction
-        if (jsonMap.isPresent()) {
+        if (jsonMap.isPresent() || jsonList.isPresent()) {
             if (jsonDeserializer.tryDeserializeMap(redacted, String.class, Object.class).isEmpty()) {
                 logger.severe("Failed to deserialize redacted document back into JSON. Original document\n" + document + "\nredacted document\n" + redacted);
             }

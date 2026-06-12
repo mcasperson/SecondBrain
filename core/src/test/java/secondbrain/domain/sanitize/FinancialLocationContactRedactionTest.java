@@ -2,10 +2,13 @@ package secondbrain.domain.sanitize;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.json.JsonDeserializerJackson;
 
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -209,5 +212,14 @@ class FinancialLocationContactRedactionTest {
     void testRemoveEscape_backslashNotFollowedByTripleBraceUnchanged() {
         final String input = "path\\to\\file and \\{single}";
         assertEquals(input, redaction.removeEscapeBeforePlaceholder(input));
+    }
+
+    @Test
+    @Disabled("Requires a specific scratch file to be present, can be enabled for manual testing")
+    void testSanitizeScratchFileProducesValidJson() throws Exception {
+        final Path filePath = Path.of("/Users/matthewcasperson/Library/Application Support/JetBrains/IntelliJIdea2026.1/scratches/scratch_45.json");
+        final String content = Files.readString(filePath);
+        final String result = redaction.sanitize(content);
+        assertDoesNotThrow(() -> new ObjectMapper().readTree(result), "Sanitized scratch file should be valid JSON");
     }
 }
