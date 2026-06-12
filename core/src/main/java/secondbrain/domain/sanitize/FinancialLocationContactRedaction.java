@@ -141,7 +141,7 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
         // Try to parse the document as a JSON object; if successful, filter strings recursively
         final String redacted = Try.of(() -> filterMap(jsonMap.get(), service))
                 .map(jsonDeserializer::serialize)
-                .recoverWith(ex -> Try.of(() -> filterValue(jsonList.get(), service))
+                .recoverWith(ex -> Try.of(() -> filterList(jsonList.get(), service))
                         .map(jsonDeserializer::serialize))
                 .recover(ex -> filterPlainText(document, service))
                 .get();
@@ -169,11 +169,15 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
         } else if (value instanceof Map<?, ?> map) {
             return filterMap((Map<String, Object>) map, service);
         } else if (value instanceof List<?> list) {
-            return list.stream()
-                    .map(item -> filterValue(item, service))
-                    .toList();
+            return filterList(list, service);
         }
         return value;
+    }
+
+    private List<Object> filterList(final List<?> list, final PlainTextFilterService service) {
+        return list.stream()
+                .map(item -> filterValue(item, service))
+                .toList();
     }
 
     private Map<String, Object> filterMap(final Map<String, Object> map, final PlainTextFilterService service) {
