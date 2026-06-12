@@ -222,4 +222,32 @@ class FinancialLocationContactRedactionTest {
         final String result = redaction.sanitize(content);
         assertDoesNotThrow(() -> new ObjectMapper().readTree(result), "Sanitized scratch file should be valid JSON");
     }
+
+    @Test
+    void testSanitizeScratchFileProducesValidJson2() throws Exception {
+        final String content = """
+                  [ {
+                  "id" : "45334534",
+                  "submitter_id" : "123456789",
+                  "subject" : "Rate your support experience - INC-19544: [Live webinar] The sirens of IT Ops want to drown your platform crew",
+                  "organization_id" : "2387452938745",
+                  "recipient" : "webinars@example.com",
+                  "comments" : "",
+                  "url" : "https://blah.zendesk.com/api/v2/tickets/123445.json",
+                  "status" : "new",
+                  "created_at" : "2026-05-31T23:40:48Z"
+                }, {
+                  "id" : "123124545",
+                  "submitter_id" : "123123123123",
+                  "subject" : "Successfully published @octopusdeploy/design-system-components@2026.3.150",
+                  "recipient" : "devops@example.com",
+                  "comments" : "",
+                  "url" : "https://blah.zendesk.com/api/v2/tickets/123344.json",
+                  "status" : "new",
+                  "created_at" : "2026-05-31T23:19:25Z"
+                }]
+                """;
+        final String result = redaction.sanitize(content);
+        assertDoesNotThrow(() -> new ObjectMapper().readTree(result), "Sanitized scratch file should be valid JSON");
+    }
 }
