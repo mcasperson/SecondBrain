@@ -150,6 +150,10 @@ public class ZenDeskClientLive implements ZenDeskClient {
             String source,
             int ttlSeconds) {
 
+        final String hash = DigestUtils.sha256Hex(url + query + maxPage);
+
+        logger.info("Getting ZenDesk tickets with hash: " + hash + " for query: " + query);
+
         final ZenDeskTicket[] value = localStorage.getOrPutObject(
                 ZenDeskClientLive.class.getSimpleName(),
                 source,

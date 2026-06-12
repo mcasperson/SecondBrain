@@ -221,7 +221,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 new ToolArguments(CommonArguments.ENTITY_NAME_CONTEXT_ARG, "The optional name of the entity to query", ""),
                 new ToolArguments(MULTI_SLACK_ZEN_MAX_ENTITIES_ARG, "The optional maximum number of entities to process", "0"),
                 new ToolArguments(CommonArguments.DAYS_ARG, "The number of days to query", ""),
-                new ToolArguments(CommonArguments.MINIMUM_CONTENT_LENGTH, "The minimum number of characters a context item must have to be included (0 = no minimum)", "0"));
+                new ToolArguments(CommonArguments.MINIMUM_CONTENT_LENGTH, "The minimum number of characters a context item must have to be included (0 = no minimum)", "0"),
+                new ToolArguments(CommonArguments.REQUIRE_COMPANY, "Set to true to require a company name to be supplied before retrieving data from sub-tools", "false"));
     }
 
     @Override
@@ -617,7 +618,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
-                        new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
+                        new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true),
+                        new ToolArgs(CommonArguments.REQUIRE_COMPANY, parsedArgs.isRequireCompany() + "", true)))
                 // Search for the keywords
                 .map(args -> slackSearch.getContext(envSettings, List.of(prompt), args))
                 // We continue on even if one tool fails, so log and swallow the exception
@@ -656,7 +658,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
-                        new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
+                        new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true),
+                        new ToolArgs(CommonArguments.REQUIRE_COMPANY, parsedArgs.isRequireCompany() + "", true)))
                 .flatMap(args -> Try.of(() -> gong.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.severe("Gong search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -693,7 +696,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
-                        new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
+                        new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true),
+                        new ToolArgs(CommonArguments.REQUIRE_COMPANY, parsedArgs.isRequireCompany() + "", true)))
                 .flatMap(args -> Try.of(() -> salesforce.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.severe("Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -729,7 +733,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
-                        new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true)))
+                        new ToolArgs(CommonArguments.DAYS_ARG, parsedArgs.getDays() + "", true),
+                        new ToolArgs(CommonArguments.REQUIRE_COMPANY, parsedArgs.isRequireCompany() + "", true)))
                 .flatMap(args -> Try.of(() -> planHat.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.severe("Planhat search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -753,7 +758,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .filter(StringUtils::isNotBlank)
                 .map(id -> List.of(
                         new ToolArgs(CommonArguments.MINIMUM_CONTENT_LENGTH, parsedArgs.getMinimumContentLength() + "", true),
-                        new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, id, true)))
+                        new ToolArgs(PlanHatUsage.COMPANY_ID_ARGS, id, true),
+                        new ToolArgs(CommonArguments.REQUIRE_COMPANY, parsedArgs.isRequireCompany() + "", true)))
                 .flatMap(args -> Try.of(() -> planHatUsage.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(ex -> logger.warning("Planhat usage failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -783,7 +789,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.SUMMARIZE_DOCUMENT_PROMPT_ARG, parsedArgs.getIndividualContextSummaryPrompt(), true),
                         new ToolArgs(GoogleDocs.GOOGLE_DOC_ID_ARG, id, true),
                         new ToolArgs(CommonArguments.KEYWORDS_ARG, String.join(",", parsedArgs.getKeywords()), true),
-                        new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true)))
+                        new ToolArgs(CommonArguments.KEYWORD_WINDOW_ARG, parsedArgs.getKeywordWindow().toString(), true),
+                        new ToolArgs(CommonArguments.REQUIRE_COMPANY, parsedArgs.isRequireCompany() + "", true)))
                 .flatMap(args -> Try.of(() -> googleDocs.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.info("Google doc failed, ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -818,7 +825,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
-                        new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
+                        new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true),
+                        new ToolArgs(CommonArguments.REQUIRE_COMPANY, parsedArgs.isRequireCompany() + "", true)))
                 // Some arguments require the value to be defined in the prompt to be considered valid, so we have to modify the prompt
                 .flatMap(args -> Try.of(() -> slackChannel.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
@@ -854,7 +862,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         new ToolArgs(CommonArguments.START_DATE, parsedArgs.getStartDate(), true),
                         new ToolArgs(CommonArguments.SKIP_EMPTY_IN_LAST_DURATION, Boolean.toString(parsedArgs.isSkipEmptyInLastDuration()), true),
                         new ToolArgs(CommonArguments.END_DATE, parsedArgs.getEndDate(), true),
-                        new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true)))
+                        new ToolArgs(CommonArguments.DAYS_ARG, "" + parsedArgs.getDays(), true),
+                        new ToolArgs(CommonArguments.REQUIRE_COMPANY, parsedArgs.isRequireCompany() + "", true)))
                 .flatMap(args -> Try.of(() -> zenDeskOrganization.getContext(envSettings, List.of(prompt), args))
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.info("ZenDesk search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
@@ -1217,6 +1226,10 @@ class MultiSlackZenGoogleConfig {
     @ConfigProperty(name = "sb.multislackzengoogle.minimumContentLength", defaultValue = "0")
     private Optional<String> configMinimumContentLength;
 
+    @Inject
+    @ConfigProperty(name = "sb.multislackzengoogle.requireCompany")
+    private Optional<String> configRequireCompany;
+
     public Optional<String> getConfigUrl() {
         return configUrl;
     }
@@ -1488,6 +1501,10 @@ class MultiSlackZenGoogleConfig {
 
     public Optional<String> getConfigMinimumContentLength() {
         return configMinimumContentLength;
+    }
+
+    public Optional<String> getConfigRequireCompany() {
+        return configRequireCompany;
     }
 
     public Keywords getKeywordsTool() {
@@ -2245,6 +2262,20 @@ class MultiSlackZenGoogleConfig {
                     context,
                     CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
                     CommonArguments.SKIP_EMPTY_IN_LAST_DURATION,
+                    "false").getSafeValue());
+        }
+
+        /**
+         * Whether to require a company name to be supplied before retrieving data from sub-tools.
+         * When true, sub-tools that support this argument will skip retrieval if no company is specified.
+         */
+        public boolean isRequireCompany() {
+            return Boolean.parseBoolean(getArgsAccessor().getArgument(
+                    getConfigRequireCompany()::get,
+                    arguments,
+                    context,
+                    CommonArguments.REQUIRE_COMPANY,
+                    CommonArguments.REQUIRE_COMPANY,
                     "false").getSafeValue());
         }
     }
