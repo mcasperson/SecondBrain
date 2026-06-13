@@ -37,7 +37,10 @@ import secondbrain.infrastructure.azure.api.AzureResponse;
 import secondbrain.infrastructure.azure.api.PromptTextGenerator;
 import secondbrain.infrastructure.llm.LlmClient;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -310,12 +313,15 @@ public class AzureClient implements LlmClient {
                 })
                 .toList();
 
-        if (responses.stream().anyMatch(r -> r.exception() != null)) {
-            throw new LlmCallFailure("One or more calls to the LLM failed. See nested exceptions for details.",
-                    responses.stream()
-                            .map(CacheResult::exception)
-                            .filter(Objects::nonNull)
-                            .toList());
+        final List<CacheResult<String>> exceptions = responses
+                .stream()
+                .filter(r -> r.exception() != null)
+                .toList();
+
+        if (!exceptions.isEmpty()) {
+            final RuntimeException ex = new LlmCallFailure("One or more calls to the LLM failed. See suppressed exceptions for details.");
+            exceptions.forEach(r -> ex.addSuppressed(r.exception()));
+            throw ex;
         }
 
         final List<String> responsesValues = responses
