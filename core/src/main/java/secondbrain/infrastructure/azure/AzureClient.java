@@ -271,41 +271,54 @@ public class AzureClient implements LlmClient {
                 RagDocumentContext::document,
                 maxChars);
 
-        final List<String> responses = ragDocs.getPrompts().stream().map(prompt -> {
-            final List<AzureRequestMessage> messages = new ArrayList<>();
-            messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
+        final List<String> responses = ragDocs.getPrompts()
+                .stream()
+                .map(prompt -> {
+                    final List<AzureRequestMessage> messages = new ArrayList<>();
+                    messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
 
-            messages.addAll(trimmedList.stream()
-                    .map(ragDoc -> new AzureRequestMessage(
-                            "user",
-                            ragDoc.contextLabel() + ": " + ragDoc.document()))
-                    .collect(Collectors.toCollection(ArrayList::new)));
+                    messages.addAll(trimmedList.stream()
+                            .map(ragDoc -> new AzureRequestMessage(
+                                    "user",
+                                    ragDoc.contextLabel() + ": " + ragDoc.document()))
+                            .collect(Collectors.toCollection(ArrayList::new)));
 
-            messages.add(new AzureRequestMessage("user", prompt));
+                    messages.add(new AzureRequestMessage("user", prompt));
 
-            final PromptTextGenerator request = AzureRequestMaxCompletionTokensFactory.generateRequest(
-                    messages,
-                    maxOutputTokens,
-                    resolvedReasoningEffort,
-                    modelName,
-                    UrlUtils.getQueryString(resolvedUrl, "api-version"));
+                    final PromptTextGenerator request = AzureRequestMaxCompletionTokensFactory.generateRequest(
+                            messages,
+                            maxOutputTokens,
+                            resolvedReasoningEffort,
+                            modelName,
+                            UrlUtils.getQueryString(resolvedUrl, "api-version"));
 
-            final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + resolvedUrl);
+                    final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + resolvedUrl);
 
-            logger.fine("Calling Azure LLM");
-            logger.fine(request.generatePromptText());
+                    logger.fine("Calling Azure LLM");
+                    logger.fine(request.generatePromptText());
 
-            final CacheResult<String> result = handleCaching(request, tool, promptHash, resolvedUrl, environmentSettings);
+                    final CacheResult<String> result = handleCaching(request, tool, promptHash, resolvedUrl, environmentSettings);
 
-            if (!result.fromCache()) {
-                logger.info("Cache ID: " + tool + "_" + cacheSource + "_" + promptHash);
-            }
+                    logger.info("LLM Response from " + modelName + (result.fromCache() ? " (from cache)" : ""));
 
-            logger.info("LLM Response from " + modelName + (result.fromCache() ? " (from cache)" : ""));
-            logger.info(result.result());
+                    if (result.result() != null) {
+                        logger.info(result.result());
+                    }
 
-            return result.result();
-        }).toList();
+                    if (result.exception() != null) {
+                        logger.info(result.exception().toString());
+                    }
+
+                    return result;
+                })
+                /*
+                    Need to do something better here to deal with exceptions. All upstream callers should
+                    be able to handle an exception being thrown. For example, a timeout waiting for the semaphore
+                    is entirely expected under load.
+                 */
+                .filter(r -> r.exception() == null)
+                .map(CacheResult::result)
+                .toList();
 
         return ragDocs.updateResponses(responses);
     }
