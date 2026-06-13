@@ -37,10 +37,7 @@ import secondbrain.infrastructure.azure.api.AzureResponse;
 import secondbrain.infrastructure.azure.api.PromptTextGenerator;
 import secondbrain.infrastructure.llm.LlmClient;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -271,7 +268,7 @@ public class AzureClient implements LlmClient {
                 RagDocumentContext::document,
                 maxChars);
 
-        final List<String> responses = ragDocs.getPrompts()
+        final List<CacheResult<String>> responses = ragDocs.getPrompts()
                 .stream()
                 .map(prompt -> {
                     final List<AzureRequestMessage> messages = new ArrayList<>();
@@ -311,16 +308,22 @@ public class AzureClient implements LlmClient {
 
                     return result;
                 })
-                /*
-                    Need to do something better here to deal with exceptions. All upstream callers should
-                    be able to handle an exception being thrown. For example, a timeout waiting for the semaphore
-                    is entirely expected under load.
-                 */
-                .filter(r -> r.exception() == null)
+                .toList();
+
+        if (responses.stream().anyMatch(r -> r.exception() != null)) {
+            throw new LlmCallFailure("One or more calls to the LLM failed. See nested exceptions for details.",
+                    responses.stream()
+                            .map(CacheResult::exception)
+                            .filter(Objects::nonNull)
+                            .toList());
+        }
+
+        final List<String> responsesValues = responses
+                .stream()
                 .map(CacheResult::result)
                 .toList();
 
-        return ragDocs.updateResponses(responses);
+        return ragDocs.updateResponses(responsesValues);
     }
 
     private CacheResult<String> handleCaching(final PromptTextGenerator request, final String tool, final String promptHash, final String resolvedUrl, final Map<String, String> environmentSettings) {
