@@ -26,9 +26,9 @@ import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.processing.RagDocSummarizer;
+import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
-import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.githubissues.GitHubIssuesClient;
 import secondbrain.infrastructure.githubissues.api.GitHubIssue;
@@ -37,7 +37,6 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -48,7 +47,6 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class GitHubIssues implements Tool<Void> {
-    public static final String GITHUB_ISSUE_FILTER_RATING_META = "FilterRating";
     public static final String GITHUB_ORGANIZATION_ARG = "githubOrganization";
     public static final String GITHUB_REPO_ARG = "githubRepo";
     public static final String GITHUB_ISSUE_LABELS_ARG = "githubIssueLabels";
@@ -87,7 +85,7 @@ public class GitHubIssues implements Tool<Void> {
     private Logger logger;
 
     @Inject
-    private RatingTool ratingTool;
+    private RatingMetadata ratingMetadata;
 
     @Inject
     private ExceptionMapping exceptionMapping;
@@ -144,7 +142,7 @@ public class GitHubIssues implements Tool<Void> {
                         parsedArgs.getIssueLabels(),
                         parsedArgs.getIssueState()))
                 .map(issues -> convertIssueToRagDoc(issues, parsedArgs, environmentSettings))
-                .map(ragDocs1 -> updateMetadata(ragDocs1, parsedArgs))
+                .map(ragDocs1 -> updateMetadata(ragDocs1, environmentSettings, parsedArgs))
                 .map(ragDocs1 -> parsedArgs.getSummarizeIssue()
                         ? ragDocSummarizer.getDocumentSummary(
                         getName(),
@@ -225,36 +223,16 @@ public class GitHubIssues implements Tool<Void> {
 
     private List<RagDocumentContext<GitHubIssue>> updateMetadata(
             final List<RagDocumentContext<GitHubIssue>> issues,
+            final Map<String, String> environmentSettings,
             final GitHubIssueConfig.LocalArguments parsedArgs) {
         return issues.stream()
-                .map(issue -> issue.updateMetadata(getMetadata(issue, parsedArgs)))
+                .map(issue -> ratingMetadata.getMetadata(getName(), environmentSettings, issue, parsedArgs)
+                        .map(results -> issue
+                                .addMetadata(results.getMetadata())
+                                .addIntermediateResults(results.getIntermediateResults()))
+                        .orElse(issue)
+                )
                 .toList();
-    }
-
-    private MetaObjectResults getMetadata(
-            final RagDocumentContext<GitHubIssue> issue,
-            final GitHubIssueConfig.LocalArguments parsedArgs) {
-
-        final List<MetaObjectResult> metadata = new ArrayList<>();
-
-        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(
-                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, issue.document()),
-                                    List.of(parsedArgs.getContextFilterQuestion()),
-                                    List.of())
-                            .getResponses().get(0))
-                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
-                    // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(ex -> parsedArgs.getDefaultRating())
-                    .get();
-
-            metadata.add(new MetaObjectResult(GITHUB_ISSUE_FILTER_RATING_META, filterRating, issue.id(), getName()));
-        }
-
-        return new MetaObjectResults(
-                metadata,
-                "GitHubIssue-" + issue.getId() + ".json",
-                issue.getId());
     }
 
 }
