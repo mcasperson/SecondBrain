@@ -271,43 +271,65 @@ public class AzureClient implements LlmClient {
                 RagDocumentContext::document,
                 maxChars);
 
-        final List<String> responses = ragDocs.getPrompts().stream().map(prompt -> {
-            final List<AzureRequestMessage> messages = new ArrayList<>();
-            messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
+        final List<CacheResult<String>> responses = ragDocs.getPrompts()
+                .stream()
+                .map(prompt -> {
+                    final List<AzureRequestMessage> messages = new ArrayList<>();
+                    messages.add(new AzureRequestMessage("system", ragDocs.instructions()));
 
-            messages.addAll(trimmedList.stream()
-                    .map(ragDoc -> new AzureRequestMessage(
-                            "user",
-                            ragDoc.contextLabel() + ": " + ragDoc.document()))
-                    .collect(Collectors.toCollection(ArrayList::new)));
+                    messages.addAll(trimmedList.stream()
+                            .map(ragDoc -> new AzureRequestMessage(
+                                    "user",
+                                    ragDoc.contextLabel() + ": " + ragDoc.document()))
+                            .collect(Collectors.toCollection(ArrayList::new)));
 
-            messages.add(new AzureRequestMessage("user", prompt));
+                    messages.add(new AzureRequestMessage("user", prompt));
 
-            final PromptTextGenerator request = AzureRequestMaxCompletionTokensFactory.generateRequest(
-                    messages,
-                    maxOutputTokens,
-                    resolvedReasoningEffort,
-                    modelName,
-                    UrlUtils.getQueryString(resolvedUrl, "api-version"));
+                    final PromptTextGenerator request = AzureRequestMaxCompletionTokensFactory.generateRequest(
+                            messages,
+                            maxOutputTokens,
+                            resolvedReasoningEffort,
+                            modelName,
+                            UrlUtils.getQueryString(resolvedUrl, "api-version"));
 
-            final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + resolvedUrl);
+                    final String promptHash = DigestUtils.sha256Hex(request.generatePromptText() + modelName + inputTokens.orElse("") + resolvedUrl);
 
-            logger.fine("Calling Azure LLM");
-            logger.fine(request.generatePromptText());
+                    logger.fine("Calling Azure LLM");
+                    logger.fine(request.generatePromptText());
 
-            final CacheResult<String> result = handleCaching(request, tool, promptHash, resolvedUrl, environmentSettings);
+                    final CacheResult<String> result = handleCaching(request, tool, promptHash, resolvedUrl, environmentSettings);
 
-            if (!result.fromCache()) {
-                logger.info("Cache ID: " + tool + "_" + cacheSource + "_" + promptHash);
-            }
+                    logger.info("LLM Response from " + modelName + (result.fromCache() ? " (from cache)" : ""));
 
-            logger.info("LLM Response from " + modelName + (result.fromCache() ? " (from cache)" : ""));
-            logger.info(result.result());
+                    if (result.result() != null) {
+                        logger.info(result.result());
+                    }
 
-            return result.result();
-        }).toList();
+                    if (result.exception() != null) {
+                        logger.info(result.exception().toString());
+                    }
 
-        return ragDocs.updateResponses(responses);
+                    return result;
+                })
+                .toList();
+
+        final List<CacheResult<String>> exceptions = responses
+                .stream()
+                .filter(r -> r.exception() != null)
+                .toList();
+
+        if (!exceptions.isEmpty()) {
+            final RuntimeException ex = new LlmCallFailure("One or more calls to the LLM failed. See suppressed exceptions for details.");
+            exceptions.forEach(r -> ex.addSuppressed(r.exception()));
+            throw ex;
+        }
+
+        final List<String> responsesValues = responses
+                .stream()
+                .map(CacheResult::result)
+                .toList();
+
+        return ragDocs.updateResponses(responsesValues);
     }
 
     private CacheResult<String> handleCaching(final PromptTextGenerator request, final String tool, final String promptHash, final String resolvedUrl, final Map<String, String> environmentSettings) {

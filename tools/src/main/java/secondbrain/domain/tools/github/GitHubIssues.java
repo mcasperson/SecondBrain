@@ -4,7 +4,6 @@ import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -14,6 +13,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.args.ArgsAccessor;
 import secondbrain.domain.args.Argument;
 import secondbrain.domain.config.LocalConfigFilteredItem;
+import secondbrain.domain.config.LocalConfigSummarizer;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
 import secondbrain.domain.context.SentenceSplitter;
@@ -25,9 +25,10 @@ import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.objects.ToStringGenerator;
+import secondbrain.domain.processing.RagDocSummarizer;
+import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.tooldefs.*;
 import secondbrain.domain.tools.CommonArguments;
-import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateString;
 import secondbrain.infrastructure.githubissues.GitHubIssuesClient;
 import secondbrain.infrastructure.githubissues.api.GitHubIssue;
@@ -36,7 +37,6 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,7 +47,6 @@ import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
 public class GitHubIssues implements Tool<Void> {
-    public static final String GITHUB_ISSUE_FILTER_RATING_META = "FilterRating";
     public static final String GITHUB_ORGANIZATION_ARG = "githubOrganization";
     public static final String GITHUB_REPO_ARG = "githubRepo";
     public static final String GITHUB_ISSUE_LABELS_ARG = "githubIssueLabels";
@@ -86,13 +85,16 @@ public class GitHubIssues implements Tool<Void> {
     private Logger logger;
 
     @Inject
-    private RatingTool ratingTool;
+    private RatingMetadata ratingMetadata;
 
     @Inject
     private ExceptionMapping exceptionMapping;
 
     @Inject
     private HooksContainer hooksContainer;
+
+    @Inject
+    private RagDocSummarizer ragDocSummarizer;
 
     @Override
     public String getName() {
@@ -140,8 +142,16 @@ public class GitHubIssues implements Tool<Void> {
                         parsedArgs.getIssueLabels(),
                         parsedArgs.getIssueState()))
                 .map(issues -> convertIssueToRagDoc(issues, parsedArgs, environmentSettings))
-                .map(ragDocs1 -> updateMetadata(ragDocs1, parsedArgs))
-                .map(ragDocs1 -> parsedArgs.getSummarizeIssue() ? getSummary(ragDocs1, environmentSettings, parsedArgs) : ragDocs1)
+                .map(ragDocs1 -> updateMetadata(ragDocs1, environmentSettings, parsedArgs))
+                .map(ragDocs1 -> parsedArgs.getSummarizeIssue()
+                        ? ragDocSummarizer.getDocumentSummary(
+                        getName(),
+                        getContextLabel(),
+                        "GitHubIssue",
+                        ragDocs1,
+                        environmentSettings,
+                        parsedArgs)
+                        : ragDocs1)
                 .get();
 
         // Combine preinitialization hooks with ragDocs
@@ -213,70 +223,18 @@ public class GitHubIssues implements Tool<Void> {
 
     private List<RagDocumentContext<GitHubIssue>> updateMetadata(
             final List<RagDocumentContext<GitHubIssue>> issues,
+            final Map<String, String> environmentSettings,
             final GitHubIssueConfig.LocalArguments parsedArgs) {
         return issues.stream()
-                .map(issue -> issue.updateMetadata(getMetadata(issue, parsedArgs)))
+                .map(issue -> ratingMetadata.getMetadata(getName(), environmentSettings, issue, parsedArgs)
+                        .map(results -> issue
+                                .addMetadata(results.getMetadata())
+                                .addIntermediateResults(results.getIntermediateResults()))
+                        .orElse(issue)
+                )
                 .toList();
     }
 
-    private MetaObjectResults getMetadata(
-            final RagDocumentContext<GitHubIssue> issue,
-            final GitHubIssueConfig.LocalArguments parsedArgs) {
-
-        final List<MetaObjectResult> metadata = new ArrayList<>();
-
-        if (StringUtils.isNotBlank(parsedArgs.getContextFilterQuestion())) {
-            final int filterRating = Try.of(() -> ratingTool.call(
-                                    Map.of(RatingTool.RATING_DOCUMENT_CONTEXT_ARG, issue.document()),
-                                    List.of(parsedArgs.getContextFilterQuestion()),
-                                    List.of())
-                            .getResponses().get(0))
-                    .map(rating -> org.apache.commons.lang3.math.NumberUtils.toInt(rating.trim(), 0))
-                    // Ratings are provided on a best effort basis, so we ignore any failures
-                    .recover(ex -> parsedArgs.getDefaultRating())
-                    .get();
-
-            metadata.add(new MetaObjectResult(GITHUB_ISSUE_FILTER_RATING_META, filterRating, issue.id(), getName()));
-        }
-
-        return new MetaObjectResults(
-                metadata,
-                "GitHubIssue-" + issue.getId() + ".json",
-                issue.getId());
-    }
-
-    private List<RagDocumentContext<GitHubIssue>> getSummary(final List<RagDocumentContext<GitHubIssue>> ragDocs, final Map<String, String> environmentSettings, final GitHubIssueConfig.LocalArguments parsedArgs) {
-        return ragDocs.stream()
-                .map(ragDoc -> getSummary(ragDoc, environmentSettings, parsedArgs))
-                .toList();
-    }
-
-    private RagDocumentContext<GitHubIssue> getSummary(final RagDocumentContext<GitHubIssue> ragDoc, final Map<String, String> environmentSettings, final GitHubIssueConfig.LocalArguments parsedArgs) {
-        logger.fine("Summarising GitHub issues");
-
-        final RagDocumentContext<String> context = new RagDocumentContext<>(
-                getName(),
-                getContextLabel(),
-                ragDoc.document(),
-                List.of()
-        );
-
-        final var llmResult = llmClient.callWithCache(
-                new RagMultiDocumentContext<>(
-                        parsedArgs.getIssueSummaryPrompt(),
-                        "You are a helpful agent",
-                        List.of(context)),
-                environmentSettings,
-                getName()
-        );
-        final String response = llmResult.getResponses().isEmpty() ? llmResult.getResponse() : llmResult.getResponses().get(0);
-
-        return ragDoc.updateDocument(response)
-                .addIntermediateResult(new IntermediateResult(
-                        "Prompt: " + parsedArgs.getIssueSummaryPrompt() + "\n\n" + response,
-                        "GitHubIssue-" + ragDoc.id() + "-" + DigestUtils.sha256Hex(parsedArgs.getIssueSummaryPrompt()) + ".txt"
-                ));
-    }
 }
 
 @ApplicationScoped
@@ -440,7 +398,7 @@ class GitHubIssueConfig {
         return toStringGenerator;
     }
 
-    public class LocalArguments implements LocalConfigFilteredItem {
+    public class LocalArguments implements LocalConfigFilteredItem, LocalConfigSummarizer {
         private final List<ToolArgs> arguments;
         private final List<String> prompts;
         private final Map<String, String> context;
@@ -556,7 +514,7 @@ class GitHubIssueConfig {
             return org.apache.commons.lang.math.NumberUtils.toInt(argument.getSafeValue(), 0);
         }
 
-        public String getIssueSummaryPrompt() {
+        public String getDocumentSummaryPrompt() {
             return getArgsAccessor()
                     .getArgument(
                             getConfigIssueSummaryPrompt()::get,
