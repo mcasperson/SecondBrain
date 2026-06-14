@@ -164,13 +164,13 @@ public class PlanHatUsage implements Tool<Void> {
                 .map(pair -> new RagDocumentContext<>(
                         getName(),
                         getContextLabel() + " " + company.name() + " " + pair.getLeft(),
-                        company.usage().getOrDefault(pair.getRight(), 0).toString(),
+                        Objects.toString(company.usage().getOrDefault(pair.getRight(), 0), "0"),
                         List.of(),
                         company.id() + ":" + pair.getRight(),
                         company,
                         new MetaObjectResults(new MetaObjectResult(
                                 pair.getLeft(),
-                                company.usage().getOrDefault(pair.getRight(), 0).toString(),
+                                Objects.toString(company.usage().getOrDefault(pair.getRight(), 0), "0"),
                                 company.id(),
                                 getName())),
                         null,
@@ -183,13 +183,13 @@ public class PlanHatUsage implements Tool<Void> {
                 .map(custom -> new RagDocumentContext<>(
                         getName(),
                         getContextLabel() + " " + company.name() + " " + custom,
-                        company.custom().getOrDefault(custom, "").toString(),
+                        Objects.toString(company.custom().getOrDefault(custom, ""), ""),
                         List.of(),
                         company.id() + ":" + custom,
                         company,
                         new MetaObjectResults(new MetaObjectResult(
                                 custom,
-                                company.custom().getOrDefault(custom, "").toString(),
+                                Objects.toString(company.custom().getOrDefault(custom, ""), ""),
                                 company.id(),
                                 getName())),
                         null,
