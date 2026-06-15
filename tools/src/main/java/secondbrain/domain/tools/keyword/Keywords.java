@@ -61,7 +61,10 @@ public class Keywords implements Tool<Void> {
             Aim for 50 keywords.
             Keywords should be specific terms, abbreviations, and acronyms useful for document retrieval.
             If the prompt includes acronyms, platform names, product names, companies, or tools, those must be present in the list.
+            If the prompt includes unambigious acronyms, include the important words in the expanded form as keywords, for example: "AKS" and "Azure" and "Kubernetes", or "AWS" and "Amazon". 
+            Notice the keywords from an exanded acronym do not include generic terms like "service".
             You will be penalized for returning generic or irrelevant keywords.
+            You will be penalized for returning common words like "the", "a", "then", "when" etc.
             You will be penalized for returning markdown or any other formatting.
             The response must be a JSON array of strings, with each string being a keyword.
             You will be penalized for returning any text in the response that is not a valid JSON array.
