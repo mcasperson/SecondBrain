@@ -51,9 +51,12 @@ public class Keywords implements Tool<Void> {
             You are given a prompt.
             You must generate a list of broad, relevant keywords from the prompt.
             The keywords are expected to be found in video transcripts, conversations, emails, and internal messages, so you must select terms that people are likely to literally say or write.
+            The keywords are used as partial matches, for example, the keyword "blue" will match "Bluetooth".
+            Keywords are case insensitive.
             Prefer single words over phrases with multiple words.
             Two word keywords must also appear as individual words, for example, "Microsoft Authenticator", "Microsoft", and "Authenticator".
             Any hyphenated words must also appear as two individual words, for example: "multi-factor", "multi", and "factor".
+            Prefer the base word of a keyword, for example, prefer "Debug" instead of "Debuggable".
             You will be penalized for selecting terms that describe conversations, emails, and internal messages but are unlikely to be literally used in them.
             Aim for 50 keywords.
             Keywords should be specific terms, abbreviations, and acronyms useful for document retrieval.
