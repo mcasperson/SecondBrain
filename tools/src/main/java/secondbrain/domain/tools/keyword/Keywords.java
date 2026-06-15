@@ -47,12 +47,13 @@ public class Keywords implements Tool<Void> {
     private static final ConcurrentHashMap<String, List<String>> keywordCache = new ConcurrentHashMap<>();
 
 
-    private static final String INSTRUCTIONS = """
-            You are a helpful assistant.
+    private static final String INSTRUCTIONS = """          
             You are given a prompt.
             You must generate a list of broad, relevant keywords from the prompt.
-            The keywords are expected to be found in conversations, emails, and internal messages, so you must select terms that people are likely to literally say or write.
+            The keywords are expected to be found in video transcripts, conversations, emails, and internal messages, so you must select terms that people are likely to literally say or write.
             Prefer single words over phrases with multiple words.
+            Two word keywords must also appear as individual words, for example, "Microsoft Authenticator", "Microsoft", and "Authenticator".
+            Any hyphenated words must also appear as two individual words, for example: "multi-factor", "multi", and "factor".
             You will be penalized for selecting terms that describe conversations, emails, and internal messages but are unlikely to be literally used in them.
             Aim for 50 keywords.
             Keywords should be specific terms, abbreviations, and acronyms useful for document retrieval.
