@@ -20,15 +20,10 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.persist.TimedOperation;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.zip.Zipper;
-import secondbrain.infrastructure.planhat.api.Company;
-import secondbrain.infrastructure.planhat.api.Conversation;
-import secondbrain.infrastructure.planhat.api.Objective;
-import secondbrain.infrastructure.planhat.api.Opportunity;
-import secondbrain.infrastructure.planhat.api.PlanHatUser;
+import secondbrain.infrastructure.planhat.api.*;
 
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
-import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -152,7 +147,7 @@ public class PlanHatClientLive implements PlanHatClient {
         return conversations == null
                 ? List.of()
                 : Stream.of(conversations)
-                .filter(c -> StringUtils.isNotBlank(c.getDate()) && dateParser.parseDate(c.getDate()).isBefore(endDate))
+                .filter(c -> StringUtils.isNotBlank(c.getDate()) && dateParser.parseDateOrDefault(c.getDate()).isBefore(endDate))
                 .toList();
     }
 
@@ -243,8 +238,8 @@ public class PlanHatClientLive implements PlanHatClient {
                     .result();
 
             final List<Conversation> filtered = Stream.of(Objects.requireNonNullElse(conversations, new Conversation[]{}))
-                    .filter(c -> startDate == null || (StringUtils.isNotBlank(c.getDate()) && dateParser.parseDate(c.getDate()).isAfter(startDate)))
-                    .filter(c -> endDate == null || (StringUtils.isNotBlank(c.getDate()) && dateParser.parseDate(c.getDate()).isBefore(endDate)))
+                    .filter(c -> startDate == null || (StringUtils.isNotBlank(c.getDate()) && dateParser.parseDateOrDefault(c.getDate()).isAfter(startDate)))
+                    .filter(c -> endDate == null || (StringUtils.isNotBlank(c.getDate()) && dateParser.parseDateOrDefault(c.getDate()).isBefore(endDate)))
                     .toList();
 
             if (filtered.isEmpty()) {

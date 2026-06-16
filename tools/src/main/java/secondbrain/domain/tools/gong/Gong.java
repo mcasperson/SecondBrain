@@ -42,7 +42,6 @@ import secondbrain.infrastructure.llm.LlmClient;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
@@ -244,12 +243,7 @@ public class Gong implements Tool<Void> {
                                 gong.getSystemContextOrDefault("Salesforce", "Name", "Unknown"),
                                 gong.parties(),
                                 gongClient.getCallTranscript(parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), gong),
-                                /*
-                                    Redacted dates look like "2025-06-19T02:00:{{{REDACTED-PHONE}}}:00". We ignore
-                                    these and default to the epoch in those cases since the date is unusable.
-                                */
-                                Try.of(() -> dateParser.parseDate(gong.metaData().started()))
-                                        .getOrElse(ZonedDateTime.of(1970, 1, 1, 0, 0, 0, 0, ZoneId.systemDefault())),
+                                dateParser.parseDateOrDefault(gong.metaData().started()),
                                 getMeta(gong, parsedArgs.getObject1Name(), parsedArgs.getObject1()),
                                 getMeta(gong, parsedArgs.getObject2Name(), parsedArgs.getObject2()),
                                 getMeta(gong, parsedArgs.getObject3Name(), parsedArgs.getObject3()),
