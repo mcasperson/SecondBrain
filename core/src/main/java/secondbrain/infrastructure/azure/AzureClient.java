@@ -157,7 +157,7 @@ public class AzureClient implements LlmClient {
      * Defines how many concurrent requests we can make of the Azure client
      */
     @Inject
-    @ConfigProperty(name = "sb.azurellm.concurrency", defaultValue = "2")
+    @ConfigProperty(name = "sb.azurellm.concurrency", defaultValue = "5")
     private Integer concurrency;
 
     @Inject
