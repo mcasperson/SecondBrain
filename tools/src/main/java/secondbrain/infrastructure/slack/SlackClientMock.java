@@ -46,7 +46,7 @@ public class SlackClientMock implements SlackClient {
     }
 
     @Override
-    public String conversationHistory(AsyncMethodsClient client, String accessToken, String channelId, String oldest, int ttlSeconds, int apiDelay) {
+    public String conversationHistory(AsyncMethodsClient client, String accessToken, String channelId, String oldest, int ttlSeconds, int apiDelay, List<String> ignoredUsers) {
         return llmClient.call("Write a 5 paragraph Slack conversation history between 3 people discussing the design of a new AI product.", Map.of());
     }
 
