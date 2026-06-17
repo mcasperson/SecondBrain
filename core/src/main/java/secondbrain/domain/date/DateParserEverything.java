@@ -3,8 +3,8 @@ package secondbrain.domain.date;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.Initialized;
 import jakarta.inject.Inject;
+import secondbrain.domain.exceptions.DateParsingException;
 
 import java.time.ZonedDateTime;
 
@@ -29,6 +29,10 @@ public class DateParserEverything implements DateParser {
 
     @Override
     public ZonedDateTime parseDate(final String date) {
+        if (date.contains("{{{")) {
+            throw new DateParsingException("Date appears to contain a redaction placeholder: " + date);
+        }
+
         return Try.of(() -> dateParserUnix.parseDate(date))
                 .recoverWith(error -> Try.of(() -> dateParserIso8601.parseDate(date)))
                 .recoverWith(error -> Try.of(() -> dateParserYyyyMmDd.parseDate(date)))
