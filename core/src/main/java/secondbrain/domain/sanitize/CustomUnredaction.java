@@ -15,6 +15,13 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * Implements unredactions based on a number of regexes supplied as
+ * config properties. Be careful with these regexes - a regex like [0-9]{10}
+ * will have a lot of unintended matches, especially for cached items
+ * that contain vectors. Always try to have explicit regexes, and quote
+ * numbers, e.g. "[0-9]{10}".
+ */
 @ApplicationScoped
 public class CustomUnredaction implements Unredaction {
     @Inject
