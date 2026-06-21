@@ -5,31 +5,29 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.infrastructure.dovetail.api.DovetailDataItem;
 import secondbrain.infrastructure.dovetail.api.DovetailDataProject;
 
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 
 /**
- * A mock implementation of the DovetailClient interface for use in tests or when mocking is enabled.
+ * A mock implementation of the {@link DovetailClient} interface for use in tests or when mocking is enabled.
  */
 @ApplicationScoped
 public class DovetailClientMock implements DovetailClient {
+
+    public static final DovetailDataItem MOCK_DATA_ITEM = new DovetailDataItem(
+            "mock-id-1",
+            "data",
+            "Mock Dovetail Data Item",
+            new DovetailDataProject("mock-project-id", "Mock Project"),
+            "2024-06-15T10:30:00Z",
+            false,
+            null);
 
     @Override
     public List<DovetailDataItem> getDataItems(
             final String apiKey,
             @Nullable final String fromDateTime,
             @Nullable final String toDateTime) {
-        return List.of(
-                new DovetailDataItem(
-                        "mock-id-1",
-                        "data",
-                        "Mock Dovetail Data Item",
-                        new DovetailDataProject("mock-project-id", "Mock Project"),
-                        OffsetDateTime.now(ZoneOffset.UTC).toString(),
-                        false,
-                        null)
-        );
+        return List.of(MOCK_DATA_ITEM);
     }
 
     @Override
@@ -39,4 +37,3 @@ public class DovetailClientMock implements DovetailClient {
         return "# Mock Dovetail Export\n\nThis is a mock markdown export for item: " + id;
     }
 }
-

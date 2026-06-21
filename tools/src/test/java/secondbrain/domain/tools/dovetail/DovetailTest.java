@@ -205,6 +205,12 @@ class DovetailTest {
 
         final List<RagDocumentContext<Void>> context = dovetail.getContext(settings, prompts, arguments);
         assertNotNull(context);
+        assertFalse(context.isEmpty());
+
+        final var item = context.getFirst();
+        assertEquals("Dovetail", item.tool());
+        assertEquals(DovetailClientMock.MOCK_DATA_ITEM.id(), item.id());
+        assertTrue(item.document().contains("Mock Dovetail Export"));
     }
 
     @Test
