@@ -47,22 +47,29 @@ public class Keywords implements Tool<Void> {
     private static final ConcurrentHashMap<String, List<String>> keywordCache = new ConcurrentHashMap<>();
 
 
-    private static final String INSTRUCTIONS = """
-            You are a helpful assistant.
+    private static final String INSTRUCTIONS = """          
             You are given a prompt.
             You must generate a list of broad, relevant keywords from the prompt.
-            The keywords are expected to be found in conversations, emails, and internal messages, so you must select terms that people are likely to literally say or write.
+            The keywords are expected to be found in video transcripts, conversations, emails, and internal messages, so you must select terms that people are likely to literally say or write.
+            The keywords are used as partial matches, for example, the keyword "blue" will match "Bluetooth".
+            Keywords are case insensitive.
             Prefer single words over phrases with multiple words.
+            Two word keywords must also appear as individual words, for example, "Microsoft Authenticator", "Microsoft", and "Authenticator".
+            Any hyphenated words must also appear as two individual words, for example: "multi-factor", "multi", and "factor".
+            Prefer the base word of a keyword, for example, prefer "Debug" instead of "Debuggable", "pause" instead of "paused" etc.
             You will be penalized for selecting terms that describe conversations, emails, and internal messages but are unlikely to be literally used in them.
             Aim for 50 keywords.
             Keywords should be specific terms, abbreviations, and acronyms useful for document retrieval.
             If the prompt includes acronyms, platform names, product names, companies, or tools, those must be present in the list.
+            If the prompt includes unambigious acronyms, include the important words in the expanded form as keywords, for example: "AKS" and "Azure" and "Kubernetes", or "AWS" and "Amazon". 
+            Notice the keywords from an exanded acronym do not include generic terms like "service".
             You will be penalized for returning generic or irrelevant keywords.
+            You will be penalized for returning common words like "the", "a", "then", "when" etc.
             You will be penalized for returning markdown or any other formatting.
             The response must be a JSON array of strings, with each string being a keyword.
             You will be penalized for returning any text in the response that is not a valid JSON array.
             For example, if the prompt is "How do I deploy to Azure Kubernetes Service?",
-            you might return ["Azure", "Kubernetes", "AKS", "deployment", "deploy"].
+            you might return ["Azure", "Kubernetes", "AKS", "deploy"].
             If there are no useful keywords, return an empty array: [].""".stripLeading();
 
     @Inject

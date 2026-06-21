@@ -59,6 +59,7 @@ public class SlackChannel implements Tool<Void> {
     public static final String API_DELAY_ARG = "slackApiDelay";
     public static final String HISTORY_TTL_ARG = "slackHistoryTtl";
     public static final String TTL_SECONDS_ARG = "slackTtlSeconds";
+    public static final String IGNORED_USERS_ARG = "slackIgnoredUsers";
 
     private static final int MINIMUM_MESSAGE_LENGTH = 300;
     private static final Pattern USER_PATTERN = Pattern.compile("<@(?<username>\\w+)>");
@@ -316,7 +317,8 @@ public class SlackChannel implements Tool<Void> {
                         c.channelId(),
                         oldest,
                         parsedArgs.getSearchTTL(),
-                        parsedArgs.getApiDelay())))
+                        parsedArgs.getApiDelay(),
+                        parsedArgs.getIgnoredUsers())))
                 .map(c -> c.updateConversation(replaceUserIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)))
                 .map(c -> c.updateConversation(replaceChannelIds(client, parsedArgs.getSecretAccessToken(), c.generateText(), parsedArgs)))
                 .filter(c -> StringUtils.length(c.generateText()) >= MINIMUM_MESSAGE_LENGTH)
@@ -470,6 +472,10 @@ class SlackChannelConfig {
     private Optional<String> configSkipEmptyInLastDuration;
 
     @Inject
+    @ConfigProperty(name = "sb.slackchannel.ignoredUsers", defaultValue = "")
+    private Optional<String> configIgnoredUsers;
+
+    @Inject
     private Keywords keywords;
 
     @Inject
@@ -573,6 +579,10 @@ class SlackChannelConfig {
 
     public Optional<String> getConfigSkipEmptyInLastDuration() {
         return configSkipEmptyInLastDuration;
+    }
+
+    public Optional<String> getConfigIgnoredUsers() {
+        return configIgnoredUsers;
     }
 
     public Keywords getKeywordsTool() {
@@ -912,6 +922,20 @@ class SlackChannelConfig {
                     DEFAULT_TTL_SECONDS + "");
 
             return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_TTL_SECONDS));
+        }
+
+        public List<String> getIgnoredUsers() {
+            return getArgsAccessor().getArgumentList(
+                            getConfigIgnoredUsers()::get,
+                            arguments,
+                            context,
+                            SlackChannel.IGNORED_USERS_ARG,
+                            SlackChannel.IGNORED_USERS_ARG,
+                            "")
+                    .stream()
+                    .map(Argument::value)
+                    .filter(StringUtils::isNotBlank)
+                    .toList();
         }
 
         @Override

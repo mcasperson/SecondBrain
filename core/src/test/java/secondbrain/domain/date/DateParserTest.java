@@ -31,6 +31,13 @@ public class DateParserTest {
     }
 
     @Test
+    public void testParseZonedDateWithOffset2() {
+        DateParserIso8601 dateParser = new DateParserIso8601();
+        ZonedDateTime date = dateParser.parseDate("2026-06-17T17:59:00.000+10:00");
+        assertNotNull(date);
+    }
+
+    @Test
     public void testParseLocalDate() {
         DateParserIso8601 dateParser = new DateParserIso8601();
         ZonedDateTime date = dateParser.parseDate("2024-09-08T07:00:54.455239138");

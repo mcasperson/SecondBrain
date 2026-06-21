@@ -42,6 +42,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Logger;
@@ -243,7 +244,7 @@ public class Gong implements Tool<Void> {
                                 gong.getSystemContextOrDefault("Salesforce", "Name", "Unknown"),
                                 gong.parties(),
                                 gongClient.getCallTranscript(parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), gong),
-                                dateParser.parseDate(gong.metaData().started()),
+                                dateParser.parseDateOrDefault(gong.metaData().started()),
                                 getMeta(gong, parsedArgs.getObject1Name(), parsedArgs.getObject1()),
                                 getMeta(gong, parsedArgs.getObject2Name(), parsedArgs.getObject2()),
                                 getMeta(gong, parsedArgs.getObject3Name(), parsedArgs.getObject3()),
@@ -896,10 +897,12 @@ class GongConfig {
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(stringValue)) {
-                return Try.of(() -> getDateParser().parseDate(stringValue))
-                        .map(date -> date.format(ISO_OFFSET_DATE_TIME))
-                        .onFailure(ex -> getLogger().warning("Failed to parse start date: " + ExceptionUtils.getRootCauseMessage(ex)))
-                        .get();
+                final ZonedDateTime parsed = getDateParser().parseDateOrDefault(stringValue, null);
+                if (parsed == null) {
+                    getLogger().warning("Failed to parse start date: " + stringValue);
+                } else {
+                    return parsed.format(ISO_OFFSET_DATE_TIME);
+                }
             }
 
             if (getDays() == 0) {
@@ -925,10 +928,12 @@ class GongConfig {
                     "").getSafeValue();
 
             if (StringUtils.isNotBlank(stringValue)) {
-                return Try.of(() -> getDateParser().parseDate(stringValue))
-                        .map(date -> date.format(ISO_OFFSET_DATE_TIME))
-                        .onFailure(ex -> getLogger().warning("Failed to parse end date: " + ExceptionUtils.getRootCauseMessage(ex)))
-                        .get();
+                final ZonedDateTime parsed = getDateParser().parseDateOrDefault(stringValue, null);
+                if (parsed == null) {
+                    getLogger().warning("Failed to parse end date: " + stringValue);
+                } else {
+                    return parsed.format(ISO_OFFSET_DATE_TIME);
+                }
             }
 
             if (getDays() == 0) {

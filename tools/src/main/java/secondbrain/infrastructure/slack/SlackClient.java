@@ -32,7 +32,8 @@ public interface SlackClient {
             String channelId,
             String oldest,
             int ttlSeconds,
-            int apiDelay);
+            int apiDelay,
+            List<String> ignoredUsers);
 
     String username(
             AsyncMethodsClient client,

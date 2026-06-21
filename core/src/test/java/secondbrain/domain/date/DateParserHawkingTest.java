@@ -1,6 +1,13 @@
 package secondbrain.domain.date;
 
+import io.smallrye.common.annotation.Identifier;
+import io.smallrye.config.inject.ConfigExtension;
+import jakarta.inject.Inject;
+import org.jboss.weld.junit5.auto.AddBeanClasses;
+import org.jboss.weld.junit5.auto.AddExtensions;
+import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.Test;
+import secondbrain.domain.logger.Loggers;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -8,8 +15,14 @@ import java.time.ZonedDateTime;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+@EnableAutoWeld
+@AddExtensions(ConfigExtension.class)
+@AddBeanClasses(DateParserHawking.class)
+@AddBeanClasses(Loggers.class)
 class DateParserHawkingTest {
-    private final DateParserHawking dateParser = new DateParserHawking();
+    @Inject
+    @Identifier("hawking")
+    DateParserHawking dateParser;
 
     @Test
     void testParseDateWithConfiguredDayMonthYearFormat() {

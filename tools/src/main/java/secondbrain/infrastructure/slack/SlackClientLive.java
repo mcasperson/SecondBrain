@@ -84,7 +84,7 @@ public class SlackClientLive implements SlackClient {
         return org.apache.commons.lang3.StringUtils.isNotBlank(
                 conversationHistory(client, accessToken, channelId, oldest,
                         (int) cached.getDuration().toSeconds(), apiDelay,
-                        "SlackAPIConversationHistoryDuration"));
+                        "SlackAPIConversationHistoryDuration", List.of()));
     }
 
     @Override
@@ -110,9 +110,16 @@ public class SlackClientLive implements SlackClient {
             final String channelId,
             final String oldest,
             final int ttlSeconds,
-            final int apiDelay) {
-        return conversationHistory(client, accessToken, channelId, oldest, ttlSeconds, apiDelay,
-                "SlackAPIConversationHistory");
+            final int apiDelay,
+            final List<String> ignoredUsers) {
+        return conversationHistory(
+                client,
+                accessToken,
+                channelId,
+                oldest,
+                ttlSeconds,
+                apiDelay,
+                "SlackAPIConversationHistory", ignoredUsers);
     }
 
     private String conversationHistory(
@@ -122,7 +129,8 @@ public class SlackClientLive implements SlackClient {
             final String oldest,
             final int ttlSeconds,
             final int apiDelay,
-            final String source) {
+            final String source,
+            final List<String> ignoredUsers) {
         checkArgument(StringUtils.isNotBlank(accessToken));
         checkArgument(StringUtils.isNotBlank(channelId));
         checkArgument(StringUtils.isNotBlank(oldest));
@@ -142,8 +150,28 @@ public class SlackClientLive implements SlackClient {
                                 SlackChannelWithReplies.class,
                                 () -> conversationHistoryFromApi(client, accessToken, channelId, oldest, 0, apiDelay))
                         .result())
+                .map(r -> filterOutIgnoredUsers(r, ignoredUsers))
                 .map(this::conversationsToText)
                 .get();
+    }
+
+    @Nullable
+    private SlackChannelWithReplies filterOutIgnoredUsers(final @Nullable SlackChannelWithReplies conversation, final List<String> ignoredUsers) {
+        if (ignoredUsers == null || conversation == null || conversation.history() == null) {
+            return conversation;
+        }
+
+        conversation.history().getMessages().removeIf(message -> {
+            final String userId = message.getUser();
+            if (StringUtils.isBlank(userId)) {
+                return false;
+            }
+            return ignoredUsers
+                    .stream()
+                    .anyMatch(ignored -> userId.toLowerCase().contains(ignored.toLowerCase()));
+        });
+
+        return conversation;
     }
 
     private String conversationsToText(final @Nullable SlackChannelWithReplies conversation) {
