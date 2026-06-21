@@ -17,12 +17,9 @@ import org.junit.jupiter.api.Test;
 import secondbrain.domain.args.ArgsAccessorSimple;
 import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.context.JdlSentenceVectorizer;
+import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.SimpleSentenceSplitter;
-import secondbrain.domain.date.DateParserEverything;
-import secondbrain.domain.date.DateParserHawking;
-import secondbrain.domain.date.DateParserIso8601;
-import secondbrain.domain.date.DateParserUnix;
-import secondbrain.domain.date.DateParserYyyyMmDd;
+import secondbrain.domain.date.*;
 import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.exceptionhandling.StandardExceptionMapping;
@@ -33,29 +30,26 @@ import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.objects.SecretGetterGenerator;
 import secondbrain.domain.persist.LocalStorage;
-import secondbrain.domain.persist.CacheResult;
-import secondbrain.domain.persist.GenerateValue;
+import secondbrain.domain.persist.MockLocalStorage;
+import secondbrain.domain.processing.LLMRagDocSummarizer;
 import secondbrain.domain.processing.RatingToolRatingFilter;
 import secondbrain.domain.processing.RatingToolRatingMetadata;
 import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
-import secondbrain.domain.processing.LLMRagDocSummarizer;
-import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.sanitize.GetFirstDigits;
 import secondbrain.domain.sanitize.GetFirstMarkdownBlock;
-import secondbrain.domain.validate.ValidateStringBlank;
+import secondbrain.domain.tooldefs.ToolArgs;
+import secondbrain.domain.tooldefs.ToolArguments;
+import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.validate.ValidateListEmptyOrNull;
+import secondbrain.domain.validate.ValidateStringBlank;
 import secondbrain.infrastructure.dovetail.DovetailClient;
 import secondbrain.infrastructure.dovetail.DovetailClientMock;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.mock.MockLLmCLient;
-import secondbrain.domain.tooldefs.ToolArguments;
-import secondbrain.domain.context.RagDocumentContext;
-import secondbrain.domain.tooldefs.ToolArgs;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -104,6 +98,7 @@ import static org.junit.jupiter.api.Assertions.*;
 // LLM and storage — mocked via @Produces methods below
 @AddBeanClasses(MockLLmCLient.class)
 @AddBeanClasses(DovetailClientMock.class)
+@AddBeanClasses(MockLocalStorage.class)
 class DovetailTest {
 
     private static final String MOCK_LLM_RESPONSE = "Based on user research, the checkout process needs simplification.";
@@ -157,86 +152,7 @@ class DovetailTest {
     @Preferred
     @ApplicationScoped
     public LocalStorage produceLocalStorage() {
-        // Always cache miss — Dovetail will call the mocked DowetailClient instead.
-        return new LocalStorage() {
-            @Override
-            public CacheResult<String> getString(String tool, String source, String promptHash) {
-                // Always cache miss
-                return new CacheResult<>(null, null, false);
-            }
-
-            @Override
-            public CacheResult<String> getOrPutString(String tool, String source, String promptHash, long ttlSeconds, GenerateValue<String> generateValue) {
-                return new CacheResult<>(generateValue.generate(), null, false);
-            }
-
-            @Override
-            public CacheResult<String> getOrPutString(String tool, String source, String promptHash, GenerateValue<String> generateValue) {
-                return getOrPutString(tool, source, promptHash, 0, generateValue);
-            }
-
-            @Override
-            public <T> CacheResult<T> getOrPutObject(String tool, String source, String promptHash, long ttlSeconds, Class<T> clazz, GenerateValue<T> generateValue) {
-                return new CacheResult<>(generateValue.generate(), null, false);
-            }
-
-            @Override
-            public <T> CacheResult<T> getOrPutObject(String tool, String source, String promptHash, Class<T> clazz, GenerateValue<T> generateValue) {
-                return getOrPutObject(tool, source, promptHash, 0, clazz, generateValue);
-            }
-
-            @Override
-            public <T> CacheResult<List<T>> getOrPutList(String tool, String source, String promptHash, long ttlSeconds, Class<T> clazz, GenerateValue<List<T>> generateValue) {
-                return new CacheResult<>(generateValue.generate(), null, false);
-            }
-
-            @Override
-            public <T> CacheResult<List<T>> getOrPutList(String tool, String source, String promptHash, Class<T> clazz, GenerateValue<List<T>> generateValue) {
-                return getOrPutList(tool, source, promptHash, 0, clazz, generateValue);
-            }
-
-            @Override
-            public <T> CacheResult<T[]> getOrPutObjectArray(String tool, String source, String promptHash, long ttlSeconds, Class<T> clazz, Class<T[]> arrayClazz, GenerateValue<T[]> generateValue) {
-                return new CacheResult<>(generateValue.generate(), null, false);
-            }
-
-            @Override
-            public <T, U> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, long ttlSeconds, Class<T> container, Class<U> contained, GenerateValue<T> generateValue) {
-                return new CacheResult<>(generateValue.generate(), null, false);
-            }
-
-            @Override
-            public <T, U> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, Class<T> container, Class<U> contained, GenerateValue<T> generateValue) {
-                return getOrPutGeneric(tool, source, promptHash, 0, container, contained, generateValue);
-            }
-
-            @Override
-            public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, long ttlSeconds, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
-                return new CacheResult<>(generateValue.generate(), null, false);
-            }
-
-            @Override
-            public <T, U, V> CacheResult<T> getOrPutGeneric(String tool, String source, String promptHash, Class<T> container, Class<U> contained, Class<V> contained2, GenerateValue<T> generateValue) {
-                return getOrPutGeneric(tool, source, promptHash, 0, container, contained, contained2, generateValue);
-            }
-
-            @Override
-            public void putString(String tool, String source, String promptHash, long ttlSeconds, String response) {
-            }
-
-            @Override
-            public void putString(String tool, String source, String promptHash, String response) {
-            }
-
-            @Override
-            public void flush() {
-            }
-
-            @Override
-            public <T> CacheResult<T[]> persistArrayResult(String tool, String source, String promptHash, long ttlSeconds, GenerateValue<T[]> generateValue) {
-                return new CacheResult<>(generateValue.generate(), null, false);
-            }
-        };
+        return new MockLocalStorage();
     }
 
     @Produces
