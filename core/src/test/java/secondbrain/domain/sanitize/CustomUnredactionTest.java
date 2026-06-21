@@ -1,80 +1,60 @@
 package secondbrain.domain.sanitize;
 
+import io.smallrye.common.annotation.Identifier;
+import io.smallrye.config.PropertiesConfigSource;
+import io.smallrye.config.SmallRyeConfigBuilder;
+import io.smallrye.config.inject.ConfigExtension;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
+import org.jboss.weld.junit5.auto.AddBeanClasses;
+import org.jboss.weld.junit5.auto.AddExtensions;
+import org.jboss.weld.junit5.auto.EnableAutoWeld;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import secondbrain.domain.logger.Loggers;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Optional;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 @SuppressWarnings("NullAway")
+@EnableAutoWeld
+@AddExtensions(ConfigExtension.class)
+@AddBeanClasses(CustomUnredaction.class)
+@AddBeanClasses(Loggers.class)
 class CustomUnredactionTest {
 
-    @Test
-    void testUnredactRestoresSanitizedMatch() throws Exception {
-        final CustomUnredaction unredaction = new CustomUnredaction();
-        setField(unredaction, "regex1", Optional.of("ACC-\\d+"));
-        setField(unredaction, "sanitizeDocument", accountSanitizer());
-        init(unredaction);
+    @Inject
+    private CustomUnredaction unredaction;
 
-        final String original = "Customer account ACC-123 was charged.";
-        final String redacted = "Customer account {{{ACCOUNT}}} was charged.";
+    @BeforeAll
+    static void registerConfig() {
+        final var configSource = new PropertiesConfigSource(
+                Map.of("sb.unredaction.regex1", "ACC-\\d+"),
+                "TestConfig",
+                Integer.MAX_VALUE
+        );
+        final Config newConfig = new SmallRyeConfigBuilder()
+                .withSources(configSource)
+                .build();
 
-        assertEquals(original, unredaction.unredact(original, redacted));
+        final var configProviderResolver = ConfigProviderResolver.instance();
+        final var oldConfig = configProviderResolver.getConfig();
+        configProviderResolver.releaseConfig(oldConfig);
+        configProviderResolver.registerConfig(
+                newConfig,
+                Thread.currentThread().getContextClassLoader()
+        );
     }
 
-    @Test
-    void testUnredactUsesLastMatchWhenMultipleValuesMapToSamePlaceholder() throws Exception {
-        final CustomUnredaction unredaction = new CustomUnredaction();
-        setField(unredaction, "regex1", Optional.of("ACC-\\d+"));
-        setField(unredaction, "sanitizeDocument", accountSanitizer());
-        init(unredaction);
-
-        final String original = "Customer IDs: ACC-123 and ACC-456";
-        final String redacted = "Customer IDs: {{{ACCOUNT}}} and {{{ACCOUNT}}}";
-
-        assertEquals(original, unredaction.unredact(original, redacted));
-    }
-
-    @Test
-    void testUnredactReturnsRedactedWhenInputBlank() throws Exception {
-        final CustomUnredaction unredaction = new CustomUnredaction();
-        setField(unredaction, "regex1", Optional.of("ACC-\\d+"));
-        setField(unredaction, "sanitizeDocument", accountSanitizer());
-        init(unredaction);
-
-        assertEquals("already redacted", unredaction.unredact("", "already redacted"));
-        assertEquals("already redacted", unredaction.unredact("Customer ACC-123", "already redacted"));
-        assertNull(unredaction.unredact("Customer ACC-123", null));
-    }
-
-    @Test
-    void testUnredactReturnsRedactedWhenRegexMissing() throws Exception {
-        final CustomUnredaction unredaction = new CustomUnredaction();
-        setField(unredaction, "regex1", Optional.empty());
-        setField(unredaction, "sanitizeDocument", accountSanitizer());
-        init(unredaction);
-
-        final String redacted = "Customer account {{{ACCOUNT}}} was charged.";
-
-        assertEquals(redacted, unredaction.unredact("Customer account ACC-123 was charged.", redacted));
-    }
-
-    @Test
-    void testUnredactReturnsRedactedWhenRegexInvalid() throws Exception {
-        final CustomUnredaction unredaction = new CustomUnredaction();
-        setField(unredaction, "regex1", Optional.of("[invalid"));
-        setField(unredaction, "sanitizeDocument", accountSanitizer());
-        init(unredaction);
-
-        final String redacted = "Customer account {{{ACCOUNT}}} was charged.";
-
-        assertEquals(redacted, unredaction.unredact("Customer account ACC-123 was charged.", redacted));
-    }
-
-    private static SanitizeDocument accountSanitizer() {
+    @Produces
+    @Identifier("financialLocationContactRedaction")
+    @ApplicationScoped
+    SanitizeDocument produceAccountSanitizer() {
         return new SanitizeDocument() {
             @Override
             public String sanitize(final String document) {
@@ -88,16 +68,27 @@ class CustomUnredactionTest {
         };
     }
 
-    private static void setField(final Object target, final String fieldName, final Object value) throws Exception {
-        final Field field = target.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(target, value);
+    @Test
+    void testUnredactRestoresSanitizedMatch() {
+        final String original = "Customer account ACC-123 was charged.";
+        final String redacted = "Customer account {{{ACCOUNT}}} was charged.";
+
+        assertEquals(original, unredaction.unredact(original, redacted));
     }
 
-    private static void init(final CustomUnredaction target) throws Exception {
-        final Method init = target.getClass().getDeclaredMethod("init");
-        init.setAccessible(true);
-        init.invoke(target);
+    @Test
+    void testUnredactUsesLastMatchWhenMultipleValuesMapToSamePlaceholder() {
+        final String original = "Customer IDs: ACC-123 and ACC-456";
+        final String redacted = "Customer IDs: {{{ACCOUNT}}} and {{{ACCOUNT}}}";
+
+        assertEquals(original, unredaction.unredact(original, redacted));
+    }
+
+    @Test
+    void testUnredactReturnsRedactedWhenInputBlank() {
+        assertEquals("already redacted", unredaction.unredact("", "already redacted"));
+        assertEquals("already redacted", unredaction.unredact("Customer ACC-123", "already redacted"));
+        assertNull(unredaction.unredact("Customer ACC-123", null));
     }
 }
 
