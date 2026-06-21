@@ -11,6 +11,8 @@ Run the IDE tools to check for errors after editing files and fix any errors bef
 
 When adding tests, run the tests and fix any errors before proceeding.
 
+When adding new classes, you must compile the project and fix any errors before proceeding.
+
 Tests must use the following CDI annotations to inject dependencies:
 
 ```
