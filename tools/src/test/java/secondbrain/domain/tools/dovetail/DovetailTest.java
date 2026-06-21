@@ -31,7 +31,8 @@ import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.objects.SecretGetterGenerator;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.persist.MockLocalStorage;
-import secondbrain.domain.processing.LLMRagDocSummarizer;
+import secondbrain.domain.processing.MockRagDocSummarizer;
+import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingToolRatingFilter;
 import secondbrain.domain.processing.RatingToolRatingMetadata;
 import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
@@ -85,7 +86,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @AddBeanClasses(SimpleSentenceSplitter.class)
 @AddBeanClasses(RatingToolRatingFilter.class)
 @AddBeanClasses(RatingToolRatingMetadata.class)
-@AddBeanClasses(LLMRagDocSummarizer.class)
+@AddBeanClasses(MockRagDocSummarizer.class)
 @AddBeanClasses(RatingTool.class)
 @AddBeanClasses(GetFirstDigits.class)
 @AddBeanClasses(ValidateListEmptyOrNull.class)
@@ -108,6 +109,9 @@ class DovetailTest {
 
     @Inject
     private MockLLmCLient mockLlmClient;
+
+    @Inject
+    private MockRagDocSummarizer mockRagDocSummarizer;
 
     @BeforeAll
     static void registerConfig() {
@@ -139,6 +143,7 @@ class DovetailTest {
     @BeforeEach
     void setupMock() {
         mockLlmClient.setMockResponse(MOCK_LLM_RESPONSE);
+        mockRagDocSummarizer.setMockSummary("Mock summarized item content");
     }
 
     @Produces
@@ -160,6 +165,13 @@ class DovetailTest {
     @ApplicationScoped
     public DovetailClient produceDovetailClient() {
         return new DovetailClientMock();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public RagDocSummarizer produceRagDocSummarizer() {
+        return mockRagDocSummarizer;
     }
 
     // ─── Basic property checks ───
@@ -211,6 +223,25 @@ class DovetailTest {
         assertEquals("Dovetail", item.tool());
         assertEquals(DovetailClientMock.MOCK_DATA_ITEM.id(), item.id());
         assertTrue(item.document().contains("Mock Dovetail Export"));
+    }
+
+    @Test
+    void testGetContextWithSummarizationUsesMockSummary() {
+        final Map<String, String> settings = Map.of("dovetail_api_key", "mock-api-key-value");
+        final List<String> prompts = List.of("What do users say about checkout?");
+        final List<ToolArgs> arguments = List.of(
+                new ToolArgs("summarizeDocument", "true", true),
+                new ToolArgs("summarizeDocumentPrompt", "Summarize this item", true)
+        );
+
+        final List<RagDocumentContext<Void>> context = dovetail.getContext(settings, prompts, arguments);
+        assertNotNull(context);
+        assertFalse(context.isEmpty());
+
+        final var item = context.getFirst();
+        assertEquals("Dovetail", item.tool());
+        assertEquals(DovetailClientMock.MOCK_DATA_ITEM.id(), item.id());
+        assertEquals("Mock summarized item content", item.document());
     }
 
     @Test
