@@ -24,6 +24,7 @@ import java.util.Objects;
 import java.util.logging.Logger;
 
 @ApplicationScoped
+@Preferred
 public class GitHubIssuesClientLive implements GitHubIssuesClient {
     private static final int TTL_SECONDS = 60 * 60 * 24 * 90;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(Constants.DEFAULT_RATE_LIMIT_PER_SECOND);

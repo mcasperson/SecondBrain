@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import secondbrain.domain.answer.DefaultAnswerFormatterService;
 import secondbrain.domain.args.ArgsAccessorSimple;
 import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
-import secondbrain.domain.config.MockConfig;
 import secondbrain.domain.context.JdlSentenceVectorizer;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.SimpleSentenceSplitter;
@@ -51,15 +50,11 @@ import secondbrain.domain.validate.ValidateListEmptyOrNull;
 import secondbrain.domain.validate.ValidateStringBlank;
 import secondbrain.domain.web.ClientConstructorDefault;
 import secondbrain.domain.zip.ApacheCommonsZStdZipper;
-import secondbrain.infrastructure.LlmClientProducer;
-import secondbrain.infrastructure.azure.AzureClient;
 import secondbrain.infrastructure.azure.MessageTooLongResponseInspector;
-import secondbrain.infrastructure.gong.GongClientLive;
+import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.gong.GongClientMock;
-import secondbrain.infrastructure.gong.GongClientProducer;
-import secondbrain.infrastructure.google.GoogleClient;
+import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.mock.MockLLmCLient;
-import secondbrain.infrastructure.ollama.OllamaClient;
 
 import java.util.List;
 import java.util.Map;
@@ -73,15 +68,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(MetaConfig.class)
 // Gong as a sub-tool for Meta to delegate to
 @AddBeanClasses(Gong.class)
-@AddBeanClasses(GongClientProducer.class)
 @AddBeanClasses(GongClientMock.class)
-@AddBeanClasses(GongClientLive.class)
 // Infrastructure
-@AddBeanClasses(MockConfig.class)
-@AddBeanClasses(LlmClientProducer.class)
-@AddBeanClasses(OllamaClient.class)
-@AddBeanClasses(AzureClient.class)
-@AddBeanClasses(GoogleClient.class)
 @AddBeanClasses(MockLLmCLient.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(ArgsAccessorSimple.class)
@@ -119,8 +107,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(ValidateListEmptyOrNull.class)
 @AddBeanClasses(MockLocalStorageReadWrite.class)
-@AddBeanClasses(FileLocalStorageReadWrite.class)
-@AddBeanClasses(LocalStorageReadWriteProducer.class)
 @AddBeanClasses(CompletableFutureTimeoutService.class)
 @AddBeanClasses(ListLimiterAtomicCutOff.class)
 @AddBeanClasses(GetFirstDigits.class)
@@ -154,6 +140,27 @@ class MetaTest {
         return new MockSemaphore();
     }
 
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public GongClient produceGongClient() {
+        return new GongClientMock();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public LocalStorageReadWrite produceLocalStorageReadWrite() {
+        return new MockLocalStorageReadWrite();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public LlmClient produceLlmClient() {
+        return new MockLLmCLient();
+    }
+
     @BeforeAll
     static void registerConfig() {
         final String autodiscovery = System.getenv("SB_COSMOS_AUTODISCOVERY");
@@ -162,11 +169,8 @@ class MetaTest {
         final var configMap = new java.util.HashMap<String, String>();
         configMap.put("sb.cosmos.endpoint", TestConstants.COSMOS_EMULATOR_ENDPOINT);
         configMap.put("sb.cosmos.key", TestConstants.COSMOS_EMULATOR_KEY);
-        configMap.put("sb.infrastructure.mock", "true");
         configMap.put("sb.gong.accessKey", "testAccessKey");
         configMap.put("sb.gong.accessSecretKey", "testAccessSecretKey");
-        configMap.put("sb.localstorage.provider", "h2");
-        configMap.put("sb.mutex.provider", "file");
         configMap.put("sb.encryption.password", "testpassword");
         configMap.put("sb.encryption.salt", "testsalt1234");
         configMap.put("sb.meta.toolNames", "Gong");

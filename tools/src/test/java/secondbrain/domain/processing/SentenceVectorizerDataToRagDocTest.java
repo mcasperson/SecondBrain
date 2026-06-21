@@ -1,6 +1,8 @@
 package secondbrain.domain.processing;
 
 import io.smallrye.config.inject.ConfigExtension;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import org.apache.tika.utils.StringUtils;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
@@ -19,10 +21,14 @@ import secondbrain.domain.data.UrlData;
 import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.logger.Loggers;
-import secondbrain.domain.persist.*;
+import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.persist.LocalStorageReadWrite;
+import secondbrain.domain.persist.MockLocalStorage;
+import secondbrain.domain.persist.MockLocalStorageReadWrite;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.testconstants.TestConstants;
@@ -40,12 +46,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(SentenceVectorizerDataToRagDoc.class)
 @AddBeanClasses(SimpleSentenceSplitter.class)
-@AddBeanClasses(H2LocalStorage.class)
-@AddBeanClasses(CosmosLocalStorage.class)
-@AddBeanClasses(FileLocalStorageReadWrite.class)
-@AddBeanClasses(LocalStorageReadWriteProducer.class)
+@AddBeanClasses(MockLocalStorage.class)
 @AddBeanClasses(MockLocalStorageReadWrite.class)
-@AddBeanClasses(LocalStorageProducer.class)
 @AddBeanClasses(JdlSentenceVectorizer.class)
 @AddBeanClasses(DocumentTrimmerExactKeywords.class)
 @AddBeanClasses(Loggers.class)
@@ -60,6 +62,20 @@ class SentenceVectorizerDataToRagDocTest {
 
     @Inject
     private SentenceVectorizerDataToRagDoc sentenceVectorizerDataToRagDoc;
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public LocalStorage produceLocalStorage() {
+        return new MockLocalStorage();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public LocalStorageReadWrite produceLocalStorageReadWrite() {
+        return new MockLocalStorageReadWrite();
+    }
 
     @BeforeAll
     static void registerConfig() {

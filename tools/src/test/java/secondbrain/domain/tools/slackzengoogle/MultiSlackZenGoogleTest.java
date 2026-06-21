@@ -14,7 +14,6 @@ import secondbrain.domain.annotations.PropertyLabelReaderNullOnFailure;
 import secondbrain.domain.answer.DefaultAnswerFormatterService;
 import secondbrain.domain.args.ArgsAccessorSimple;
 import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
-import secondbrain.domain.config.MockConfig;
 import secondbrain.domain.context.JdlSentenceVectorizer;
 import secondbrain.domain.context.SimpleSentenceSplitter;
 import secondbrain.domain.converter.JSoupHtmlToText;
@@ -37,10 +36,9 @@ import secondbrain.domain.mutex.MockMutex;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.objects.SecretGetterGenerator;
 import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.persist.LocalStorageReadWrite;
 import secondbrain.domain.persist.MockLocalStorage;
 import secondbrain.domain.persist.MockLocalStorageReadWrite;
-import secondbrain.domain.persist.FileLocalStorageReadWrite;
-import secondbrain.domain.persist.LocalStorageReadWriteProducer;
 import secondbrain.domain.processing.MockRagDocSummarizer;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingToolRatingFilter;
@@ -72,17 +70,17 @@ import secondbrain.domain.yaml.YamlDeserializerJackson;
 import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
 import secondbrain.infrastructure.azure.MessageTooLongResponseInspector;
+import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.gong.GongClientMock;
-import secondbrain.infrastructure.gong.GongClientProducer;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.mock.MockLLmCLient;
+import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.PlanHatClientMock;
-import secondbrain.infrastructure.planhat.PlanHatClientProducer;
 import secondbrain.infrastructure.salesforce.SalesforceClientLive;
+import secondbrain.infrastructure.slack.SlackClient;
 import secondbrain.infrastructure.slack.SlackClientMock;
-import secondbrain.infrastructure.slack.SlackClientProducer;
+import secondbrain.infrastructure.zendesk.ZenDeskClient;
 import secondbrain.infrastructure.zendesk.ZenDeskClientMock;
-import secondbrain.infrastructure.zendesk.ZenDeskClientProducer;
 
 import java.util.List;
 import java.util.Map;
@@ -105,21 +103,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(Salesforce.class)
 @AddBeanClasses(RatingTool.class)
 @AddBeanClasses(Keywords.class)
-// Client producers and implementations
-@AddBeanClasses(SlackClientProducer.class)
+// Client implementations
 @AddBeanClasses(SlackClientMock.class)
-@AddBeanClasses(ZenDeskClientProducer.class)
 @AddBeanClasses(ZenDeskClientMock.class)
-@AddBeanClasses(PlanHatClientProducer.class)
 @AddBeanClasses(PlanHatClientMock.class)
-@AddBeanClasses(GongClientProducer.class)
 @AddBeanClasses(GongClientMock.class)
 @AddBeanClasses(SalesforceClientLive.class)
 // ZenDesk support
 @AddBeanClasses(ZenDeskIndividualTicket.class)
 @AddBeanClasses(SanitizeOrganization.class)
 // Infrastructure
-@AddBeanClasses(MockConfig.class)
 @AddBeanClasses(MockLLmCLient.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(ArgsAccessorSimple.class)
@@ -153,8 +146,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(ValidateListEmptyOrNull.class)
 @AddBeanClasses(MockLocalStorageReadWrite.class)
-@AddBeanClasses(FileLocalStorageReadWrite.class)
-@AddBeanClasses(LocalStorageReadWriteProducer.class)
 @AddBeanClasses(CompletableFutureTimeoutService.class)
 @AddBeanClasses(ListLimiterAtomicCutOff.class)
 @AddBeanClasses(GetFirstDigits.class)
@@ -210,6 +201,41 @@ class MultiSlackZenGoogleTest {
         return new MockMutex();
     }
 
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public SlackClient produceSlackClient() {
+        return new SlackClientMock();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public ZenDeskClient produceZenDeskClient() {
+        return new ZenDeskClientMock();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public PlanHatClient producePlanHatClient() {
+        return new PlanHatClientMock();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public GongClient produceGongClient() {
+        return new GongClientMock();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public LocalStorageReadWrite produceLocalStorageReadWrite() {
+        return new MockLocalStorageReadWrite();
+    }
+
     @BeforeAll
     static void registerConfig() {
         final String autodiscovery = System.getenv("SB_COSMOS_AUTODISCOVERY");
@@ -218,11 +244,8 @@ class MultiSlackZenGoogleTest {
         final var configMap = new java.util.HashMap<String, String>();
         configMap.put("sb.cosmos.endpoint", TestConstants.COSMOS_EMULATOR_ENDPOINT);
         configMap.put("sb.cosmos.key", TestConstants.COSMOS_EMULATOR_KEY);
-        configMap.put("sb.infrastructure.mock", "true");
         configMap.put("sb.gong.accessKey", "testAccessKey");
         configMap.put("sb.gong.accessSecretKey", "testAccessSecretKey");
-        configMap.put("sb.localstorage.provider", "h2");
-        configMap.put("sb.mutex.provider", "file");
         configMap.put("sb.encryption.password", "testpassword");
         configMap.put("sb.encryption.salt", "testsalt1234");
         configMap.put("sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery);

@@ -2,6 +2,8 @@ package secondbrain.domain.persist;
 
 import io.smallrye.config.inject.ConfigExtension;
 import io.vavr.control.Try;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import org.apache.tika.utils.StringUtils;
 import secondbrain.domain.testconstants.TestConstants;
@@ -16,7 +18,7 @@ import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.encryption.JasyptBinaryEncryptor;
 import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
-import secondbrain.domain.config.MockConfig;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
@@ -32,10 +34,7 @@ import java.util.UUID;
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(CosmosLocalStorage.class)
-@AddBeanClasses(FileLocalStorageReadWrite.class)
 @AddBeanClasses(MockLocalStorageReadWrite.class)
-@AddBeanClasses(LocalStorageReadWriteProducer.class)
-@AddBeanClasses(MockConfig.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(JsonDeserializerJackson.class)
@@ -49,6 +48,13 @@ public class CosmosLocalStorageTest {
 
     @Inject
     CosmosLocalStorage cosmosLocalStorage;
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public LocalStorageReadWrite produceLocalStorageReadWrite() {
+        return new MockLocalStorageReadWrite();
+    }
 
     /**
      * <a href="https://github.com/weld/weld-testing/issues/81#issuecomment-1564002983">...</a>

@@ -43,6 +43,7 @@ import static io.vavr.Predicates.instanceOf;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
+@Preferred
 public class SlackClientLive implements SlackClient {
 
     private static final int RETRIES = 10;

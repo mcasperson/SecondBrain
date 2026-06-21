@@ -31,6 +31,7 @@ import java.util.logging.Logger;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
+@Preferred
 public class DovetailClientLive implements DovetailClient {
 
     private static final int LIST_TTL = 60 * 60 * 24;

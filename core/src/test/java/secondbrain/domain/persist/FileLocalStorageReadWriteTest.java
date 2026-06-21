@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.test.TestConfigUtil;
@@ -30,6 +31,7 @@ import java.util.UUID;
 public class FileLocalStorageReadWriteTest {
 
     @Inject
+    @Preferred
     FileLocalStorageReadWrite fileLocalStorage;
 
     @BeforeEach

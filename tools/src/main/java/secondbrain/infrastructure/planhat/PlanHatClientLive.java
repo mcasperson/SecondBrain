@@ -36,6 +36,7 @@ import java.util.stream.Stream;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
+@Preferred
 public class PlanHatClientLive implements PlanHatClient {
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(5);
     private static final int DEFAULT_PAGE_SIZE = 5;

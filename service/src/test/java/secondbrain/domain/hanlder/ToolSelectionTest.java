@@ -1,6 +1,8 @@
 package secondbrain.domain.hanlder;
 
 import io.smallrye.config.inject.ConfigExtension;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
@@ -19,6 +21,7 @@ import secondbrain.domain.debug.DebugToolArgsKeyValue;
 import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.limit.ListLimiterAtomicCutOff;
@@ -39,12 +42,17 @@ import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.validate.Llama32ValidateInputs;
 import secondbrain.domain.validate.ValidateListEmptyOrNull;
 import secondbrain.domain.validate.ValidateStringBlank;
-import secondbrain.infrastructure.github.GitHubClientProducer;
-import secondbrain.infrastructure.gong.GongClientProducer;
+import secondbrain.infrastructure.github.GitHubClient;
+import secondbrain.infrastructure.github.GitHubClientMock;
+import secondbrain.infrastructure.gong.GongClient;
+import secondbrain.infrastructure.gong.GongClientMock;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.planhat.PlanHatClientProducer;
-import secondbrain.infrastructure.slack.SlackClientProducer;
-import secondbrain.infrastructure.zendesk.ZenDeskClientProducer;
+import secondbrain.infrastructure.planhat.PlanHatClient;
+import secondbrain.infrastructure.planhat.PlanHatClientMock;
+import secondbrain.infrastructure.slack.SlackClient;
+import secondbrain.infrastructure.slack.SlackClientMock;
+import secondbrain.infrastructure.zendesk.ZenDeskClient;
+import secondbrain.infrastructure.zendesk.ZenDeskClientMock;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -100,11 +108,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(SanitizeEmail.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(DocumentTrimmerExactKeywords.class)
-@AddBeanClasses(ZenDeskClientProducer.class)
-@AddBeanClasses(SlackClientProducer.class)
-@AddBeanClasses(PlanHatClientProducer.class)
-@AddBeanClasses(GongClientProducer.class)
-@AddBeanClasses(GitHubClientProducer.class)
+@AddBeanClasses(ZenDeskClientMock.class)
+@AddBeanClasses(SlackClientMock.class)
+@AddBeanClasses(PlanHatClientMock.class)
+@AddBeanClasses(GongClientMock.class)
+@AddBeanClasses(GitHubClientMock.class)
 @AddBeanClasses(FinancialLocationContactRedaction.class)
 public class ToolSelectionTest {
 
@@ -120,13 +128,47 @@ public class ToolSelectionTest {
     @Inject
     ToolSelector toolSelector;
 
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public ZenDeskClient produceZenDeskClient() {
+        return new ZenDeskClientMock();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public SlackClient produceSlackClient() {
+        return new SlackClientMock();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public PlanHatClient producePlanHatClient() {
+        return new PlanHatClientMock();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public GongClient produceGongClient() {
+        return new GongClientMock();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public GitHubClient produceGitHubClient() {
+        return new GitHubClientMock();
+    }
+
     /**
      * <a href="https://github.com/weld/weld-testing/issues/81#issuecomment-1564002983">...</a>
      */
     @BeforeEach
     void updateConfig() {
         TestConfigUtil.registerConfig(Map.of(
-                "sb.infrastructure.mock", "true",
                 "sb.ollama.url", "http://localhost:" + ollamaContainer.getMappedPort(11434),
                 // Unfortunately llama3.2 is not reliable enough for tool selection.
                 // To make these tests reliable, we need to use llama3.1, which is a larger model.

@@ -30,6 +30,7 @@ import java.util.logging.Logger;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
+@Preferred
 public class ZenDeskClientLive implements ZenDeskClient {
 
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(1);

@@ -30,6 +30,7 @@ import java.util.logging.Logger;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
+@Preferred
 public class GongClientLive implements GongClient {
     private static final int TTL = 60 * 60 * 24 * 90;
     private static final String CALLS_CACHE_SOURCE = "GongAPICallsExtensiveParentV2";

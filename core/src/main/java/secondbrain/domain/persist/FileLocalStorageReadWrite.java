@@ -12,6 +12,7 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.persist.config.LocalStorageCacheDirectory;
 import secondbrain.domain.persist.config.LocalStorageMemoryCacheEnabled;
 import secondbrain.domain.persist.config.LocalStorageMemoryCacheFileLimit;
@@ -44,6 +45,7 @@ import java.util.regex.Pattern;
  * This implementation uses an optional in-memory cache to speed up reads.
  */
 @ApplicationScoped
+@Preferred
 public class FileLocalStorageReadWrite implements LocalStorageReadWrite {
     private static final Pattern LOCAL_CACHE_TIMESTAMP = Pattern.compile("(.*?)\\.cache\\.(\\d+)");
     private static final Set<String> IGNORED_FILES = Set.of("localstoragev2.mv.db", "localstoragev2.trace.db", "lastclean.marker");
