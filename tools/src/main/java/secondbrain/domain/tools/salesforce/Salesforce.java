@@ -84,6 +84,7 @@ public class Salesforce implements Tool<Void> {
     private DataToRagDoc dataToRagDoc;
 
     @Inject
+    @Preferred
     private RagDocSummarizer ragDocSummarizer;
 
     @Inject

@@ -94,6 +94,7 @@ public class GitHubIssues implements Tool<Void> {
     private HooksContainer hooksContainer;
 
     @Inject
+    @Preferred
     private RagDocSummarizer ragDocSummarizer;
 
     @Override

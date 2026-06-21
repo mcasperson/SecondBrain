@@ -98,6 +98,7 @@ public class ZenDeskOrganization implements Tool<Void> {
     private RatingFilter ratingFilter;
 
     @Inject
+    @Preferred
     private RagDocSummarizer ragDocSummarizer;
 
     @Inject
