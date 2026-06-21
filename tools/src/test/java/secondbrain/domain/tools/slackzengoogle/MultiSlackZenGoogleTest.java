@@ -3,6 +3,8 @@ package secondbrain.domain.tools.slackzengoogle;
 import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.Config;
@@ -26,6 +28,7 @@ import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.exceptionhandling.StandardExceptionMapping;
 import secondbrain.domain.hooks.NamedHooksContainer;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.httpclient.TimeoutTryHttpClientCalled;
 import secondbrain.domain.httpclient.TryHttpClientCalled;
 import secondbrain.domain.json.JsonDeserializerJackson;
@@ -34,13 +37,16 @@ import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.limit.ListLimiterAtomicCutOff;
 import secondbrain.domain.list.TrimmedCommaSeparatedStringToList;
 import secondbrain.domain.logger.Loggers;
-import secondbrain.domain.mutex.CosmosMutex;
-import secondbrain.domain.mutex.FileLockMutex;
-import secondbrain.domain.mutex.MutexProducer;
-import secondbrain.domain.mutex.SemaphoreProducer;
+import secondbrain.domain.mutex.MockMutex;
+import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.objects.SecretGetterGenerator;
-import secondbrain.domain.persist.*;
-import secondbrain.domain.processing.LLMRagDocSummarizer;
+import secondbrain.domain.persist.LocalStorage;
+import secondbrain.domain.persist.MockLocalStorage;
+import secondbrain.domain.persist.MockLocalStorageReadWrite;
+import secondbrain.domain.persist.FileLocalStorageReadWrite;
+import secondbrain.domain.persist.LocalStorageReadWriteProducer;
+import secondbrain.domain.processing.MockRagDocSummarizer;
+import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingToolRatingFilter;
 import secondbrain.domain.processing.RatingToolRatingMetadata;
 import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
@@ -67,23 +73,16 @@ import secondbrain.domain.web.ClientConstructorDefault;
 import secondbrain.domain.yaml.YamlDeserializerJackson;
 import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
-import secondbrain.infrastructure.LlmClientProducer;
-import secondbrain.infrastructure.azure.AzureClient;
 import secondbrain.infrastructure.azure.MessageTooLongResponseInspector;
-import secondbrain.infrastructure.gong.GongClientLive;
 import secondbrain.infrastructure.gong.GongClientMock;
 import secondbrain.infrastructure.gong.GongClientProducer;
-import secondbrain.infrastructure.google.GoogleClient;
+import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.mock.MockLLmCLient;
-import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.infrastructure.planhat.PlanHatClientLive;
 import secondbrain.infrastructure.planhat.PlanHatClientMock;
 import secondbrain.infrastructure.planhat.PlanHatClientProducer;
 import secondbrain.infrastructure.salesforce.SalesforceClientLive;
-import secondbrain.infrastructure.slack.SlackClientLive;
 import secondbrain.infrastructure.slack.SlackClientMock;
 import secondbrain.infrastructure.slack.SlackClientProducer;
-import secondbrain.infrastructure.zendesk.ZenDeskClientLive;
 import secondbrain.infrastructure.zendesk.ZenDeskClientMock;
 import secondbrain.infrastructure.zendesk.ZenDeskClientProducer;
 
@@ -110,16 +109,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(Keywords.class)
 // Client producers and implementations
 @AddBeanClasses(SlackClientProducer.class)
-@AddBeanClasses(SlackClientLive.class)
 @AddBeanClasses(SlackClientMock.class)
 @AddBeanClasses(ZenDeskClientProducer.class)
-@AddBeanClasses(ZenDeskClientLive.class)
 @AddBeanClasses(ZenDeskClientMock.class)
 @AddBeanClasses(PlanHatClientProducer.class)
-@AddBeanClasses(PlanHatClientLive.class)
 @AddBeanClasses(PlanHatClientMock.class)
 @AddBeanClasses(GongClientProducer.class)
-@AddBeanClasses(GongClientLive.class)
 @AddBeanClasses(GongClientMock.class)
 @AddBeanClasses(SalesforceClientLive.class)
 // ZenDesk support
@@ -127,10 +122,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(SanitizeOrganization.class)
 // Infrastructure
 @AddBeanClasses(MockConfig.class)
-@AddBeanClasses(LlmClientProducer.class)
-@AddBeanClasses(OllamaClient.class)
-@AddBeanClasses(AzureClient.class)
-@AddBeanClasses(GoogleClient.class)
 @AddBeanClasses(MockLLmCLient.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(ArgsAccessorSimple.class)
@@ -144,14 +135,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(DateParserHawking.class)
 @AddBeanClasses(StandardExceptionMapping.class)
 @AddBeanClasses(NamedHooksContainer.class)
-@AddBeanClasses(LocalStorageProducer.class)
-@AddBeanClasses(H2LocalStorage.class)
-@AddBeanClasses(CosmosLocalStorage.class)
+@AddBeanClasses(MockLocalStorage.class)
 @AddBeanClasses(SharedVirtualThreadExecutor.class)
 @AddBeanClasses(RatingToolRatingMetadata.class)
 @AddBeanClasses(RatingToolRatingFilter.class)
 @AddBeanClasses(SentenceVectorizerDataToRagDoc.class)
-@AddBeanClasses(LLMRagDocSummarizer.class)
+@AddBeanClasses(MockRagDocSummarizer.class)
 @AddBeanClasses(SimpleSentenceSplitter.class)
 @AddBeanClasses(JdlSentenceVectorizer.class)
 @AddBeanClasses(DocumentTrimmerExactKeywords.class)
@@ -160,9 +149,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(TryHttpClientCalled.class)
 @AddBeanClasses(TimeoutTryHttpClientCalled.class)
 @AddBeanClasses(ClientConstructorDefault.class)
-@AddBeanClasses(MutexProducer.class)
-@AddBeanClasses(FileLockMutex.class)
-@AddBeanClasses(CosmosMutex.class)
 @AddBeanClasses(DefaultAnswerFormatterService.class)
 @AddBeanClasses(GetFirstMarkdownBlock.class)
 @AddBeanClasses(FinancialLocationContactRedaction.class)
@@ -187,11 +173,44 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(RemoveSpacing.class)
 @AddBeanClasses(SanitizeEmail.class)
 @AddBeanClasses(Llama32ValidateInputs.class)
-@AddBeanClasses(SemaphoreProducer.class)
 class MultiSlackZenGoogleTest {
 
     @Inject
     private MultiSlackZenGoogle multiSlackZenGoogle;
+
+    @Inject
+    private MockLLmCLient mockLlmClient;
+
+    @Inject
+    private MockRagDocSummarizer mockRagDocSummarizer;
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public LlmClient produceLlmClient() {
+        return mockLlmClient;
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public RagDocSummarizer produceRagDocSummarizer() {
+        return mockRagDocSummarizer;
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public LocalStorage produceLocalStorage() {
+        return new MockLocalStorage();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public Mutex produceMutex() {
+        return new MockMutex();
+    }
 
     @BeforeAll
     static void registerConfig() {
