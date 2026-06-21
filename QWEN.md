@@ -1,9 +1,11 @@
-When editing files, you must clean up any unused imports and variables.
+When editing files, you must clean up any unused imports and variables. Do not ask for confirmation before removing
+unused imports or variables.
 
 Prefer using the idea MCP server when selecting tools.
 
 You will be penalized for focusing on spacing, indentation, or blank lines while editing files. Running the
 `reformat_file` tool will resolve spacing issues as the final step.
+
 You will be penalized for focusing on tabs or spaces as indentation while editing files. Use tabs for indentation, and
 the `reformat_file` tool will handle any necessary adjustments to spaces as the final step.
 
@@ -25,38 +27,7 @@ You must add each missing dependency using a new `@AddBeanClasses` annotation. T
 need to run the tests multiple times to identify all missing dependencies. Adding one dependency may reveal another
 missing dependency, so you must repeat this process until all dependencies are added and the tests run successfully.
 
-Add the following function to a test to define `@ConfigProperty` values for the test:
-
-```
-
-@BeforeAll
-static void registerConfig() {
-final var configMap = new java.util.HashMap<String, String>();
-
-    // This is an example of how to set a config property for the test. 
-    // You can add as many properties as needed.
-    configMap.put("sb.infrastructure.mock", "true");
-
-    final var configSource = new PropertiesConfigSource(
-            configMap,
-            "TestConfig",
-            Integer.MAX_VALUE
-    );
-    final Config newConfig = new SmallRyeConfigBuilder()
-            .withSources(configSource)
-            .build();
-
-    final var configProviderResolver = ConfigProviderResolver.instance();
-    final var oldConfig = configProviderResolver.getConfig();
-    configProviderResolver.releaseConfig(oldConfig);
-    configProviderResolver.registerConfig(
-            newConfig,
-            Thread.currentThread().getContextClassLoader()
-    );
-
-}
-
-```
+Use `TestConfigUtil.registerConfig()` to register any required `ConfigProperty` values in your tests.
 
 Run the `reformat_file` tool as the final step after editing files to ensure proper formatting.
 

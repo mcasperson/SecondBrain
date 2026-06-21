@@ -1,15 +1,10 @@
 package secondbrain.domain.tools.meta;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import org.apache.tika.utils.StringUtils;
-import secondbrain.domain.injection.Preferred;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
@@ -29,6 +24,7 @@ import secondbrain.domain.exceptionhandling.StandardExceptionMapping;
 import secondbrain.domain.hooks.NamedHooksContainer;
 import secondbrain.domain.httpclient.TimeoutTryHttpClientCalled;
 import secondbrain.domain.httpclient.TryHttpClientCalled;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.limit.ListLimiterAtomicCutOff;
@@ -40,15 +36,12 @@ import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.mutex.Semaphore;
 import secondbrain.domain.objects.SecretGetterGenerator;
 import secondbrain.domain.persist.*;
-import secondbrain.domain.processing.LLMRagDocSummarizer;
-import secondbrain.domain.processing.RagDocSummarizerProducer;
-import secondbrain.domain.processing.RatingToolRatingFilter;
-import secondbrain.domain.processing.RatingToolRatingMetadata;
-import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
+import secondbrain.domain.processing.*;
 import secondbrain.domain.response.OkResponseValidation;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.sanitize.GetFirstDigits;
 import secondbrain.domain.sanitize.GetFirstMarkdownBlock;
+import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.testconstants.TestConstants;
 import secondbrain.domain.timeout.CompletableFutureTimeoutService;
 import secondbrain.domain.tools.gong.Gong;
@@ -180,22 +173,7 @@ class MetaTest {
         configMap.put("sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery);
         configMap.put("sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode);
 
-        final var configSource = new PropertiesConfigSource(
-                configMap,
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-        configProviderResolver.releaseConfig(oldConfig);
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(configMap);
     }
 
     @Test
@@ -208,6 +186,3 @@ class MetaTest {
         assertNotNull(result);
     }
 }
-
-
-
