@@ -1,14 +1,10 @@
 package secondbrain.domain.persist;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import io.vavr.control.Try;
 import jakarta.inject.Inject;
 import org.apache.tika.utils.StringUtils;
-import org.eclipse.microprofile.config.Config;
 import secondbrain.domain.testconstants.TestConstants;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
@@ -24,6 +20,7 @@ import secondbrain.domain.config.MockConfig;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
+import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
 
@@ -84,32 +81,17 @@ public class CosmosLocalStorageTest {
         final String autodiscovery = System.getenv("SB_COSMOS_AUTODISCOVERY");
         final String gatewayMode = System.getenv("SB_COSMOS_GATEWAYMODE");
 
-        final var configSource = new PropertiesConfigSource(
-                Map.of(
-                        "sb.cache.disable", "false",
-                        "sb.cosmos.endpoint", TestConstants.COSMOS_EMULATOR_ENDPOINT,
-                        "sb.cosmos.key", TestConstants.COSMOS_EMULATOR_KEY,
-                        "sb.cosmos.database", "testdb",
-                        "sb.cosmos.container", "testcontainer",
-                        "sb.encryption.password", "1234567890",
-                        "sb.encryption.salt", "1234567890",
-                        "sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery,
-                        "sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode
-                ),
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        Try.run(() -> configProviderResolver.releaseConfig(configProviderResolver.getConfig()))
-                .onFailure(ex -> { /* ignore if no config registered yet */ });
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(Map.of(
+                "sb.cache.disable", "false",
+                "sb.cosmos.endpoint", TestConstants.COSMOS_EMULATOR_ENDPOINT,
+                "sb.cosmos.key", TestConstants.COSMOS_EMULATOR_KEY,
+                "sb.cosmos.database", "testdb",
+                "sb.cosmos.container", "testcontainer",
+                "sb.encryption.password", "1234567890",
+                "sb.encryption.salt", "1234567890",
+                "sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery,
+                "sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode
+        ));
     }
 
     @BeforeEach

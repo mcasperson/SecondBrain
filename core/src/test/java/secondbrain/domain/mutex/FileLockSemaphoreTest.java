@@ -1,12 +1,8 @@
 package secondbrain.domain.mutex;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import io.vavr.control.Try;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
@@ -17,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.exceptions.LockFail;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.mutex.config.MutexTimeout;
 
 import java.nio.file.Files;
@@ -40,24 +37,9 @@ public class FileLockSemaphoreTest {
 
     @BeforeAll
     static void registerConfig() {
-        final var configSource = new PropertiesConfigSource(
-                Map.of(
-                        "sb.cache.disable", "false"
-                ),
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        Try.run(() -> configProviderResolver.releaseConfig(configProviderResolver.getConfig()))
-                .onFailure(ex -> { /* ignore if no config registered yet */ });
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(Map.of(
+                "sb.cache.disable", "false"
+        ));
     }
 
     @BeforeEach

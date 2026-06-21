@@ -1,11 +1,7 @@
 package secondbrain.domain.hooks;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
@@ -13,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.test.TestConfigUtil;
 
 import java.util.List;
 import java.util.Map;
@@ -33,24 +30,8 @@ class RegexFilterHookTest {
      */
     @BeforeEach
     void updateConfig() {
-        final var configSource = new PropertiesConfigSource(
-                Map.of(
-                        "sb.regexfilterhook.regex", "\\[Something\\] \\[Category\\] \\[Action\\]"),
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-
-        configProviderResolver.releaseConfig(oldConfig);
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(Map.of(
+                "sb.regexfilterhook.regex", "\\[Something\\] \\[Category\\] \\[Action\\]"));
     }
 
     @Test

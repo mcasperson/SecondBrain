@@ -1,11 +1,7 @@
 package secondbrain.domain.hanlder;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
@@ -38,6 +34,7 @@ import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
 import secondbrain.domain.tools.smoketest.SmokeTest;
 import secondbrain.domain.tools.zendesk.SanitizeOrganization;
+import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.validate.Llama32ValidateInputs;
 import secondbrain.domain.validate.ValidateListEmptyOrNull;
@@ -128,28 +125,12 @@ public class ToolSelectionTest {
      */
     @BeforeEach
     void updateConfig() {
-        final var configSource = new PropertiesConfigSource(
-                Map.of(
-                        "sb.infrastructure.mock", "true",
-                        "sb.ollama.url", "http://localhost:" + ollamaContainer.getMappedPort(11434),
-                        // Unfortunately llama3.2 is not reliable enough for tool selection.
-                        // To make these tests reliable, we need to use llama3.1, which is a larger model.
-                        "sb.ollama.toolmodel", "llama3.1:8b-instruct-q5_K_M "),
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-
-        configProviderResolver.releaseConfig(oldConfig);
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(Map.of(
+                "sb.infrastructure.mock", "true",
+                "sb.ollama.url", "http://localhost:" + ollamaContainer.getMappedPort(11434),
+                // Unfortunately llama3.2 is not reliable enough for tool selection.
+                // To make these tests reliable, we need to use llama3.1, which is a larger model.
+                "sb.ollama.toolmodel", "llama3.1:8b-instruct-q5_K_M "));
     }
 
     @BeforeEach

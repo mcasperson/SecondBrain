@@ -1,12 +1,8 @@
 package secondbrain.domain.processing;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.inject.Inject;
 import org.apache.tika.utils.StringUtils;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
@@ -28,6 +24,7 @@ import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.persist.*;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
+import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.testconstants.TestConstants;
 import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
@@ -69,35 +66,17 @@ class SentenceVectorizerDataToRagDocTest {
         final String autodiscovery = System.getenv("SB_COSMOS_AUTODISCOVERY");
         final String gatewayMode = System.getenv("SB_COSMOS_GATEWAYMODE");
 
-        final var configSource = new PropertiesConfigSource(
-                Map.of(
-                        "sb.infrastructure.mock", "true",
-                        "sb.encryption.password", "1234567890",
-                        "sb.encryption.salt", "1234567890",
-                        "sb.cosmos.endpoint", TestConstants.COSMOS_EMULATOR_ENDPOINT,
-                        "sb.cosmos.key", TestConstants.COSMOS_EMULATOR_KEY,
-                        "sb.cosmos.lockdatabase", "secondbrainlock",
-                        "sb.cosmos.lockscontainer", "locks",
-                        "sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery,
-                        "sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode
-                ),
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        try {
-            configProviderResolver.releaseConfig(configProviderResolver.getConfig());
-        } catch (final Exception ex) {
-            /* ignore if no config registered yet */
-        }
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(Map.of(
+                "sb.infrastructure.mock", "true",
+                "sb.encryption.password", "1234567890",
+                "sb.encryption.salt", "1234567890",
+                "sb.cosmos.endpoint", TestConstants.COSMOS_EMULATOR_ENDPOINT,
+                "sb.cosmos.key", TestConstants.COSMOS_EMULATOR_KEY,
+                "sb.cosmos.lockdatabase", "secondbrainlock",
+                "sb.cosmos.lockscontainer", "locks",
+                "sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery,
+                "sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode
+        ));
     }
 
     @BeforeEach

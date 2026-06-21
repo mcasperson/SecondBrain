@@ -1,13 +1,9 @@
 package secondbrain.domain.tools.alias;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
@@ -23,6 +19,7 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.objects.SecretGetterGenerator;
 import secondbrain.domain.sanitize.GetFirstMarkdownBlock;
+import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.tooldefs.ToolArgs;
 import secondbrain.domain.tooldefs.ToolArguments;
 import secondbrain.domain.validate.ValidateStringBlank;
@@ -61,22 +58,7 @@ class AliasToolTest {
         final var configMap = new java.util.HashMap<String, String>();
         configMap.put("sb.infrastructure.mock", "true");
 
-        final var configSource = new PropertiesConfigSource(
-                configMap,
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-        configProviderResolver.releaseConfig(oldConfig);
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(configMap);
     }
 
     @BeforeEach

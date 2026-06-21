@@ -1,14 +1,10 @@
 package secondbrain.domain.tools.slackzengoogle;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import org.apache.tika.utils.StringUtils;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
@@ -53,6 +49,7 @@ import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
 import secondbrain.domain.reader.FileReaderSelector;
 import secondbrain.domain.response.OkResponseValidation;
 import secondbrain.domain.sanitize.*;
+import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.testconstants.TestConstants;
 import secondbrain.domain.timeout.CompletableFutureTimeoutService;
 import secondbrain.domain.tools.gong.Gong;
@@ -231,22 +228,7 @@ class MultiSlackZenGoogleTest {
         configMap.put("sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery);
         configMap.put("sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode);
 
-        final var configSource = new PropertiesConfigSource(
-                configMap,
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-        configProviderResolver.releaseConfig(oldConfig);
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(configMap);
     }
 
     @Test

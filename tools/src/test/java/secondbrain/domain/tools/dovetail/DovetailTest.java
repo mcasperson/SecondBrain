@@ -1,13 +1,9 @@
 package secondbrain.domain.tools.dovetail;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
@@ -37,6 +33,7 @@ import secondbrain.domain.processing.RatingToolRatingFilter;
 import secondbrain.domain.processing.RatingToolRatingMetadata;
 import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
+import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.sanitize.GetFirstDigits;
 import secondbrain.domain.sanitize.GetFirstMarkdownBlock;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -122,22 +119,7 @@ class DovetailTest {
         configMap.put("sb.dovetail.apiKey", "mock-api-key");
         configMap.put("sb.dovetail.baseUrl", "https://dovetail.com");
 
-        final var configSource = new PropertiesConfigSource(
-                configMap,
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-        configProviderResolver.releaseConfig(oldConfig);
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(configMap);
     }
 
     @BeforeEach

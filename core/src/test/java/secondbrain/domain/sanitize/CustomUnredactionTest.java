@@ -1,20 +1,17 @@
 package secondbrain.domain.sanitize;
 
 import io.smallrye.common.annotation.Identifier;
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.test.TestConfigUtil;
 
 import java.util.Map;
 
@@ -33,22 +30,7 @@ class CustomUnredactionTest {
 
     @BeforeAll
     static void registerConfig() {
-        final var configSource = new PropertiesConfigSource(
-                Map.of("sb.unredaction.regex1", "ACC-\\d+"),
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-        configProviderResolver.releaseConfig(oldConfig);
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(Map.of("sb.unredaction.regex1", "ACC-\\d+"));
     }
 
     @Produces

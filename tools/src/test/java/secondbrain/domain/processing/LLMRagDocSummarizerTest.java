@@ -1,13 +1,9 @@
 package secondbrain.domain.processing;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
@@ -21,6 +17,7 @@ import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.logger.Loggers;
+import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.mock.MockLLmCLient;
 
@@ -49,27 +46,11 @@ class LLMRagDocSummarizerTest {
 
     @BeforeEach
     void updateConfig() {
-        final var configSource = new PropertiesConfigSource(
-                Map.of(
-                        "sb.infrastructure.mock", "true",
-                        "sb.encryption.password", "1234567890",
-                        "sb.encryption.salt", "1234567890"
-                ),
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-
-        configProviderResolver.releaseConfig(oldConfig);
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(Map.of(
+                "sb.infrastructure.mock", "true",
+                "sb.encryption.password", "1234567890",
+                "sb.encryption.salt", "1234567890"
+        ));
     }
 
     @Produces

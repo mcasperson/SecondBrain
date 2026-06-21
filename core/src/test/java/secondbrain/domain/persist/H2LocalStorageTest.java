@@ -1,12 +1,8 @@
 package secondbrain.domain.persist;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import io.vavr.control.Try;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
@@ -17,6 +13,7 @@ import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
+import secondbrain.domain.test.TestConfigUtil;
 
 import java.util.Map;
 import java.util.UUID;
@@ -39,24 +36,9 @@ public class H2LocalStorageTest {
      */
     @BeforeEach
     void updateConfig() {
-        final var configSource = new PropertiesConfigSource(
-                Map.of("sb.infrastructure.mock", "true",
-                        "sb.cache.disable", "false"),
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-
-        configProviderResolver.releaseConfig(oldConfig);
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(Map.of(
+                "sb.infrastructure.mock", "true",
+                "sb.cache.disable", "false"));
     }
 
     @Test

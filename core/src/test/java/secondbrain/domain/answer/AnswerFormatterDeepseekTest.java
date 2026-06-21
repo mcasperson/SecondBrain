@@ -1,17 +1,14 @@
 package secondbrain.domain.answer;
 
-import io.smallrye.config.PropertiesConfigSource;
-import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.constants.ModelRegex;
+import secondbrain.domain.test.TestConfigUtil;
 
 import java.util.Map;
 
@@ -28,24 +25,9 @@ public class AnswerFormatterDeepseekTest {
 
     @BeforeEach
     void updateConfig() {
-        final var configSource = new PropertiesConfigSource(
-                Map.of("sb.infrastructure.mock", "true",
-                        "sb.answerformatter.deepseekregex", ModelRegex.DEEPSEEK_REGEX),
-                "TestConfig",
-                Integer.MAX_VALUE
-        );
-        final Config newConfig = new SmallRyeConfigBuilder()
-                .withSources(configSource)
-                .build();
-
-        final var configProviderResolver = ConfigProviderResolver.instance();
-        final var oldConfig = configProviderResolver.getConfig();
-
-        configProviderResolver.releaseConfig(oldConfig);
-        configProviderResolver.registerConfig(
-                newConfig,
-                Thread.currentThread().getContextClassLoader()
-        );
+        TestConfigUtil.registerConfig(Map.of(
+                "sb.infrastructure.mock", "true",
+                "sb.answerformatter.deepseekregex", ModelRegex.DEEPSEEK_REGEX));
     }
 
     @Test
