@@ -3,8 +3,11 @@ package secondbrain.domain.tools.meta;
 import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import io.smallrye.config.inject.ConfigExtension;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import org.apache.tika.utils.StringUtils;
+import secondbrain.domain.injection.Preferred;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
@@ -31,13 +34,14 @@ import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.limit.ListLimiterAtomicCutOff;
 import secondbrain.domain.list.TrimmedCommaSeparatedStringToList;
 import secondbrain.domain.logger.Loggers;
-import secondbrain.domain.mutex.CosmosMutex;
-import secondbrain.domain.mutex.FileLockMutex;
-import secondbrain.domain.mutex.MutexProducer;
-import secondbrain.domain.mutex.SemaphoreProducer;
+import secondbrain.domain.mutex.MockMutex;
+import secondbrain.domain.mutex.MockSemaphore;
+import secondbrain.domain.mutex.Mutex;
+import secondbrain.domain.mutex.Semaphore;
 import secondbrain.domain.objects.SecretGetterGenerator;
 import secondbrain.domain.persist.*;
 import secondbrain.domain.processing.LLMRagDocSummarizer;
+import secondbrain.domain.processing.RagDocSummarizerProducer;
 import secondbrain.domain.processing.RatingToolRatingFilter;
 import secondbrain.domain.processing.RatingToolRatingMetadata;
 import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
@@ -97,14 +101,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(DateParserHawking.class)
 @AddBeanClasses(StandardExceptionMapping.class)
 @AddBeanClasses(NamedHooksContainer.class)
-@AddBeanClasses(LocalStorageProducer.class)
-@AddBeanClasses(H2LocalStorage.class)
-@AddBeanClasses(CosmosLocalStorage.class)
+@AddBeanClasses(MockLocalStorage.class)
 @AddBeanClasses(SharedVirtualThreadExecutor.class)
 @AddBeanClasses(RatingToolRatingMetadata.class)
 @AddBeanClasses(RatingToolRatingFilter.class)
 @AddBeanClasses(SentenceVectorizerDataToRagDoc.class)
 @AddBeanClasses(LLMRagDocSummarizer.class)
+@AddBeanClasses(RagDocSummarizerProducer.class)
 @AddBeanClasses(SimpleSentenceSplitter.class)
 @AddBeanClasses(JdlSentenceVectorizer.class)
 @AddBeanClasses(DocumentTrimmerExactKeywords.class)
@@ -114,9 +117,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(OkResponseValidation.class)
 @AddBeanClasses(TryHttpClientCalled.class)
 @AddBeanClasses(ClientConstructorDefault.class)
-@AddBeanClasses(MutexProducer.class)
-@AddBeanClasses(FileLockMutex.class)
-@AddBeanClasses(CosmosMutex.class)
+@AddBeanClasses(MockMutex.class)
 @AddBeanClasses(DefaultAnswerFormatterService.class)
 @AddBeanClasses(TimeoutTryHttpClientCalled.class)
 @AddBeanClasses(GetFirstMarkdownBlock.class)
@@ -132,11 +133,32 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(ApacheCommonsZStdZipper.class)
 @AddBeanClasses(TrimmedCommaSeparatedStringToList.class)
 @AddBeanClasses(MessageTooLongResponseInspector.class)
-@AddBeanClasses(SemaphoreProducer.class)
+@AddBeanClasses(MockSemaphore.class)
 class MetaTest {
 
     @Inject
     private Meta meta;
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public LocalStorage produceLocalStorage() {
+        return new MockLocalStorage();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public Mutex produceMutex() {
+        return new MockMutex();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public Semaphore produceSemaphore() {
+        return new MockSemaphore();
+    }
 
     @BeforeAll
     static void registerConfig() {
