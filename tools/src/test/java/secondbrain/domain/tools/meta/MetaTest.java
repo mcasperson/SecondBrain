@@ -49,6 +49,7 @@ import secondbrain.domain.response.OkResponseValidation;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.sanitize.GetFirstDigits;
 import secondbrain.domain.sanitize.GetFirstMarkdownBlock;
+import secondbrain.domain.testconstants.TestConstants;
 import secondbrain.domain.timeout.CompletableFutureTimeoutService;
 import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.keyword.Keywords;
@@ -166,8 +167,8 @@ class MetaTest {
         final String gatewayMode = System.getenv("SB_COSMOS_GATEWAYMODE");
 
         final var configMap = new java.util.HashMap<String, String>();
-        configMap.put("sb.cosmos.endpoint", "https://localhost:9081");
-        configMap.put("sb.cosmos.key", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==");
+        configMap.put("sb.cosmos.endpoint", TestConstants.COSMOS_EMULATOR_ENDPOINT);
+        configMap.put("sb.cosmos.key", TestConstants.COSMOS_EMULATOR_KEY);
         configMap.put("sb.infrastructure.mock", "true");
         configMap.put("sb.gong.accessKey", "testAccessKey");
         configMap.put("sb.gong.accessSecretKey", "testAccessSecretKey");

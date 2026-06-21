@@ -28,6 +28,7 @@ import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.persist.*;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
+import secondbrain.domain.testconstants.TestConstants;
 import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
 
@@ -73,8 +74,8 @@ class SentenceVectorizerDataToRagDocTest {
                         "sb.infrastructure.mock", "true",
                         "sb.encryption.password", "1234567890",
                         "sb.encryption.salt", "1234567890",
-                        "sb.cosmos.endpoint", "https://localhost:9081",
-                        "sb.cosmos.key", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
+                        "sb.cosmos.endpoint", TestConstants.COSMOS_EMULATOR_ENDPOINT,
+                        "sb.cosmos.key", TestConstants.COSMOS_EMULATOR_KEY,
                         "sb.cosmos.lockdatabase", "secondbrainlock",
                         "sb.cosmos.lockscontainer", "locks",
                         "sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery,

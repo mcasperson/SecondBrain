@@ -10,6 +10,7 @@ import jakarta.enterprise.inject.spi.InjectionPoint;
 import jakarta.inject.Inject;
 import org.apache.tika.utils.StringUtils;
 import org.eclipse.microprofile.config.Config;
+import secondbrain.domain.testconstants.TestConstants;
 import org.eclipse.microprofile.config.spi.ConfigProviderResolver;
 import org.jboss.weld.junit5.WeldInitiator;
 import org.jboss.weld.junit5.WeldJunit5Extension;
@@ -128,8 +129,8 @@ class MainTest {
         final var configSource = new PropertiesConfigSource(
                 Map.of(
                         "sb.cache.disable", "false",
-                        "sb.cosmos.endpoint", "https://localhost:9081",
-                        "sb.cosmos.key", "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
+                        "sb.cosmos.endpoint", TestConstants.COSMOS_EMULATOR_ENDPOINT,
+                        "sb.cosmos.key", TestConstants.COSMOS_EMULATOR_KEY,
                         "sb.cosmos.database", "testdb",
                         "sb.cosmos.container", "testcontainer",
                         "sb.encryption.password", "1234567890",
