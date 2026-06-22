@@ -59,7 +59,7 @@ import secondbrain.infrastructure.mock.MockLLmCLient;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
@@ -119,6 +119,9 @@ class MetaTest {
     @Inject
     private Meta meta;
 
+    @Inject
+    private MockLLmCLient mockLlmClient;
+
     @Produces
     @Preferred
     @ApplicationScoped
@@ -143,8 +146,8 @@ class MetaTest {
     @Produces
     @Preferred
     @ApplicationScoped
-    public GongClient produceGongClient() {
-        return new GongClientMock();
+    public GongClient produceGongClient(final GongClientMock gongClientMock) {
+        return gongClientMock;
     }
 
     @Produces
@@ -157,8 +160,8 @@ class MetaTest {
     @Produces
     @Preferred
     @ApplicationScoped
-    public LlmClient produceLlmClient() {
-        return new MockLLmCLient();
+    public LlmClient produceLlmClient(final MockLLmCLient mockLLmCLient) {
+        return mockLLmCLient;
     }
 
     @BeforeAll
@@ -181,12 +184,30 @@ class MetaTest {
     }
 
     @Test
-    void testGetContext() {
+    void testGetContextEmptyTranscript() {
         final List<RagDocumentContext<Void>> result = meta.getContext(
                 Map.of("gong_access_key", "testKey", "gong_access_secret_key", "testSecret"),
                 List.of("What topics were discussed in recent calls?"),
                 List.of());
 
         assertNotNull(result);
+        assertTrue(result.isEmpty(), "Empty transcript from mock LLM should be filtered out");
+    }
+
+    @Test
+    void testGetContextWithTranscript() {
+        mockLlmClient.setMockResponse("This is a mock call transcript discussing AI product design.");
+
+        final List<RagDocumentContext<Void>> result = meta.getContext(
+                Map.of("gong_access_key", "testKey", "gong_access_secret_key", "testSecret"),
+                List.of("What topics were discussed in recent calls?"),
+                List.of());
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty(), "Non-empty transcript should produce context results");
+        assertEquals(1, result.size(), "Mock gong client returns exactly one call");
+        assertNotNull(result.getFirst().document());
+        assertFalse(result.getFirst().document().isBlank());
+        assertTrue(result.getFirst().document().contains("mock call transcript"));
     }
 }
