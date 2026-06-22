@@ -47,6 +47,7 @@ import secondbrain.domain.timeout.CompletableFutureTimeoutService;
 import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.domain.tools.salesforce.Salesforce;
 import secondbrain.domain.validate.ValidateListEmptyOrNull;
 import secondbrain.domain.validate.ValidateStringBlank;
 import secondbrain.domain.web.ClientConstructorDefault;
@@ -56,6 +57,9 @@ import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.gong.GongClientMock;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.mock.MockLLmCLient;
+import secondbrain.infrastructure.salesforce.SalesforceClient;
+import secondbrain.infrastructure.salesforce.SalesforceClientMock;
+import secondbrain.infrastructure.salesforce.api.SalesforceEmailRecord;
 
 import java.util.List;
 import java.util.Map;
@@ -73,6 +77,9 @@ import secondbrain.domain.tools.CommonArguments;
 // Gong as a sub-tool for Meta to delegate to
 @AddBeanClasses(Gong.class)
 @AddBeanClasses(GongClientMock.class)
+// Salesforce as a sub-tool for Meta to delegate to
+@AddBeanClasses(Salesforce.class)
+@AddBeanClasses(SalesforceClientMock.class)
 // Infrastructure
 @AddBeanClasses(MockLLmCLient.class)
 @AddBeanClasses(Loggers.class)
@@ -129,6 +136,9 @@ class MetaTest {
     @Inject
     private MockRatingMetadata mockRatingMetadata;
 
+    @Inject
+    private SalesforceClientMock salesforceClientMock;
+
     @Produces
     @Preferred
     @ApplicationScoped
@@ -155,6 +165,13 @@ class MetaTest {
     @ApplicationScoped
     public GongClient produceGongClient(final GongClientMock gongClientMock) {
         return gongClientMock;
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public SalesforceClient produceSalesforceClient(final SalesforceClientMock salesforceClientMock) {
+        return salesforceClientMock;
     }
 
     @Produces
@@ -190,7 +207,7 @@ class MetaTest {
         configMap.put("sb.gong.accessSecretKey", "testAccessSecretKey");
         configMap.put("sb.encryption.password", "testpassword");
         configMap.put("sb.encryption.salt", "testsalt1234");
-        configMap.put("sb.meta.toolNames", "Gong");
+        configMap.put("sb.meta.toolNames", "Gong,Salesforce");
         configMap.put("sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery);
         configMap.put("sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode);
 
@@ -201,6 +218,7 @@ class MetaTest {
     void resetMocks() {
         mockLlmClient.setMockResponse(null);
         mockRatingMetadata.setMockRating(null);
+        salesforceClientMock.resetMockEmails();
     }
 
     @Test
@@ -305,5 +323,64 @@ class MetaTest {
         assertNotNull(result);
         assertFalse(result.isEmpty(), "Document with rating 3 should pass when upper limit is 5 and filterGreaterThan is true");
         assertEquals(1, result.size());
+    }
+
+    @Test
+    void testGetContextSalesforceNoEmails() {
+        final List<RagDocumentContext<Void>> result = meta.getContext(
+                Map.of("gong_access_key", "testKey", "gong_access_secret_key", "testSecret"),
+                List.of("What emails were sent to the account?"),
+                List.of(
+                        new ToolArgs(Salesforce.CLIENT_ID, "mockClientId", true),
+                        new ToolArgs(Salesforce.CLIENT_SECRET, "mockClientSecret", true),
+                        new ToolArgs(Salesforce.ACCOUNT_ID, "001ABC123", true)
+                ));
+
+        assertNotNull(result);
+        // With no mock emails set, Salesforce returns empty, and Gong returns empty (no mock LLM response)
+        assertTrue(result.isEmpty(), "No emails configured in mock should produce empty Salesforce results");
+    }
+
+    @Test
+    void testGetContextSalesforceWithEmails() {
+        salesforceClientMock.setMockEmails(
+                new SalesforceEmailRecord("email1", "Meeting Follow-up", "Hi, thanks for the meeting. We discussed the product roadmap.", "2026-06-20T10:00:00Z", "example.com"),
+                new SalesforceEmailRecord("email2", "Action Items", "Here are the action items from our call.", "2026-06-21T14:00:00Z", "example.com")
+        );
+
+        final List<RagDocumentContext<Void>> result = meta.getContext(
+                Map.of("gong_access_key", "testKey", "gong_access_secret_key", "testSecret"),
+                List.of("What emails were sent to the account?"),
+                List.of(
+                        new ToolArgs(Salesforce.CLIENT_ID, "mockClientId", true),
+                        new ToolArgs(Salesforce.CLIENT_SECRET, "mockClientSecret", true),
+                        new ToolArgs(Salesforce.ACCOUNT_ID, "001ABC123", true)
+                ));
+
+        assertNotNull(result);
+        // Gong returns empty (no mock LLM response), but Salesforce should return the 2 emails
+        assertFalse(result.isEmpty(), "Mock emails should produce Salesforce context results");
+        assertEquals(2, result.size(), "Two mock emails should produce two context results");
+    }
+
+    @Test
+    void testGetContextSalesforceEmailContent() {
+        salesforceClientMock.setMockEmails(
+                new SalesforceEmailRecord("email1", "Product Discussion", "We need to finalize the pricing model for Q3.", "2026-06-20T10:00:00Z", "example.com")
+        );
+
+        final List<RagDocumentContext<Void>> result = meta.getContext(
+                Map.of("gong_access_key", "testKey", "gong_access_secret_key", "testSecret"),
+                List.of("What was discussed about pricing?"),
+                List.of(
+                        new ToolArgs(Salesforce.CLIENT_ID, "mockClientId", true),
+                        new ToolArgs(Salesforce.CLIENT_SECRET, "mockClientSecret", true),
+                        new ToolArgs(Salesforce.ACCOUNT_ID, "001ABC123", true)
+                ));
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty(), "Mock email should produce context result");
+        assertEquals(1, result.size());
+        assertTrue(result.getFirst().document().contains("pricing model"), "Context should contain the email body text");
     }
 }

@@ -15,9 +15,19 @@ import java.util.List;
 @ApplicationScoped
 public class SalesforceClientMock implements SalesforceClient {
 
+    private SalesforceEmailRecord[] mockEmails = new SalesforceEmailRecord[0];
+
+    public void setMockEmails(final SalesforceEmailRecord... emails) {
+        this.mockEmails = emails;
+    }
+
+    public void resetMockEmails() {
+        this.mockEmails = new SalesforceEmailRecord[0];
+    }
+
     @Override
     public boolean anyItemsInDuration(final String token, final String accountId, final ChronoUnit duration, final ChronoUnit cached) {
-        return false;
+        return mockEmails.length > 0;
     }
 
     @Override
@@ -32,7 +42,7 @@ public class SalesforceClientMock implements SalesforceClient {
 
     @Override
     public SalesforceEmailRecord[] getEmails(final String token, final String accountId, final String startDate, final String endDate) {
-        return new SalesforceEmailRecord[0];
+        return mockEmails;
     }
 
     @Override
