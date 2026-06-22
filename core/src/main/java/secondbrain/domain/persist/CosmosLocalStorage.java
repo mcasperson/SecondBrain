@@ -82,6 +82,9 @@ public class CosmosLocalStorage implements LocalStorage {
     private LocalStorageCacheWriteOnly localStorageCacheWriteOnly;
 
     @Inject
+    private LocalStorageCacheDisableRedaction localStorageCacheDisableRedaction;
+
+    @Inject
     @ConfigProperty(name = "sb.cosmos.endpoint")
     private Optional<String> cosmosEndpoint;
 
@@ -861,7 +864,9 @@ public class CosmosLocalStorage implements LocalStorage {
             }
 
 
-            final String redactedValue = Objects.requireNonNullElse(sanitizeDocument.sanitize(value), "");
+            final String redactedValue = localStorageCacheDisableRedaction.isRedactionDisabled()
+                    ? value
+                    : Objects.requireNonNullElse(sanitizeDocument.sanitize(value), "");
 
             // If value exceeds SPLIT_ITEM_SIZE_BYTES, split into chunks and persist each separately
             final byte[] valueBytes = redactedValue.getBytes(java.nio.charset.StandardCharsets.UTF_8);

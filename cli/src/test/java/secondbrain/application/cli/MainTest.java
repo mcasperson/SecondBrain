@@ -98,6 +98,7 @@ class MainTest {
                             LocalStorageCacheDisable.class,
                             LocalStorageDisableTool.class,
                             LocalStorageCacheReadOnly.class,
+                            LocalStorageCacheDisableRedaction.class,
                             LocalStorageCacheWriteOnly.class,
                             LocalStorageReadWrite.class,
                             LocalStorageProducer.class,
