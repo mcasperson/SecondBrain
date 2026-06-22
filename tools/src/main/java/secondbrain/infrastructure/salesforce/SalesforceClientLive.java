@@ -37,6 +37,7 @@ import java.util.stream.Stream;
 import static com.google.common.base.Preconditions.checkState;
 
 @ApplicationScoped
+@Preferred
 public class SalesforceClientLive implements SalesforceClient {
     private static final int DEFAULT_LIMIT = 100;
     private static final RateLimiter RATE_LIMITER = RateLimiter.create(10);

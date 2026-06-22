@@ -95,6 +95,7 @@ public class Salesforce implements Tool<Void> {
     private HooksContainer hooksContainer;
 
     @Inject
+    @Preferred
     private SalesforceClient salesforceClient;
 
     @Inject

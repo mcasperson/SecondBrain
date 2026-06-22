@@ -23,9 +23,9 @@ import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
 import secondbrain.domain.exceptionhandling.StandardExceptionMapping;
 import secondbrain.domain.hooks.NamedHooksContainer;
-import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.httpclient.TimeoutTryHttpClientCalled;
 import secondbrain.domain.httpclient.TryHttpClientCalled;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.keyword.RakeKeywordExtractor;
 import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
@@ -39,12 +39,7 @@ import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.persist.LocalStorageReadWrite;
 import secondbrain.domain.persist.MockLocalStorage;
 import secondbrain.domain.persist.MockLocalStorageReadWrite;
-import secondbrain.domain.processing.MockRagDocSummarizer;
-import secondbrain.domain.processing.RagDocSummarizer;
-import secondbrain.domain.processing.RatingToolRatingFilter;
-import secondbrain.domain.processing.MockRatingMetadata;
-import secondbrain.domain.processing.RatingMetadata;
-import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
+import secondbrain.domain.processing.*;
 import secondbrain.domain.reader.FileReaderSelector;
 import secondbrain.domain.response.OkResponseValidation;
 import secondbrain.domain.sanitize.*;
@@ -77,7 +72,8 @@ import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.mock.MockLLmCLient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.PlanHatClientMock;
-import secondbrain.infrastructure.salesforce.SalesforceClientLive;
+import secondbrain.infrastructure.salesforce.SalesforceClient;
+import secondbrain.infrastructure.salesforce.SalesforceClientMock;
 import secondbrain.infrastructure.slack.SlackClient;
 import secondbrain.infrastructure.slack.SlackClientMock;
 import secondbrain.infrastructure.zendesk.ZenDeskClient;
@@ -109,7 +105,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(ZenDeskClientMock.class)
 @AddBeanClasses(PlanHatClientMock.class)
 @AddBeanClasses(GongClientMock.class)
-@AddBeanClasses(SalesforceClientLive.class)
+@AddBeanClasses(SalesforceClientMock.class)
 // ZenDesk support
 @AddBeanClasses(ZenDeskIndividualTicket.class)
 @AddBeanClasses(SanitizeOrganization.class)
@@ -238,6 +234,13 @@ class MultiSlackZenGoogleTest {
     @ApplicationScoped
     public GongClient produceGongClient() {
         return new GongClientMock();
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public SalesforceClient produceSalesforceClient() {
+        return new SalesforceClientMock();
     }
 
     @Produces
