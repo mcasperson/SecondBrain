@@ -107,6 +107,9 @@ This example downloads the transcripts from videos from a
 [YouTube playlist](https://www.youtube.com/watch?v=ceV3RsG946s&list=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj)
 trims the transcripts to the keywords, and then generates a summary of the AI related news from those videos.
 
+You must supply an YouTube API key with access to the YouTube Data API v3, and set the playlist ID and keywords to
+filter the transcripts.
+
 Note that this is a fairly slow process as the YouTube API is heavily rate limited. We process 2 videos a minute,
 so this command may take up to 5 minutes to complete:
 
@@ -117,6 +120,7 @@ java \
     "-Dsb.azurellm.url=https://replaceme.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview" \
     "-Dsb.azurellm.model=Phi-4" \
     "-Dsb.tools.force=YoutubePlaylist" \
+    "-Dsb.google.apiKey=apikeygoeshere" \
     "-Dsb.youtube.playlistId=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj" \
     "-Dsb.youtube.maxvideos=10" \
     "-Dsb.youtube.keywords=AI,LLM,MCP,Agent" \
@@ -132,6 +136,7 @@ java \
     "-Dsb.llm.client=ollama" \
     "-Dsb.ollama.model=qwen3:30b-a3b" \
     "-Dsb.tools.force=YoutubePlaylist" \
+    "-Dsb.google.apiKey=apikeygoeshere" \
     "-Dsb.youtube.playlistId=PLlrxD0HtieHgFYS4DKbJ_xCYNE94ZLJjj" \
     "-Dsb.youtube.maxvideos=10" \
     "-Dsb.youtube.keywords=AI,LLM,MCP,Agent" \
