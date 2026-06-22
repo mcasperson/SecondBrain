@@ -77,6 +77,7 @@ public class PlanHat implements Tool<Void> {
     private String publicUrl;
 
     @Inject
+    @Preferred
     private RatingMetadata ratingMetadata;
 
     @Inject

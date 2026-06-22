@@ -30,7 +30,8 @@ import secondbrain.domain.persist.MockLocalStorage;
 import secondbrain.domain.processing.MockRagDocSummarizer;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingToolRatingFilter;
-import secondbrain.domain.processing.RatingToolRatingMetadata;
+import secondbrain.domain.processing.MockRatingMetadata;
+import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.test.TestConfigUtil;
@@ -82,7 +83,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @AddBeanClasses(JdlSentenceVectorizer.class)
 @AddBeanClasses(SimpleSentenceSplitter.class)
 @AddBeanClasses(RatingToolRatingFilter.class)
-@AddBeanClasses(RatingToolRatingMetadata.class)
+@AddBeanClasses(MockRatingMetadata.class)
 @AddBeanClasses(MockRagDocSummarizer.class)
 @AddBeanClasses(RatingTool.class)
 @AddBeanClasses(GetFirstDigits.class)
@@ -109,6 +110,9 @@ class DovetailTest {
 
     @Inject
     private MockRagDocSummarizer mockRagDocSummarizer;
+
+    @Inject
+    private MockRatingMetadata mockRatingMetadata;
 
     @BeforeAll
     static void registerConfig() {
@@ -154,6 +158,13 @@ class DovetailTest {
     @ApplicationScoped
     public RagDocSummarizer produceRagDocSummarizer() {
         return mockRagDocSummarizer;
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public RatingMetadata produceRatingMetadata() {
+        return mockRatingMetadata;
     }
 
     // ─── Basic property checks ───

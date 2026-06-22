@@ -72,6 +72,7 @@ public class SlackChannel implements Tool<Void> {
             """;
 
     @Inject
+    @Preferred
     private RatingMetadata ratingMetadata;
 
     @Inject

@@ -88,6 +88,7 @@ public class Gong implements Tool<Void> {
             """.stripLeading();
 
     @Inject
+    @Preferred
     private RatingMetadata ratingMetadata;
 
     @Inject

@@ -85,6 +85,7 @@ public class GitHubIssues implements Tool<Void> {
     private Logger logger;
 
     @Inject
+    @Preferred
     private RatingMetadata ratingMetadata;
 
     @Inject

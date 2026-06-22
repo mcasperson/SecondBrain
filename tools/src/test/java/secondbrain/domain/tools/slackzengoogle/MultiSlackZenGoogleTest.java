@@ -42,7 +42,8 @@ import secondbrain.domain.persist.MockLocalStorageReadWrite;
 import secondbrain.domain.processing.MockRagDocSummarizer;
 import secondbrain.domain.processing.RagDocSummarizer;
 import secondbrain.domain.processing.RatingToolRatingFilter;
-import secondbrain.domain.processing.RatingToolRatingMetadata;
+import secondbrain.domain.processing.MockRatingMetadata;
+import secondbrain.domain.processing.RatingMetadata;
 import secondbrain.domain.processing.SentenceVectorizerDataToRagDoc;
 import secondbrain.domain.reader.FileReaderSelector;
 import secondbrain.domain.response.OkResponseValidation;
@@ -128,7 +129,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(NamedHooksContainer.class)
 @AddBeanClasses(MockLocalStorage.class)
 @AddBeanClasses(SharedVirtualThreadExecutor.class)
-@AddBeanClasses(RatingToolRatingMetadata.class)
+@AddBeanClasses(MockRatingMetadata.class)
 @AddBeanClasses(RatingToolRatingFilter.class)
 @AddBeanClasses(SentenceVectorizerDataToRagDoc.class)
 @AddBeanClasses(MockRagDocSummarizer.class)
@@ -173,6 +174,9 @@ class MultiSlackZenGoogleTest {
     @Inject
     private MockRagDocSummarizer mockRagDocSummarizer;
 
+    @Inject
+    private MockRatingMetadata mockRatingMetadata;
+
     @Produces
     @Preferred
     @ApplicationScoped
@@ -185,6 +189,13 @@ class MultiSlackZenGoogleTest {
     @ApplicationScoped
     public RagDocSummarizer produceRagDocSummarizer() {
         return mockRagDocSummarizer;
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public RatingMetadata produceRatingMetadata() {
+        return mockRatingMetadata;
     }
 
     @Produces

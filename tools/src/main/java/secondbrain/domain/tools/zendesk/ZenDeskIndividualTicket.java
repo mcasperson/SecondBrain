@@ -72,6 +72,7 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     private DataToRagDoc dataToRagDoc;
 
     @Inject
+    @Preferred
     private RatingMetadata ratingMetadata;
 
     @Inject

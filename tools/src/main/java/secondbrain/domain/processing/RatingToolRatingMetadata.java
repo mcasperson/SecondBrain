@@ -12,12 +12,14 @@ import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.MetaObjectResult;
 import secondbrain.domain.tooldefs.MetaObjectResults;
+import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.tools.rating.RatingTool;
 
 import java.util.*;
 import java.util.logging.Logger;
 
 @ApplicationScoped
+@Preferred
 public class RatingToolRatingMetadata implements RatingMetadata {
     public static final String FILTER_RATING_META = "FilterRating";
 

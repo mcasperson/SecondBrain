@@ -76,6 +76,7 @@ public class Dovetail implements Tool<Void> {
             """.stripLeading();
 
     @Inject
+    @Preferred
     private RatingMetadata ratingMetadata;
 
     @Inject

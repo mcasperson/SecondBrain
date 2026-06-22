@@ -73,6 +73,7 @@ public class SlackSearch implements Tool<Void> {
     private DataToRagDoc dataToRagDoc;
 
     @Inject
+    @Preferred
     private RatingMetadata ratingMetadata;
 
     @Inject

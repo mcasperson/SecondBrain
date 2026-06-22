@@ -85,7 +85,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @AddBeanClasses(NamedHooksContainer.class)
 @AddBeanClasses(MockLocalStorage.class)
 @AddBeanClasses(SharedVirtualThreadExecutor.class)
-@AddBeanClasses(RatingToolRatingMetadata.class)
+@AddBeanClasses(MockRatingMetadata.class)
 @AddBeanClasses(RatingToolRatingFilter.class)
 @AddBeanClasses(SentenceVectorizerDataToRagDoc.class)
 @AddBeanClasses(LLMRagDocSummarizer.class)
@@ -162,6 +162,13 @@ class MetaTest {
     @ApplicationScoped
     public LlmClient produceLlmClient(final MockLLmCLient mockLLmCLient) {
         return mockLLmCLient;
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
+    public RatingMetadata produceRatingMetadata(final MockRatingMetadata mockRatingMetadata) {
+        return mockRatingMetadata;
     }
 
     @BeforeAll
