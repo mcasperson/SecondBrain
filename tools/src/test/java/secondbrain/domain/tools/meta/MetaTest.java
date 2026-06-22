@@ -9,6 +9,7 @@ import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.answer.DefaultAnswerFormatterService;
 import secondbrain.domain.args.ArgsAccessorSimple;
@@ -60,6 +61,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+
+import secondbrain.domain.tooldefs.ToolArgs;
+import secondbrain.domain.tools.CommonArguments;
 
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
@@ -121,6 +125,9 @@ class MetaTest {
 
     @Inject
     private MockLLmCLient mockLlmClient;
+
+    @Inject
+    private MockRatingMetadata mockRatingMetadata;
 
     @Produces
     @Preferred
@@ -190,6 +197,12 @@ class MetaTest {
         TestConfigUtil.registerConfig(configMap);
     }
 
+    @BeforeEach
+    void resetMocks() {
+        mockLlmClient.setMockResponse(null);
+        mockRatingMetadata.setMockRating(null);
+    }
+
     @Test
     void testGetContextEmptyTranscript() {
         final List<RagDocumentContext<Void>> result = meta.getContext(
@@ -216,5 +229,81 @@ class MetaTest {
         assertNotNull(result.getFirst().document());
         assertFalse(result.getFirst().document().isBlank());
         assertTrue(result.getFirst().document().contains("mock call transcript"));
+    }
+
+    @Test
+    void testGetContextWithHighRatingPassesFilter() {
+        mockLlmClient.setMockResponse("This is a mock call transcript discussing AI product design.");
+        mockRatingMetadata.setMockRating(8);
+
+        final List<RagDocumentContext<Void>> result = meta.getContext(
+                Map.of("gong_access_key", "testKey", "gong_access_secret_key", "testSecret"),
+                List.of("What topics were discussed in recent calls?"),
+                List.of(
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, "Is this relevant?", true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, "5", true),
+                        new ToolArgs(CommonArguments.FILTER_GREATER_THAN_ARG, "false", true)
+                ));
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty(), "Document with rating 8 should pass filter with minimum 5");
+        assertEquals(1, result.size());
+        assertNotNull(result.getFirst().getMetadata());
+        assertTrue(result.getFirst().getMetadata().hasName("FilterRating"));
+    }
+
+    @Test
+    void testGetContextWithLowRatingFilteredOut() {
+        mockLlmClient.setMockResponse("This is a mock call transcript discussing AI product design.");
+        mockRatingMetadata.setMockRating(2);
+
+        final List<RagDocumentContext<Void>> result = meta.getContext(
+                Map.of("gong_access_key", "testKey", "gong_access_secret_key", "testSecret"),
+                List.of("What topics were discussed in recent calls?"),
+                List.of(
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, "Is this relevant?", true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, "5", true),
+                        new ToolArgs(CommonArguments.FILTER_GREATER_THAN_ARG, "false", true)
+                ));
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty(), "Document with rating 2 should be filtered out with minimum 5");
+    }
+
+    @Test
+    void testGetContextWithHighRatingFilteredOutUpperLimit() {
+        mockLlmClient.setMockResponse("This is a mock call transcript discussing AI product design.");
+        mockRatingMetadata.setMockRating(8);
+
+        final List<RagDocumentContext<Void>> result = meta.getContext(
+                Map.of("gong_access_key", "testKey", "gong_access_secret_key", "testSecret"),
+                List.of("What topics were discussed in recent calls?"),
+                List.of(
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, "Is this relevant?", true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, "5", true),
+                        new ToolArgs(CommonArguments.FILTER_GREATER_THAN_ARG, "true", true)
+                ));
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty(), "Document with rating 8 should be filtered out when upper limit is 5 and filterGreaterThan is true");
+    }
+
+    @Test
+    void testGetContextWithLowRatingPassesUpperLimit() {
+        mockLlmClient.setMockResponse("This is a mock call transcript discussing AI product design.");
+        mockRatingMetadata.setMockRating(3);
+
+        final List<RagDocumentContext<Void>> result = meta.getContext(
+                Map.of("gong_access_key", "testKey", "gong_access_secret_key", "testSecret"),
+                List.of("What topics were discussed in recent calls?"),
+                List.of(
+                        new ToolArgs(CommonArguments.CONTENT_RATING_QUESTION_ARG, "Is this relevant?", true),
+                        new ToolArgs(CommonArguments.CONTEXT_FILTER_MINIMUM_RATING_ARG, "5", true),
+                        new ToolArgs(CommonArguments.FILTER_GREATER_THAN_ARG, "true", true)
+                ));
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty(), "Document with rating 3 should pass when upper limit is 5 and filterGreaterThan is true");
+        assertEquals(1, result.size());
     }
 }
