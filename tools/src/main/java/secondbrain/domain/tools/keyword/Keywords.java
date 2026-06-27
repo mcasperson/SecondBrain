@@ -56,7 +56,7 @@ public class Keywords implements Tool<Void> {
             Prefer single words over phrases with multiple words.
             Two word keywords must also appear as individual words, for example, "Microsoft Authenticator", "Microsoft", and "Authenticator".
             Any hyphenated words must also appear as two individual words, for example: "multi-factor", "multi", and "factor".
-            Prefer the base word of a keyword, for example, prefer "Debug" instead of "Debuggable", "pause" instead of "paused" etc.
+            Prefer the base word or singular of a keyword, for example, prefer "Debug" instead of "Debuggable", "pause" instead of "paused", "key" instead of "keys" etc.
             You will be penalized for selecting terms that describe conversations, emails, and internal messages but are unlikely to be literally used in them.
             Aim for 50 keywords.
             Keywords should be specific terms, abbreviations, and acronyms useful for document retrieval.
@@ -98,6 +98,51 @@ public class Keywords implements Tool<Void> {
 
     @Inject
     private Logger logger;
+
+    static List<String> parseKeywords(final String jsonResponse) {
+        return parseKeywords(jsonResponse, List.of());
+    }
+
+    static List<String> parseKeywords(final String jsonResponse, final List<String> excludedKeywords) {
+        if (StringUtils.isBlank(jsonResponse)) {
+            return List.of();
+        }
+
+        return Try.of(() -> OBJECT_MAPPER.readValue(jsonResponse, new TypeReference<List<String>>() {
+                }))
+                .map(keywords -> normalizeKeywords(keywords, excludedKeywords))
+                .getOrElse(List.of());
+    }
+
+    static List<String> normalizeKeywords(final List<String> keywords, final List<String> excludedKeywords) {
+        if (keywords == null) {
+            return List.of();
+        }
+
+        final List<String> normalizedKeywords = normalizeSimpleKeywords(keywords);
+        final List<String> normalizedExcludes = normalizeSimpleKeywords(excludedKeywords);
+
+        return normalizedKeywords.stream()
+                .filter(keyword -> normalizedExcludes.stream().noneMatch(excluded -> excluded.equalsIgnoreCase(keyword)))
+                .toList();
+    }
+
+    private static List<String> normalizeSimpleKeywords(final List<String> keywords) {
+        if (keywords == null) {
+            return List.of();
+        }
+
+        return keywords.stream()
+                .filter(StringUtils::isNotBlank)
+                .map(String::trim)
+                .distinct()
+                .toList();
+    }
+
+    static String applyExclusionsToResponse(final String jsonResponse, final List<String> excludedKeywords) {
+        return Try.of(() -> OBJECT_MAPPER.writeValueAsString(parseKeywords(jsonResponse, excludedKeywords)))
+                .getOrElse(jsonResponse);
+    }
 
     @Override
     public String getName() {
@@ -214,51 +259,6 @@ public class Keywords implements Tool<Void> {
                 .foldLeft(mappedResult, (docs, hook) -> hook.process(getName(), docs));
     }
 
-    static List<String> parseKeywords(final String jsonResponse) {
-        return parseKeywords(jsonResponse, List.of());
-    }
-
-    static List<String> parseKeywords(final String jsonResponse, final List<String> excludedKeywords) {
-        if (StringUtils.isBlank(jsonResponse)) {
-            return List.of();
-        }
-
-        return Try.of(() -> OBJECT_MAPPER.readValue(jsonResponse, new TypeReference<List<String>>() {
-                }))
-                .map(keywords -> normalizeKeywords(keywords, excludedKeywords))
-                .getOrElse(List.of());
-    }
-
-    static List<String> normalizeKeywords(final List<String> keywords, final List<String> excludedKeywords) {
-        if (keywords == null) {
-            return List.of();
-        }
-
-        final List<String> normalizedKeywords = normalizeSimpleKeywords(keywords);
-        final List<String> normalizedExcludes = normalizeSimpleKeywords(excludedKeywords);
-
-        return normalizedKeywords.stream()
-                .filter(keyword -> normalizedExcludes.stream().noneMatch(excluded -> excluded.equalsIgnoreCase(keyword)))
-                .toList();
-    }
-
-    private static List<String> normalizeSimpleKeywords(final List<String> keywords) {
-        if (keywords == null) {
-            return List.of();
-        }
-
-        return keywords.stream()
-                .filter(StringUtils::isNotBlank)
-                .map(String::trim)
-                .distinct()
-                .toList();
-    }
-
-    static String applyExclusionsToResponse(final String jsonResponse, final List<String> excludedKeywords) {
-        return Try.of(() -> OBJECT_MAPPER.writeValueAsString(parseKeywords(jsonResponse, excludedKeywords)))
-                .getOrElse(jsonResponse);
-    }
-
     @Override
     public String getContextLabel() {
         return "Prompt";
@@ -326,6 +326,12 @@ class KeywordsConfig {
 
         private final Map<String, String> environmentSettings;
 
+        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> environmentSettings) {
+            this.arguments = List.copyOf(arguments);
+            this.prompts = List.copyOf(prompts);
+            this.environmentSettings = Map.copyOf(environmentSettings);
+        }
+
         @Override
         public String toString() {
             return getToStringGenerator().generateGetterConfig(this);
@@ -334,12 +340,6 @@ class KeywordsConfig {
         @Override
         public int hashCode() {
             return getToStringGenerator().generateHashGetterConfig(this);
-        }
-
-        public LocalArguments(final List<ToolArgs> arguments, final List<String> prompts, final Map<String, String> environmentSettings) {
-            this.arguments = List.copyOf(arguments);
-            this.prompts = List.copyOf(prompts);
-            this.environmentSettings = Map.copyOf(environmentSettings);
         }
 
         public String getPreprocessingHooks() {
