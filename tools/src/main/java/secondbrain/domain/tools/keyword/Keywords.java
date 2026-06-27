@@ -56,7 +56,7 @@ public class Keywords implements Tool<Void> {
             Prefer single words over phrases with multiple words.
             Two word keywords must also appear as individual words, for example, "Microsoft Authenticator", "Microsoft", and "Authenticator".
             Any hyphenated words must also appear as two individual words, for example: "multi-factor", "multi", and "factor".
-            Prefer the base word or singular of a keyword, for example, prefer "Debug" instead of "Debuggable", "pause" instead of "paused", "key" instead of "keys" etc.
+            Prefer the base word or singular of a keyword, for example, prefer "Debug" instead of "Debuggable", "pause" instead of "paused", "key" instead of "keys", "request" instead of "requests" etc.
             You will be penalized for selecting terms that describe conversations, emails, and internal messages but are unlikely to be literally used in them.
             Aim for 50 keywords.
             Keywords should be specific terms, abbreviations, and acronyms useful for document retrieval.
