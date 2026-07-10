@@ -17,6 +17,7 @@ import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.context.JdlSentenceVectorizer;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.SimpleSentenceSplitter;
+import secondbrain.domain.converter.JSoupHtmlToText;
 import secondbrain.domain.date.*;
 import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
@@ -46,6 +47,7 @@ import secondbrain.domain.testconstants.TestConstants;
 import secondbrain.domain.timeout.CompletableFutureTimeoutService;
 import secondbrain.domain.tools.gong.Gong;
 import secondbrain.domain.tools.keyword.Keywords;
+import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.tools.salesforce.Salesforce;
 import secondbrain.domain.validate.ValidateListEmptyOrNull;
@@ -57,6 +59,8 @@ import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.gong.GongClientMock;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.mock.MockLLmCLient;
+import secondbrain.infrastructure.planhat.PlanHatClient;
+import secondbrain.infrastructure.planhat.PlanHatClientMock;
 import secondbrain.infrastructure.salesforce.SalesforceClient;
 import secondbrain.infrastructure.salesforce.SalesforceClientMock;
 import secondbrain.infrastructure.salesforce.api.SalesforceEmailRecord;
@@ -80,6 +84,9 @@ import secondbrain.domain.tools.CommonArguments;
 // Salesforce as a sub-tool for Meta to delegate to
 @AddBeanClasses(Salesforce.class)
 @AddBeanClasses(SalesforceClientMock.class)
+// PlanHat as a sub-tool for Meta to delegate to
+@AddBeanClasses(PlanHat.class)
+@AddBeanClasses(PlanHatClientMock.class)
 // Infrastructure
 @AddBeanClasses(MockLLmCLient.class)
 @AddBeanClasses(Loggers.class)
@@ -125,6 +132,7 @@ import secondbrain.domain.tools.CommonArguments;
 @AddBeanClasses(TrimmedCommaSeparatedStringToList.class)
 @AddBeanClasses(MessageTooLongResponseInspector.class)
 @AddBeanClasses(MockSemaphore.class)
+@AddBeanClasses(JSoupHtmlToText.class)
 class MetaTest {
 
     @Inject
@@ -177,6 +185,13 @@ class MetaTest {
     @Produces
     @Preferred
     @ApplicationScoped
+    public PlanHatClient producePlanHatClient(final PlanHatClientMock planHatClientMock) {
+        return planHatClientMock;
+    }
+
+    @Produces
+    @Preferred
+    @ApplicationScoped
     public LocalStorageReadWrite produceLocalStorageReadWrite() {
         return new MockLocalStorageReadWrite();
     }
@@ -207,7 +222,9 @@ class MetaTest {
         configMap.put("sb.gong.accessSecretKey", "testAccessSecretKey");
         configMap.put("sb.encryption.password", "testpassword");
         configMap.put("sb.encryption.salt", "testsalt1234");
-        configMap.put("sb.meta.toolNames", "Gong,Salesforce");
+        configMap.put("sb.meta.toolNames", "Gong,Salesforce,PlanHat");
+        configMap.put("sb.planhat.accesstoken", "testPlanHatToken");
+        configMap.put("sb.planhat.url", "https://api-us4.planhat.com");
         configMap.put("sb.cosmos.autodiscovery", StringUtils.isBlank(autodiscovery) ? "true" : autodiscovery);
         configMap.put("sb.cosmos.gatewayMode", StringUtils.isBlank(gatewayMode) ? "false" : gatewayMode);
 
@@ -382,5 +399,23 @@ class MetaTest {
         assertFalse(result.isEmpty(), "Mock email should produce context result");
         assertEquals(1, result.size());
         assertTrue(result.getFirst().document().contains("pricing model"), "Context should contain the email body text");
+    }
+
+    @Test
+    void testGetContextPlanHatConversations() {
+        mockLlmClient.setMockResponse("Mock PlanHat conversation about customer onboarding progress.");
+
+        final List<RagDocumentContext<Void>> result = meta.getContext(
+                Map.of("gong_access_key", "testKey", "gong_access_secret_key", "testSecret",
+                        "companyId", "testCompanyId"),
+                List.of("What conversations have occurred with this customer?"),
+                List.of());
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty(), "PlanHat mock client returns 3 conversations, so context should not be empty");
+        assertTrue(result.stream().anyMatch(r -> r.document().contains("Mock PlanHat conversation")),
+                "Context should contain the mock LLM response used in PlanHat conversation descriptions");
+        // PlanHatClientMock returns 3 conversations; Gong also returns 1 result when mock LLM is set
+        assertTrue(result.size() >= 3, "Should have at least 3 results from PlanHat conversations");
     }
 }

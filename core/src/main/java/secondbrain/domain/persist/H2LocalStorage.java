@@ -17,6 +17,7 @@ import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.exceptions.SerializationFailed;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.config.LocalStorageCacheDisable;
+import secondbrain.domain.persist.config.LocalStorageCacheDisableRedaction;
 import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
 import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
 import secondbrain.domain.persist.config.LocalStorageDisableTool;
@@ -65,6 +66,9 @@ public class H2LocalStorage implements LocalStorage {
 
     @Inject
     private LocalStorageCacheWriteOnly localStorageCacheWriteOnly;
+
+    @Inject
+    private LocalStorageCacheDisableRedaction localStorageCacheDisableRedaction;
 
     @Inject
     @ConfigProperty(name = "sb.cache.backup")
@@ -530,7 +534,9 @@ public class H2LocalStorage implements LocalStorage {
                 resetConnection();
             }
 
-            final String redactedValue = sanitizeDocument.sanitize(response);
+            final String redactedValue = localStorageCacheDisableRedaction.isRedactionDisabled()
+                    ? response
+                    : sanitizeDocument.sanitize(response);
 
             final Try<PreparedStatement> result = Try.withResources(() -> connection.prepareStatement("""
                             INSERT INTO LOCAL_STORAGE (tool, source, prompt_hash, response, timestamp)

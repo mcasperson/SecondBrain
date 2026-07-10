@@ -42,9 +42,9 @@ public class PlanHatClientMock implements PlanHatClient {
     public List<Conversation> getConversations(final Client client, final String company, final String url, final String token, @Nullable final ZonedDateTime startDate, @Nullable final ZonedDateTime endDate, final int ttlSeconds) {
         // Create a list of mock conversations
         return List.of(
-                createMockConversation(),
-                createMockConversation(),
-                createMockConversation()
+                createMockConversation(company),
+                createMockConversation(company),
+                createMockConversation(company)
         );
     }
 
@@ -113,13 +113,12 @@ public class PlanHatClientMock implements PlanHatClient {
                         Map.of("Opportunity Name", title)));
     }
 
-    private Conversation createMockConversation() {
+    private Conversation createMockConversation(final String companyId) {
         String id = UUID.randomUUID().toString();
         String description = llmClient.call("Generate a paragraph describing a customer conversation. Make it concise and professional.", Map.of());
         String snippet = llmClient.call("Generate a brief one-sentence summary of a customer conversation.", Map.of());
         String date = ZonedDateTime.now(ZoneOffset.UTC).minusDays((long) (Math.random() * 30))
                 .format(DateTimeFormatter.ISO_INSTANT);
-        String companyId = UUID.randomUUID().toString();
         String companyName = llmClient.call("Generate a company name. Return only the name, nothing else.", Map.of());
         String subject = llmClient.call("Generate a subject line for a customer conversation email. Keep it brief.", Map.of());
         String type = List.of("email", "call", "meeting", "chat").get((int) (Math.random() * 4));
