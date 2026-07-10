@@ -7,6 +7,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import secondbrain.domain.args.ArgsAccessor;
@@ -235,8 +236,7 @@ public class Meta implements Tool<Void> {
             final MetaConfig.LocalArguments parsedArgs) {
 
 
-        @SuppressWarnings("unchecked")
-        final Try<List<RagDocumentContext<Void>>> contextResult = Try.of(() -> localStorage.getOrPutGeneric(
+        @SuppressWarnings("unchecked") final Try<List<RagDocumentContext<Void>>> contextResult = Try.of(() -> localStorage.getOrPutGeneric(
                 getName(),
                 getName(),
                 Integer.toString(contextHashCode(environmentSettings, prompts, arguments)),
@@ -771,7 +771,7 @@ class MetaConfig {
                     CommonArguments.DAYS_ARG,
                     "7");
 
-            return Math.max(0, Integer.parseInt(argument.getSafeValue()));
+            return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), 7));
         }
 
         /**
@@ -787,7 +787,7 @@ class MetaConfig {
                     CommonArguments.HOURS_ARG,
                     "0");
 
-            return Math.max(0, Integer.parseInt(argument.getSafeValue()));
+            return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), 0));
         }
 
         /**
