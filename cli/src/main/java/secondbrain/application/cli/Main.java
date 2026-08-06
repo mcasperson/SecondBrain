@@ -21,6 +21,7 @@ import secondbrain.domain.toolbuilder.ToolSelector;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.logging.Logger;
 
@@ -87,22 +88,32 @@ public class Main {
     }
 
     public PromptHandlerResponse entry(final String prompt, final String format, final Map<String, String> context) {
-        return entry(List.of(prompt), format, context);
+        return entry(
+                List.of(Objects.requireNonNullElse(prompt, "")),
+                Objects.requireNonNullElse(format, ""),
+                Objects.requireNonNullElse(context, Map.of()));
     }
 
     public PromptHandlerResponse entry(final List<String> prompts, final String format, final Map<String, String> context) {
-        logger.info("Context: \n" + context);
+        final List<String> safePrompts = Objects.requireNonNullElse(prompts, List.<String>of())
+                .stream()
+                .filter(Objects::nonNull)
+                .toList();
+        final String safeFormat = Objects.requireNonNullElse(format, "");
+        final Map<String, String> safeContext = Objects.requireNonNullElse(context, Map.of());
 
-        final StringConverter converter = stringConverterSelector.getStringConverter(format);
-        return Try.of(() -> promptHandler.handlePrompt(context, prompts))
+        logger.info("Context: \n" + safeContext);
+
+        final StringConverter converter = stringConverterSelector.getStringConverter(safeFormat);
+        return Try.of(() -> promptHandler.handlePrompt(safeContext, safePrompts))
                 .map(response -> response.updateResponseText(converter))
-                .onSuccess(content -> promptHandlerOutput.printOutput(content, context))
-                .onSuccess(content -> promptHandlerOutput.writeAnnotations(content, context))
-                .onSuccess(content -> promptHandlerOutput.writeLinks(content, context))
-                .onSuccess(content -> promptHandlerOutput.writeDebug(content, context))
-                .onSuccess(content -> promptHandlerOutput.writeOutput(content, context))
-                .onSuccess(content -> promptHandlerOutput.saveMetadata(content, context))
-                .onSuccess(content -> promptHandlerOutput.saveIntermediateResults(content, context))
+                .onSuccess(content -> promptHandlerOutput.printOutput(content, safeContext))
+                .onSuccess(content -> promptHandlerOutput.writeAnnotations(content, safeContext))
+                .onSuccess(content -> promptHandlerOutput.writeLinks(content, safeContext))
+                .onSuccess(content -> promptHandlerOutput.writeDebug(content, safeContext))
+                .onSuccess(content -> promptHandlerOutput.writeOutput(content, safeContext))
+                .onSuccess(content -> promptHandlerOutput.saveMetadata(content, safeContext))
+                .onSuccess(content -> promptHandlerOutput.saveIntermediateResults(content, safeContext))
                 .onFailure(e -> logger.severe("Failed to process prompt: " + e.getMessage()))
                 .andFinally(localStorage::flush)
                 .get();
