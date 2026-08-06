@@ -102,7 +102,7 @@ public class Main {
         final String safeFormat = Objects.requireNonNullElse(format, "");
         final Map<String, String> safeContext = Objects.requireNonNullElse(context, Map.of());
 
-        System.out.println("Context: \n" + safeContext);
+        logger.info("Context: \n" + safeContext);
 
         final StringConverter converter = stringConverterSelector.getStringConverter(safeFormat);
         return Try.of(() -> promptHandler.handlePrompt(safeContext, safePrompts))
