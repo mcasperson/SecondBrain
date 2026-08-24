@@ -9,16 +9,16 @@ import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import secondbrain.domain.web.ClientConstructor;
+import org.jspecify.annotations.Nullable;
 import secondbrain.domain.httpclient.HttpClientCaller;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.mutex.Mutex;
 import secondbrain.domain.persist.LocalStorage;
 import secondbrain.domain.response.ResponseValidation;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.youtube.api.YoutubePlaylists;
 import secondbrain.infrastructure.youtube.api.YoutubePlaylistsItem;
 import secondbrain.infrastructure.youtube.api.YoutubeSearch;
@@ -36,6 +36,7 @@ public class YoutubeClientLive implements YoutubeClient {
     // Youtube rate limits heavily, so we limit to 1 request every 30 seconds by default
     private static final double DEFAULT_RATE_LIMIT_PER_SECOND = 0.03;
 
+    @Nullable
     private RateLimiter RATE_LIMITER;
 
     @Inject
