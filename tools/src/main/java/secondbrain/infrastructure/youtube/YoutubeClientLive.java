@@ -109,7 +109,9 @@ public class YoutubeClientLive implements YoutubeClient {
         while (true) {
             logger.fine("Getting Youtube API search " + query + ", channelId: " + channelId + ", pageToken: " + currentPageToken);
 
-            RATE_LIMITER.acquire();
+            if (RATE_LIMITER != null) {
+                RATE_LIMITER.acquire();
+            }
 
             final String capturedToken = currentPageToken;
             final String target = "https://www.googleapis.com/youtube/v3/search?"
@@ -167,7 +169,9 @@ public class YoutubeClientLive implements YoutubeClient {
     private String getTranscriptApiLocked(final String videoId, final String lang) {
         logger.fine("Getting Youtube transcript " + videoId + " lang: " + lang);
 
-        RATE_LIMITER.acquire();
+        if (RATE_LIMITER != null) {
+            RATE_LIMITER.acquire();
+        }
 
         final TranscriptList transcriptList = getTranscriptList(videoId);
 
@@ -200,7 +204,9 @@ public class YoutubeClientLive implements YoutubeClient {
         while (true) {
             logger.fine("Getting Youtube API playlist " + playlistId + ", pageToken: " + currentPageToken);
 
-            RATE_LIMITER.acquire();
+            if (RATE_LIMITER != null) {
+                RATE_LIMITER.acquire();
+            }
 
             final String capturedToken = currentPageToken;
             final String target = "https://www.googleapis.com/youtube/v3/playlistItems?"
