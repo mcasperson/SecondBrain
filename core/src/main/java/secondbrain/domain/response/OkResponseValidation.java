@@ -2,13 +2,12 @@ package secondbrain.domain.response;
 
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.ws.rs.core.Request;
 import jakarta.ws.rs.core.Response;
+import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.exceptions.MissingResponse;
 import secondbrain.domain.exceptions.UnauthorizedResponse;
-import org.apache.commons.lang3.StringUtils;
 
 @ApplicationScoped
 public class OkResponseValidation implements ResponseValidation {
@@ -24,7 +23,7 @@ public class OkResponseValidation implements ResponseValidation {
         }
 
         if (response.getStatus() == 401) {
-            throw new UnauthorizedResponse("Expected status code 200, but got 401. This likely indicates an authentication issue.");
+            throw new UnauthorizedResponse("Expected status code 200, but got 401. This likely indicates an authentication issue. Uri: " + uri + "\n" + "with request body\n" + requestBody);
         }
 
         if (response.getStatus() != 200 && response.getStatus() != 201) {
@@ -35,7 +34,7 @@ public class OkResponseValidation implements ResponseValidation {
                     + " from URI " + uri + "\n"
                     + "with response body\n"
                     + fixedResponseBody + "\n"
-                    +"with request body\n"
+                    + "with request body\n"
                     + requestBody,
                     fixedResponseBody,
                     response.getStatus());
