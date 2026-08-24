@@ -6,6 +6,7 @@ import io.github.thoroldvix.api.TranscriptApiFactory;
 import io.github.thoroldvix.api.TranscriptContent;
 import io.github.thoroldvix.api.TranscriptList;
 import io.vavr.control.Try;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
@@ -32,8 +33,14 @@ import java.util.logging.Logger;
 
 @ApplicationScoped
 public class YoutubeClientLive implements YoutubeClient {
-    // Youtube rate limits heavily, so we limit to 1 request every 30 seconds
-    private static final RateLimiter RATE_LIMITER = RateLimiter.create(0.03);
+    // Youtube rate limits heavily, so we limit to 1 request every 30 seconds by default
+    private static final double DEFAULT_RATE_LIMIT_PER_SECOND = 0.03;
+
+    private RateLimiter RATE_LIMITER;
+
+    @Inject
+    @ConfigProperty(name = "sb.youtube.rateLimitPerSecond", defaultValue = DEFAULT_RATE_LIMIT_PER_SECOND + "")
+    private Double rateLimitPerSecond;
 
     @Inject
     @ConfigProperty(name = "sb.youtube.lock", defaultValue = "sb_youtube.lock")
@@ -58,6 +65,11 @@ public class YoutubeClientLive implements YoutubeClient {
 
     @Inject
     private ClientConstructor clientConstructor;
+
+    @PostConstruct
+    void init() {
+        this.RATE_LIMITER = RateLimiter.create(rateLimitPerSecond);
+    }
 
     @Override
     public List<YoutubePlaylistsItem> getPlaylistItems(final String playlistId, final String pageToken, final String key) {
