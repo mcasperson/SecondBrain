@@ -44,6 +44,8 @@ import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStr
  * <p>
  * java -jar secondbrain.jar \
  * -Dsb.meta.toolNames="Gong,Salesforce" \
+ * -Dsb.salesforce.accountid="0018000000abcdeAAA" \
+ * -Dsb.gong.company="0018000000abcdeAAA" \
  * -Dsb.meta.individualContextFilterQuestion="Does the document describe the use of GitHub Actions?" \
  * -Dsb.meta.individualContextFilterMinimumRating=6 \
  * -Dsb.meta.defaultRating=0 \
