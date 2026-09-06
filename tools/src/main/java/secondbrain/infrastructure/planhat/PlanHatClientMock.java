@@ -177,7 +177,9 @@ public class PlanHatClientMock implements PlanHatClient {
                         new EmailHeader("From", fromName + " <" + fromEmail + ">"),
                         new EmailHeader("To", toEmail),
                         new EmailHeader("Subject", subject)),
-                List.of(new EmailAttachment(UUID.randomUUID().toString(), "image.png", "image/png", (int) (Math.random() * 100000))));
+                List.of(new EmailAttachment(UUID.randomUUID().toString(), "image.png", "image/png", (int) (Math.random() * 100000))),
+                List.of(UUID.randomUUID().toString()),
+                "");
     }
 
 }

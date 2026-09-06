@@ -9,7 +9,6 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import org.jspecify.annotations.Nullable;
@@ -44,6 +43,7 @@ import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.api.Conversation;
+import secondbrain.infrastructure.planhat.api.Email;
 
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -147,21 +147,23 @@ public class PlanHat implements Tool<Void> {
         return "PlanHat Activity";
     }
 
-    private String getContextLabelWithDate(@Nullable final Conversation conversation) {
+    private String getContextLabelWithDate(@Nullable final Email email) {
         final StringBuilder sb = new StringBuilder();
 
         sb.append(getContextLabel());
 
-        if (conversation == null) {
+        if (email == null) {
             return sb.toString();
         }
 
-        if (StringUtils.isNotBlank(conversation.getType())) {
-            sb.append(" Type: ").append(conversation.getType()).append(" ");
+        sb.append(" Type: email ");
+
+        if (StringUtils.isNotBlank(email.getSubject())) {
+            sb.append(" Subject: ").append(email.getSubject()).append(" ");
         }
 
-        if (StringUtils.isNotBlank(conversation.getDate())) {
-            sb.append(" Date: ").append(conversation.getDate());
+        if (StringUtils.isNotBlank(email.getDate())) {
+            sb.append(" Date: ").append(email.getDate());
         }
 
         return sb.toString();
@@ -239,50 +241,57 @@ public class PlanHat implements Tool<Void> {
         }
 
         // Get preinitialization hooks before ragdocs
-        final List<RagDocumentContext<Conversation>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+        final List<RagDocumentContext<Email>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
                 .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
 
         // We can process multiple planhat instances
-        final List<Pair<String, String>> tokens = Stream.of(
-                        Pair.of(parsedArgs.getUrl(), parsedArgs.getSecretToken()),
-                        Pair.of(parsedArgs.getUrl2(), parsedArgs.getSecretToken2()))
-                .filter(pair -> StringUtils.isNotBlank(pair.getRight()) && StringUtils.isNotBlank(pair.getLeft()))
+        final List<PlanHatInstance> instances = Stream.of(
+                        new PlanHatInstance(parsedArgs.getUrl(), parsedArgs.getSecretToken()),
+                        new PlanHatInstance(parsedArgs.getUrl2(), parsedArgs.getSecretToken2()))
+                .filter(instance -> StringUtils.isNotBlank(instance.token()) && StringUtils.isNotBlank(instance.url()))
                 .toList();
 
-        final List<Conversation> conversations = tokens
+        // Each conversation is retained with the instance it came from, because the emails that make
+        // up an email conversation must be retrieved from that same instance.
+        final List<InstanceConversation> conversations = instances
                 .stream()
-                .flatMap(pair -> Try.withResources(clientConstructor::getClient)
+                .flatMap(instance -> Try.withResources(clientConstructor::getClient)
                         .of(client -> planHatClient.getConversations(
                                 client,
                                 parsedArgs.getCompany(),
-                                pair.getLeft(),
-                                pair.getRight(),
+                                instance.url(),
+                                instance.token(),
                                 parsedArgs.getStartDate(),
                                 parsedArgs.getEndDate(),
                                 parsedArgs.getSearchTTL()))
                         // Don't let the failure of one instance affect the other
-                        .onFailure(throwable -> logger.warning("Failed to get PlanHat conversations from " + pair.getLeft() + " with token ending in " + StringUtils.substring(pair.getRight(), -4) + ": " + ExceptionUtils.getRootCauseMessage(throwable)))
+                        .onFailure(throwable -> logger.warning("Failed to get PlanHat conversations from " + instance.url() + " with token ending in " + StringUtils.substring(instance.token(), -4) + ": " + ExceptionUtils.getRootCauseMessage(throwable)))
                         .recover(ex -> List.of())
                         .get()
-                        .stream())
-                .filter(c -> parsedArgs.getMinimumContentLength() > 0 || c.getSnippet().length() >= parsedArgs.getMinimumContentLength())
+                        .stream()
+                        .map(conversation -> new InstanceConversation(instance, conversation)))
+                .filter(c -> parsedArgs.getMinimumContentLength() > 0 || c.conversation().getSnippet().length() >= parsedArgs.getMinimumContentLength())
                 .toList();
 
-        final List<RagDocumentContext<Conversation>> ragDocs = conversations.stream()
+        final List<RagDocumentContext<Email>> ragDocs = conversations.stream()
                 // We filter after the API call to improve cache hits
-                .filter(conversation -> parsedArgs.getCompany().equals(conversation.getCompanyId()))
-                .filter(conversation -> !"ticket".equals(conversation.getType()))
-                .collect(parallelToStream(conversation -> {
-                    final Conversation updated = conversation.updateDescriptionAndSnippet(
-                            htmlToText.getText(conversation.getDescription()),
-                            htmlToText.getText(conversation.getSnippet()));
+                .filter(instanceConversation -> parsedArgs.getCompany().equals(instanceConversation.conversation().getCompanyId()))
+                // Only email conversations expose the individual emails that make up the conversation
+                .filter(instanceConversation -> "email".equals(instanceConversation.conversation().getType()))
+                // The conversation only holds a snippet, so the emails that make up the conversation are retrieved
+                .collect(parallelToStream(instanceConversation -> getEmails(instanceConversation.instance(), instanceConversation.conversation(), parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .flatMap(List::stream)
+                .collect(parallelToStream(email -> {
+                    final Email updated = email.updateContentAndSnippet(
+                            htmlToText.getText(email.getContent()),
+                            htmlToText.getText(email.getSnippet()));
                     return dataToRagDoc.getDocumentContext(updated.updateUrl(publicUrl), getName(), getContextLabelWithDate(updated), parsedArgs);
                 }, sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                 .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 .toList();
 
         // Combine preinitialization hooks with ragDocs
-        final List<RagDocumentContext<Conversation>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+        final List<RagDocumentContext<Email>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
 
         // Apply preprocessing hooks
         final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
@@ -296,9 +305,69 @@ public class PlanHat implements Tool<Void> {
                 .map(Optional::get)
                 .toList();
 
-        logger.info("Found " + context.size() + " PlanHat conversations");
+        logger.info("Found " + context.size() + " PlanHat emails");
 
         return context;
+    }
+
+    /**
+     * The conversation returned by the conversation API only exposes a snippet of an email
+     * conversation. The individual emails that make up the conversation, which hold the text of
+     * each message in the thread, have to be retrieved separately.
+     *
+     * @param instance     The URL and token of the PlanHat instance the conversation came from
+     * @param conversation The email conversation whose emails are to be retrieved
+     * @param parsedArgs   The tool arguments
+     * @return The emails that make up the conversation, or an empty list if they could not be retrieved
+     */
+    private List<Email> getEmails(
+            final PlanHatInstance instance,
+            final Conversation conversation,
+            final PlanHatConfig.LocalArguments parsedArgs) {
+
+        // The same email is returned once for each thread it belongs to, so we only keep the first copy
+        final Set<String> seenEmails = new HashSet<>();
+
+        return Try.withResources(clientConstructor::getClient)
+                .of(client -> planHatClient.getConversationEmails(
+                                client,
+                                conversation.getId(),
+                                instance.url(),
+                                instance.token(),
+                                parsedArgs.getSearchTTL())
+                        .stream()
+                        .filter(email -> seenEmails.add(StringUtils.defaultIfBlank(email.getHeaderMessageId(), email.getId())))
+                        // The list of emails does not include the content, so each email is retrieved individually
+                        .map(email -> planHatClient.getEmail(
+                                client,
+                                email.getId(),
+                                instance.url(),
+                                instance.token(),
+                                parsedArgs.getSearchTTL()))
+                        .toList())
+                // Don't let the failure of one conversation affect the others
+                .onFailure(throwable -> logger.warning("Failed to get PlanHat emails for conversation " + conversation.getId() + ": " + ExceptionUtils.getRootCauseMessage(throwable)))
+                .getOrElse(List::of);
+    }
+
+    /**
+     * The details of a single PlanHat instance. The tool can be configured with multiple instances,
+     * and a conversation has to be traced back to the instance it came from so its emails can be
+     * retrieved from the same place.
+     *
+     * @param url   The URL of the PlanHat API
+     * @param token The token used to authenticate against the PlanHat API
+     */
+    private record PlanHatInstance(String url, String token) {
+    }
+
+    /**
+     * A conversation and the PlanHat instance it was retrieved from.
+     *
+     * @param instance     The instance the conversation was retrieved from
+     * @param conversation The conversation
+     */
+    private record InstanceConversation(PlanHatInstance instance, Conversation conversation) {
     }
 
     private <T> Optional<RagDocumentContext<Void>> enrichAndSummarize(
@@ -325,7 +394,7 @@ public class PlanHat implements Tool<Void> {
         final var summarized = parsedArgs.getSummarizeDocument()
                 ? ragDocSummarizer.getDocumentSummary(
                 getName(),
-                getContextLabelWithDate(withIntermediate.source() instanceof Conversation c ? c : null),
+                getContextLabelWithDate(withIntermediate.source() instanceof Email e ? e : null),
                 "PlanHat",
                 withIntermediate,
                 environmentSettings,

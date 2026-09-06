@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.data.IdData;
 import secondbrain.domain.data.TextData;
+import secondbrain.domain.data.UrlData;
 
 import java.util.List;
 import java.util.Objects;
@@ -36,12 +37,20 @@ public record Email(@JsonProperty("_id") @Nullable String id,
                     @Nullable String type,
                     @Nullable String userId,
                     @Nullable List<EmailHeader> headers,
-                    @Nullable List<EmailAttachment> attachments) implements TextData, IdData {
+                    @Nullable List<EmailAttachment> attachments,
+                    @Nullable List<String> companies,
+                    @Nullable String url) implements TextData, IdData, UrlData {
 
     public Email updateContentAndSnippet(final String content, final String snippet) {
         return new Email(id, conversationId, messageId, threadId, subject, snippet, content, contentType, date,
                 fromAddress, fromName, fromEmail, toAddresses, ccAddresses, bccAddresses, headerMessageId, source,
-                type, userId, headers, attachments);
+                type, userId, headers, attachments, companies, url);
+    }
+
+    public Email updateUrl(final String url) {
+        return new Email(id, conversationId, messageId, threadId, subject, snippet, content, contentType, date,
+                fromAddress, fromName, fromEmail, toAddresses, ccAddresses, bccAddresses, headerMessageId, source,
+                type, userId, headers, attachments, companies, url);
     }
 
     @Override
@@ -52,6 +61,19 @@ public record Email(@JsonProperty("_id") @Nullable String id,
     @Override
     public String generateText() {
         return StringUtils.isBlank(content) ? getSnippet() : getContent();
+    }
+
+    @Override
+    public String generateLinkText() {
+        return "Planhat Email";
+    }
+
+    /**
+     * PlanHat has no view for an individual email, so emails link to the conversation they belong to.
+     */
+    @Override
+    public String generateUrl() {
+        return getUrl() + "/profile/" + getCompanyId() + "?conversationId=" + getConversationId();
     }
 
     public String getId() {
@@ -136,5 +158,20 @@ public record Email(@JsonProperty("_id") @Nullable String id,
 
     public List<EmailAttachment> getAttachments() {
         return Objects.requireNonNullElse(attachments, List.of());
+    }
+
+    public List<String> getCompanies() {
+        return Objects.requireNonNullElse(companies, List.of());
+    }
+
+    /**
+     * An email is linked to the company that the conversation it belongs to is linked to.
+     */
+    public String getCompanyId() {
+        return getCompanies().stream().findFirst().orElse("");
+    }
+
+    public String getUrl() {
+        return Objects.requireNonNullElse(url, "");
     }
 }
