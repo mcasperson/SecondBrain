@@ -156,6 +156,21 @@ public record Email(@JsonProperty("_id") @Nullable String id,
         return Objects.requireNonNullElse(headers, List.of());
     }
 
+    /**
+     * Find the value of an email header. Header names are case-insensitive, so the name is matched
+     * without regard to case.
+     *
+     * @param name The name of the header to find
+     * @return The value of the first matching header, or an empty string if there is no such header
+     */
+    public String getHeader(final String name) {
+        return getHeaders().stream()
+                .filter(header -> header.getName().equalsIgnoreCase(name))
+                .map(EmailHeader::getValue)
+                .findFirst()
+                .orElse("");
+    }
+
     public List<EmailAttachment> getAttachments() {
         return Objects.requireNonNullElse(attachments, List.of());
     }

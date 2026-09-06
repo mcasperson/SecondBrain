@@ -162,6 +162,21 @@ public class PlanHat implements Tool<Void> {
             sb.append(" Subject: ").append(email.getSubject()).append(" ");
         }
 
+        final String from = email.getHeader("From");
+        if (StringUtils.isNotBlank(from)) {
+            sb.append(" From: ").append(from).append(" ");
+        }
+
+        final String to = email.getHeader("To");
+        if (StringUtils.isNotBlank(to)) {
+            sb.append(" To: ").append(to).append(" ");
+        }
+
+        final String cc = email.getHeader("Cc");
+        if (StringUtils.isNotBlank(cc)) {
+            sb.append(" CC: ").append(cc).append(" ");
+        }
+
         if (StringUtils.isNotBlank(email.getDate())) {
             sb.append(" Date: ").append(email.getDate());
         }
