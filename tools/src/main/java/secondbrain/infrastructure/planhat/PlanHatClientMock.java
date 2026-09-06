@@ -8,6 +8,9 @@ import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.api.Company;
 import secondbrain.infrastructure.planhat.api.Conversation;
+import secondbrain.infrastructure.planhat.api.Email;
+import secondbrain.infrastructure.planhat.api.EmailAttachment;
+import secondbrain.infrastructure.planhat.api.EmailHeader;
 import secondbrain.infrastructure.planhat.api.Objective;
 import secondbrain.infrastructure.planhat.api.Opportunity;
 import secondbrain.infrastructure.planhat.api.PlanHatUser;
@@ -46,6 +49,20 @@ public class PlanHatClientMock implements PlanHatClient {
                 createMockConversation(company),
                 createMockConversation(company)
         );
+    }
+
+    @Override
+    public List<Email> getConversationEmails(final Client client, final String conversationId, final String url, final String token, final int ttlSeconds) {
+        return List.of(
+                createMockEmail(conversationId, "incoming"),
+                createMockEmail(conversationId, "outgoing"),
+                createMockEmail(conversationId, "incoming")
+        );
+    }
+
+    @Override
+    public Email getEmail(final Client client, final String emailId, final String url, final String token, final int ttlSeconds) {
+        return createMockEmail(UUID.randomUUID().toString(), "incoming");
     }
 
     @Override
@@ -125,4 +142,42 @@ public class PlanHatClientMock implements PlanHatClient {
 
         return new Conversation(id, description, snippet, date, companyId, companyName, subject, type, "");
     }
+
+    private Email createMockEmail(final String conversationId, final String type) {
+        final String fromName = llmClient.call("Generate a person's name. Return only the name, nothing else.", Map.of());
+        final String fromEmail = fromName.toLowerCase().replaceAll("[^a-z]", ".") + "@example.org";
+        final String toEmail = llmClient.call("Generate a person's name. Return only the name, nothing else.", Map.of())
+                .toLowerCase().replaceAll("[^a-z]", ".") + "@example.com";
+        final String subject = llmClient.call("Generate a subject line for a customer support email. Keep it brief.", Map.of());
+        final String content = llmClient.call("Generate the body of a professional email to a customer. Return only the body, nothing else.", Map.of());
+        final String snippet = llmClient.call("Generate a brief one-sentence summary of a customer email.", Map.of());
+        final String messageId = UUID.randomUUID().toString();
+
+        return new Email(
+                UUID.randomUUID().toString(),
+                conversationId,
+                messageId,
+                UUID.randomUUID().toString(),
+                subject,
+                snippet,
+                content,
+                "text/html",
+                ZonedDateTime.now(ZoneOffset.UTC).minusDays((long) (Math.random() * 30)).format(DateTimeFormatter.ISO_INSTANT),
+                fromName + " <" + fromEmail + ">",
+                fromName,
+                fromEmail,
+                List.of(toEmail),
+                List.of(),
+                List.of(),
+                "<" + messageId + "@example.org>",
+                "gmail",
+                type,
+                UUID.randomUUID().toString(),
+                List.of(
+                        new EmailHeader("From", fromName + " <" + fromEmail + ">"),
+                        new EmailHeader("To", toEmail),
+                        new EmailHeader("Subject", subject)),
+                List.of(new EmailAttachment(UUID.randomUUID().toString(), "image.png", "image/png", (int) (Math.random() * 100000))));
+    }
+
 }

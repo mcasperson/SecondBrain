@@ -173,6 +173,48 @@ public class PlanHatClientLive implements PlanHatClient {
     }
 
     @Override
+    public List<Email> getConversationEmails(
+            final Client client,
+            final String conversationId,
+            final String url,
+            final String token,
+            final int ttlSeconds) {
+        return Try.of(() -> localStorage.getOrPutObjectArray(
+                                PlanHatClientLive.class.getSimpleName(),
+                                "PlanHatAPIConversationEmails",
+                                DigestUtils.sha256Hex(conversationId + url),
+                                ttlSeconds,
+                                Email.class,
+                                Email[].class,
+                                () -> getConversationEmailsApi(client, conversationId, url, token))
+                        .result())
+                .filter(Objects::nonNull)
+                .map(List::of)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Emails not found for conversation " + conversationId))
+                .getOrElse(List.of());
+    }
+
+    @Override
+    public Email getEmail(
+            final Client client,
+            final String emailId,
+            final String url,
+            final String token,
+            final int ttlSeconds) {
+        return Try.of(() -> localStorage.getOrPutObject(
+                                PlanHatClientLive.class.getSimpleName(),
+                                "PlanHatAPIEmail",
+                                DigestUtils.sha256Hex(emailId + url),
+                                ttlSeconds,
+                                Email.class,
+                                () -> getEmailApi(client, emailId, url, token))
+                        .result())
+                .filter(Objects::nonNull)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Email not found for emailId " + emailId))
+                .get();
+    }
+
+    @Override
     public List<Objective> getObjectives(
             final Client client,
             final String companyId,
@@ -211,8 +253,6 @@ public class PlanHatClientLive implements PlanHatClient {
         final int pageSizeValue = getPageSize();
 
         /*
-         Use an iterative approach instead of recursion to avoid O(N²) memory from
-         stacked ArrayUtils.addAll intermediate arrays and deep recursion stack frames.
          There is no way to select a date range with the Planhat API,
          so instead we keep iterating over the API until all the conversations
          are before the start date.
@@ -352,6 +392,107 @@ public class PlanHatClientLive implements PlanHatClient {
                         .map(r -> r.readEntity(Objective[].class))
                         .get())
                 .get();
+    }
+
+    private Email[] getConversationEmailsApi(
+            final Client client,
+            final String conversationId,
+            final String url,
+            final String token) {
+        return mutex.acquire(
+                lockFile,
+                () -> getConversationEmailsApiLocked(client, conversationId, url, token));
+    }
+
+    private Email[] getConversationEmailsApiLocked(
+            final Client client,
+            final String conversationId,
+            final String url,
+            final String token) {
+        return Try.withResources(() -> new TimedOperation("Planhat API call for conversation emails"))
+                .of(t -> getConversationEmailsApiTimed(client, conversationId, url, token))
+                .get();
+    }
+
+    private Email[] getConversationEmailsApiTimed(
+            final Client client,
+            final String conversationId,
+            final String url,
+            final String token) {
+        logger.fine("Calling PlanHat Emails API for conversation " + conversationId);
+
+        RATE_LIMITER.acquire();
+
+        final String target = url + "/emails/conversation/" + URLEncoder.encode(conversationId, Charset.defaultCharset());
+
+        final Email[] result = Try.withResources(() -> client.target(target)
+                        .request()
+                        .header("Authorization", "Bearer " + token)
+                        .header("Accept", MediaType.APPLICATION_JSON)
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(Email[].class))
+                        .get())
+                .get();
+
+        return Stream.of(result).map(this::trimEmail).toArray(Email[]::new);
+    }
+
+    private Email getEmailApi(
+            final Client client,
+            final String emailId,
+            final String url,
+            final String token) {
+        return mutex.acquire(
+                lockFile,
+                () -> getEmailApiLocked(client, emailId, url, token));
+    }
+
+    private Email getEmailApiLocked(
+            final Client client,
+            final String emailId,
+            final String url,
+            final String token) {
+        return Try.withResources(() -> new TimedOperation("Planhat API call for email"))
+                .of(t -> getEmailApiTimed(client, emailId, url, token))
+                .get();
+    }
+
+    private Email getEmailApiTimed(
+            final Client client,
+            final String emailId,
+            final String url,
+            final String token) {
+        logger.fine("Calling PlanHat Email API for emailId " + emailId);
+
+        RATE_LIMITER.acquire();
+
+        final String target = url + "/emails/" + URLEncoder.encode(emailId, Charset.defaultCharset());
+
+        return Try.withResources(() -> client.target(target)
+                        .request()
+                        .header("Authorization", "Bearer " + token)
+                        .header("Accept", MediaType.APPLICATION_JSON)
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(Email.class))
+                        .get())
+                .map(this::trimEmail)
+                .get();
+    }
+
+    /**
+     * Email content is HTML that includes the entire quoted thread, so it can easily exceed the
+     * limits imposed by the caches. Trim it in the same way conversations are trimmed.
+     */
+    private Email trimEmail(final Email email) {
+        if (getMaxLength() <= 0) {
+            return email;
+        }
+
+        return email.updateContentAndSnippet(
+                StringUtils.substring(email.getContent(), 0, getMaxLength()),
+                StringUtils.substring(email.getSnippet(), 0, getMaxLength()));
     }
 
     @Override
