@@ -80,6 +80,8 @@ public class GongClientLive implements GongClient {
 
         final String hash = DigestUtils.sha256Hex(fromDateTime + toDateTimeFinal + callId);
 
+        logger.info("Getting Gong calls with hash: " + hash + " for Salesforce ID: " + company + " and call IDs: " + callId + " from " + fromDateTime + " to " + toDateTimeFinal);
+
         /*
             Cache at the parent level to take advantage of the local cache, even if the remote cache
             (CosmoDB) has limits on the size of each cached object.
