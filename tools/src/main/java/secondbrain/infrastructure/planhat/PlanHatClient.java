@@ -8,6 +8,7 @@ import secondbrain.infrastructure.planhat.api.Email;
 import secondbrain.infrastructure.planhat.api.Objective;
 import secondbrain.infrastructure.planhat.api.Opportunity;
 import secondbrain.infrastructure.planhat.api.PlanHatUser;
+import secondbrain.infrastructure.planhat.api.TicketPart;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -49,6 +50,17 @@ public interface PlanHatClient {
     Email getEmail(
             Client client,
             String emailId,
+            String url,
+            String token,
+            int ttlSeconds);
+
+    /**
+     * Lists the parts (the customer comments and the private staff notes) that make up a ticket
+     * conversation, in the order they were added.
+     */
+    List<TicketPart> getTicketParts(
+            Client client,
+            String ticketId,
             String url,
             String token,
             int ttlSeconds);

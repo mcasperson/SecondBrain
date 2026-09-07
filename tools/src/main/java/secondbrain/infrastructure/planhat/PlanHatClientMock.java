@@ -14,6 +14,7 @@ import secondbrain.infrastructure.planhat.api.EmailHeader;
 import secondbrain.infrastructure.planhat.api.Objective;
 import secondbrain.infrastructure.planhat.api.Opportunity;
 import secondbrain.infrastructure.planhat.api.PlanHatUser;
+import secondbrain.infrastructure.planhat.api.TicketPart;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -63,6 +64,15 @@ public class PlanHatClientMock implements PlanHatClient {
     @Override
     public Email getEmail(final Client client, final String emailId, final String url, final String token, final int ttlSeconds) {
         return createMockEmail(UUID.randomUUID().toString(), "incoming");
+    }
+
+    @Override
+    public List<TicketPart> getTicketParts(final Client client, final String ticketId, final String url, final String token, final int ttlSeconds) {
+        return List.of(
+                createMockTicketPart(ticketId, "comment", false),
+                createMockTicketPart(ticketId, "comment", false),
+                createMockTicketPart(ticketId, "note", true)
+        );
     }
 
     @Override
@@ -141,6 +151,38 @@ public class PlanHatClientMock implements PlanHatClient {
         String type = List.of("email", "call", "meeting", "chat").get((int) (Math.random() * 4));
 
         return new Conversation(id, description, snippet, date, companyId, companyName, subject, type, "");
+    }
+
+    private TicketPart createMockTicketPart(final String ticketId, final String type, final boolean isPrivate) {
+        final String authorName = llmClient.call("Generate a person's name. Return only the name, nothing else.", Map.of());
+        final String body = isPrivate
+                ? llmClient.call("Generate a short private internal note left by a support agent on a customer support ticket. Return only the note, nothing else.", Map.of())
+                : llmClient.call("Generate a message in a customer support ticket conversation. Return only the message, nothing else.", Map.of());
+        final ZonedDateTime createDate = ZonedDateTime.now(ZoneOffset.UTC).minusDays((long) (Math.random() * 30));
+
+        return new TicketPart(
+                UUID.randomUUID().toString(),
+                ticketId,
+                String.valueOf((int) (Math.random() * 1000000)),
+                String.valueOf((long) (Math.random() * 100000000000000L)),
+                type,
+                List.of("email", "web", "api").get((int) (Math.random() * 3)),
+                body,
+                createDate.format(DateTimeFormatter.ISO_INSTANT),
+                authorName,
+                isPrivate ? UUID.randomUUID().toString() : null,
+                isPrivate ? null : UUID.randomUUID().toString(),
+                null,
+                "zendesk",
+                isPrivate,
+                (int) createDate.toLocalDate().toEpochDay(),
+                List.of(
+                        String.valueOf(createDate.getYear()),
+                        createDate.getYear() + "-Q" + ((createDate.getMonthValue() - 1) / 3 + 1),
+                        createDate.getYear() + "-" + createDate.getMonthValue()),
+                List.of(),
+                UUID.randomUUID().toString(),
+                "");
     }
 
     private Email createMockEmail(final String conversationId, final String type) {

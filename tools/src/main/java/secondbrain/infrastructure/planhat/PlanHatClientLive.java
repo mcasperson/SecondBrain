@@ -215,6 +215,28 @@ public class PlanHatClientLive implements PlanHatClient {
     }
 
     @Override
+    public List<TicketPart> getTicketParts(
+            final Client client,
+            final String ticketId,
+            final String url,
+            final String token,
+            final int ttlSeconds) {
+        return Try.of(() -> localStorage.getOrPutObjectArray(
+                                PlanHatClientLive.class.getSimpleName(),
+                                "PlanHatAPITicketParts",
+                                DigestUtils.sha256Hex(ticketId + url),
+                                ttlSeconds,
+                                TicketPart.class,
+                                TicketPart[].class,
+                                () -> getTicketPartsApi(client, ticketId, url, token))
+                        .result())
+                .filter(Objects::nonNull)
+                .map(List::of)
+                .onFailure(NoSuchElementException.class, ex -> logger.warning("Ticket parts not found for ticket " + ticketId))
+                .getOrElse(List.of());
+    }
+
+    @Override
     public List<Objective> getObjectives(
             final Client client,
             final String companyId,
@@ -493,6 +515,62 @@ public class PlanHatClientLive implements PlanHatClient {
         return email.updateContentAndSnippet(
                 StringUtils.substring(email.getContent(), 0, getMaxLength()),
                 StringUtils.substring(email.getSnippet(), 0, getMaxLength()));
+    }
+
+    private TicketPart[] getTicketPartsApi(
+            final Client client,
+            final String ticketId,
+            final String url,
+            final String token) {
+        return mutex.acquire(
+                lockFile,
+                () -> getTicketPartsApiLocked(client, ticketId, url, token));
+    }
+
+    private TicketPart[] getTicketPartsApiLocked(
+            final Client client,
+            final String ticketId,
+            final String url,
+            final String token) {
+        return Try.withResources(() -> new TimedOperation("Planhat API call for ticket parts"))
+                .of(t -> getTicketPartsApiTimed(client, ticketId, url, token))
+                .get();
+    }
+
+    private TicketPart[] getTicketPartsApiTimed(
+            final Client client,
+            final String ticketId,
+            final String url,
+            final String token) {
+        logger.fine("Calling PlanHat Ticket Parts API for ticket " + ticketId);
+
+        RATE_LIMITER.acquire();
+
+        final String target = url + "/tickets/" + URLEncoder.encode(ticketId, Charset.defaultCharset()) + "/parts";
+
+        final TicketPart[] result = Try.withResources(() -> client.target(target)
+                        .request()
+                        .header("Authorization", "Bearer " + token)
+                        .header("Accept", MediaType.APPLICATION_JSON)
+                        .get())
+                .of(response -> Try.of(() -> responseValidation.validate(response, target))
+                        .map(r -> r.readEntity(TicketPart[].class))
+                        .get())
+                .get();
+
+        return Stream.of(result).map(this::trimTicketPart).toArray(TicketPart[]::new);
+    }
+
+    /**
+     * Like email content, the body of a ticket part is HTML that can easily exceed the limits
+     * imposed by the caches, so it is trimmed in the same way.
+     */
+    private TicketPart trimTicketPart(final TicketPart ticketPart) {
+        if (getMaxLength() <= 0) {
+            return ticketPart;
+        }
+
+        return ticketPart.updateBody(StringUtils.substring(ticketPart.getBody(), 0, getMaxLength()));
     }
 
     @Override
