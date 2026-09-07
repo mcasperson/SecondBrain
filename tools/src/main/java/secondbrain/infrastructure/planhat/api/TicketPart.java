@@ -3,9 +3,6 @@ package secondbrain.infrastructure.planhat.api;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jspecify.annotations.Nullable;
-import secondbrain.domain.data.IdData;
-import secondbrain.domain.data.TextData;
-import secondbrain.domain.data.UrlData;
 
 import java.util.List;
 import java.util.Objects;
@@ -36,7 +33,7 @@ public record TicketPart(@JsonProperty("_id") @Nullable String id,
                          @Nullable List<String> timeBucket,
                          @Nullable List<EmailAttachment> attachments,
                          @Nullable String companyId,
-                         @Nullable String url) implements TextData, IdData, UrlData {
+                         @Nullable String url) implements PlanHatActivity {
 
     public TicketPart updateBody(final String body) {
         return new TicketPart(id, conversationId, externalTicketId, externalId, type, via, body, createDate,

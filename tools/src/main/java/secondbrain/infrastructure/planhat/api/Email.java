@@ -4,9 +4,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
-import secondbrain.domain.data.IdData;
-import secondbrain.domain.data.TextData;
-import secondbrain.domain.data.UrlData;
 
 import java.util.List;
 import java.util.Objects;
@@ -39,7 +36,7 @@ public record Email(@JsonProperty("_id") @Nullable String id,
                     @Nullable List<EmailHeader> headers,
                     @Nullable List<EmailAttachment> attachments,
                     @Nullable List<String> companies,
-                    @Nullable String url) implements TextData, IdData, UrlData {
+                    @Nullable String url) implements PlanHatActivity {
 
     public Email updateContentAndSnippet(final String content, final String snippet) {
         return new Email(id, conversationId, messageId, threadId, subject, snippet, content, contentType, date,

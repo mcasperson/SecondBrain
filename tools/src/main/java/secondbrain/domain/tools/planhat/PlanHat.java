@@ -44,6 +44,8 @@ import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.api.Conversation;
 import secondbrain.infrastructure.planhat.api.Email;
+import secondbrain.infrastructure.planhat.api.PlanHatActivity;
+import secondbrain.infrastructure.planhat.api.TicketPart;
 
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -60,6 +62,12 @@ public class PlanHat implements Tool<Void> {
     public static final String COMPANY_ID_ARGS = "companyId";
     public static final String SEARCH_TTL_ARG = "searchTtl";
     public static final String PLANHAT_TTL_SECONDS_ARG = "ttlSeconds";
+    public static final String CONVERSATION_TYPES_ARG = "conversationTypes";
+    /**
+     * The conversation types that the tool knows how to break down into individual messages.
+     */
+    private static final String EMAIL_CONVERSATION_TYPE = "email";
+    private static final String TICKET_CONVERSATION_TYPE = "ticket";
     private static final int PARALLEL_BATCH_SIZE = 10;
 
     private static final String INSTRUCTIONS = """
@@ -184,6 +192,52 @@ public class PlanHat implements Tool<Void> {
         return sb.toString();
     }
 
+    private String getContextLabelWithDate(@Nullable final TicketPart ticketPart) {
+        final StringBuilder sb = new StringBuilder();
+
+        sb.append(getContextLabel());
+
+        if (ticketPart == null) {
+            return sb.toString();
+        }
+
+        sb.append(" Type: ticket ");
+
+        if (StringUtils.isNotBlank(ticketPart.getExternalTicketId())) {
+            sb.append(" Ticket: ").append(ticketPart.getExternalTicketId()).append(" ");
+        }
+
+        // Comments are the messages exchanged with the customer, while notes are internal
+        if (StringUtils.isNotBlank(ticketPart.getType())) {
+            sb.append(" Message Type: ").append(ticketPart.getType()).append(" ");
+        }
+
+        if (StringUtils.isNotBlank(ticketPart.getAuthorName())) {
+            sb.append(" From: ").append(ticketPart.getAuthorName()).append(" ");
+        }
+
+        if (StringUtils.isNotBlank(ticketPart.getCreateDate())) {
+            sb.append(" Date: ").append(ticketPart.getCreateDate());
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * The context label depends on the kind of activity the document was generated from.
+     */
+    private String getContextLabelForSource(@Nullable final Object source) {
+        if (source instanceof Email email) {
+            return getContextLabelWithDate(email);
+        }
+
+        if (source instanceof TicketPart ticketPart) {
+            return getContextLabelWithDate(ticketPart);
+        }
+
+        return getContextLabel();
+    }
+
     @Override
     public List<ToolArguments> getArguments() {
         return List.of(
@@ -205,7 +259,8 @@ public class PlanHat implements Tool<Void> {
                 new ToolArguments(CommonArguments.POSTINFERENCE_HOOKS_ARG, "The names of post-inference hooks to apply after the LLM has processed the conversations", ""),
                 new ToolArguments(PLANHAT_TTL_SECONDS_ARG, "The number of seconds to cache the PlanHat conversation results", "86400"),
                 new ToolArguments(SEARCH_TTL_ARG, "The time-to-live in milliseconds for the PlanHat search query cache", ""),
-                new ToolArguments(CommonArguments.MINIMUM_CONTENT_LENGTH, "The minimum number of characters a conversation must have to be included (0 = no minimum)", "0")
+                new ToolArguments(CommonArguments.MINIMUM_CONTENT_LENGTH, "The minimum number of characters a conversation must have to be included (0 = no minimum)", "0"),
+                new ToolArguments(CONVERSATION_TYPES_ARG, "The comma separated list of conversation types to process. \"ticket\" is also an option.", EMAIL_CONVERSATION_TYPE)
         );
     }
 
@@ -256,8 +311,8 @@ public class PlanHat implements Tool<Void> {
         }
 
         // Get preinitialization hooks before ragdocs
-        final List<RagDocumentContext<Email>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
-                .foldLeft(List.of(), (docs, hook) -> hook.process(getName(), docs));
+        final List<RagDocumentContext<PlanHatActivity>> preinitHooks = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreinitializationHooks()))
+                .foldLeft(List.<RagDocumentContext<PlanHatActivity>>of(), (docs, hook) -> hook.process(getName(), docs));
 
         // We can process multiple planhat instances
         final List<PlanHatInstance> instances = Stream.of(
@@ -288,11 +343,17 @@ public class PlanHat implements Tool<Void> {
                 .filter(c -> parsedArgs.getMinimumContentLength() > 0 || c.conversation().getSnippet().length() >= parsedArgs.getMinimumContentLength())
                 .toList();
 
-        final List<RagDocumentContext<Email>> ragDocs = conversations.stream()
-                // We filter after the API call to improve cache hits
+        final List<String> conversationTypes = parsedArgs.getConversationTypes();
+
+        // We filter after the API call to improve cache hits
+        final List<InstanceConversation> companyConversations = conversations.stream()
                 .filter(instanceConversation -> parsedArgs.getCompany().equals(instanceConversation.conversation().getCompanyId()))
-                // Only email conversations expose the individual emails that make up the conversation
-                .filter(instanceConversation -> "email".equals(instanceConversation.conversation().getType()))
+                .toList();
+
+        final List<RagDocumentContext<PlanHatActivity>> emailDocs = !conversationTypes.contains(EMAIL_CONVERSATION_TYPE)
+                ? List.of()
+                : companyConversations.stream()
+                .filter(instanceConversation -> EMAIL_CONVERSATION_TYPE.equals(instanceConversation.conversation().getType()))
                 // The conversation only holds a snippet, so the emails that make up the conversation are retrieved
                 .collect(parallelToStream(instanceConversation -> getEmails(instanceConversation.instance(), instanceConversation.conversation(), parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                 .flatMap(List::stream)
@@ -300,13 +361,29 @@ public class PlanHat implements Tool<Void> {
                     final Email updated = email.updateContentAndSnippet(
                             htmlToText.getText(email.getContent()),
                             htmlToText.getText(email.getSnippet()));
-                    return dataToRagDoc.getDocumentContext(updated.updateUrl(publicUrl), getName(), getContextLabelWithDate(updated), parsedArgs);
+                    return dataToRagDoc.<PlanHatActivity>getDocumentContext(updated.updateUrl(publicUrl), getName(), getContextLabelWithDate(updated), parsedArgs);
                 }, sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                 .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 .toList();
 
-        // Combine preinitialization hooks with ragDocs
-        final List<RagDocumentContext<Email>> combinedDocs = Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+        final List<RagDocumentContext<PlanHatActivity>> ticketDocs = !conversationTypes.contains(TICKET_CONVERSATION_TYPE)
+                ? List.of()
+                : companyConversations.stream()
+                .filter(instanceConversation -> TICKET_CONVERSATION_TYPE.equals(instanceConversation.conversation().getType()))
+                // Like emails, the conversation only holds a snippet, so the individual messages are retrieved
+                .collect(parallelToStream(instanceConversation -> getTicketParts(instanceConversation.instance(), instanceConversation.conversation(), parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .flatMap(List::stream)
+                .collect(parallelToStream(ticketPart -> {
+                    final TicketPart updated = ticketPart.updateBody(htmlToText.getText(ticketPart.getBody()));
+                    return dataToRagDoc.<PlanHatActivity>getDocumentContext(updated, getName(), getContextLabelWithDate(updated), parsedArgs);
+                }, sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
+                .toList();
+
+        // Combine preinitialization hooks with the documents from each kind of conversation
+        final List<RagDocumentContext<PlanHatActivity>> combinedDocs = Stream.of(preinitHooks, emailDocs, ticketDocs)
+                .flatMap(List::stream)
+                .toList();
 
         // Apply preprocessing hooks
         final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
@@ -320,7 +397,7 @@ public class PlanHat implements Tool<Void> {
                 .map(Optional::get)
                 .toList();
 
-        logger.info("Found " + context.size() + " PlanHat emails");
+        logger.info("Found " + context.size() + " PlanHat " + String.join(" and ", conversationTypes) + " documents");
 
         return context;
     }
@@ -362,6 +439,37 @@ public class PlanHat implements Tool<Void> {
                         .toList())
                 // Don't let the failure of one conversation affect the others
                 .onFailure(throwable -> logger.warning("Failed to get PlanHat emails for conversation " + conversation.getId() + ": " + ExceptionUtils.getRootCauseMessage(throwable)))
+                .getOrElse(List::of);
+    }
+
+    /**
+     * Like an email conversation, a ticket conversation only exposes a snippet. The individual
+     * comments and notes that make up the ticket, which hold the text of each message, have to be
+     * retrieved separately.
+     *
+     * @param instance     The URL and token of the PlanHat instance the conversation came from
+     * @param conversation The ticket conversation whose parts are to be retrieved
+     * @param parsedArgs   The tool arguments
+     * @return The parts that make up the ticket, or an empty list if they could not be retrieved
+     */
+    private List<TicketPart> getTicketParts(
+            final PlanHatInstance instance,
+            final Conversation conversation,
+            final PlanHatConfig.LocalArguments parsedArgs) {
+
+        return Try.withResources(clientConstructor::getClient)
+                .of(client -> planHatClient.getTicketParts(
+                                client,
+                                conversation.getId(),
+                                instance.url(),
+                                instance.token(),
+                                parsedArgs.getSearchTTL())
+                        .stream()
+                        // The parts don't know the company or the public URL of the conversation they link to
+                        .map(ticketPart -> ticketPart.updateUrl(publicUrl, conversation.getCompanyId()))
+                        .toList())
+                // Don't let the failure of one conversation affect the others
+                .onFailure(throwable -> logger.warning("Failed to get PlanHat ticket parts for conversation " + conversation.getId() + ": " + ExceptionUtils.getRootCauseMessage(throwable)))
                 .getOrElse(List::of);
     }
 
@@ -409,7 +517,7 @@ public class PlanHat implements Tool<Void> {
         final var summarized = parsedArgs.getSummarizeDocument()
                 ? ragDocSummarizer.getDocumentSummary(
                 getName(),
-                getContextLabelWithDate(withIntermediate.source() instanceof Email e ? e : null),
+                getContextLabelForSource(withIntermediate.source()),
                 "PlanHat",
                 withIntermediate,
                 environmentSettings,
@@ -446,6 +554,7 @@ public class PlanHat implements Tool<Void> {
 @ApplicationScoped
 class PlanHatConfig {
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24) + "";
+    private static final String DEFAULT_CONVERSATION_TYPES = "email";
     private static final int DEFAULT_RATING = 10;
     private static final int DEFAULT_TTL_SECONDS = 60 * 60 * 24; // 24 hours
 
@@ -562,6 +671,10 @@ class PlanHatConfig {
     @ConfigProperty(name = "sb.planhat.minimumContentLength", defaultValue = "0")
     private Optional<String> configMinimumContentLength;
 
+    @Inject
+    @ConfigProperty(name = "sb.planhat.conversationTypes", defaultValue = DEFAULT_CONVERSATION_TYPES)
+    private Optional<String> configConversationTypes;
+
     public Optional<String> getConfigCompany() {
         return configCompany;
     }
@@ -660,6 +773,10 @@ class PlanHatConfig {
 
     public Optional<String> getConfigMinimumContentLength() {
         return configMinimumContentLength;
+    }
+
+    public Optional<String> getConfigConversationTypes() {
+        return configConversationTypes;
     }
 
     public Optional<String> getConfigTtlSeconds() {
@@ -1002,6 +1119,27 @@ class PlanHatConfig {
                     "0");
 
             return Math.max(0, NumberUtils.toInt(argument.getSafeValue(), 0));
+        }
+
+        /**
+         * The kinds of conversation the tool processes, as a comma separated list. Only
+         * conversations whose individual messages can be retrieved are supported, which means
+         * "email" (the default) and "ticket".
+         */
+        public List<String> getConversationTypes() {
+            final List<String> types = getArgsAccessor().getArgumentList(
+                            getConfigConversationTypes()::get,
+                            arguments,
+                            context,
+                            PlanHat.CONVERSATION_TYPES_ARG,
+                            PlanHat.CONVERSATION_TYPES_ARG,
+                            DEFAULT_CONVERSATION_TYPES)
+                    .stream()
+                    .map(Argument::value)
+                    .map(String::toLowerCase)
+                    .toList();
+
+            return types.isEmpty() ? List.of(DEFAULT_CONVERSATION_TYPES) : types;
         }
 
         @Override
