@@ -430,6 +430,10 @@ public class AzureClient implements LlmClient {
 
                     if (ex.getCause() instanceof InvalidResponse invalidResponse) {
                         if (invalidResponse.getCode() == 429 || invalidResponse.getCode() >= 500) {
+                            logger.warning("Azure LLM call to " + resolvedUrl + " for model " + request.getModel()
+                                    + " returned " + invalidResponse.getCode()
+                                    + ". Sleeping for " + RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT
+                                    + " seconds before retrying, attempt " + (retry + 1) + " of " + RATELIMIT_API_RETRIES);
                             Try.run(() -> Thread.sleep(RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT * 1000));
                             return callLocked(request, resolvedUrl, retry + 1);
                         }
