@@ -15,22 +15,38 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jooq.lambda.Seq;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Identifier("financialLocationContactRedaction")
 public class FinancialLocationContactRedaction implements SanitizeDocument {
+    /**
+     * JSON fields that hold identifiers rather than free text, and so are never redacted.
+     */
+    private static final String DEFAULT_IGNORED_FIELDS = "id,_id";
 
     @Nullable
     private PlainTextFilterService filterService;
 
     @Nullable
     private Policy cachedPolicy;
+
+    /**
+     * A comma separated list of JSON field names whose values are passed through unredacted.
+     * Matching is case-insensitive.
+     */
+    @Inject
+    @ConfigProperty(name = "sb.redaction.ignoredfields", defaultValue = DEFAULT_IGNORED_FIELDS)
+    private Optional<String> ignoredFields;
+
+    private Set<String> ignoredFieldNames = Set.of();
 
     @Inject
     private JsonDeserializer jsonDeserializer;
@@ -49,6 +65,19 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
                 null,
                 null);
         this.cachedPolicy = createPolicy();
+        this.ignoredFieldNames = createIgnoredFieldNames();
+    }
+
+    private Set<String> createIgnoredFieldNames() {
+        final String fields = Optional.ofNullable(ignoredFields)
+                .flatMap(f -> f)
+                .orElse(DEFAULT_IGNORED_FIELDS);
+
+        return Arrays.stream(fields.split(","))
+                .map(String::trim)
+                .filter(StringUtils::isNotBlank)
+                .map(field -> field.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     private Policy createPolicy() {
@@ -183,9 +212,17 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
     private Map<String, Object> filterMap(final Map<String, Object> map, final PlainTextFilterService service) {
         final java.util.LinkedHashMap<String, Object> result = new java.util.LinkedHashMap<>();
         for (final Map.Entry<String, Object> entry : map.entrySet()) {
-            result.put(entry.getKey(), filterValue(entry.getValue(), service));
+            if (isIgnoredField(entry.getKey())) {
+                result.put(entry.getKey(), entry.getValue());
+            } else {
+                result.put(entry.getKey(), filterValue(entry.getValue(), service));
+            }
         }
         return result;
+    }
+
+    private boolean isIgnoredField(@Nullable final String field) {
+        return field != null && ignoredFieldNames.contains(field.toLowerCase(Locale.ROOT));
     }
 
     private String filterPlainText(final String text, final PlainTextFilterService service) {

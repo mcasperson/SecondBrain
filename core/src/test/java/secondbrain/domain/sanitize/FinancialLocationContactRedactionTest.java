@@ -9,6 +9,7 @@ import secondbrain.domain.json.JsonDeserializerJackson;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -19,11 +20,25 @@ class FinancialLocationContactRedactionTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        redaction = new FinancialLocationContactRedaction();
+        redaction = build(null);
+    }
+
+    /**
+     * Builds a redaction with the given value for the sb.redaction.ignoredfields config property.
+     * A null value leaves the property unset, exercising the default list.
+     */
+    private FinancialLocationContactRedaction build(final String ignoredFields) throws Exception {
+        final FinancialLocationContactRedaction instance = new FinancialLocationContactRedaction();
         final Field jsonDeserializerField = FinancialLocationContactRedaction.class.getDeclaredField("jsonDeserializer");
         jsonDeserializerField.setAccessible(true);
-        jsonDeserializerField.set(redaction, new JsonDeserializerJackson());
-        redaction.construct();
+        jsonDeserializerField.set(instance, new JsonDeserializerJackson());
+        if (ignoredFields != null) {
+            final Field ignoredFieldsField = FinancialLocationContactRedaction.class.getDeclaredField("ignoredFields");
+            ignoredFieldsField.setAccessible(true);
+            ignoredFieldsField.set(instance, Optional.of(ignoredFields));
+        }
+        instance.construct();
+        return instance;
     }
 
     @Test
@@ -175,6 +190,50 @@ class FinancialLocationContactRedactionTest {
         assertTrue(result.contains("{{{REDACTED-PHONE}}}"), "Phone in JSON should be redacted");
         assertTrue(result.contains("4111111111111111"), "Integer fields are retained");
         assertDoesNotThrow(() -> new ObjectMapper().readTree(result), "Result should be valid JSON");
+    }
+
+    // ---- ignored fields ----
+
+    @Test
+    void testIdFieldsNotRedacted() {
+        final String json = "{\"id\":\"john.doe@example.com\",\"_id\":\"555-867-5309\",\"note\":\"mail me at jane@example.com\"}";
+        final String result = redaction.sanitize(json);
+        assertTrue(result.contains("john.doe@example.com"), "Value of the id field should be left alone");
+        assertTrue(result.contains("555-867-5309"), "Value of the _id field should be left alone");
+        assertTrue(!result.contains("jane@example.com"), "Other fields should still be redacted");
+    }
+
+    @Test
+    void testIdFieldsNotRedactedCaseInsensitively() {
+        final String json = "{\"Id\":\"john.doe@example.com\"}";
+        final String result = redaction.sanitize(json);
+        assertTrue(result.contains("john.doe@example.com"), "Field names should match regardless of case");
+    }
+
+    @Test
+    void testIdFieldsNotRedactedWhenNested() {
+        final String json = "{\"user\":{\"id\":\"john.doe@example.com\"},\"tickets\":[{\"_id\":\"555-867-5309\"}]}";
+        final String result = redaction.sanitize(json);
+        assertTrue(result.contains("john.doe@example.com"), "Nested id field should be left alone");
+        assertTrue(result.contains("555-867-5309"), "Id field inside an array should be left alone");
+    }
+
+    @Test
+    void testConfiguredIgnoredFieldsAreHonoured() throws Exception {
+        final FinancialLocationContactRedaction configured = build(" note , _id ");
+        final String json = "{\"id\":\"john.doe@example.com\",\"_id\":\"555-867-5309\",\"note\":\"mail me at jane@example.com\"}";
+        final String result = configured.sanitize(json);
+        assertTrue(result.contains("555-867-5309"), "Configured _id field should be left alone");
+        assertTrue(result.contains("jane@example.com"), "Configured note field should be left alone");
+        assertTrue(!result.contains("john.doe@example.com"), "The id field is not in the configured list, so it should be redacted");
+    }
+
+    @Test
+    void testEmptyIgnoredFieldsRedactsEverything() throws Exception {
+        final FinancialLocationContactRedaction configured = build("");
+        final String json = "{\"id\":\"john.doe@example.com\"}";
+        final String result = configured.sanitize(json);
+        assertTrue(!result.contains("john.doe@example.com"), "An empty list means no field is ignored");
     }
 
     // ---- removeEscapeBeforePlaceholder ----
