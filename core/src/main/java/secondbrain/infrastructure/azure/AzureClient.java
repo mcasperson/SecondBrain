@@ -78,8 +78,8 @@ public class AzureClient implements LlmClient {
     private static final int API_CALL_TIMEOUT_SECONDS_DEFAULT = 60 * 10; // I've seen "Time to last byte" take at least 8 minutes, so we need a large buffer.
     private static final long TIMEOUT_API_CALL_DELAY_SECONDS_DEFAULT = 30;
     private static final float TIME_IF_TOO_LONG_FRACTION = 0.6f;
-    private static final int TIMEOUT_API_RETRIES = 3;
-    private static final int RATELIMIT_API_RETRIES = 3;
+    private static final int TIMEOUT_API_RETRIES = 10;
+    private static final int RATELIMIT_API_RETRIES = 10;
     private static final long RATELIMIT_API_CALL_DELAY_SECONDS_DEFAULT = 180;
     private static final String API_CALL_TIMEOUT_MESSAGE = "Call timed out after " + API_CALL_TIMEOUT_SECONDS_DEFAULT + " seconds";
     private static final int API_CONNECTION_TIMEOUT_SECONDS_DEFAULT = 30;
