@@ -10,12 +10,17 @@ import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.test.TestConfigUtil;
 
+import java.lang.reflect.Field;
 import java.util.Map;
+import java.util.Optional;
+import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 @SuppressWarnings("NullAway")
@@ -24,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 @AddBeanClasses(CustomUnredaction.class)
 @AddBeanClasses(Loggers.class)
 class CustomUnredactionTest {
+    private static final String SALESFORCE_ID = "006Qq5552671OPyIAM";
 
     @Inject
     private CustomUnredaction unredaction;
@@ -72,5 +78,60 @@ class CustomUnredactionTest {
         assertEquals("already redacted", unredaction.unredact("Customer ACC-123", "already redacted"));
         assertNull(unredaction.unredact("Customer ACC-123", null));
     }
-}
 
+    /**
+     * Salesforce IDs can contain runs of digits that the real redaction mistakes for phone numbers,
+     * e.g. 006Qq{{{REDACTED-PHONE}}}OPyIAM. A word-bounded regex must restore them.
+     */
+    @Test
+    void testUnredactRestoresSalesforceIdRedactedAsPhoneNumber() throws Exception {
+        final FinancialLocationContactRedaction redaction = buildRealRedaction();
+        final CustomUnredaction salesforceUnredaction = buildUnredaction(
+                "\\b(?:001|003|006|00Q|500)[a-zA-Z0-9]{12}(?:[a-zA-Z0-9]{3})?\\b", redaction);
+
+        final String original = "{\"accountId\":\"" + SALESFORCE_ID + "\",\"subject\":\"Renewal\"}";
+        final String redacted = redaction.sanitize(original, false);
+
+        // Guard against the redaction no longer flagging the ID, which would make this test meaningless
+        assertNotEquals(original, redacted);
+        assertEquals(original, salesforceUnredaction.unredact(original, redacted));
+    }
+
+    /**
+     * The regex is applied to the whole document, so ^ and $ anchors only match when the
+     * document consists of nothing but the ID.
+     */
+    @Test
+    void testUnredactWithAnchoredRegexDoesNotRestoreIdInsideDocument() throws Exception {
+        final FinancialLocationContactRedaction redaction = buildRealRedaction();
+        final CustomUnredaction anchoredUnredaction = buildUnredaction("^[a-zA-Z0-9]{15,24}$", redaction);
+
+        final String original = "{\"accountId\":\"" + SALESFORCE_ID + "\",\"subject\":\"Renewal\"}";
+        final String redacted = redaction.sanitize(original, false);
+
+        assertNotEquals(original, anchoredUnredaction.unredact(original, redacted));
+    }
+
+    private static FinancialLocationContactRedaction buildRealRedaction() throws Exception {
+        final FinancialLocationContactRedaction instance = new FinancialLocationContactRedaction();
+        setField(instance, "jsonDeserializer", new JsonDeserializerJackson());
+        instance.construct();
+        return instance;
+    }
+
+    private static CustomUnredaction buildUnredaction(final String regex, final SanitizeDocument sanitizeDocument) throws Exception {
+        final CustomUnredaction instance = new CustomUnredaction();
+        setField(instance, "regex1", Optional.of(regex));
+        setField(instance, "maxMatches", Optional.empty());
+        setField(instance, "sanitizeDocument", sanitizeDocument);
+        setField(instance, "logger", Logger.getLogger(CustomUnredactionTest.class.getName()));
+        instance.init();
+        return instance;
+    }
+
+    private static void setField(final Object target, final String name, final Object value) throws Exception {
+        final Field field = target.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(target, value);
+    }
+}
