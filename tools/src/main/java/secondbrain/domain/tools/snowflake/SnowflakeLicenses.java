@@ -46,6 +46,7 @@ public class SnowflakeLicenses implements Tool<Void> {
     private SnowflakeLicensesConfig config;
 
     @Inject
+    @Preferred
     private SnowflakeClient snowflakeClient;
 
     @Inject

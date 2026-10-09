@@ -13,6 +13,7 @@ import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.injection.Preferred;
 
 import java.io.StringReader;
 import java.security.PrivateKey;
@@ -22,6 +23,7 @@ import java.sql.ResultSet;
 import java.util.*;
 
 @ApplicationScoped
+@Preferred
 public class SnowflakeClientLive implements SnowflakeClient {
     @Nullable
     private Connection connection;
@@ -105,6 +107,28 @@ public class SnowflakeClientLive implements SnowflakeClient {
                         results.add(SnowflakeLicenseDetails.fromResultSet(rs));
                     }
                     return results;
+                })
+                .get();
+    }
+
+    @Override
+    @SuppressWarnings("NullAway")
+    public Optional<SnowflakeAdoptionIndexDetails> getAdoptionIndex(final String id) {
+        Preconditions.checkArgument(connection != null, "Connection must be established before querying");
+        Preconditions.checkArgument(StringUtils.isNotBlank(id), "Id must be provided");
+
+        return Try.of(() -> connection.prepareStatement(
+                        "SELECT ACCOUNT_ID, ADOPTION_INDEX, ADOPTION_INDEX_STATUS, ADOPTION_INDEX_DATE"
+                                + " FROM prod_marts.product_usage.mart_account_adoption_index"
+                                + " WHERE ACCOUNT_ID = ?"
+                                + " ORDER BY ADOPTION_INDEX_DATE DESC"
+                                + " LIMIT 1"))
+                .mapTry(statement -> {
+                    statement.setString(1, id);
+                    final ResultSet rs = statement.executeQuery();
+                    return rs.next()
+                            ? Optional.of(SnowflakeAdoptionIndexDetails.fromResultSet(rs))
+                            : Optional.<SnowflakeAdoptionIndexDetails>empty();
                 })
                 .get();
     }
