@@ -44,11 +44,12 @@ public class PlanHatClientMock implements PlanHatClient {
 
     @Override
     public List<Conversation> getConversations(final Client client, final String company, final String url, final String token, @Nullable final ZonedDateTime startDate, @Nullable final ZonedDateTime endDate, final int ttlSeconds) {
-        // Create a list of mock conversations
+        // Create a list of mock conversations. The types are fixed because the PlanHat tool only
+        // processes email and ticket conversations, and random types made tests flaky.
         return List.of(
-                createMockConversation(company),
-                createMockConversation(company),
-                createMockConversation(company)
+                createMockConversation(company, "email"),
+                createMockConversation(company, "email"),
+                createMockConversation(company, "ticket")
         );
     }
 
@@ -140,7 +141,7 @@ public class PlanHatClientMock implements PlanHatClient {
                         Map.of("Opportunity Name", title)));
     }
 
-    private Conversation createMockConversation(final String companyId) {
+    private Conversation createMockConversation(final String companyId, final String type) {
         String id = UUID.randomUUID().toString();
         String description = llmClient.call("Generate a paragraph describing a customer conversation. Make it concise and professional.", Map.of());
         String snippet = llmClient.call("Generate a brief one-sentence summary of a customer conversation.", Map.of());
@@ -148,7 +149,6 @@ public class PlanHatClientMock implements PlanHatClient {
                 .format(DateTimeFormatter.ISO_INSTANT);
         String companyName = llmClient.call("Generate a company name. Return only the name, nothing else.", Map.of());
         String subject = llmClient.call("Generate a subject line for a customer conversation email. Keep it brief.", Map.of());
-        String type = List.of("email", "call", "meeting", "chat").get((int) (Math.random() * 4));
 
         return new Conversation(id, description, snippet, date, companyId, companyName, subject, type, "");
     }
