@@ -96,7 +96,7 @@
         <dependency>
             <groupId>ai.philterd</groupId>
             <artifactId>phileas</artifactId>
-            <version>3.3.0</version>
+            <version>4.4.0</version>
         </dependency>
 
         <dependency>
@@ -130,7 +130,7 @@
         <dependency>
             <groupId>com.pivovarit</groupId>
             <artifactId>parallel-collectors</artifactId>
-            <version>3.4.0</version>
+            <version>4.1.1</version>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>

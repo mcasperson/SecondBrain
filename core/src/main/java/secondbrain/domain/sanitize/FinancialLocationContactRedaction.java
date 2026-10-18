@@ -6,6 +6,7 @@ import ai.philterd.phileas.policy.Identifiers;
 import ai.philterd.phileas.policy.Policy;
 import ai.philterd.phileas.policy.filters.*;
 import ai.philterd.phileas.services.context.DefaultContextService;
+import ai.philterd.phileas.services.disambiguation.vector.InMemoryVectorService;
 import ai.philterd.phileas.services.filters.filtering.PlainTextFilterService;
 import ai.philterd.phileas.services.strategies.rules.*;
 import io.smallrye.common.annotation.Identifier;
@@ -21,6 +22,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.json.JsonDeserializer;
 
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -62,7 +64,7 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
         this.filterService = new PlainTextFilterService(
                 new PhileasConfiguration(new Properties()),
                 new DefaultContextService(),
-                null,
+                new InMemoryVectorService(),
                 null);
         this.cachedPolicy = createPolicy();
         this.ignoredFieldNames = createIgnoredFieldNames();
@@ -228,6 +230,8 @@ public class FinancialLocationContactRedaction implements SanitizeDocument {
     private String filterPlainText(final String text, final PlainTextFilterService service) {
         return Try.of(() -> service.filter(cachedPolicy, "llm", text))
                 .map(TextFilterResult::getFilteredText)
+                // The original text is deliberately not logged, as it may contain the PII we failed to redact
+                .onFailure(ex -> logger.log(Level.SEVERE, "Phileas failed to redact text, returning it unredacted", ex))
                 .recover(ex -> text)
                 .get();
     }

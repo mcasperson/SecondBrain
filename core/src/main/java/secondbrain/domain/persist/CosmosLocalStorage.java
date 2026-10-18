@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 import java.util.stream.IntStream;
 
-import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
+import static com.pivovarit.collectors.ParallelCollectors.parallelToStream;
 
 /**
  * Azure Cosmos DB implementation of LocalStorage for caching API calls and LLM results.
@@ -758,7 +758,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 // We then loop over each index to get the individual items.
                 .map(count -> IntStream.range(0, count)
                         .boxed()
-                        .collect(parallelToStream(index -> getString(tool, source, promptHash + "_" + index), sharedExecutor.getExecutor(), BATCH_SIZE))
+                        .collect(parallelToStream(index -> getString(tool, source, promptHash + "_" + index), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(BATCH_SIZE)))
                         .map(r -> jsonDeserializer.deserialize(r.result(), clazz))
                         .toList()
                 )

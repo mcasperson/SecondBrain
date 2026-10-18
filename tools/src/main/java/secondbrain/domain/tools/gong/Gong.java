@@ -48,7 +48,7 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
+import static com.pivovarit.collectors.ParallelCollectors.parallelToStream;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
@@ -273,7 +273,7 @@ public class Gong implements Tool<Void> {
         final List<RagDocumentContext<GongCallDetails>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
                 .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
-                .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(PARALLEL_BATCH_SIZE)))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();

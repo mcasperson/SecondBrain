@@ -55,7 +55,7 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
+import static com.pivovarit.collectors.ParallelCollectors.parallelToStream;
 
 @ApplicationScoped
 public class PlanHat implements Tool<Void> {
@@ -355,14 +355,14 @@ public class PlanHat implements Tool<Void> {
                 : companyConversations.stream()
                 .filter(instanceConversation -> EMAIL_CONVERSATION_TYPE.equals(instanceConversation.conversation().getType()))
                 // The conversation only holds a snippet, so the emails that make up the conversation are retrieved
-                .collect(parallelToStream(instanceConversation -> getEmails(instanceConversation.instance(), instanceConversation.conversation(), parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .collect(parallelToStream(instanceConversation -> getEmails(instanceConversation.instance(), instanceConversation.conversation(), parsedArgs), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(PARALLEL_BATCH_SIZE)))
                 .flatMap(List::stream)
                 .collect(parallelToStream(email -> {
                     final Email updated = email.updateContentAndSnippet(
                             htmlToText.getText(email.getContent()),
                             htmlToText.getText(email.getSnippet()));
                     return dataToRagDoc.<PlanHatActivity>getDocumentContext(updated.updateUrl(publicUrl), getName(), getContextLabelWithDate(updated), parsedArgs);
-                }, sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                }, c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(PARALLEL_BATCH_SIZE)))
                 .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 .toList();
 
@@ -371,12 +371,12 @@ public class PlanHat implements Tool<Void> {
                 : companyConversations.stream()
                 .filter(instanceConversation -> TICKET_CONVERSATION_TYPE.equals(instanceConversation.conversation().getType()))
                 // Like emails, the conversation only holds a snippet, so the individual messages are retrieved
-                .collect(parallelToStream(instanceConversation -> getTicketParts(instanceConversation.instance(), instanceConversation.conversation(), parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .collect(parallelToStream(instanceConversation -> getTicketParts(instanceConversation.instance(), instanceConversation.conversation(), parsedArgs), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(PARALLEL_BATCH_SIZE)))
                 .flatMap(List::stream)
                 .collect(parallelToStream(ticketPart -> {
                     final TicketPart updated = ticketPart.updateBody(htmlToText.getText(ticketPart.getBody()));
                     return dataToRagDoc.<PlanHatActivity>getDocumentContext(updated, getName(), getContextLabelWithDate(updated), parsedArgs);
-                }, sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                }, c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(PARALLEL_BATCH_SIZE)))
                 .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 .toList();
 
@@ -392,7 +392,7 @@ public class PlanHat implements Tool<Void> {
                 .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
                 .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
                 // Get the metadata and summarize in parallel (these are the expensive LLM calls)
-                .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(PARALLEL_BATCH_SIZE)))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();

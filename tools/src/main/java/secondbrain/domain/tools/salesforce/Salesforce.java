@@ -48,7 +48,7 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
+import static com.pivovarit.collectors.ParallelCollectors.parallelToStream;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 
 /**
@@ -239,7 +239,7 @@ public class Salesforce implements Tool<Void> {
 
         final Try<List<RagDocumentContext<SalesforceEmailRecord>>> context = Try.of(() -> relatedToIds
                         .stream()
-                        .collect(parallelToStream(id -> salesforceClient.getEmails(token.accessToken(), id, startDate, endDate), sharedExecutor.getExecutor(), 3))
+                        .collect(parallelToStream(id -> salesforceClient.getEmails(token.accessToken(), id, startDate, endDate), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(3)))
                         .flatMap(Arrays::stream)
                         .filter(Objects::nonNull)
                         .toList())
@@ -262,7 +262,7 @@ public class Salesforce implements Tool<Void> {
         final List<RagDocumentContext<SalesforceEmailRecord>> records = filteredDocs.stream()
                 .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
                 .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
-                .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs, token), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
+                .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs, token), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(PARALLEL_BATCH_SIZE)))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();
