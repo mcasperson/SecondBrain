@@ -30,7 +30,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
-import static com.pivovarit.collectors.ParallelCollectors.parallelToStream;
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 
 
 /**
@@ -115,7 +115,7 @@ public class MultiSlackSearchCacheWarmer implements Tool<Void> {
         return entityDirectory.getPositionalEntities()
                 .stream()
                 .limit(parsedArgs.getMaxEntities() == 0 ? Long.MAX_VALUE : parsedArgs.getMaxEntities())
-                .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(BATCH_SIZE)))
+                .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), sharedExecutor.getExecutor(), BATCH_SIZE))
                 .flatMap(stream -> stream)
                 .toList();
     }

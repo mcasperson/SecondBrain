@@ -34,7 +34,7 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import static com.pivovarit.collectors.ParallelCollectors.parallelToStream;
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 
 /**
  * This tool combines many sub-tools to allow a single prompt to be answered by multiple different
@@ -173,7 +173,8 @@ public class Meta implements Tool<Void> {
                                     .getOrElse(Stream.empty())
                                     .map(RagDocumentContext::convertToRagDocumentContextVoid);
                         },
-                        c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(BATCH_SIZE)))
+                        sharedExecutor.getExecutor(),
+                        BATCH_SIZE))
                 .flatMap(stream -> stream)
                 .sorted((ragDoc1, ragdoc2) -> {
                     // A stable order of documents is critical for caching

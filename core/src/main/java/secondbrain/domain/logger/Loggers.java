@@ -2,7 +2,6 @@ package secondbrain.domain.logger;
 
 import ai.philterd.phileas.PhileasConfiguration;
 import ai.philterd.phileas.services.context.DefaultContextService;
-import ai.philterd.phileas.services.disambiguation.vector.InMemoryVectorService;
 import ai.philterd.phileas.services.filters.filtering.PlainTextFilterService;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
@@ -61,7 +60,7 @@ public class Loggers {
         final PlainTextFilterService filterService = new PlainTextFilterService(
                 config,
                 new DefaultContextService(),
-                new InMemoryVectorService(),
+                null,
                 null);
 
         this.fileHandler = Try.of(() -> new FileHandler("SecondBrain.log", true))

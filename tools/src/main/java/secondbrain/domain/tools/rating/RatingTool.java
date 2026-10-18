@@ -32,7 +32,7 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import static com.pivovarit.collectors.ParallelCollectors.parallelToStream;
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 import static secondbrain.infrastructure.llm.LlmClient.MODEL_OVERRIDE_ENV;
 
 /**
@@ -189,7 +189,7 @@ public class RatingTool implements Tool<Void> {
         Collections.shuffle(servers);
 
         final List<RatingDetails> results = servers.stream()
-                .collect(parallelToStream(server -> getRating(server, environmentSettings, prompts, arguments), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(3)))
+                .collect(parallelToStream(server -> getRating(server, environmentSettings, prompts, arguments), sharedExecutor.getExecutor(), 3))
                 .toList();
 
 

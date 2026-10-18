@@ -54,7 +54,7 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import static com.pivovarit.collectors.ParallelCollectors.parallelToStream;
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
 @ApplicationScoped
@@ -220,7 +220,7 @@ public class Dovetail implements Tool<Void> {
                                 item.createdAt(),
                                 dovetailClient.exportDataItemAsMarkdown(parsedArgs.getSecretApiKey(), item.id()),
                                 parsedArgs.getDovetailBaseUrl()),
-                        c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(PARALLEL_BATCH_SIZE)))
+                        sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                 .toList();
 
         final List<RagDocumentContext<DovetailDataDetails>> ragDocs = dataItems.stream()
@@ -241,7 +241,7 @@ public class Dovetail implements Tool<Void> {
                         .stream()
                         .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
                         .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))
-                        .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(PARALLEL_BATCH_SIZE)))
+                        .collect(parallelToStream(ragDoc -> enrichAndSummarize(ragDoc, environmentSettings, parsedArgs), sharedExecutor.getExecutor(), PARALLEL_BATCH_SIZE))
                         .filter(Optional::isPresent)
                         .map(Optional::get)
                         .toList();

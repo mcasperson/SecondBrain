@@ -54,7 +54,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.pivovarit.collectors.ParallelCollectors.parallelToStream;
+import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
 
 
 /**
@@ -256,7 +256,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 .stream()
                 // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
                 // We batch here to interleave API requests to the various external data sources
-                .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(BATCH_SIZE)))
+                .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), sharedExecutor.getExecutor(), BATCH_SIZE))
                 .flatMap(stream -> stream)
                 // We want the context sorted back into a predictable order to avoid a cache miss due to the contents of the system prompt changing
                 .sorted(Comparator.comparing(RagDocumentContext::tool))
@@ -525,7 +525,8 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                                 .map(List::stream)
                                 .onFailure(ex -> logger.warning("Failed to get context for " + positionalEntity.entity().name() + ": " + exceptionHandler.getExceptionMessage(ex)))
                                 .get(),
-                        c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(BATCH_SIZE)))
+                        sharedExecutor.getExecutor(),
+                        BATCH_SIZE))
                 .flatMap(stream -> stream)
                 .toList();
 
