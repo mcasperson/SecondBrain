@@ -8,7 +8,6 @@ import secondbrain.domain.testconstants.TestConstants;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
-import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,12 +77,12 @@ public class CosmosMutexTest {
         // wait a bit to ensure the other thread has acquired the lock
         Try.run(() -> Thread.sleep(5000));
 
-        Assert.assertThrows(LockFail.class, () -> cosmosMutex.acquire(1000, "testFailedLocking4", () -> "hi"));
+        Assertions.assertThrows(LockFail.class, () -> cosmosMutex.acquire(1000, "testFailedLocking4", () -> "hi"));
     }
 
     @Test
     public void testExceptionHandling() {
-        Assert.assertThrows(RuntimeException.class, () -> cosmosMutex.acquire(1000, "testFailedLocking4", () -> {
+        Assertions.assertThrows(RuntimeException.class, () -> cosmosMutex.acquire(1000, "testFailedLocking4", () -> {
             throw new RuntimeException("Test exception");
         }));
     }

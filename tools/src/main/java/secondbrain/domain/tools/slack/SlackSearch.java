@@ -215,8 +215,8 @@ public class SlackSearch implements Tool<Void> {
         final List<RagDocumentContext<SlackSearchResultResource>> ragDocs = searchResult
                 .stream()
                 .filter(matchedItem -> parsedArgs.getDays() == 0 || (StringUtils.isNotBlank(matchedItem.timestamp()) && dateParser.parseDateOrDefault(matchedItem.timestamp()).isAfter(parsedArgs.getStartDate())))
-                .filter(matchedItem -> StringUtils.isBlank(matchedItem.channelName()))
-                .filter(matchedItem -> parsedArgs.getIgnoreChannels()
+                .filter(matchedItem -> StringUtils.isNotBlank(matchedItem.channelName())
+                        && parsedArgs.getIgnoreChannels()
                         .stream()
                         .noneMatch(matchedItem.channelName()::equalsIgnoreCase))
                 .map(matchedItem -> dataToRagDoc.getDocumentContext(matchedItem, getName(), getContextLabel(), parsedArgs))
