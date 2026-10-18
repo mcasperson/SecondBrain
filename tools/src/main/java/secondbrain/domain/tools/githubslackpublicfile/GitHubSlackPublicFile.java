@@ -34,7 +34,7 @@ import secondbrain.infrastructure.llm.LlmClient;
 import java.util.*;
 import java.util.logging.Logger;
 
-import static com.pivovarit.collectors.ParallelCollectors.Batching.parallelToStream;
+import static com.pivovarit.collectors.ParallelCollectors.parallelToStream;
 
 @ApplicationScoped
 public class GitHubSlackPublicFile implements Tool<Void> {
@@ -129,7 +129,7 @@ public class GitHubSlackPublicFile implements Tool<Void> {
                 .filter(entity -> parsedArgs.getEntityName().isEmpty() || parsedArgs.getEntityName().contains(entity.getName().toLowerCase(Locale.ROOT)))
                 // This needs java 24 to be useful with HTTP clients like RESTEasy: https://github.com/orgs/resteasy/discussions/4300
                 // We batch here to interleave API requests to the various external data sources
-                .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), sharedExecutor.getExecutor(), BATCH_SIZE))
+                .collect(parallelToStream(entity -> getEntityContext(entity, environmentSettings, prompt, parsedArgs).stream(), c -> c.batching().executor(sharedExecutor.getExecutor()).parallelism(BATCH_SIZE)))
                 .flatMap(stream -> stream)
                 // We want the context sorted back into a predictable order to avoid a cache miss due to the contents of the system prompt changing
                 .sorted(Comparator.comparing(RagDocumentContext::tool))
