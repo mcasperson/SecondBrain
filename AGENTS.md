@@ -23,6 +23,8 @@ Tests must use the following CDI annotations to inject dependencies:
 @AddBeanClasses
 ```
 
+Do not use reflection to inject dependencies into classes being tested. Always use CDI in tests.
+
 You must add each missing dependency using a new `@AddBeanClasses` annotation. This is an iterative process, and you may
 need to run the tests multiple times to identify all missing dependencies. Adding one dependency may reveal another
 missing dependency, so you must repeat this process until all dependencies are added and the tests run successfully.
