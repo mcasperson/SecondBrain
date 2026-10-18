@@ -1,8 +1,6 @@
 package secondbrain.domain.persist;
 
-import com.azure.core.util.MetricsOptions;
-import com.azure.cosmos.*;
-import com.azure.cosmos.models.*;
+import com.azure.cosmos.CosmosException;
 import io.smallrye.common.annotation.Identifier;
 import io.vavr.API;
 import io.vavr.control.Try;
@@ -16,7 +14,6 @@ import jakarta.inject.Inject;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import reactor.core.Exceptions;
 import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
@@ -50,9 +47,6 @@ public class CosmosLocalStorage implements LocalStorage {
 
     private static final int FLUSH_WAIT_MINUTES = 10;
     private static final int BATCH_SIZE = 5;
-    private static final String CONTAINER_NAME = "localstoragezipped";
-    private static final String DATABASE_NAME = "secondbrain";
-    private static final int DEFAULT_TTL_SECONDS = 86400;
     private static final int MAX_FAILURES = 5; // 2 MB
     private static final int SPLIT_ITEM_SIZE_BYTES = 1024 * 1024;
     private static final int LARGE_OBJECT_WARNING_BYTES = 2 * 1024 * 1024;
@@ -83,36 +77,6 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Inject
     private LocalStorageCacheDisableRedaction localStorageCacheDisableRedaction;
-
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.endpoint")
-    private Optional<String> cosmosEndpoint;
-
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.key")
-    private Optional<String> cosmosKey;
-
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.database", defaultValue = DATABASE_NAME)
-    private Optional<String> databaseName;
-
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.container", defaultValue = CONTAINER_NAME)
-    private Optional<String> containerName;
-
-    /**
-     * Set to false when using vnext cosmosdb docker image
-     */
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.autodiscovery", defaultValue = "true")
-    private boolean autoDiscovery;
-
-    /**
-     * Set to true when using vnext cosmosdb docker image
-     */
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.gatewayMode", defaultValue = "false")
-    private boolean gatewayMode;
 
     @Inject
     private JsonDeserializer jsonDeserializer;
@@ -146,11 +110,14 @@ public class CosmosLocalStorage implements LocalStorage {
     @Inject
     private SharedVirtualThreadExecutor sharedExecutor;
 
-    @Nullable
-    private CosmosClient cosmosClient;
+    /**
+     * Creates the Cosmos DB container. Each call to get() creates a new connection.
+     */
+    @Inject
+    private Instance<CosmosCacheContainer> cosmosCacheContainers;
 
     @Nullable
-    private CosmosContainer container;
+    private CosmosCacheContainer container;
 
     @Inject
     @Identifier("financialLocationContactRedaction")
@@ -168,8 +135,8 @@ public class CosmosLocalStorage implements LocalStorage {
     public void postConstruct() {
         logger.fine("Initializing Cosmos DB local storage");
         synchronized (CosmosLocalStorage.class) {
-            if (cosmosClient == null) {
-                initializeCosmosClient();
+            if (container == null) {
+                container = cosmosCacheContainers.get();
             }
         }
         logger.fine("Initialized Cosmos DB local storage");
@@ -180,10 +147,9 @@ public class CosmosLocalStorage implements LocalStorage {
         flush();
 
         synchronized (CosmosLocalStorage.class) {
-            if (cosmosClient != null) {
-                Try.run(cosmosClient::close)
+            if (container != null) {
+                Try.run(() -> cosmosCacheContainers.destroy(container))
                         .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
-                cosmosClient = null;
                 container = null;
             }
         }
@@ -226,51 +192,6 @@ public class CosmosLocalStorage implements LocalStorage {
 
     private float getCacheHitsPercentage() {
         return totalReads.get() > 0 ? (float) totalCacheHits.get() / totalReads.get() * 100 : 0;
-    }
-
-    private void initializeCosmosClient() {
-        if (cosmosEndpoint.isEmpty() || cosmosKey.isEmpty()) {
-            throw new LocalStorageFailure("Cosmos DB endpoint and key must be configured");
-        }
-
-        final MetricsOptions metricsOptions = new CosmosMicrometerMetricsOptions();
-        metricsOptions.setEnabled(false);
-
-        final CosmosClientTelemetryConfig telemetryOptions = new CosmosClientTelemetryConfig();
-        telemetryOptions.metricsOptions(metricsOptions);
-
-        // Different versions of the cosmos DB need different options.
-        // The vnext version (which is the version of the docker image used on a mac) disables auto discovery and enables gateway mode.
-        // The latest version (used on Linux and in production) enables discovery and disables gateway mode.
-        final CosmosClientBuilder builder = new CosmosClientBuilder()
-                .endpoint(cosmosEndpoint.get())
-                .key(cosmosKey.get())
-                .consistencyLevel(ConsistencyLevel.SESSION)
-                .clientTelemetryConfig(telemetryOptions)
-                .endpointDiscoveryEnabled(autoDiscovery)
-                .connectionSharingAcrossClientsEnabled(true)
-                .contentResponseOnWriteEnabled(false);
-
-        cosmosClient = (gatewayMode ? builder.gatewayMode() : builder)
-                .buildClient();
-
-        cosmosClient.createDatabaseIfNotExists(databaseName.orElse(DATABASE_NAME));
-
-        final CosmosDatabase database = cosmosClient.getDatabase(databaseName.orElse(DATABASE_NAME));
-
-        // Create container if it doesn't exist
-        final CosmosContainerProperties containerProperties = new CosmosContainerProperties(
-                containerName.orElse(CONTAINER_NAME),
-                "/tool"
-        );
-
-        // Set TTL on the container to enable automatic deletion of expired items
-        containerProperties.setDefaultTimeToLiveInSeconds(DEFAULT_TTL_SECONDS);
-
-        Try.of(() -> database.createContainerIfNotExists(containerProperties))
-                .onFailure(ex -> logger.warning("Failed to create container: " + exceptionHandler.getExceptionMessage(ex)));
-
-        container = database.getContainer(containerName.orElse(CONTAINER_NAME));
     }
 
     private String generateId(final String tool, final String source, final String promptHash) {
@@ -501,33 +422,27 @@ public class CosmosLocalStorage implements LocalStorage {
         }
 
         final String id = generateId(tool, source, promptHash);
-        final PartitionKey partitionKey = new PartitionKey(tool);
 
-        final CosmosItemResponse<CacheItem> response = Try.of(() -> container.readItem(
-                        id,
-                        partitionKey,
-                        CacheItem.class
-                ))
-                .onFailure(ex -> {
-                    if (ex instanceof CosmosException && ((CosmosException) ex).getStatusCode() == 404) {
-                        logger.fine("Failed to read item from container: " + exceptionHandler.getExceptionMessage(ex));
-                    } else {
-                        logger.warning("Failed to read item from container: " + exceptionHandler.getExceptionMessage(ex));
-                    }
-                })
+        final Optional<CacheItem> item = Try.of(() -> container.readItem(id, tool))
+                .onFailure(ex -> logger.warning("Failed to read item from container: " + exceptionHandler.getExceptionMessage(ex)))
                 .get();
 
+        if (item.isEmpty()) {
+            logger.fine("Item " + id + " was not found in the container");
+            return new CacheResult<String>(null, null, false);
+        }
+
         // Check if item has expired (if timestamp is set)
-        if (response.getItem().timestamp != null) {
-            if (response.getItem().timestamp < Instant.now().getEpochSecond()) {
+        if (item.get().timestamp != null) {
+            if (item.get().timestamp < Instant.now().getEpochSecond()) {
                 return new CacheResult<String>(null, null, false);
             }
         }
 
         // If we are loading this from the remote cache, save it locally too
-        localStorageReadWrite.putString(tool, source, promptHash, response.getItem().timestamp, response.getItem().response());
+        localStorageReadWrite.putString(tool, source, promptHash, item.get().timestamp, item.get().response());
 
-        return new CacheResult<String>(response.getItem().response(), null, true);
+        return new CacheResult<String>(item.get().response(), null, true);
     }
 
     @Override
@@ -875,7 +790,7 @@ public class CosmosLocalStorage implements LocalStorage {
                 return;
             }
 
-            final Try<CosmosItemResponse<CacheItem>> result = Try.of(() -> zipper.compressString(redactedValue))
+            final Try<CacheItem> result = Try.of(() -> zipper.compressString(redactedValue))
                     .map(encryptor::encrypt)
                     .map(encrypted -> localStorageReadWrite.putString(tool, source, promptHash, getTimestamp(ttlSeconds), encrypted))
                     .map(encrypted -> new CacheItem(
@@ -886,7 +801,7 @@ public class CosmosLocalStorage implements LocalStorage {
                             encrypted,
                             getTimestamp(ttlSeconds),
                             sanitizeTtl(ttlSeconds)))
-                    .map(item -> container.upsertItem(item, new PartitionKey(tool), new CosmosItemRequestOptions()))
+                    .andThenTry(item -> container.upsertItem(item, tool))
                     .onFailure(ex -> totalFailures.incrementAndGet())
                     .onFailure(ex -> logger.warning("Failed to put string: " + exceptionHandler.getExceptionMessage(ex)));
 

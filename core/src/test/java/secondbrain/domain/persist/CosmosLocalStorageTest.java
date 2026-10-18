@@ -31,6 +31,7 @@ import java.util.UUID;
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(CosmosLocalStorage.class)
+@AddBeanClasses(CosmosCacheContainerProducer.class)
 @AddBeanClasses(FileLocalStorageReadWrite.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(LoggingExceptionHandler.class)

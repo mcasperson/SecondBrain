@@ -1,12 +1,8 @@
 package secondbrain.domain.persist;
 
-import com.azure.cosmos.CosmosContainer;
-import com.azure.cosmos.CosmosException;
-import com.azure.cosmos.models.CosmosItemRequestOptions;
-import com.azure.cosmos.models.CosmosItemResponse;
-import com.azure.cosmos.models.PartitionKey;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.config.inject.ConfigExtension;
+import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
@@ -17,7 +13,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.ArgumentCaptor;
 import secondbrain.domain.concurrency.SharedVirtualThreadExecutor;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
@@ -27,27 +22,25 @@ import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.persist.config.*;
 import secondbrain.domain.sanitize.SanitizeDocument;
+import secondbrain.domain.test.FakeCosmosCacheContainer;
 import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.zip.Zipper;
 
-import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for {@link CosmosLocalStorage} that replace the Cosmos container with a mock, so no emulator is needed.
+ * Unit tests for {@link CosmosLocalStorage} that replace the Cosmos container with an in-memory test instance, so no
+ * emulator is needed. The test instance is supplied by the producer method in this class instead of
+ * {@link CosmosCacheContainerProducer}.
  */
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
-@AddBeanClasses(CosmosLocalStorageUnitTest.OfflineCosmosLocalStorage.class)
+@AddBeanClasses(CosmosLocalStorage.class)
 @AddBeanClasses(LocalStorageDisableTool.class)
 @AddBeanClasses(LocalStorageWriteOnlyTool.class)
 @AddBeanClasses(LocalStorageReadOnlyTool.class)
@@ -65,35 +58,22 @@ class CosmosLocalStorageUnitTest {
     private static final String HASH = "hash";
     private static final String ID = TOOL + "_" + SOURCE + "_" + HASH;
 
-    private final Map<String, CosmosLocalStorage.CacheItem> remote = new ConcurrentHashMap<>();
     private final RecordingReadWrite local = new RecordingReadWrite();
     private final Map<String, String> settings = new HashMap<>();
-    private final CosmosContainer container = mock(CosmosContainer.class);
+    private final FakeCosmosCacheContainer container = new FakeCosmosCacheContainer();
+    private final AtomicInteger containersCreated = new AtomicInteger();
 
     @Inject
-    private OfflineCosmosLocalStorage storage;
+    private CosmosLocalStorage storage;
 
-    /**
-     * CosmosLocalStorage builds its own CosmosClient and CosmosContainer in its @PostConstruct callback; there is no
-     * injection point for them. Overriding postConstruct() without the annotation stops the container from calling it
-     * when the bean is created (explicit calls, including reconnects, still run the real method). The mock container
-     * is then installed into the private field, which is the only state the test cannot supply through CDI.
-     */
-    static class OfflineCosmosLocalStorage extends CosmosLocalStorage {
-        @Override
-        public void postConstruct() {
-            super.postConstruct();
-        }
+    @Produces
+    CosmosCacheContainer produceCosmosCacheContainer() {
+        containersCreated.incrementAndGet();
+        return container;
+    }
 
-        void useContainer(@Nullable final CosmosContainer cosmosContainer) {
-            try {
-                final Field field = CosmosLocalStorage.class.getDeclaredField("container");
-                field.setAccessible(true);
-                field.set(this, cosmosContainer);
-            } catch (final ReflectiveOperationException e) {
-                throw new IllegalStateException(e);
-            }
-        }
+    void disposeCosmosCacheContainer(@Disposes final CosmosCacheContainer cosmosCacheContainer) {
+        cosmosCacheContainer.close();
     }
 
     @Produces
@@ -131,18 +111,6 @@ class CosmosLocalStorageUnitTest {
         settings.put("sb.cosmos.database", "db");
         settings.put("sb.cosmos.container", "container");
         TestConfigUtil.registerConfig(settings);
-
-        when(container.readItem(anyString(), any(PartitionKey.class), eq(CosmosLocalStorage.CacheItem.class)))
-                .thenAnswer(inv -> {
-                    final CosmosLocalStorage.CacheItem item = remote.get(inv.<String>getArgument(0));
-                    if (item == null) {
-                        throw new TestCosmosException(404);
-                    }
-                    @SuppressWarnings("unchecked") final CosmosItemResponse<CosmosLocalStorage.CacheItem> response = mock(CosmosItemResponse.class);
-                    when(response.getItem()).thenReturn(item);
-                    return response;
-                });
-        storage.useContainer(container);
     }
 
     /**
@@ -164,9 +132,7 @@ class CosmosLocalStorageUnitTest {
 
     private List<CosmosLocalStorage.CacheItem> upserts() {
         storage.flush();
-        final ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
-        verify(container, atLeast(0)).upsertItem(captor.capture(), any(PartitionKey.class), any(CosmosItemRequestOptions.class));
-        return captor.getAllValues().stream().map(CosmosLocalStorage.CacheItem.class::cast).toList();
+        return container.getUpserts();
     }
 
     private static CosmosLocalStorage.CacheItem remoteItem(final String id, final String response, final long timestamp) {
@@ -174,15 +140,25 @@ class CosmosLocalStorageUnitTest {
     }
 
     @Test
-    void postConstructWithoutEndpointOrKeyFails() {
-        final LocalStorageFailure ex = assertThrows(LocalStorageFailure.class, storage::postConstruct);
+    void postConstructCreatesTheContainerOnlyOnce() {
+        storage.getString(TOOL, SOURCE, HASH);
+        storage.postConstruct();
 
-        assertEquals("Cosmos DB endpoint and key must be configured", ex.getMessage());
+        assertEquals(1, containersCreated.get());
     }
 
     @Test
-    void getStringIsAMissWhenContainerIsNotInitialised() {
-        storage.useContainer(null);
+    void preDestroyClosesTheContainer() {
+        storage.getString(TOOL, SOURCE, HASH);
+
+        storage.preDestroy();
+
+        assertEquals(1, container.getCloseCount());
+    }
+
+    @Test
+    void getStringIsAMissAfterTheContainerIsClosed() {
+        storage.preDestroy();
         local.put(TOOL, SOURCE, HASH, packed("value"));
 
         assertEquals(new CacheResult<String>(null, null, false), storage.getString(TOOL, SOURCE, HASH));
@@ -210,7 +186,7 @@ class CosmosLocalStorageUnitTest {
         final CacheResult<String> result = storage.getString(TOOL, SOURCE, HASH);
 
         assertEquals(new CacheResult<>("hello", null, true), result);
-        verify(container, never()).readItem(anyString(), any(PartitionKey.class), eq(CosmosLocalStorage.CacheItem.class));
+        assertEquals(0, container.getReadCount());
     }
 
     @Test
@@ -223,7 +199,7 @@ class CosmosLocalStorageUnitTest {
     @Test
     void getStringLoadsUnexpiredItemFromCosmosAndCachesItLocally() {
         final long expires = Instant.now().getEpochSecond() + 3600;
-        remote.put(ID, remoteItem(ID, packed("from cosmos"), expires));
+        container.addItem(remoteItem(ID, packed("from cosmos"), expires));
 
         final CacheResult<String> result = storage.getString(TOOL, SOURCE, HASH);
 
@@ -234,7 +210,7 @@ class CosmosLocalStorageUnitTest {
 
     @Test
     void getStringTreatsExpiredCosmosItemAsMiss() {
-        remote.put(ID, remoteItem(ID, packed("stale"), Instant.now().getEpochSecond() - 1));
+        container.addItem(remoteItem(ID, packed("stale"), Instant.now().getEpochSecond() - 1));
 
         final CacheResult<String> result = storage.getString(TOOL, SOURCE, HASH);
 
@@ -249,23 +225,24 @@ class CosmosLocalStorageUnitTest {
 
     @Test
     void getStringWrapsUnexpectedCosmosErrors() {
-        when(container.readItem(anyString(), any(PartitionKey.class), eq(CosmosLocalStorage.CacheItem.class)))
-                .thenThrow(new TestCosmosException(500));
+        container.failReadsWith(new IllegalStateException("Cosmos DB is unavailable"));
 
         assertThrows(LocalStorageFailure.class, () -> storage.getString(TOOL, SOURCE, HASH));
     }
 
     @Test
     void getStringResetsConnectionAfterRepeatedFailures() {
-        when(container.readItem(anyString(), any(PartitionKey.class), eq(CosmosLocalStorage.CacheItem.class)))
-                .thenThrow(new TestCosmosException(500));
+        container.failReadsWith(new IllegalStateException("Cosmos DB is unavailable"));
         for (int i = 0; i < 6; i++) {
             assertThrows(LocalStorageFailure.class, () -> storage.getString(TOOL, SOURCE, HASH));
         }
+        assertEquals(1, containersCreated.get());
+        assertEquals(0, container.getCloseCount());
 
-        // The seventh call exceeds MAX_FAILURES and reconnects, which fails here because no endpoint is configured
-        final LocalStorageFailure ex = assertThrows(LocalStorageFailure.class, () -> storage.getString(TOOL, SOURCE, HASH));
-        assertEquals("Cosmos DB endpoint and key must be configured", ex.getMessage());
+        // The seventh call exceeds MAX_FAILURES, so the old container is closed and a new one is created
+        assertThrows(LocalStorageFailure.class, () -> storage.getString(TOOL, SOURCE, HASH));
+        assertEquals(2, containersCreated.get());
+        assertEquals(1, container.getCloseCount());
     }
 
     @Test
@@ -341,8 +318,8 @@ class CosmosLocalStorageUnitTest {
     }
 
     @Test
-    void getOrPutStringJustGeneratesWhenContainerIsNotInitialised() {
-        storage.useContainer(null);
+    void getOrPutStringJustGeneratesAfterTheContainerIsClosed() {
+        storage.preDestroy();
 
         assertEquals(new CacheResult<>("generated", null, false), storage.getOrPutString(TOOL, SOURCE, HASH, 60, () -> "generated"));
         assertEquals(0, local.reads.get());
@@ -417,7 +394,7 @@ class CosmosLocalStorageUnitTest {
 
         assertTrue(result.fromCache());
         assertArrayEquals(new Item[]{new Item("a", 1)}, result.result());
-        verify(container, never()).readItem(anyString(), any(PartitionKey.class), eq(CosmosLocalStorage.CacheItem.class));
+        assertEquals(0, container.getReadCount());
     }
 
     @Test
@@ -470,12 +447,6 @@ class CosmosLocalStorageUnitTest {
     }
 
     record Item(String name, int count) {
-    }
-
-    private static final class TestCosmosException extends CosmosException {
-        TestCosmosException(final int status) {
-            super(status, "status " + status);
-        }
     }
 
     private static final class WrappingEncryptor implements Encryptor {

@@ -30,6 +30,7 @@ import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.handler.PromptResponseSimple;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.SecretGetterGenerator;
+import secondbrain.domain.persist.CosmosCacheContainerProducer;
 import secondbrain.domain.persist.CosmosLocalStorage;
 import secondbrain.domain.persist.H2LocalStorage;
 import secondbrain.domain.persist.LocalStorageProducer;
@@ -95,6 +96,7 @@ class MainTest {
                             DefaultPromptHandlerOutput.class,
                             H2LocalStorage.class,
                             CosmosLocalStorage.class,
+                            CosmosCacheContainerProducer.class,
                             LocalStorageCacheDisable.class,
                             LocalStorageDisableTool.class,
                             LocalStorageCacheReadOnly.class,

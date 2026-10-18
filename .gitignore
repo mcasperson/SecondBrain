@@ -56,3 +56,14 @@ copilotDiffState.xml
 input.md
 
 .claude
+
+# Claude adds these files
+.bash_profile
+.bashrc
+.gitconfig
+.gitmodules
+.profile
+.ripgreprc
+.vscode
+.zprofile
+.zshrc
