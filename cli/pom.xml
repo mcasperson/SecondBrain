@@ -141,14 +141,6 @@
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
-                                        <!--
-                                        Main registers every bean with addPackages(true, Marker.class). If the uber jar
-                                        is also a discoverable bean archive, every bean is registered twice and Weld
-                                        fails with ambiguous dependencies. Any jandex.idx comes from a single dependency
-                                        and does not describe the merged jar.
-                                        -->
-                                        <exclude>META-INF/beans.xml</exclude>
-                                        <exclude>META-INF/jandex.idx</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
