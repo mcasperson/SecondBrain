@@ -39,18 +39,18 @@
         <dependency>
             <groupId>net.snowflake</groupId>
             <artifactId>snowflake-jdbc-fips</artifactId>
-            <version>4.4.0</version>
+            <version>4.1.0</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.slack.api</groupId>
             <artifactId>bolt</artifactId>
-            <version>1.52.0</version>
+            <version>1.45.3</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.microprofile.fault-tolerance</groupId>
             <artifactId>microprofile-fault-tolerance-api</artifactId>
-            <version>4.1.2</version>
+            <version>4.1.1</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
