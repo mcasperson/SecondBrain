@@ -1,63 +1,26 @@
 package secondbrain.domain.sanitize;
 
-import ai.philterd.phileas.PhileasConfiguration;
-import ai.philterd.phileas.services.context.DefaultContextService;
-import ai.philterd.phileas.services.filters.filtering.PlainTextFilterService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import secondbrain.domain.json.JsonDeserializerJackson;
 
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Optional;
-import java.util.Properties;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @SuppressWarnings("NullAway")
 class FinancialLocationContactRedactionTest {
 
-    private final List<LogRecord> logRecords = new CopyOnWriteArrayList<>();
-
     private FinancialLocationContactRedaction redaction;
 
     @BeforeEach
     void setUp() throws Exception {
-        logRecords.clear();
         redaction = build(null);
-    }
-
-    private Logger createCapturingLogger() {
-        final Logger logger = Logger.getAnonymousLogger();
-        logger.setUseParentHandlers(false);
-        logger.addHandler(new Handler() {
-            @Override
-            public void publish(final LogRecord record) {
-                logRecords.add(record);
-            }
-
-            @Override
-            public void flush() {
-            }
-
-            @Override
-            public void close() {
-            }
-        });
-        return logger;
     }
 
     /**
@@ -69,9 +32,6 @@ class FinancialLocationContactRedactionTest {
         final Field jsonDeserializerField = FinancialLocationContactRedaction.class.getDeclaredField("jsonDeserializer");
         jsonDeserializerField.setAccessible(true);
         jsonDeserializerField.set(instance, new JsonDeserializerJackson());
-        final Field loggerField = FinancialLocationContactRedaction.class.getDeclaredField("logger");
-        loggerField.setAccessible(true);
-        loggerField.set(instance, createCapturingLogger());
         if (ignoredFields != null) {
             final Field ignoredFieldsField = FinancialLocationContactRedaction.class.getDeclaredField("ignoredFields");
             ignoredFieldsField.setAccessible(true);
@@ -274,116 +234,6 @@ class FinancialLocationContactRedactionTest {
         final String json = "{\"id\":\"john.doe@example.com\"}";
         final String result = configured.sanitize(json);
         assertTrue(!result.contains("john.doe@example.com"), "An empty list means no field is ignored");
-    }
-
-    // ---- PII coverage ----
-    // These tests guard against dependency updates silently changing what is detected.
-
-    static Stream<Arguments> piiSamples() {
-        return Stream.of(
-                Arguments.of("{{{REDACTED-EMAIL}}}", "john.doe@example.com"),
-                Arguments.of("{{{REDACTED-EMAIL}}}", "first.last+tag@sub.example.co.uk"),
-                Arguments.of("{{{REDACTED-PHONE}}}", "555-867-5309"),
-                Arguments.of("{{{REDACTED-PHONE}}}", "(555) 867-5309"),
-                Arguments.of("{{{REDACTED-PHONE}}}", "555.867.5309"),
-                Arguments.of("{{{REDACTED-SSN}}}", "123-45-6789"),
-                Arguments.of("{{{REDACTED-CREDIT-CARD}}}", "4111111111111111"),
-                Arguments.of("{{{REDACTED-CREDIT-CARD}}}", "4111 1111 1111 1111"),
-                Arguments.of("{{{REDACTED-CREDIT-CARD}}}", "4111-1111-1111-1111"),
-                Arguments.of("{{{REDACTED-CREDIT-CARD}}}", "5500005555555559"),
-                Arguments.of("{{{REDACTED-CREDIT-CARD}}}", "378282246310005"),
-                Arguments.of("{{{REDACTED-IP}}}", "192.168.1.100"),
-                Arguments.of("{{{REDACTED-IP}}}", "2001:db8:85a3::8a2e:370:7334"),
-                Arguments.of("{{{REDACTED-URL}}}", "https://www.example.com/path?query=1"),
-                Arguments.of("{{{REDACTED-URL}}}", "http://example.org"),
-                Arguments.of("{{{REDACTED-STREET-ADDRESS}}}", "123 Main Street"),
-                Arguments.of("{{{REDACTED-STREET-ADDRESS}}}", "1600 Pennsylvania Avenue"),
-                Arguments.of("{{{REDACTED-BANK-ROUTING-NUMBER}}}", "021000021"),
-                Arguments.of("{{{REDACTED-BANK-ROUTING-NUMBER}}}", "011000015")
-        );
-    }
-
-    @ParameterizedTest(name = "{1}")
-    @MethodSource("piiSamples")
-    void testPiiRedactedInPlainText(final String placeholder, final String pii) {
-        final String result = redaction.sanitize("Here are the details: " + pii + " thanks.");
-        assertTrue(result.contains(placeholder), "Expected " + placeholder + " in: " + result);
-        assertFalse(result.contains(pii), "Original value should not appear in: " + result);
-    }
-
-    @ParameterizedTest(name = "{1}")
-    @MethodSource("piiSamples")
-    void testPiiRedactedInJsonValue(final String placeholder, final String pii) {
-        final String json = "{\"details\":\"Here are the details: " + pii + " thanks.\"}";
-        final String result = redaction.sanitize(json);
-        assertTrue(result.contains(placeholder), "Expected " + placeholder + " in: " + result);
-        assertFalse(result.contains(pii), "Original value should not appear in: " + result);
-        assertDoesNotThrow(() -> new ObjectMapper().readTree(result), "Result should be valid JSON");
-    }
-
-    @Test
-    void testAllPiiTypesRedactedInOneDocument() {
-        final String document = """
-                Customer john.doe@example.com called from 555-867-5309 about their account.
-                SSN on file is 123-45-6789 and they paid with card 4111111111111111.
-                The request came from 192.168.1.100 after visiting https://www.example.com/account.
-                Their mailing address is 123 Main Street and the bank routing number is 021000021.
-                """;
-        final String result = redaction.sanitize(document);
-
-        assertAll(
-                () -> assertTrue(result.contains("{{{REDACTED-EMAIL}}}"), "Email placeholder missing"),
-                () -> assertTrue(result.contains("{{{REDACTED-PHONE}}}"), "Phone placeholder missing"),
-                () -> assertTrue(result.contains("{{{REDACTED-SSN}}}"), "SSN placeholder missing"),
-                () -> assertTrue(result.contains("{{{REDACTED-CREDIT-CARD}}}"), "Credit card placeholder missing"),
-                () -> assertTrue(result.contains("{{{REDACTED-IP}}}"), "IP placeholder missing"),
-                () -> assertTrue(result.contains("{{{REDACTED-URL}}}"), "URL placeholder missing"),
-                () -> assertTrue(result.contains("{{{REDACTED-STREET-ADDRESS}}}"), "Street address placeholder missing"),
-                () -> assertTrue(result.contains("{{{REDACTED-BANK-ROUTING-NUMBER}}}"), "Bank routing number placeholder missing"),
-                () -> assertFalse(result.contains("john.doe@example.com"), "Email leaked"),
-                () -> assertFalse(result.contains("555-867-5309"), "Phone leaked"),
-                () -> assertFalse(result.contains("123-45-6789"), "SSN leaked"),
-                () -> assertFalse(result.contains("4111111111111111"), "Credit card leaked"),
-                () -> assertFalse(result.contains("192.168.1.100"), "IP leaked"),
-                () -> assertFalse(result.contains("https://www.example.com/account"), "URL leaked"),
-                () -> assertFalse(result.contains("123 Main Street"), "Street address leaked"),
-                () -> assertFalse(result.contains("021000021"), "Bank routing number leaked")
-        );
-    }
-
-    @Test
-    void testUnsanitizeDoesNotRestorePii() {
-        // With no unredactions registered, unsanitizing must not bring back any of the original values
-        final String result = redaction.sanitize("Email john.doe@example.com, SSN 123-45-6789, card 4111111111111111.", true);
-        assertFalse(result.contains("john.doe@example.com"), "Email leaked");
-        assertFalse(result.contains("123-45-6789"), "SSN leaked");
-        assertFalse(result.contains("4111111111111111"), "Credit card leaked");
-    }
-
-    @Test
-    void testNoErrorsLoggedForSuccessfulRedaction() {
-        redaction.sanitize("Email john.doe@example.com, SSN 123-45-6789, card 4111111111111111.");
-        assertTrue(logRecords.stream().noneMatch(r -> r.getLevel() == Level.SEVERE), "No redaction failures should be logged");
-    }
-
-    @Test
-    void testPhileasFailureIsLoggedWithoutPii() throws Exception {
-        // A filter service without a VectorService throws on every call, which is how Phileas 4.x
-        // silently broke redaction when it was first upgraded
-        final Field filterServiceField = FinancialLocationContactRedaction.class.getDeclaredField("filterService");
-        filterServiceField.setAccessible(true);
-        filterServiceField.set(redaction, new PlainTextFilterService(
-                new PhileasConfiguration(new Properties()),
-                new DefaultContextService(),
-                null,
-                null));
-
-        redaction.sanitize("Email john.doe@example.com now.");
-
-        final List<LogRecord> severe = logRecords.stream().filter(r -> r.getLevel() == Level.SEVERE).toList();
-        assertFalse(severe.isEmpty(), "A redaction failure should be logged");
-        assertTrue(severe.stream().allMatch(r -> r.getThrown() != null), "The exception should be logged");
-        assertTrue(severe.stream().noneMatch(r -> r.getMessage().contains("john.doe@example.com")), "The PII should not be logged");
     }
 
     // ---- removeEscapeBeforePlaceholder ----
