@@ -42,6 +42,7 @@ import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.planhat.PlanHatUsage;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.tools.salesforce.Salesforce;
+import secondbrain.domain.tools.salesforce.SalesforceAccountDetails;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
@@ -156,6 +157,9 @@ public class MultiSlackZenGoogle implements Tool<Void> {
 
     @Inject
     private Salesforce salesforce;
+
+    @Inject
+    private SalesforceAccountDetails salesforceAccountDetails;
 
     @Inject
     private RatingTool ratingTool;
@@ -509,6 +513,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                 () -> getGoogleContext(positionalEntity, parsedArgs, prompt, context),
                 () -> getPlanhatContext(positionalEntity, parsedArgs, prompt, context),
                 () -> getSalesforceContext(positionalEntity, parsedArgs, prompt, context),
+                () -> getSalesforceAccountDetailsContext(positionalEntity, prompt, context),
                 () -> getPlanhatUsageContext(positionalEntity, parsedArgs, prompt, context),
                 // Slack searches use AND logic. This means we need to search each of the IDs (i.e. salesforce and planhat) separately.
                 () -> CollectionUtils.collate(positionalEntity.entity().getSalesforce(), positionalEntity.entity().getPlanHat())
@@ -701,6 +706,27 @@ public class MultiSlackZenGoogle implements Tool<Void> {
                         // We continue on even if one tool fails, so log and swallow the exception
                         .onFailure(InternalFailure.class, ex -> logger.severe("Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .onFailure(ExternalFailure.class, ex -> logger.warning("Salesforce search failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
+                        .getOrElse(List::of)
+                        .stream())
+                // The context label is updated to include the entity name
+                .map(ragDoc -> ragDoc.updateContextLabel(positionalEntity.entity().name() + " " + ragDoc.contextLabel()))
+                .map(RagDocumentContext::convertToRagDocumentContextVoid)
+                .toList();
+    }
+
+    private List<RagDocumentContext<Void>> getSalesforceAccountDetailsContext(final PositionalEntity positionalEntity, final String prompt, final Map<String, String> context) {
+        logger.fine("Getting Salesforce account details for " + positionalEntity.entity().name() + " " + positionalEntity.position + " of " + positionalEntity.total);
+
+        final EnvironmentSettings envSettings = new HashMapEnvironmentSettings(context)
+                .addToolCall(getName(), positionalEntity.entity().name());
+
+        return Objects.requireNonNullElse(positionalEntity.entity().salesforce(), List.<String>of())
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .map(id -> List.of(new ToolArgs(SalesforceAccountDetails.ACCOUNT_ID_ARG, id, true)))
+                .flatMap(args -> Try.of(() -> salesforceAccountDetails.getContext(envSettings, List.of(prompt), args))
+                        // We continue on even if one tool fails, so log and swallow the exception
+                        .onFailure(ex -> logger.warning("Salesforce account details failed ignoring: " + exceptionHandler.getExceptionMessage(ex)))
                         .getOrElse(List::of)
                         .stream())
                 // The context label is updated to include the entity name

@@ -33,6 +33,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -104,6 +105,7 @@ class SalesforceClientLiveTest {
         assertThrows(IllegalStateException.class, () -> client.getTasks("token", "001", "Call", "", ""));
         assertThrows(IllegalStateException.class, () -> client.getOpportunityByAccountId("token", "001"));
         assertThrows(IllegalStateException.class, () -> client.getToken("id", "secret"));
+        assertThrows(IllegalStateException.class, () -> client.getAccount("token", "001"));
         assertEquals(0, httpCaller.calls());
     }
 
@@ -275,5 +277,36 @@ class SalesforceClientLiveTest {
         http.enqueue(FakeJaxRs.response(200, emails()));
 
         assertFalse(client.anyItemsInDuration("token", "001", ChronoUnit.MONTHS, ChronoUnit.MONTHS));
+    }
+
+    @Test
+    void getAccountQueriesAccountNameAndOwner() {
+        final SalesforceAccountRecord account = new SalesforceAccountRecord("001", "Foodstuffs North Island",
+                new SalesforceAccountOwner("Sophia Gazi", "sophia.gazi@octopus.com"),
+                "35 Landing Dr", "Mangere", null, null, "NZ", "Grocery Retail", 24000);
+        http.enqueue(FakeJaxRs.response(200, new SalesforceAccountQuery(1, true, List.of(account))));
+
+        assertEquals(Optional.of(account), client.getAccount("token", "001"));
+        assertEquals(List.of(QUERY_URL), http.targets());
+        assertEquals(List.of("SELECT Id,Name,Owner.Name,Owner.Email,BillingStreet,BillingCity,BillingState,BillingPostalCode,BillingCountry,Industry,NumberOfEmployees FROM Account WHERE Id='001'"), http.queryParams("q"));
+        assertEquals(List.of("Bearer token"), http.headers("Authorization"));
+        assertEquals(List.of(new RecordingLocalStorage.Call(
+                        "SalesforceClientLive", "SalesforceAPIAccount", DigestUtils.sha256Hex(DOMAIN + "001"), THREE_DAYS)),
+                localStorage.calls);
+        assertEquals(List.of("sb_salesforce.lock"), mutex.lockNames);
+    }
+
+    @Test
+    void getAccountReturnsEmptyWhenNoAccountMatches() {
+        http.enqueue(FakeJaxRs.response(200, new SalesforceAccountQuery(0, true, List.of())));
+
+        assertEquals(Optional.empty(), client.getAccount("token", "001"));
+    }
+
+    @Test
+    void getAccountReturnsEmptyWhenApiFails() {
+        http.enqueue(FakeJaxRs.response(500, "error"));
+
+        assertEquals(Optional.empty(), client.getAccount("token", "001"));
     }
 }

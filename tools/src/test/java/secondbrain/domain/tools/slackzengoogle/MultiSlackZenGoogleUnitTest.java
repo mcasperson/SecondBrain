@@ -44,6 +44,7 @@ import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.planhat.PlanHatUsage;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.tools.salesforce.Salesforce;
+import secondbrain.domain.tools.salesforce.SalesforceAccountDetails;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
@@ -76,7 +77,7 @@ import static org.mockito.Mockito.*;
 @AddBeanClasses(Loggers.class)
 // The downstream tools are replaced by mocks from producer methods
 @ExcludeBeanClasses({SlackChannel.class, SlackSearch.class, GoogleDocs.class, PlanHat.class, PlanHatUsage.class,
-        ZenDeskOrganization.class, Gong.class, Salesforce.class, RatingTool.class, Keywords.class})
+        ZenDeskOrganization.class, Gong.class, Salesforce.class, SalesforceAccountDetails.class, RatingTool.class, Keywords.class})
 class MultiSlackZenGoogleUnitTest {
     private static final String DIRECTORY_URL = "https://example.org/directory.yaml";
     private static final String PROMPT = "What happened?";
@@ -102,6 +103,7 @@ class MultiSlackZenGoogleUnitTest {
     private final ZenDeskOrganization zenDesk = labelled(ZenDeskOrganization.class, "ZenDesk Ticket");
     private final Gong gong = labelled(Gong.class, "Gong Call");
     private final Salesforce salesforce = labelled(Salesforce.class, "Salesforce Email");
+    private final SalesforceAccountDetails salesforceAccountDetails = labelled(SalesforceAccountDetails.class, "Salesforce Account Details");
     private final RatingTool ratingTool = mock(RatingTool.class);
     private final LlmClient llmClient = mock(LlmClient.class);
 
@@ -146,6 +148,11 @@ class MultiSlackZenGoogleUnitTest {
     @Produces
     Salesforce produceSalesforce() {
         return salesforce;
+    }
+
+    @Produces
+    SalesforceAccountDetails produceSalesforceAccountDetails() {
+        return salesforceAccountDetails;
     }
 
     @Produces
@@ -245,6 +252,7 @@ class MultiSlackZenGoogleUnitTest {
         when(googleDocs.getContext(any(), any(), any())).thenReturn(List.of(doc("GoogleDocs", "Google Document", "doc text")));
         when(planHat.getContext(any(), any(), any())).thenReturn(List.of(doc("PlanHat", "PlanHat Activity", "activity")));
         when(salesforce.getContext(any(), any(), any())).thenReturn(List.of(doc("Salesforce", "Salesforce Email", "email")));
+        when(salesforceAccountDetails.getContext(any(), any(), any())).thenReturn(List.of(doc("SalesforceAccountDetails", "Salesforce Account Details", "account")));
         when(planHatUsage.getContext(any(), any(), any())).thenReturn(List.of(doc("PlanHatUsage", "PlanHat Usage", "usage")));
         when(slackSearch.getContext(any(), any(), any())).thenReturn(List.of(doc("SlackSearch", "Slack Search", "search hit")));
     }
@@ -275,7 +283,7 @@ class MultiSlackZenGoogleUnitTest {
         final List<RagDocumentContext<Void>> context = tool.getContext(Map.of(), List.of(PROMPT), args());
 
         // Sorted by tool name; the slack search runs once for each salesforce and planhat id
-        assertEquals(List.of("Gong", "GoogleDocs", "PlanHat", "PlanHatUsage", "Salesforce", "SlackChannel", "SlackSearch", "SlackSearch", "ZenDeskOrganization"),
+        assertEquals(List.of("Gong", "GoogleDocs", "PlanHat", "PlanHatUsage", "Salesforce", "SalesforceAccountDetails", "SlackChannel", "SlackSearch", "SlackSearch", "ZenDeskOrganization"),
                 context.stream().map(RagDocumentContext::tool).toList());
         assertEquals("Acme Slack Messages from #s1",
                 context.stream().filter(c -> c.tool().equals("SlackChannel")).findFirst().orElseThrow().contextLabel());
@@ -315,6 +323,10 @@ class MultiSlackZenGoogleUnitTest {
         final ArgumentCaptor<List<ToolArgs>> salesforceArgs = argsCaptor();
         verify(salesforce).getContext(any(), any(), salesforceArgs.capture());
         assertEquals("sf1", asMap(salesforceArgs.getValue()).get(Salesforce.ACCOUNT_ID));
+
+        final ArgumentCaptor<List<ToolArgs>> accountDetailsArgs = argsCaptor();
+        verify(salesforceAccountDetails).getContext(any(), any(), accountDetailsArgs.capture());
+        assertEquals(Map.of(SalesforceAccountDetails.ACCOUNT_ID_ARG, "sf1"), asMap(accountDetailsArgs.getValue()));
 
         final ArgumentCaptor<List<ToolArgs>> planHatArgs = argsCaptor();
         verify(planHat).getContext(any(), any(), planHatArgs.capture());
@@ -397,6 +409,22 @@ class MultiSlackZenGoogleUnitTest {
         final List<RagDocumentContext<Void>> relaxed = tool.getContext(Map.of(), List.of(PROMPT),
                 args(MultiSlackZenGoogle.MULTI_SLACK_ZEN_MIN_TIME_BASED_CONTENT_ARG, "0"));
         assertEquals(List.of("Acme Google Document"), relaxed.stream().map(RagDocumentContext::contextLabel).toList());
+    }
+
+    @Test
+    void salesforceAccountDetailsAreNotTimeBasedContext() {
+        files.put(DIRECTORY_URL, """
+                entities:
+                  - name: Acme
+                    salesforce: [sf1]
+                """);
+        when(salesforceAccountDetails.getContext(any(), any(), any())).thenReturn(List.of(doc("SalesforceAccountDetails", "Salesforce Account Details", "account")));
+
+        assertThrows(InsufficientContext.class, () -> tool.getContext(Map.of(), List.of(PROMPT), args()));
+
+        final List<RagDocumentContext<Void>> relaxed = tool.getContext(Map.of(), List.of(PROMPT),
+                args(MultiSlackZenGoogle.MULTI_SLACK_ZEN_MIN_TIME_BASED_CONTENT_ARG, "0"));
+        assertEquals(List.of("Acme Salesforce Account Details"), relaxed.stream().map(RagDocumentContext::contextLabel).toList());
     }
 
     @Test

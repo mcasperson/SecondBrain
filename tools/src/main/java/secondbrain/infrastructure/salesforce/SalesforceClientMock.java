@@ -1,6 +1,7 @@
 package secondbrain.infrastructure.salesforce;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import secondbrain.infrastructure.salesforce.api.SalesforceAccountRecord;
 import secondbrain.infrastructure.salesforce.api.SalesforceEmailRecord;
 import secondbrain.infrastructure.salesforce.api.SalesforceOauthTokenResponse;
 import secondbrain.infrastructure.salesforce.api.SalesforceOpportunityQuery;
@@ -8,6 +9,7 @@ import secondbrain.infrastructure.salesforce.api.SalesforceTaskRecord;
 
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A mock implementation of the SalesforceClient interface for testing purposes.
@@ -53,5 +55,10 @@ public class SalesforceClientMock implements SalesforceClient {
     @Override
     public List<String> getAccountAndOpportunityIds(final String token, final String accountId) {
         return List.of(accountId);
+    }
+
+    @Override
+    public Optional<SalesforceAccountRecord> getAccount(final String token, final String accountId) {
+        return Optional.empty();
     }
 }

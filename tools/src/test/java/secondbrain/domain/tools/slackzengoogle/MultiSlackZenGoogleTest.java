@@ -53,6 +53,7 @@ import secondbrain.domain.tools.planhat.PlanHat;
 import secondbrain.domain.tools.planhat.PlanHatUsage;
 import secondbrain.domain.tools.rating.RatingTool;
 import secondbrain.domain.tools.salesforce.Salesforce;
+import secondbrain.domain.tools.salesforce.SalesforceAccountDetails;
 import secondbrain.domain.tools.slack.SlackChannel;
 import secondbrain.domain.tools.slack.SlackSearch;
 import secondbrain.domain.tools.zendesk.SanitizeOrganization;
@@ -98,6 +99,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(PlanHatUsage.class)
 @AddBeanClasses(Gong.class)
 @AddBeanClasses(Salesforce.class)
+@AddBeanClasses(SalesforceAccountDetails.class)
 @AddBeanClasses(RatingTool.class)
 @AddBeanClasses(Keywords.class)
 // Client implementations

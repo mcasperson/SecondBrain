@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * A PlanHat client that returns the configured objectives and opportunities. Each call is recorded, and calls can be
+ * A PlanHat client that returns the configured objectives, opportunities and conversations. Each call is recorded, and calls can be
  * made to fail. Methods that are not supported throw UnsupportedOperationException. Expose it with a
  * {@code @Produces @Preferred} method.
  */
@@ -29,9 +29,18 @@ public final class FakePlanHatClient implements PlanHatClient {
     public record Call(String method, Client client, String companyId, String url, String token, int ttlSeconds) {
     }
 
+    /**
+     * A recorded call to getConversations, including the requested date range.
+     */
+    public record ConversationCall(Client client, String companyId, String url, String token,
+                                   @Nullable ZonedDateTime startDate, @Nullable ZonedDateTime endDate, int ttlSeconds) {
+    }
+
     public final List<Objective> objectives = new ArrayList<>();
     public final List<Opportunity> opportunities = new ArrayList<>();
+    public final List<Conversation> conversations = new ArrayList<>();
     public final List<Call> calls = new CopyOnWriteArrayList<>();
+    public final List<ConversationCall> conversationCalls = new CopyOnWriteArrayList<>();
     public volatile boolean fail;
 
     private void record(final String method, final Client client, final String companyId, final String url, final String token, final int ttlSeconds) {
@@ -60,7 +69,11 @@ public final class FakePlanHatClient implements PlanHatClient {
 
     @Override
     public List<Conversation> getConversations(final Client client, final String company, final String url, final String token, @Nullable final ZonedDateTime startDate, @Nullable final ZonedDateTime endDate, final int ttlSeconds) {
-        throw new UnsupportedOperationException();
+        conversationCalls.add(new ConversationCall(client, company, url, token, startDate, endDate, ttlSeconds));
+        if (fail) {
+            throw new IllegalStateException("PlanHat unavailable");
+        }
+        return conversations;
     }
 
     @Override

@@ -359,6 +359,81 @@ public class SalesforceClientLive implements SalesforceClient {
                 .get();
     }
 
+    @Override
+    public Optional<SalesforceAccountRecord> getAccount(final String token, final String accountId) {
+        checkState(domain.isPresent(), "Salesforce domain is not configured");
+
+        return Try.of(() -> localStorage.getOrPutObject(
+                                SalesforceClientLive.class.getSimpleName(),
+                                "SalesforceAPIAccount",
+                                DigestUtils.sha256Hex(domain.get() + accountId),
+                                DEFAULT_CACHE_TTL_DAYS * 24 * 60 * 60,
+                                SalesforceAccountQuery.class,
+                                () -> getAccountApi(token, accountId))
+                        .result())
+                .filter(Objects::nonNull)
+                .map(query -> query.getRecords().stream().findFirst())
+                .onFailure(ex -> {
+                    if (ex instanceof NoSuchElementException) {
+                        logger.warning("Account not found for salesforce account " + accountId);
+                    } else {
+                        logger.warning("Unexpected exception thrown when getting account " + accountId + ": " + ExceptionUtils.getRootCauseMessage(ex));
+                    }
+                })
+                .getOrElse(Optional.empty());
+    }
+
+    private SalesforceAccountQuery getAccountApi(final String token, final String accountId) {
+        return mutex.acquire(
+                lockFile,
+                () -> getAccountApiLocked(token, accountId, 0));
+    }
+
+    private SalesforceAccountQuery getAccountApiLocked(final String token, final String accountId, final int retryCount) {
+        logger.fine("Getting Salesforce account " + accountId);
+
+        if (retryCount > API_RETRIES) {
+            throw new ExternalFailure("Exceeded maximum retries calling Salesforce API");
+        }
+
+        RATE_LIMITER.acquire();
+
+        final String url = getUrl() + "/services/data/" + version + "/query";
+
+        final String accountSoql = "SELECT Id,Name,Owner.Name,Owner.Email,BillingStreet,BillingCity,BillingState,BillingPostalCode,BillingCountry,Industry,NumberOfEmployees FROM Account WHERE Id='" + accountId + "'";
+
+        return Try.of(() -> httpClientCaller.call(
+                        clientConstructor::getClient,
+                        client -> client.target(url)
+                                .queryParam("q", accountSoql)
+                                .request()
+                                .header("Authorization", "Bearer " + token)
+                                .accept(MediaType.APPLICATION_JSON_TYPE)
+                                .get(),
+                        response -> Try.of(() -> responseValidation.validate(response, url))
+                                .map(r -> r.readEntity(SalesforceAccountQuery.class))
+                                .onFailure(e -> logger.severe(e.getMessage()))
+                                .get(),
+                        e -> new ExternalFailure("Failed to call the Salesforce API: " + e.toString(), e),
+                        () -> {
+                            throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
+                        },
+                        API_CALL_TIMEOUT_SECONDS_DEFAULT,
+                        API_CALL_DELAY_SECONDS_DEFAULT,
+                        API_RETRIES))
+                .recover(InvalidResponse.class, ex -> {
+                    if (ex.getCode() == 429) {
+                        Try.run(() -> Thread.sleep(API_CALL_DELAY_SECONDS_DEFAULT * 1000));
+                        return getAccountApiLocked(token, accountId, retryCount + 1);
+                    }
+
+                    throw new ExternalFailure("Could not call salesforce query", ex);
+                })
+                .onFailure(e -> logger.severe("Failed to get salesforce account " + accountId + "\n" + e.getMessage()))
+                .onSuccess(record -> logger.fine("Retrieved account from Salesforce for account " + accountId))
+                .get();
+    }
+
     private SalesforceTaskRecord[] getTasksApi(final String token, final String accountId, final String type, final String startDate, final String endDate) {
         return mutex.acquire(
                 lockFile,
