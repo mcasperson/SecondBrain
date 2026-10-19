@@ -14,7 +14,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -433,7 +432,7 @@ class GoogleDocsConfig {
     private Optional<String> configKeywordWindow;
 
     @Inject
-    @ConfigProperty(name = "sb.google.summarizedocument", defaultValue = "false")
+    @ConfigProperty(name = "sb.google.summarizedocument")
     private Optional<String> configSummarizeDocument;
 
     @Inject
@@ -590,7 +589,12 @@ class GoogleDocsConfig {
                     .toList();
 
             if (getAutoGenerateKeywords()) {
-                return CollectionUtils.collate(keywords, getKeywordsTool().getKeywords(Map.of(), Stream.concat(prompts.stream(), Stream.of(getContextFilterQuestion())).toList(), List.of()), false);
+                // Supplied keywords come first, followed by any new generated keywords, without duplicates
+                return Stream.concat(
+                                keywords.stream(),
+                                getKeywordsTool().getKeywords(Map.of(), Stream.concat(prompts.stream(), Stream.of(getContextFilterQuestion())).toList(), List.of()).stream())
+                        .distinct()
+                        .toList();
             }
 
             return keywords;

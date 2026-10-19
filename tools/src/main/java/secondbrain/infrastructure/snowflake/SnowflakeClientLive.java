@@ -1,32 +1,25 @@
 package secondbrain.infrastructure.snowflake;
 
 import com.google.common.base.Preconditions;
-import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.apache.commons.lang.StringUtils;
-import org.bouncycastle.openssl.PEMKeyPair;
-import org.bouncycastle.openssl.PEMParser;
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
 import secondbrain.domain.injection.Preferred;
 
-import java.io.StringReader;
-import java.security.PrivateKey;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
 
 @ApplicationScoped
 @Preferred
 public class SnowflakeClientLive implements SnowflakeClient {
     @Nullable
-    private Connection connection;
+    private SnowflakeConnection connection;
 
     @Inject
     @ConfigProperty(name = "sb.snowflake.user")
@@ -40,15 +33,8 @@ public class SnowflakeClientLive implements SnowflakeClient {
     @ConfigProperty(name = "sb.snowflake.jwt.base64")
     private Optional<String> pem;
 
-    public SnowflakeClientLive() {
-
-    }
-
-    public SnowflakeClientLive(final String username, final String pem, final String url) {
-        this.username = Optional.of(username);
-        this.url = Optional.of(url);
-        this.pem = Optional.of(pem);
-    }
+    @Inject
+    private Instance<SnowflakeConnection> connections;
 
     @PostConstruct
     public void openConnection() {
@@ -56,38 +42,18 @@ public class SnowflakeClientLive implements SnowflakeClient {
             return;
         }
 
-        final PrivateKey privateKey = getPrivateKeyFromPEM(new String(Base64.getDecoder().decode(pem.get())));
-        Properties properties = new Properties();
-        properties.put("user", username.get());
-        properties.put("authenticator", "SNOWFLAKE_JWT");
-        properties.put("privateKey", privateKey);
-        properties.put("JDBC_QUERY_RESULT_FORMAT", "json");
-        properties.put("CLIENT_TELEMETRY_ENABLED", "false");
-
-        final String jdbc = "jdbc:snowflake://" + url.get() + ".snowflakecomputing.com";
-
-        connection = Try.of(() -> DriverManager.getConnection(jdbc, properties)).get();
+        connection = connections.get();
     }
 
     @PreDestroy
-    @SuppressWarnings("NullAway")
     public void closeConnection() {
         if (connection == null) {
             return;
         }
 
-        Try.run(() -> this.connection.close());
+        final SnowflakeConnection existing = connection;
+        Try.run(() -> connections.destroy(existing));
         this.connection = null;
-    }
-
-    public PrivateKey getPrivateKeyFromPEM(final String pemString) {
-        return Try.of(() -> new PEMParser(new StringReader(pemString)))
-                .mapTry(PEMParser::readObject)
-                .filter(o -> o instanceof PEMKeyPair)
-                .map(o -> (PEMKeyPair) o)
-                .mapTry(p -> new JcaPEMKeyConverter().getKeyPair(p).getPrivate())
-                .mapFailure(API.Case(API.$(), ex -> new IllegalArgumentException("Failed to parse PEM string", ex)))
-                .get();
     }
 
     @Override
@@ -96,19 +62,11 @@ public class SnowflakeClientLive implements SnowflakeClient {
         Preconditions.checkArgument(connection != null, "Connection must be established before querying");
         Preconditions.checkArgument(StringUtils.isNotBlank(id), "Id must be provided");
 
-        return Try.of(() -> connection.prepareStatement(
-                        "SELECT * FROM prod_model.integration.integration_account_usage_summary"
-                                + " WHERE SFDC_ACCOUNT_SYSTEM_ID = ?"))
-                .mapTry(statement -> {
-                    statement.setString(1, id);
-                    final ResultSet rs = statement.executeQuery();
-                    final List<SnowflakeLicenseDetails> results = new ArrayList<>();
-                    while (rs.next()) {
-                        results.add(SnowflakeLicenseDetails.fromResultSet(rs));
-                    }
-                    return results;
-                })
-                .get();
+        return connection.query(
+                "SELECT * FROM prod_model.integration.integration_account_usage_summary"
+                        + " WHERE SFDC_ACCOUNT_SYSTEM_ID = ?",
+                id,
+                SnowflakeLicenseDetails::fromRow);
     }
 
     @Override
@@ -117,19 +75,15 @@ public class SnowflakeClientLive implements SnowflakeClient {
         Preconditions.checkArgument(connection != null, "Connection must be established before querying");
         Preconditions.checkArgument(StringUtils.isNotBlank(id), "Id must be provided");
 
-        return Try.of(() -> connection.prepareStatement(
+        return connection.query(
                         "SELECT ACCOUNT_ID, ADOPTION_INDEX, ADOPTION_INDEX_STATUS, ADOPTION_INDEX_DATE"
                                 + " FROM prod_marts.product_usage.mart_account_adoption_index"
                                 + " WHERE ACCOUNT_ID = ?"
                                 + " ORDER BY ADOPTION_INDEX_DATE DESC"
-                                + " LIMIT 1"))
-                .mapTry(statement -> {
-                    statement.setString(1, id);
-                    final ResultSet rs = statement.executeQuery();
-                    return rs.next()
-                            ? Optional.of(SnowflakeAdoptionIndexDetails.fromResultSet(rs))
-                            : Optional.<SnowflakeAdoptionIndexDetails>empty();
-                })
-                .get();
+                                + " LIMIT 1",
+                        id,
+                        SnowflakeAdoptionIndexDetails::fromRow)
+                .stream()
+                .findFirst();
     }
 }

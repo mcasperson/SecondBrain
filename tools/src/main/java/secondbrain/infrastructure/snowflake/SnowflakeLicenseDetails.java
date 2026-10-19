@@ -149,13 +149,14 @@ public record SnowflakeLicenseDetails(
         return getLicensedTargets30dPrior() == 0 ? 0 : (int) ((getLicensedTargets() - getLicensedTargets30dPrior()) * 100.0 / getLicensedTargets30dPrior());
     }
 
-    public static SnowflakeLicenseDetails fromResultSet(final java.sql.ResultSet rs) throws java.sql.SQLException {
-        final java.sql.Date lastRecordedAtDate = rs.getDate("LAST_RECORDED_AT");
+    // JDBC can return a null ID, which is passed through as it was when reading the ResultSet directly
+    @SuppressWarnings("NullAway")
+    public static SnowflakeLicenseDetails fromRow(final SnowflakeRow rs) {
         return new SnowflakeLicenseDetails(
                 rs.getString("SFDC_ACCOUNT_SYSTEM_ID"),
                 rs.getObject("TOTAL_LICENSE_COUNT", Integer.class),
                 rs.getObject("ACTIVE_LICENSE_COUNT", Integer.class),
-                lastRecordedAtDate != null ? lastRecordedAtDate.toLocalDate() : null,
+                rs.getDate("LAST_RECORDED_AT"),
                 rs.getObject("PROJECTS", Integer.class),
                 rs.getObject("PROJECTS_30D_PRIOR", Integer.class),
                 rs.getObject("TENANTS", Integer.class),

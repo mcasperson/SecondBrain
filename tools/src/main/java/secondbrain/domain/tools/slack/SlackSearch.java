@@ -542,7 +542,12 @@ class SlackSearchConfig {
                     .toList();
 
             if (getGenerateKeywords()) {
-                return CollectionUtils.collate(keywords, getKeywordExtractor().getKeywords(String.join("\n", prompts)), false);
+                // Supplied keywords come first, followed by any new generated keywords, without duplicates
+                return Stream.concat(
+                                keywords.stream(),
+                                getKeywordExtractor().getKeywords(String.join("\n", prompts)).stream())
+                        .distinct()
+                        .toList();
             }
 
             return keywords;

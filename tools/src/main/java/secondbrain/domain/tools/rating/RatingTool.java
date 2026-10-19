@@ -394,7 +394,7 @@ class RatingConfig {
      * but the secondary model is known to return invalid responses occasionally.
      */
     @Inject
-    @ConfigProperty(name = "sb.rating.ignoreInvalidResponses", defaultValue = "false")
+    @ConfigProperty(name = "sb.rating.ignoreInvalidResponses")
     private Optional<String> configIgnoreInvalidResponses;
 
     @Inject

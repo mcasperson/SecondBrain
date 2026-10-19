@@ -111,10 +111,14 @@ class SlackSearchConfigTest {
     }
 
     @Test
-    void filterKeywordsAreCollatedWithGeneratedKeywords() {
+    void filterKeywordsAreFollowedByGeneratedKeywordsWithoutDuplicates() {
         assertEquals(List.of("alpha", "zeta"), args(CommonArguments.KEYWORDS_ARG, "alpha, zeta").getKeywords());
-        assertEquals(List.of("alpha", "beta", "gamma", "zeta"),
+        // Supplied keywords keep their order, followed by the generated keywords
+        assertEquals(List.of("alpha", "zeta", "beta", "gamma"),
                 args(CommonArguments.KEYWORDS_ARG, "alpha,zeta", SlackSearch.SLACK_GENERATE_KEYWORDS_ARG, "true").getKeywords());
+        // A generated keyword that was also supplied is only included once
+        assertEquals(List.of("gamma", "alpha", "beta"),
+                args(CommonArguments.KEYWORDS_ARG, "gamma,alpha", SlackSearch.SLACK_GENERATE_KEYWORDS_ARG, "true").getKeywords());
     }
 
     @ParameterizedTest

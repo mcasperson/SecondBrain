@@ -23,13 +23,14 @@ public record SnowflakeAdoptionIndexDetails(
         return Objects.requireNonNullElse(adoptionIndexDate, LocalDate.EPOCH);
     }
 
-    public static SnowflakeAdoptionIndexDetails fromResultSet(final java.sql.ResultSet rs) throws java.sql.SQLException {
-        final java.sql.Date adoptionIndexDate = rs.getDate("ADOPTION_INDEX_DATE");
+    // JDBC can return a null ID, which is passed through as it was when reading the ResultSet directly
+    @SuppressWarnings("NullAway")
+    public static SnowflakeAdoptionIndexDetails fromRow(final SnowflakeRow rs) {
         return new SnowflakeAdoptionIndexDetails(
                 rs.getString("ACCOUNT_ID"),
                 rs.getObject("ADOPTION_INDEX", Double.class),
                 rs.getString("ADOPTION_INDEX_STATUS"),
-                adoptionIndexDate != null ? adoptionIndexDate.toLocalDate() : null
+                rs.getDate("ADOPTION_INDEX_DATE")
         );
     }
 }
