@@ -91,4 +91,24 @@ public class RecordingLocalStorage extends MockLocalStorage {
     public <T> CacheResult<T[]> getOrPutObjectArray(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> clazz, final Class<T[]> arrayClazz, final GenerateValue<T[]> generateValue) {
         return lookup(tool, source, promptHash, ttlSeconds, generateValue);
     }
+
+    @Override
+    public <T, U> CacheResult<T> getOrPutGeneric(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> container, final Class<U> contained, final GenerateValue<T> generateValue) {
+        return lookup(tool, source, promptHash, ttlSeconds, generateValue);
+    }
+
+    @Override
+    public <T, U> CacheResult<T> getOrPutGeneric(final String tool, final String source, final String promptHash, final Class<T> container, final Class<U> contained, final GenerateValue<T> generateValue) {
+        return lookup(tool, source, promptHash, NO_TTL, generateValue);
+    }
+
+    @Override
+    public <T, U, V> CacheResult<T> getOrPutGeneric(final String tool, final String source, final String promptHash, final long ttlSeconds, final Class<T> container, final Class<U> contained, final Class<V> contained2, final GenerateValue<T> generateValue) {
+        return lookup(tool, source, promptHash, ttlSeconds, generateValue);
+    }
+
+    @Override
+    public <T, U, V> CacheResult<T> getOrPutGeneric(final String tool, final String source, final String promptHash, final Class<T> container, final Class<U> contained, final Class<V> contained2, final GenerateValue<T> generateValue) {
+        return lookup(tool, source, promptHash, NO_TTL, generateValue);
+    }
 }

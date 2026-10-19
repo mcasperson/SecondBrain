@@ -1,10 +1,6 @@
 package secondbrain.infrastructure.youtube;
 
 import com.google.common.util.concurrent.RateLimiter;
-import io.github.thoroldvix.api.Transcript;
-import io.github.thoroldvix.api.TranscriptApiFactory;
-import io.github.thoroldvix.api.TranscriptContent;
-import io.github.thoroldvix.api.TranscriptList;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -66,6 +62,9 @@ public class YoutubeClientLive implements YoutubeClient {
 
     @Inject
     private ClientConstructor clientConstructor;
+
+    @Inject
+    private YoutubeTranscripts youtubeTranscripts;
 
     @PostConstruct
     void init() {
@@ -173,23 +172,16 @@ public class YoutubeClientLive implements YoutubeClient {
             RATE_LIMITER.acquire();
         }
 
-        final TranscriptList transcriptList = getTranscriptList(videoId);
+        final YoutubeTranscriptList transcriptList = youtubeTranscripts.listTranscripts(videoId);
 
         // Start with a manual transcript, then fall back to generated if not available
-        return Try.of(() -> transcriptList.findManualTranscript(lang))
-                .recoverWith(ex -> Try.of(() -> transcriptList.findGeneratedTranscript(lang)))
-                .mapTry(Transcript::fetch)
+        return Try.of(() -> transcriptList.fetchManualTranscript(lang)
+                        .or(() -> transcriptList.fetchGeneratedTranscript(lang))
+                        .orElseThrow(() -> new NoSuchElementException("No manual or generated transcript found for video " + videoId + " in lang " + lang)))
                 .onFailure(ex -> logger.log(Level.WARNING, "Failed to get transcript for video " + videoId + " in lang " + lang + ": " + ex.getMessage()))
-                .map(transcript -> transcript.getContent()
+                .map(fragments -> fragments
                         .stream()
-                        .map(TranscriptContent.Fragment::getText)
                         .reduce("", (a, b) -> a + " " + b))
-                .get();
-    }
-
-    private TranscriptList getTranscriptList(final String videoId) {
-        return Try.of(TranscriptApiFactory::createDefault)
-                .mapTry(api -> api.listTranscripts(videoId))
                 .get();
     }
 
