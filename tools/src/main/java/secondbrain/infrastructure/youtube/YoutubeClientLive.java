@@ -20,6 +20,8 @@ import secondbrain.infrastructure.youtube.api.YoutubePlaylistsItem;
 import secondbrain.infrastructure.youtube.api.YoutubeSearch;
 import secondbrain.infrastructure.youtube.api.YoutubeSearchItem;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -76,7 +78,8 @@ public class YoutubeClientLive implements YoutubeClient {
         final YoutubePlaylistsItem[] items = localStorage.getOrPutObject(
                         YoutubeClientLive.class.getSimpleName(),
                         "YoutubeAPIPlaylistsV2",
-                        playlistId,
+                        // A blank page token keeps the original key so existing cache entries remain valid
+                        StringUtils.isBlank(pageToken) ? playlistId : playlistId + "-" + pageToken,
                         YoutubePlaylistsItem[].class,
                         () -> getPlaylistItemsApi(playlistId, pageToken, key))
                 .result();
@@ -117,7 +120,7 @@ public class YoutubeClientLive implements YoutubeClient {
                     + "part=snippet"
                     + "&maxResults=50"
                     + "&channelId=" + channelId
-                    + "&q=" + query
+                    + "&q=" + URLEncoder.encode(query, StandardCharsets.UTF_8)
                     + "&type=video"
                     + "&key=" + key
                     + (StringUtils.isNotBlank(capturedToken) ? "&pageToken=" + capturedToken : "");

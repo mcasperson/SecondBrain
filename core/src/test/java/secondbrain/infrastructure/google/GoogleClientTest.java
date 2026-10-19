@@ -42,7 +42,7 @@ class GoogleClientTest {
     private static final String DEFAULT_MODEL = "gemini-2.0-flash";
     private static final String TOOL = "TestTool";
     private static final String SOURCE = "GoogleLLM";
-    private static final String EXCEPTION_MESSAGE = "Failed to get comments from ZenDesk API";
+    private static final String EXCEPTION_MESSAGE = "Failed to get a response from the Google API";
 
     private final RecordingLocalStorage localStorage = new RecordingLocalStorage();
     private final DirectHttpClientCaller httpCaller = new DirectHttpClientCaller();
@@ -147,14 +147,22 @@ class GoogleClientTest {
     }
 
     @Test
-    void callWithModelIgnoresTheSuppliedModelAndUsesTheConfiguredOne() {
+    void callWithModelUsesTheSuppliedModelInsteadOfTheConfiguredOne() {
         configure("sb.googlellm.url", "https://google.test/models/");
         configure("sb.googlellm.model", "gemini-configured");
         http.enqueue(FakeJaxRs.response(200, answer("ok")));
 
         assertEquals("ok", client.call("Prompt", "gemini-pro", Map.of()));
-        // Looks like a bug: call(prompt, model, settings) delegates to call(request), which reads the model field
-        // instead of the model argument
+        assertEquals(List.of("https://google.test/models/gemini-pro:generateContent"), http.targets());
+    }
+
+    @Test
+    void callWithoutAModelUsesTheConfiguredOne() {
+        configure("sb.googlellm.url", "https://google.test/models/");
+        configure("sb.googlellm.model", "gemini-configured");
+        http.enqueue(FakeJaxRs.response(200, answer("ok")));
+
+        assertEquals("ok", client.call("Prompt", Map.of()));
         assertEquals(List.of("https://google.test/models/gemini-configured:generateContent"), http.targets());
     }
 

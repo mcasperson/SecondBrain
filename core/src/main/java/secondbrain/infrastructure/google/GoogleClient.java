@@ -102,7 +102,9 @@ public class GoogleClient implements LlmClient {
                 ))
         );
 
-        return call(request);
+        checkState(url.isPresent());
+
+        return call(request, url.get(), model);
     }
 
     @Override
@@ -149,14 +151,6 @@ public class GoogleClient implements LlmClient {
         return ragDocs.updateResponses(responses);
     }
 
-    private String call(final GoogleRequest request) {
-        checkState(apiKey.isPresent());
-        checkState(url.isPresent());
-        checkState(model.isPresent());
-
-        return call(request, url.get(), model.get());
-    }
-
     private String call(final GoogleRequest request, final String resolvedUrl, final String resolvedModel) {
         checkState(apiKey.isPresent());
         checkArgument(org.apache.commons.lang3.StringUtils.isNotBlank(resolvedUrl));
@@ -184,7 +178,7 @@ public class GoogleClient implements LlmClient {
                                 .reduce("", String::concat))
                         .onFailure(e -> logger.severe(e.getMessage()))
                         .get(),
-                e -> new RuntimeException("Failed to get comments from ZenDesk API", e),
+                e -> new RuntimeException("Failed to get a response from the Google API", e),
                 () -> {
                     throw new Timeout(API_CALL_TIMEOUT_MESSAGE);
                 },

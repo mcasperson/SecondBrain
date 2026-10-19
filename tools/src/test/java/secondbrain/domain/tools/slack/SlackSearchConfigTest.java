@@ -154,9 +154,29 @@ class SlackSearchConfigTest {
     }
 
     @Test
-    void daysHaveNoDefaultAndRejectNonNumericValues() {
-        assertThrows(NumberFormatException.class, () -> args().getDays());
-        assertThrows(NumberFormatException.class, () -> args(CommonArguments.DAYS_ARG, "week").getDays());
+    void daysDefaultToThirty() {
+        assertEquals(30, args().getDays());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"'',30", "week,30", "7,7", "0,0", "-3,0"})
+    void daysFallBackToThirtyForMissingOrInvalidValuesAndAreNonNegative(final String value, final int expected) {
+        assertEquals(expected, args(CommonArguments.DAYS_ARG, value).getDays());
+    }
+
+    @Test
+    void daysFromConfigTakePrecedence() {
+        TestConfigUtil.registerConfig(Map.of("sb.slack.days", "14"));
+        assertEquals(14, args(CommonArguments.DAYS_ARG, "7").getDays());
+    }
+
+    @Test
+    void startDateDefaultsToThirtyDaysBeforeNow() {
+        final ZonedDateTime expected = ZonedDateTime.now(ZoneOffset.UTC).minusDays(30);
+
+        final ZonedDateTime actual = args().getStartDate();
+
+        assertTrue(Duration.between(expected, actual).abs().toSeconds() < 60, () -> expected + " vs " + actual);
     }
 
     @Test

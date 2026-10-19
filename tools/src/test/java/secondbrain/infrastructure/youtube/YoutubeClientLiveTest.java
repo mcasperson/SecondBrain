@@ -8,6 +8,9 @@ import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.ParameterizedTest;
 import secondbrain.domain.exceptions.InvalidResponse;
 import secondbrain.domain.httpclient.HttpClientCaller;
 import secondbrain.domain.injection.Preferred;
@@ -113,7 +116,7 @@ class YoutubeClientLiveTest {
         assertEquals(List.of(playlistItem("v1"), playlistItem("v2"), playlistItem("v3")), result);
         assertEquals(List.of(PLAYLIST_URL, PLAYLIST_URL + "&pageToken=page-2"), http.targets());
         assertEquals(List.of("application/json", "application/json"), http.headers("Accept"));
-        // The cache key is the playlist ID, so the initial page token does not affect caching
+        // Without a starting page token the cache key is just the playlist ID
         assertEquals(List.of(new RecordingLocalStorage.Call(TOOL, "YoutubeAPIPlaylistsV2", "PL1", RecordingLocalStorage.NO_TTL)), localStorage.calls);
     }
 
@@ -123,6 +126,29 @@ class YoutubeClientLiveTest {
 
         assertEquals(List.of(playlistItem("v9")), client.getPlaylistItems("PL1", "page-9", KEY));
         assertEquals(List.of(PLAYLIST_URL + "&pageToken=page-9"), http.targets());
+        assertEquals(List.of(new RecordingLocalStorage.Call(TOOL, "YoutubeAPIPlaylistsV2", "PL1-page-9", RecordingLocalStorage.NO_TTL)), localStorage.calls);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" "})
+    void getPlaylistItemsUsesThePlaylistIdAsTheKeyForABlankPageToken(final String pageToken) {
+        http.enqueue(FakeJaxRs.response(200, playlistPage(null, playlistItem("v1"))));
+
+        client.getPlaylistItems("PL1", pageToken, KEY);
+
+        assertEquals(List.of(new RecordingLocalStorage.Call(TOOL, "YoutubeAPIPlaylistsV2", "PL1", RecordingLocalStorage.NO_TTL)), localStorage.calls);
+    }
+
+    @Test
+    void getPlaylistItemsCachesEachStartingPageTokenSeparately() {
+        http.enqueue(FakeJaxRs.response(200, playlistPage(null, playlistItem("v1"))))
+                .enqueue(FakeJaxRs.response(200, playlistPage(null, playlistItem("v9"))));
+
+        client.getPlaylistItems("PL1", "", KEY);
+        client.getPlaylistItems("PL1", "page-9", KEY);
+
+        assertEquals(List.of("PL1", "PL1-page-9"), localStorage.calls.stream().map(RecordingLocalStorage.Call::promptHash).toList());
     }
 
     @Test
@@ -163,12 +189,11 @@ class YoutubeClientLiveTest {
     }
 
     @Test
-    void searchVideosDoesNotEncodeTheQuery() {
+    void searchVideosEncodesTheQuery() {
         http.enqueue(FakeJaxRs.response(200, searchPage(null)));
 
-        assertEquals(List.of(), client.searchVideos("release notes&x=1", "CH1", null, KEY));
-        // Looks like a bug: the query is concatenated into the URL without encoding
-        assertEquals(List.of("https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=50&channelId=CH1&q=release notes&x=1&type=video&key=" + KEY),
+        assertEquals(List.of(), client.searchVideos("release notes&x=1 #2 ü", "CH1", null, KEY));
+        assertEquals(List.of("https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=50&channelId=CH1&q=release+notes%26x%3D1+%232+%C3%BC&type=video&key=" + KEY),
                 http.targets());
     }
 

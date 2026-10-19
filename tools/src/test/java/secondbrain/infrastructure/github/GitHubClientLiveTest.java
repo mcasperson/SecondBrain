@@ -38,6 +38,8 @@ class GitHubClientLiveTest {
     private static final String AUTH = "Bearer gh-token";
     private static final String TOOL = "GitHubIssuesClientLive";
     private static final String SOURCE = "GitHubIssuesV2";
+    private static final String COMMIT_SOURCE = "GitHubCommitV3";
+    private static final String DIFF_SOURCE = "GitHubDiffV3";
     private static final long TTL = 60L * 60 * 24 * 90;
     private static final String SINCE = "2024-01-01T00:00:00";
     private static final String UNTIL = "2024-02-01T00:00:00";
@@ -110,7 +112,7 @@ class GitHubClientLiveTest {
         assertEquals(commit("a/b"), client.getCommit(http.client, "acme", "api", "a/b", AUTH));
         assertEquals(List.of("https://api.github.com/repos/acme/api/commits/a%2Fb"), http.targets());
         assertEquals(List.of("application/json"), http.headers("Accept"));
-        assertEquals(List.of(new RecordingLocalStorage.Call(TOOL, SOURCE, DigestUtils.sha256Hex("acme" + "api" + "a/b"), TTL)), localStorage.calls);
+        assertEquals(List.of(new RecordingLocalStorage.Call(TOOL, COMMIT_SOURCE, DigestUtils.sha256Hex("acme" + "api" + "a/b"), TTL)), localStorage.calls);
     }
 
     @Test
@@ -122,7 +124,7 @@ class GitHubClientLiveTest {
 
     @Test
     void getCommitThrowsForANullCacheEntry() {
-        localStorage.primeNull(SOURCE);
+        localStorage.primeNull(COMMIT_SOURCE);
 
         assertThrows(NoSuchElementException.class, () -> client.getCommit(http.client, "acme", "api", "aaa", AUTH));
         assertEquals(List.of(), http.targets());
@@ -140,7 +142,7 @@ class GitHubClientLiveTest {
 
     @Test
     void getDiffThrowsForANullCacheEntry() {
-        localStorage.primeNull(SOURCE);
+        localStorage.primeNull(DIFF_SOURCE);
         assertThrows(NoSuchElementException.class, () -> client.getDiff(http.client, "acme", "api", "aaa", AUTH));
     }
 
@@ -172,16 +174,36 @@ class GitHubClientLiveTest {
     }
 
     @Test
-    void commitAndDiffShareTheSameCacheKey() {
+    void commitAndDiffAreCachedSeparately() {
         http.enqueue(FakeJaxRs.response(200, commit("aaa")))
                 .enqueue(FakeJaxRs.response(200, "diff of aaa"));
 
         client.getCommit(http.client, "acme", "api", "aaa", AUTH);
         client.getDiff(http.client, "acme", "api", "aaa", AUTH);
 
-        // Looks like a bug: the commit and its diff are cached under the same tool, source and key, so with a real
-        // cache the second lookup returns the first value instead of calling GitHub
-        final RecordingLocalStorage.Call expected = new RecordingLocalStorage.Call(TOOL, SOURCE, DigestUtils.sha256Hex("acmeapiaaa"), TTL);
-        assertEquals(List.of(expected, expected), localStorage.calls);
+        final String hash = DigestUtils.sha256Hex("acmeapiaaa");
+        assertEquals(List.of(
+                new RecordingLocalStorage.Call(TOOL, COMMIT_SOURCE, hash, TTL),
+                new RecordingLocalStorage.Call(TOOL, DIFF_SOURCE, hash, TTL)), localStorage.calls);
+    }
+
+    @Test
+    void getDiffDoesNotReturnACachedCommit() {
+        localStorage.prime(COMMIT_SOURCE, commit("aaa"));
+        http.enqueue(FakeJaxRs.response(200, "diff of aaa"));
+
+        assertEquals(commit("aaa"), client.getCommit(http.client, "acme", "api", "aaa", AUTH));
+        assertEquals("diff of aaa", client.getDiff(http.client, "acme", "api", "aaa", AUTH));
+        assertEquals(List.of("application/vnd.github.v3.diff"), http.headers("Accept"));
+    }
+
+    @Test
+    void getCommitDoesNotReturnACachedDiff() {
+        localStorage.prime(DIFF_SOURCE, "diff of aaa");
+        http.enqueue(FakeJaxRs.response(200, commit("aaa")));
+
+        assertEquals("diff of aaa", client.getDiff(http.client, "acme", "api", "aaa", AUTH));
+        assertEquals(commit("aaa"), client.getCommit(http.client, "acme", "api", "aaa", AUTH));
+        assertEquals(List.of("application/json"), http.headers("Accept"));
     }
 }

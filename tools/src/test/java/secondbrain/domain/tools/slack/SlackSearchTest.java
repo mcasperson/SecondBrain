@@ -194,7 +194,7 @@ class SlackSearchTest {
     }
 
     /**
-     * A search result without a channel name. Only these results are kept by the tool.
+     * A search result without a channel name.
      */
     private static SlackSearchResultResource message(final String id, final String text) {
         return new SlackSearchResultResource(id, "1700000000.000100", "", text, "https://slack.test/" + id);
@@ -268,24 +268,41 @@ class SlackSearchTest {
     }
 
     @Test
-    void getContextDropsMessagesWithAChannelName() {
+    void getContextKeepsMessagesWithAndWithoutAChannelName() {
         slackClient.results.add(new SlackSearchResultResource("named", "1700000000.000100", "general", "outage in general", "https://slack.test/named"));
         slackClient.results.add(message("unnamed", "outage without channel"));
 
-        final List<RagDocumentContext<Void>> context = tool.getContext(env(), List.of(PROMPT), args());
-
-        // Looks like a bug: the filter keeps messages with a blank channel name, so every message from a named channel is
-        // dropped, and the ignoreChannels setting can never match anything
-        assertEquals(List.of("unnamed"), ids(context));
+        assertEquals(List.of("named", "unnamed"), ids(tool.getContext(env(), List.of(PROMPT), args())));
     }
 
     @Test
-    void getContextReturnsNothingWhenAMessageHasNoChannel() {
+    void getContextKeepsMessagesWithANullChannelName() {
         slackClient.results.add(message("m1", "outage one"));
         slackClient.results.add(new SlackSearchResultResource("m2", "1700000000.000100", null, "outage two", "https://slack.test/m2"));
 
-        // A null channel name fails the ignored channel check, and the failure discards every result
-        assertEquals(List.of(), tool.getContext(env(), List.of(PROMPT), args()));
+        assertEquals(List.of("m1", "m2"), ids(tool.getContext(env(), List.of(PROMPT), args())));
+    }
+
+    @Test
+    void getContextDropsMessagesFromIgnoredChannels() {
+        slackClient.results.add(new SlackSearchResultResource("general", "1700000000.000100", "general", "outage in general", "https://slack.test/general"));
+        slackClient.results.add(new SlackSearchResultResource("random", "1700000000.000100", "Random", "outage in random", "https://slack.test/random"));
+        slackClient.results.add(new SlackSearchResultResource("ops", "1700000000.000100", "ops", "outage in ops", "https://slack.test/ops"));
+        slackClient.results.add(message("unnamed", "outage without channel"));
+
+        final List<ToolArgs> arguments = args(SlackSearch.SLACK_IGNORE_CHANNELS_ARG, "#random, general");
+
+        // Ignored channels are matched case-insensitively after the leading hash is removed
+        assertEquals(List.of("ops", "unnamed"), ids(tool.getContext(env(), List.of(PROMPT), arguments)));
+    }
+
+    @Test
+    void getContextDropsMessagesFromChannelsIgnoredInConfig() {
+        TestConfigUtil.registerConfig(Map.of("sb.slack.ignorechannels", "ops"));
+        slackClient.results.add(new SlackSearchResultResource("ops", "1700000000.000100", "ops", "outage in ops", "https://slack.test/ops"));
+        slackClient.results.add(new SlackSearchResultResource("general", "1700000000.000100", "general", "outage in general", "https://slack.test/general"));
+
+        assertEquals(List.of("general"), ids(tool.getContext(env(), List.of(PROMPT), args())));
     }
 
     @Test
@@ -302,14 +319,13 @@ class SlackSearchTest {
     }
 
     @Test
-    void getContextReturnsNothingWithoutADaysArgument() {
-        slackClient.results.add(message("m1", "outage"));
+    void getContextDefaultsToMessagesFromTheLastThirtyDays() {
+        slackClient.results.add(new SlackSearchResultResource("recent", daysAgo(29), "", "recent outage", "https://slack.test/recent"));
+        slackClient.results.add(new SlackSearchResultResource("old", daysAgo(31), "", "old outage", "https://slack.test/old"));
 
         final List<ToolArgs> arguments = namedArgs(SlackSearch.SLACK_SEARCH_KEYWORDS_ARG, "outage", CommonArguments.KEYWORDS_ARG, "outage");
 
-        // Looks like a bug: days has no default, so parsing it fails when filtering results and the failure is
-        // swallowed, returning no context even though Slack returned a matching message
-        assertEquals(List.of(), tool.getContext(env(), List.of(PROMPT), arguments));
+        assertEquals(List.of("recent"), ids(tool.getContext(env(), List.of(PROMPT), arguments)));
         assertEquals(1, slackClient.calls.size());
     }
 

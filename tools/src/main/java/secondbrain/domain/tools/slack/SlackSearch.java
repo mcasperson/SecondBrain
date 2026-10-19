@@ -215,8 +215,8 @@ public class SlackSearch implements Tool<Void> {
         final List<RagDocumentContext<SlackSearchResultResource>> ragDocs = searchResult
                 .stream()
                 .filter(matchedItem -> parsedArgs.getDays() == 0 || (StringUtils.isNotBlank(matchedItem.timestamp()) && dateParser.parseDateOrDefault(matchedItem.timestamp()).isAfter(parsedArgs.getStartDate())))
-                .filter(matchedItem -> StringUtils.isBlank(matchedItem.channelName()))
-                .filter(matchedItem -> parsedArgs.getIgnoreChannels()
+                .filter(matchedItem -> StringUtils.isBlank(matchedItem.channelName())
+                        || parsedArgs.getIgnoreChannels()
                         .stream()
                         .noneMatch(matchedItem.channelName()::equalsIgnoreCase))
                 .map(matchedItem -> dataToRagDoc.getDocumentContext(matchedItem, getName(), getContextLabel(), parsedArgs))
@@ -295,6 +295,7 @@ class SlackSearchConfig {
     private static final String DEFAULT_TTL = (1000 * 60 * 60 * 24 * 6) + "";
     private static final int DEFAULT_API_DELAY = (1000 * 120);
     private static final int DEFAULT_RATING = 10;
+    private static final int DEFAULT_DAYS = 30;
     private static final int DEFAULT_TTL_SECONDS = 60 * 60 * 24; // 24 hours
 
     @Inject
@@ -575,11 +576,9 @@ class SlackSearchConfig {
                     context,
                     CommonArguments.DAYS_ARG,
                     CommonArguments.DAYS_ARG,
-                    "").getSafeValue();
+                    DEFAULT_DAYS + "").getSafeValue();
 
-            return Try.of(() -> stringValue)
-                    .map(i -> Math.max(0, Integer.parseInt(i)))
-                    .get();
+            return Math.max(0, NumberUtils.toInt(stringValue, DEFAULT_DAYS));
         }
 
         public ZonedDateTime getStartDate() {

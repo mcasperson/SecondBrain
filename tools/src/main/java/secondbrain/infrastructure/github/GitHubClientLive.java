@@ -78,7 +78,7 @@ public class GitHubClientLive implements GitHubClient {
     public GitHubCommitResponse getCommit(final Client client, final String owner, final String repo, final String sha, final String authorization) {
         return Try.of(() -> localStorage.getOrPutObject(
                                 GitHubIssuesClientLive.class.getSimpleName(),
-                                "GitHubIssuesV2",
+                                "GitHubCommitV3",
                                 DigestUtils.sha256Hex(owner + repo + sha),
                                 TTL_SECONDS,
                                 GitHubCommitResponse.class,
@@ -122,7 +122,7 @@ public class GitHubClientLive implements GitHubClient {
     public String getDiff(final Client client, final String owner, final String repo, final String sha, final String authorization) {
         return Try.of(() -> localStorage.getOrPutObject(
                                 GitHubIssuesClientLive.class.getSimpleName(),
-                                "GitHubIssuesV2",
+                                "GitHubDiffV3",
                                 DigestUtils.sha256Hex(owner + repo + sha),
                                 TTL_SECONDS,
                                 String.class,
