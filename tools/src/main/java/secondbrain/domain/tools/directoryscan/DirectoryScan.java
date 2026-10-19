@@ -273,6 +273,16 @@ public class DirectoryScan implements Tool<Void> {
         return getRawFile(file, parsedArgs);
     }
 
+    /**
+     * Converts a file to text. A file that can not be converted is treated as having no content,
+     * so one bad file does not prevent the rest of the directory from being scanned.
+     */
+    private String convertFileToText(final String file) {
+        return Try.of(() -> fileToText.convert(file))
+                .onFailure(ex -> logger.warning("DirectoryScan skipping file that could not be converted to text: " + file + ": " + ExceptionUtils.getRootCauseMessage(ex)))
+                .getOrElse("");
+    }
+
     @Nullable
     private RagDocumentContext<Void> getRawFile(final String file, final DirectoryScanConfig.LocalArguments parsedArgs) {
         logger.fine("DirectoryScan processing file: " + file);
@@ -282,7 +292,7 @@ public class DirectoryScan implements Tool<Void> {
              The combined answers are then used to answer the prompt again.
          */
         final TrimResult trimResult = documentTrimmer.trimDocumentToKeywords(
-                fileToText.convert(file),
+                convertFileToText(file),
                 parsedArgs.getKeywords(),
                 parsedArgs.getKeywordWindow());
 
@@ -316,7 +326,7 @@ public class DirectoryScan implements Tool<Void> {
              The combined answers are then used to answer the prompt again.
          */
         final TrimResult trimResult = documentTrimmer.trimDocumentToKeywords(
-                fileToText.convert(file),
+                convertFileToText(file),
                 parsedArgs.getKeywords(),
                 parsedArgs.getKeywordWindow());
 

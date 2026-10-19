@@ -1,10 +1,5 @@
 package secondbrain.domain.mutex;
 
-import com.azure.core.util.MetricsOptions;
-import com.azure.cosmos.*;
-import com.azure.cosmos.implementation.NotFoundException;
-import com.azure.cosmos.models.*;
-import com.azure.cosmos.util.CosmosPagedIterable;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
@@ -22,7 +17,6 @@ import secondbrain.domain.exceptions.LockFail;
 import secondbrain.domain.mutex.config.MutexTimeout;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
@@ -41,21 +35,14 @@ import java.util.logging.Logger;
 @ApplicationScoped
 public class CosmosMutex implements Mutex {
 
-    private static final String DATABASE_NAME = "secondbrainlock";
-    private static final String CONTAINER_NAME = "locks";
-    private static final String LOCK_PARTITION_KEY = "/lock";
+    static final int DEFAULT_TTL = 60 * 5;
     private static final String LOCK_PARTITION_VALUE = "lock";
-    private static final int DEFAULT_TTL = 60 * 5;
     private static final long SLEEP_MS = 1000;
 
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.endpoint")
-    private Optional<String> cosmosEndpoint;
-
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.key")
-    private Optional<String> cosmosKey;
-
+    /**
+     * The default TTL represents how long a lock can be held. Either the lock becomes stale,
+     * or Cosmos DB automatically deletes it.
+     */
     @Inject
     @ConfigProperty(name = "sb.cosmos.lockttl", defaultValue = DEFAULT_TTL + "")
     private Optional<String> lockTtl;
@@ -64,44 +51,20 @@ public class CosmosMutex implements Mutex {
     @ConfigProperty(name = "sb.cosmos.clearlocksonstartup", defaultValue = "false")
     private Optional<Boolean> clearOnStartup;
 
-    /**
-     * The default TTL represents how long a lock can be held. Either the lock becomes stale,
-     * or Cosmos DB automatically deletes it.
-     */
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.lockdatabase", defaultValue = DATABASE_NAME)
-    private Optional<String> databaseName;
-
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.lockscontainer", defaultValue = CONTAINER_NAME)
-    private Optional<String> containerName;
-
-    /**
-     * Set to false when using vnext cosmosdb docker image
-     */
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.autodiscovery", defaultValue = "true")
-    private boolean autoDiscovery;
-
-    /**
-     * Set to true when using vnext cosmosdb docker image
-     */
-    @Inject
-    @ConfigProperty(name = "sb.cosmos.gatewayMode", defaultValue = "false")
-    private boolean gatewayMode;
-
-
     @Inject
     private ExceptionHandler exceptionHandler;
 
     @Inject
     private Logger logger;
 
-    @Nullable
-    private CosmosClient cosmosClient;
+    /**
+     * The container is created by {@link CosmosLockContainerProducer}, or by a test producer.
+     */
+    @Inject
+    private CosmosLockContainer cosmosLockContainer;
 
     @Nullable
-    private CosmosContainer container;
+    private CosmosLockContainer container;
 
     @Inject
     private MutexTimeout mutexTimeout;
@@ -109,8 +72,12 @@ public class CosmosMutex implements Mutex {
     private final AtomicReference<Long> totalWaitMs = new AtomicReference<>(0L);
     private final ConcurrentMap<String, ReentrantLock> localMutexes = new ConcurrentHashMap<>();
 
-    private int getLockTtlSeconds() {
+    static int parseLockTtlSeconds(final Optional<String> lockTtl) {
         return Try.of(() -> Integer.parseInt(lockTtl.get())).getOrElse(DEFAULT_TTL);
+    }
+
+    private int getLockTtlSeconds() {
+        return parseLockTtlSeconds(lockTtl);
     }
 
     // This observer forces the container to instantiate the bean at startup
@@ -121,11 +88,7 @@ public class CosmosMutex implements Mutex {
     @PostConstruct
     public void postConstruct() {
         logger.fine("Initializing Cosmos DB mutex");
-        synchronized (CosmosMutex.class) {
-            if (cosmosClient == null) {
-                initializeCosmosClient();
-            }
-        }
+        container = cosmosLockContainer;
         logger.fine("Initialized Cosmos DB mutex");
 
         clearLocksOnStartup();
@@ -151,91 +114,24 @@ public class CosmosMutex implements Mutex {
         final long waited = Objects.requireNonNullElse(totalWaitMs.get(), 0L);
         logger.info("Total time spent waiting to acquire Cosmos locks: " + formatWaitTime(waited));
 
-        synchronized (CosmosMutex.class) {
-            if (cosmosClient != null) {
-                Try.run(cosmosClient::close)
-                        .onFailure(ex -> logger.warning(exceptionHandler.getExceptionMessage(ex)));
-                cosmosClient = null;
-                container = null;
-            }
-        }
+        // The container itself is closed by the producer's disposer method
+        container = null;
     }
 
-    @SuppressWarnings("NullAway")
     private void clearLocksOnStartup() {
         if (!clearOnStartup.orElse(false)) {
             return;
         }
 
-        if (cosmosClient == null) {
+        final CosmosLockContainer container = this.container;
+        if (container == null) {
             logger.warning("Cosmos client is not initialized, cannot clear locks on startup");
             return;
         }
 
-        final String query = "SELECT * FROM c";
-        final String databaseName = this.databaseName.orElse(DATABASE_NAME);
-        final String containerName = this.containerName.orElse(CONTAINER_NAME);
-
         logger.fine("Clearing all locks from Cosmos DB on startup");
-        Try.of(() -> cosmosClient.getDatabase(databaseName))
-                .map(database -> database.getContainer(containerName))
-                .map(container -> deleteFiles(container, container.queryItems(query, new CosmosQueryRequestOptions(), LockDocument.class)))
-                .onFailure(ex -> {
-                    if (!(ex instanceof NotFoundException)) {
-                        logger.warning("Failed to clear locks on startup: " + exceptionHandler.getExceptionMessage(ex));
-                    }
-                });
-    }
-
-    private List<CosmosItemResponse<Object>> deleteFiles(final CosmosContainer container, final CosmosPagedIterable<LockDocument> lockDocuments) {
-        return lockDocuments.stream()
-                .map(doc -> container.deleteItem(doc.id(), new PartitionKey(LOCK_PARTITION_VALUE), new CosmosItemRequestOptions()))
-                .toList();
-    }
-
-    private void initializeCosmosClient() {
-        if (cosmosEndpoint.isEmpty() || cosmosKey.isEmpty()) {
-            throw new LocalStorageFailure("Cosmos DB endpoint and key must be configured");
-        }
-
-        final String databaseName = this.databaseName.orElse(DATABASE_NAME);
-        final String containerName = this.containerName.orElse(CONTAINER_NAME);
-
-        final MetricsOptions metricsOptions = new CosmosMicrometerMetricsOptions();
-        metricsOptions.setEnabled(false);
-
-        final CosmosClientTelemetryConfig telemetryOptions = new CosmosClientTelemetryConfig();
-        telemetryOptions.metricsOptions(metricsOptions);
-
-        final CosmosClientBuilder builder = new CosmosClientBuilder()
-                .endpoint(cosmosEndpoint.get())
-                .key(cosmosKey.get())
-                .consistencyLevel(ConsistencyLevel.SESSION)
-                .clientTelemetryConfig(telemetryOptions)
-                .endpointDiscoveryEnabled(autoDiscovery)
-                .connectionSharingAcrossClientsEnabled(true)
-                .contentResponseOnWriteEnabled(false);
-
-        cosmosClient = (gatewayMode ? builder.gatewayMode() : builder)
-                .buildClient();
-
-        cosmosClient.createDatabaseIfNotExists(databaseName);
-
-        final CosmosDatabase database = cosmosClient.getDatabase(databaseName);
-
-        // Create container if it doesn't exist
-        final CosmosContainerProperties containerProperties = new CosmosContainerProperties(
-                containerName,
-                LOCK_PARTITION_KEY
-        );
-
-        // Set TTL on the container to enable automatic deletion of expired items
-        containerProperties.setDefaultTimeToLiveInSeconds(getLockTtlSeconds());
-
-        Try.of(() -> database.createContainerIfNotExists(containerProperties))
-                .onFailure(ex -> logger.warning("Failed to create container: " + exceptionHandler.getExceptionMessage(ex)));
-
-        container = database.getContainer(containerName);
+        Try.run(() -> container.deleteAllItems(LOCK_PARTITION_VALUE))
+                .onFailure(ex -> logger.warning("Failed to clear locks on startup: " + exceptionHandler.getExceptionMessage(ex)));
     }
 
     @Override
@@ -302,38 +198,28 @@ public class CosmosMutex implements Mutex {
         }
     }
 
-    private <T> Try<T> tryAcquireAndExecute(@Nullable final CosmosContainer container, final String lockName, final MutexCallback<T> callback) {
+    private <T> Try<T> tryAcquireAndExecute(@Nullable final CosmosLockContainer container, final String lockName, final MutexCallback<T> callback) {
         if (container == null) {
             return Try.failure(new LocalStorageFailure("Cosmos DB client is not initialized"));
         }
 
-        final Try<String> etag = Try.of(() -> container.readItem(lockName, new PartitionKey(LOCK_PARTITION_VALUE), LockDocument.class).getItem())
+        final Try<String> etag = Try.of(() -> container.readItem(lockName, LOCK_PARTITION_VALUE))
                 // If there are any cosmosdb errors, we want to log them
                 .onFailure(ex -> logReadItemFailure(lockName, ex))
-                // We can proceed if the existing lock is stale through to the map function below.
-                .filter(lockDoc -> lockDoc.isLockStale(getLockTtlSeconds()))
-                // If the existing lock was not found, we create a new lock
-                .recover(NotFoundException.class, ex -> new LockDocument(lockName, LOCK_PARTITION_VALUE, Instant.now(), getLockTtlSeconds()))
-                // The newer cosmos client throws a 404 error rather than NoSuchElementException
-                .recover(CosmosException.class, ex -> {
-                    if (ex.getStatusCode() == 404) {
-                        return new LockDocument(lockName, LOCK_PARTITION_VALUE, Instant.now(), getLockTtlSeconds());
-                    }
-                    throw ex;
-                })
-                // NoSuchElementException means the lock exists and is not stale.
-                // We failed to obtain the lock.
-                .recover(NoSuchElementException.class, ex -> {
-                    throw new LockFail("Failed to obtain lock - lock " + lockName + " is currently held", ex);
-                })
+                .flatMap(existing -> existing
+                        // We can proceed if the existing lock is stale.
+                        // If the lock exists and is not stale, we failed to obtain the lock.
+                        .map(lockDoc -> lockDoc.isLockStale(getLockTtlSeconds())
+                                ? Try.success(lockDoc)
+                                : Try.<LockDocument>failure(new LockFail(
+                                "Failed to obtain lock - lock " + lockName + " is currently held",
+                                new NoSuchElementException("Lock " + lockName + " is not stale"))))
+                        // If the existing lock was not found, we create a new lock
+                        .orElseGet(() -> Try.success(new LockDocument(lockName, LOCK_PARTITION_VALUE, Instant.now(), getLockTtlSeconds()))))
                 // Get a new etag for a stale lock, or the first etag for a new lock.
                 // If we have two processes trying to acquire the same lock at the same time,
                 // one of them will fail here due to the etag mismatch.
-                .map(lockDoc -> container.upsertItem(
-                        lockDoc,
-                        new PartitionKey(LOCK_PARTITION_VALUE),
-                        new CosmosItemRequestOptions().setIfMatchETag(lockDoc.getFixedEtag())))
-                .map(CosmosItemResponse::getETag);
+                .map(lockDoc -> container.upsertItem(lockDoc, LOCK_PARTITION_VALUE, lockDoc.getFixedEtag()));
 
         // If we failed, return the failure
         if (etag.isFailure()) {
@@ -347,48 +233,35 @@ public class CosmosMutex implements Mutex {
     }
 
     private void logReadItemFailure(final String lockName, final Throwable ex) {
-        // We ignore not found exceptions as they are expected when the lock does not exist
-        final boolean isNotFound = ex instanceof NotFoundException;
-        final boolean is404 = ex instanceof CosmosException cosmosEx && cosmosEx.getStatusCode() == 404;
-
-        if (!(isNotFound || is404)) {
-            logger.warning("Failed to read lock item: " + lockName + " - " + exceptionHandler.getExceptionMessage(ex));
-        }
+        // Missing locks are returned as an empty result rather than an exception, so any exception is unexpected
+        logger.warning("Failed to read lock item: " + lockName + " - " + exceptionHandler.getExceptionMessage(ex));
     }
 
-    @SuppressWarnings("NullAway")
     private void releaseLock(final String etag, final String lockName) {
+        final CosmosLockContainer container = this.container;
         if (container == null) {
             logger.warning("Cosmos DB client is not initialized, cannot release lock: " + lockName);
             return;
         }
 
-        Try.of(() -> new CosmosItemRequestOptions().setIfMatchETag(etag))
-                .map(options -> container.deleteItem(lockName, new PartitionKey(LOCK_PARTITION_VALUE), options))
-                /*
-                    There are a number of reasons for this to fail:
-                    1. The lock was already deleted (e.g. due to TTL expiry)
-                    2. The lock expired due to TTL expiry, was deleted by Cosmos DB, and recreated by another process, so there is a new etag
+        /*
+            There are a number of reasons for this to fail:
+            1. The lock was already deleted (e.g. due to TTL expiry)
+            2. The lock expired due to TTL expiry, was deleted by Cosmos DB, and recreated by another process, so there is a new etag
 
-                    We don't fail the process of releasing a lock, as the locked operation has already completed successfully.
-                 */
-                .onFailure(ex -> {
-                    final boolean isNotFound = ex instanceof NotFoundException;
-                    final boolean isPreconditionFailed = ex instanceof CosmosException cosmosEx && cosmosEx.getStatusCode() == 412;
-
-                    // We ignore errors when the lock file was deleted due to TTL expiry
-                    if (!isNotFound && !isPreconditionFailed) {
-                        logger.warning("Failed to release lock: " + lockName + " - " + ex.getMessage());
-                    }
-                });
+            The container ignores both of these cases. We don't fail the process of releasing a lock for any other
+            error either, as the locked operation has already completed successfully.
+         */
+        Try.run(() -> container.deleteItem(lockName, LOCK_PARTITION_VALUE, etag))
+                .onFailure(ex -> logger.warning("Failed to release lock: " + lockName + " - " + ex.getMessage()));
     }
 
 
     /**
      * Represents a lock document stored in Cosmos DB
      */
-    private record LockDocument(String id, String lock, Instant acquiredAt,
-                                @Nullable @JsonProperty("_etag") String eTag, Integer ttl) {
+    public record LockDocument(String id, String lock, Instant acquiredAt,
+                               @Nullable @JsonProperty("_etag") String eTag, Integer ttl) {
 
         private LockDocument(String id, String lock, Instant acquiredAt, Integer ttl) {
             this(id, lock, acquiredAt, null, ttl);

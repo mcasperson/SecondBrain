@@ -3,6 +3,7 @@ package secondbrain.domain.converter;
 import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.tika.exception.ZeroByteFileException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
@@ -28,9 +29,13 @@ public class TikaTextExtractor implements TextExtractorStrategy {
         Try.withResources(() -> new FileInputStream(path))
                 .of(stream -> Try
                         .run(() -> parser.parse(stream, handler, metadata, context))
+                        // Empty input has no text, which is not an error
+                        .recover(ZeroByteFileException.class, ex -> null)
                         .mapFailure(
                                 API.Case(API.$(), ex -> new ExternalFailure("Failed to parse file", ex))
                         ))
+                // The parse result is a nested Try, which must be flattened so a parse failure is thrown
+                .flatMap(parseResult -> parseResult)
                 .get();
 
         return handler.toString();
@@ -46,9 +51,13 @@ public class TikaTextExtractor implements TextExtractorStrategy {
         Try.withResources(() -> new ByteArrayInputStream(contents))
                 .of(stream -> Try
                         .run(() -> parser.parse(stream, handler, metadata, context))
+                        // Empty input has no text, which is not an error
+                        .recover(ZeroByteFileException.class, ex -> null)
                         .mapFailure(
                                 API.Case(API.$(), ex -> new ExternalFailure("Failed to parse string", ex))
                         ))
+                // The parse result is a nested Try, which must be flattened so a parse failure is thrown
+                .flatMap(parseResult -> parseResult)
                 .get();
 
         return handler.toString();

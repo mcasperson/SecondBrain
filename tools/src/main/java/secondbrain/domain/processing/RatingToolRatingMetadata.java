@@ -52,6 +52,8 @@ public class RatingToolRatingMetadata implements RatingMetadata {
                                             .stream()
                                             .flatMap(context -> context.getIntermediateResults().stream())
                                             .toList()))
+                    // Ratings are between 0 and 10, and RatingTool returns -1 when it could not rate the document
+                    .filter(result -> result.rating() >= 0, () -> new IllegalStateException("RatingTool could not rate the document"))
                     .onFailure(e -> logger.warning("Failed to get rating for document " + activity.id() + ": " + ExceptionUtils.getRootCauseMessage(e)))
                     // Ratings are provided on a best effort basis, so we ignore any failures
                     .recover(ex -> new RatingIntermediateResult(parsedArgs.getDefaultRating(), List.of()))

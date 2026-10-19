@@ -67,7 +67,7 @@ public class GitHubClientMock implements GitHubClient {
     }
 
     private String generateMockSha() {
-        // Generate a random SHA-like string
-        return UUID.randomUUID().toString().replace("-", "").substring(0, 40);
+        // Generate a random SHA-like string. A git SHA is 40 hex characters, but a UUID only has 32, so two are combined.
+        return (UUID.randomUUID().toString() + UUID.randomUUID()).replace("-", "").substring(0, 40);
     }
 }

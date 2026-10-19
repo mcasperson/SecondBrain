@@ -67,3 +67,6 @@ input.md
 .vscode
 .zprofile
 .zshrc
+
+target
+sb_azure*

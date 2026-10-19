@@ -10,5 +10,8 @@ public interface TextExtractorStrategy {
 
     boolean isSupported(String path);
 
+    /**
+     * When more than one extractor supports a file, the extractor with the lowest priority number is used.
+     */
     int priority();
 }

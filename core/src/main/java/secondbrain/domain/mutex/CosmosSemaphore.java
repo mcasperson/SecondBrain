@@ -49,11 +49,15 @@ public class CosmosSemaphore implements Semaphore {
 
             Collections.shuffle(randomizedRange);
 
-            // Attempt to acquire any one of the available semaphore slots
+            /*
+                Attempt to acquire any one of the available semaphore slots.
+                Only lock contention moves us on to the next slot. Any other failure (e.g. the callback threw an
+                exception, or Cosmos could not be read) stops the search, as the callback must not be run again.
+             */
             final Try<T> result = randomizedRange
                     .stream()
                     .map(i -> mutex.tryAcquire(lockName + "_" + i, callback))
-                    .filter(Try::isSuccess)
+                    .filter(attempt -> !(attempt.isFailure() && attempt.getCause() instanceof LockFail))
                     .findFirst()
                     .orElseGet(() -> Try.failure(new LockFail("All semaphore slots are currently held for: " + lockName)));
 

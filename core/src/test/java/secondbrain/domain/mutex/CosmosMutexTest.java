@@ -23,6 +23,7 @@ import java.util.Map;
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(CosmosMutex.class)
+@AddBeanClasses(CosmosLockContainerProducer.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 public class CosmosMutexTest {

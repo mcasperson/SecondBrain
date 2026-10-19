@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Comparator;
 
 @ApplicationScoped
 public class FileToTextContext implements FileToText {
@@ -18,17 +19,19 @@ public class FileToTextContext implements FileToText {
     public String convert(final String path) {
         return textExtractors
                 .stream()
-                .sorted((a, b) -> Integer.compare(b.priority(), a.priority()))
                 .filter(extractor -> extractor.isSupported(path))
-                .findFirst()
+                // The extractor with the lowest priority number wins
+                .min(Comparator.comparingInt(TextExtractorStrategy::priority))
                 .map(extractor -> extractor.convert(path))
-                .orElse(Try.of(() -> Files.readString(Paths.get(path))).getOrNull());
+                .orElseGet(() -> Try.of(() -> Files.readString(Paths.get(path))).getOrNull());
     }
 
     @Override
     public String convertByteArray(final byte[] contents) {
         return textExtractors
-                .stream().min((a, b) -> Integer.compare(b.priority(), a.priority()))
+                .stream()
+                // The extractor with the lowest priority number wins
+                .min(Comparator.comparingInt(TextExtractorStrategy::priority))
                 .map(extractor -> extractor.convertContents(contents))
                 .orElse(new String(contents));
 
