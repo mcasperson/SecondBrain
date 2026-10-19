@@ -47,6 +47,7 @@ import secondbrain.infrastructure.github.GitHubClientMock;
 import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.gong.GongClientMock;
 import secondbrain.infrastructure.ollama.OllamaClient;
+import secondbrain.domain.web.ClientConstructorDefault;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.PlanHatClientMock;
 import secondbrain.infrastructure.slack.SlackClient;
@@ -94,6 +95,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @AddBeanClasses(SmokeTest.class)
 @AddBeanClasses(ZenDeskOrganization.class)
 @AddBeanClasses(OllamaClient.class)
+@AddBeanClasses(ClientConstructorDefault.class)
 @AddBeanClasses(DebugToolArgsKeyValue.class)
 @AddBeanClasses(ListLimiterAtomicCutOff.class)
 @AddBeanClasses(SimpleSentenceSplitter.class)

@@ -5,6 +5,7 @@ import jakarta.ws.rs.core.Response;
 import secondbrain.domain.httpclient.ClientBuilder;
 import secondbrain.domain.httpclient.ClientCallback;
 import secondbrain.domain.httpclient.ExceptionBuilder;
+import secondbrain.domain.httpclient.HttpClientCaller;
 import secondbrain.domain.httpclient.ResponseCallback;
 import secondbrain.domain.timeout.TimeoutFunctionCallback;
 import secondbrain.domain.httpclient.TimeoutHttpClientCaller;
@@ -14,11 +15,11 @@ import java.util.List;
 import java.util.function.Supplier;
 
 /**
- * Synchronous {@link TimeoutHttpClientCaller} for unit tests. It executes the client callbacks once, on the calling
+ * Synchronous {@link TimeoutHttpClientCaller} and {@link HttpClientCaller} for unit tests. It executes the client callbacks once, on the calling
  * thread, and converts any failure with the caller supplied exception builder. An optional per-call interceptor can
  * throw an exception directly, simulating a caller that surfaces the raw HTTP failure.
  */
-public final class DirectHttpClientCaller implements TimeoutHttpClientCaller {
+public final class DirectHttpClientCaller implements TimeoutHttpClientCaller, HttpClientCaller {
     private final List<Long> retryDelays = new ArrayList<>();
     private final List<Integer> maxRetries = new ArrayList<>();
     private final List<Supplier<RuntimeException>> directFailures = new ArrayList<>();
@@ -42,6 +43,17 @@ public final class DirectHttpClientCaller implements TimeoutHttpClientCaller {
 
     public List<Integer> maxRetries() {
         return maxRetries;
+    }
+
+    /**
+     * The {@link HttpClientCaller} variant has no timeout or retry settings, so it records zero for both.
+     */
+    @Override
+    public <T> T call(final ClientBuilder builder, final ClientCallback callback, final ResponseCallback<T> responseCallback,
+                      final ExceptionBuilder exceptionBuilder) {
+        return call(builder, callback, responseCallback, exceptionBuilder, () -> {
+            throw new IllegalStateException("Timeouts are not supported");
+        }, 0, 0, 0);
     }
 
     @Override

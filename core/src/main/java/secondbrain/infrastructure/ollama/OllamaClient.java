@@ -4,7 +4,6 @@ import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -26,6 +25,7 @@ import secondbrain.domain.prompt.PromptBuilder;
 import secondbrain.domain.prompt.PromptBuilderSelector;
 import secondbrain.domain.response.ResponseValidation;
 import secondbrain.domain.timeout.TimeoutService;
+import secondbrain.domain.web.ClientConstructor;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.ollama.api.OllamaGenerateBody;
 import secondbrain.infrastructure.ollama.api.OllamaGenerateBodyOptions;
@@ -86,6 +86,9 @@ public class OllamaClient implements LlmClient {
 
     @Inject
     private TimeoutService timeoutService;
+
+    @Inject
+    private ClientConstructor clientConstructor;
 
     private synchronized OllamaResponse callOllama(final Client client, final OllamaGenerateBody body) {
         return callOllama(client, body, 0);
@@ -244,16 +247,17 @@ public class OllamaClient implements LlmClient {
             final String model,
             @Nullable final Integer contextWindow,
             final String resolvedUri) {
-        return Try.withResources(ClientBuilder::newClient)
+        // The read timeout matches the overall API call timeout, as Ollama queues requests and can take a long time to respond
+        return Try.withResources(() -> clientConstructor.getClient((int) API_CALL_TIMEOUT_SECONDS))
                 .of(client -> timeoutService.executeWithTimeout(() -> {
-                                final String fullPrompt = getPromptFromDocument(ragDoc, prompt);
-                                final OllamaResponse response = callOllama(client, new OllamaGenerateBody(
-                                        model,
-                                        fullPrompt,
-                                        false,
-                                        new OllamaGenerateBodyOptions(contextWindow)), resolvedUri);
-                                return ragDoc.updateResponse(response.response());
-                            },
+                            final String fullPrompt = getPromptFromDocument(ragDoc, prompt);
+                            final OllamaResponse response = callOllama(client, new OllamaGenerateBody(
+                                    model,
+                                    fullPrompt,
+                                    false,
+                                    new OllamaGenerateBodyOptions(contextWindow)), resolvedUri);
+                            return ragDoc.updateResponse(response.response());
+                        },
                         () -> ragDoc.updateResponse(API_CALL_TIMEOUT_MESSAGE),
                         API_CALL_TIMEOUT_SECONDS))
                 .get();
