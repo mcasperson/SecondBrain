@@ -942,6 +942,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             return Objects.requireNonNullElse(planhat, List.<String>of())
                     .stream()
                     .filter(StringUtils::isNotBlank)
+                    .sorted()
                     .toList();
         }
 
@@ -949,6 +950,7 @@ public class MultiSlackZenGoogle implements Tool<Void> {
             return Objects.requireNonNullElse(salesforce, List.<String>of())
                     .stream()
                     .filter(StringUtils::isNotBlank)
+                    .sorted()
                     .toList();
         }
     }
