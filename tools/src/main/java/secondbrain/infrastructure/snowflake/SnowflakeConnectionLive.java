@@ -2,6 +2,7 @@ package secondbrain.infrastructure.snowflake;
 
 import io.vavr.control.Try;
 import org.jspecify.annotations.Nullable;
+import secondbrain.domain.tryext.TryExtensions;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -23,17 +24,21 @@ public class SnowflakeConnectionLive implements SnowflakeConnection {
 
     @Override
     public <T> List<T> query(final String sql, final String parameter, final Function<SnowflakeRow, T> rowMapper) {
-        return Try.of(() -> connection.prepareStatement(sql))
-                .mapTry(statement -> {
-                    statement.setString(1, parameter);
-                    final ResultSet rs = statement.executeQuery();
-                    final SnowflakeRow row = new ResultSetRow(rs);
-                    final List<T> results = new ArrayList<>();
-                    while (rs.next()) {
-                        results.add(rowMapper.apply(row));
-                    }
-                    return results;
-                })
+        // The statement and result set are closed after the rows are read, as the connection is long-lived
+        return TryExtensions.withResources(
+                        () -> connection.prepareStatement(sql),
+                        statement -> {
+                            statement.setString(1, parameter);
+                            return statement.executeQuery();
+                        },
+                        rs -> {
+                            final SnowflakeRow row = new ResultSetRow(rs);
+                            final List<T> results = new ArrayList<>();
+                            while (rs.next()) {
+                                results.add(rowMapper.apply(row));
+                            }
+                            return results;
+                        })
                 .get();
     }
 

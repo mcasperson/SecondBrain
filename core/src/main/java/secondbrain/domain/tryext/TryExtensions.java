@@ -8,6 +8,7 @@ public final class TryExtensions {
     /**
      * Provide a simple way to nest Try.withResources calls for two resources where the
      * second resource depends on the first.
+     * Any failure, including a failure to create or close the first resource, is returned as a failed Try.
      */
     public static <T1 extends AutoCloseable, T2 extends AutoCloseable, T3> Try<T3> withResources(
             final CheckedFunction0<T1> t1Supplier,
@@ -16,6 +17,7 @@ public final class TryExtensions {
         return Try.withResources(t1Supplier)
                 .of(x -> Try.withResources(() -> t2Supplier.apply(x))
                         .of(callback))
-                .get();
+                // Flatten the nested Try rather than calling get(), which would throw if the first resource failed
+                .flatMap(result -> result);
     }
 }
