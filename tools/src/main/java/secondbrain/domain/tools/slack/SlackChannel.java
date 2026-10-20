@@ -193,7 +193,7 @@ public class SlackChannel implements Tool<Void> {
         if (parsedArgs.isSkipEmptyInLastDuration()) {
             final boolean anyPresent = Try.of(() -> channelIds.
                             stream()
-                            .noneMatch(c -> slackClient.anyItemsInDuration(
+                            .anyMatch(c -> slackClient.anyItemsInDuration(
                                     client,
                                     parsedArgs.getSecretAccessToken(),
                                     c,
@@ -251,9 +251,13 @@ public class SlackChannel implements Tool<Void> {
 
         final List<RagDocumentContext<SlackChannelResource>> ragDocs = exceptionMapping.map(result).get();
 
+        // Combine preinitialization hooks with ragDocs
+        final List<RagDocumentContext<SlackChannelResource>> combinedDocs =
+                Stream.concat(preinitHooks.stream(), ragDocs.stream()).toList();
+
         // Apply preprocessing hooks
         final List<RagDocumentContext<Void>> context = Seq.seq(hooksContainer.getMatchingPreProcessorHooks(parsedArgs.getPreprocessingHooks()))
-                .foldLeft(ragDocs, (docs, hook) -> hook.process(getName(), docs))
+                .foldLeft(combinedDocs, (docs, hook) -> hook.process(getName(), docs))
                 .stream()
                 .map(ragDoc -> ragDoc.updateDocument(documentTrimmer.trimDocumentToKeywords(ragDoc.document(), parsedArgs.getKeywords(), parsedArgs.getKeywordWindow())))
                 .filter(ragDoc -> StringUtils.isNotBlank(ragDoc.document()))

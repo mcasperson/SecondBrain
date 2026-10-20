@@ -21,7 +21,7 @@ public record GongCallExtensiveContext(String system, List<GongCallExtensiveCont
 
     public Optional<GongCallExtensiveContextObjectField> getObject(final String objectType, final String fieldName) {
         return getObjects().stream()
-                .filter(o -> o.objectType().equals(objectType))
+                .filter(o -> objectType.equals(o.objectType()))
                 .flatMap(o -> o.getFields().stream())
                 .filter(f -> fieldName.equals(f.name()))
                 .findFirst();
