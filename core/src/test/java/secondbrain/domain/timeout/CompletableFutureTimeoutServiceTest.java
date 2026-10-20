@@ -104,15 +104,20 @@ class CompletableFutureTimeoutServiceTest {
     }
 
     @Test
-    void executeWithTimeoutThrowsTheTimeoutInsteadOfCallingOnTimeout() {
-        // Looks like a bug: get() wraps the TimeoutException in an ExecutionException, so recover(TimeoutException.class)
-        // never matches, onTimeout is never called and the timeout escapes to the caller
-        final ExecutionException ex = assertThrows(ExecutionException.class,
-                () -> service.executeWithTimeout(this::blockingCallback, this::onTimeout, IMMEDIATE_TIMEOUT));
+    void executeWithTimeoutCallsOnTimeoutWhenTheCallbackTimesOut() {
+        assertEquals("timed out", service.executeWithTimeout(this::blockingCallback, this::onTimeout, IMMEDIATE_TIMEOUT));
+        assertEquals(1, timeoutCalls.get());
+        assertEquals(List.of("Operation timed out after 0 seconds"), warnings);
+    }
 
-        assertInstanceOf(TimeoutException.class, ex.getCause());
-        assertEquals(0, timeoutCalls.get());
-        assertEquals(List.of(), warnings);
+    @Test
+    void executeWithTimeoutPropagatesOnTimeoutFailures() {
+        final IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> service.executeWithTimeout(this::blockingCallback, () -> {
+                    throw new IllegalStateException("gave up");
+                }, IMMEDIATE_TIMEOUT));
+
+        assertEquals("gave up", ex.getMessage());
     }
 
     @Test
@@ -155,15 +160,12 @@ class CompletableFutureTimeoutServiceTest {
     }
 
     @Test
-    void executeWithTimeoutThrowsWhenAFutureTimesOut() {
-        // Looks like a bug: as above, onTimeout is never called because the TimeoutException is wrapped
+    void executeWithTimeoutCallsOnTimeoutWhenAFutureTimesOut() {
         final CompletableFuture<String> future = new CompletableFuture<>();
 
-        final ExecutionException ex = assertThrows(ExecutionException.class,
-                () -> service.executeWithTimeout(future, this::onTimeout, IMMEDIATE_TIMEOUT));
-
-        assertInstanceOf(TimeoutException.class, ex.getCause());
-        assertEquals(0, timeoutCalls.get());
+        assertEquals("timed out", service.executeWithTimeout(future, this::onTimeout, IMMEDIATE_TIMEOUT));
+        assertEquals(1, timeoutCalls.get());
+        assertEquals(List.of("Operation timed out after 0 seconds"), warnings);
         // The supplied future is completed exceptionally by the timeout
         assertTrue(future.isCompletedExceptionally());
     }
@@ -212,15 +214,25 @@ class CompletableFutureTimeoutServiceTest {
     }
 
     @Test
-    void executeWithTimeoutAndRetryDoesNotRetryAfterATimeout() {
-        // Looks like a bug: the wrapped TimeoutException is never recovered, so the call is not retried and onTimeout
-        // is not called once the retries are exhausted
-        final ExecutionException ex = assertThrows(ExecutionException.class,
-                () -> service.executeWithTimeoutAndRetry(this::blockingCallback, this::onTimeout, IMMEDIATE_TIMEOUT, 3, 0));
+    void executeWithTimeoutAndRetryRetriesTimeoutsThenCallsOnTimeout() {
+        assertEquals("timed out", service.executeWithTimeoutAndRetry(this::blockingCallback, this::onTimeout, IMMEDIATE_TIMEOUT, 3, 0));
+        assertEquals(1, timeoutCalls.get());
+        assertEquals(List.of(
+                "Operation timed out after 0 seconds",
+                "Operation timed out after 0 seconds",
+                "Operation timed out after 0 seconds",
+                "Max retry attempts reached: 3"), warnings);
+    }
 
-        assertInstanceOf(TimeoutException.class, ex.getCause());
-        assertEquals(1, callbackCalls.get());
+    @Test
+    void executeWithTimeoutAndRetryReturnsTheResultOfARetryAfterATimeout() {
+        // The first attempt blocks until the test ends, so it times out, and the second attempt returns straight away
+        final TimeoutFunctionCallback<String> callback = () -> callbackCalls.get() == 0 ? blockingCallback() : immediateCallback();
+
+        assertEquals("result", service.executeWithTimeoutAndRetry(callback, this::onTimeout, 1, 3, 0));
+        assertEquals(2, callbackCalls.get());
         assertEquals(0, timeoutCalls.get());
+        assertEquals(List.of("Operation timed out after 1 seconds"), warnings);
     }
 
     @Test

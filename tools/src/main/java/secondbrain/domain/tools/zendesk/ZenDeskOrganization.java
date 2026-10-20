@@ -25,7 +25,7 @@ import secondbrain.domain.date.DateParser;
 import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
-import secondbrain.domain.exceptions.EmptyString;
+import secondbrain.domain.exceptions.EmptyList;
 import secondbrain.domain.exceptions.InternalFailure;
 import secondbrain.domain.hooks.HooksContainer;
 import secondbrain.domain.injection.Preferred;
@@ -371,7 +371,7 @@ public class ZenDeskOrganization implements Tool<Void> {
                 .map(tickets -> new RagMultiDocumentContext<Void>(prompts, INSTRUCTIONS, tickets))
                 // Call Ollama with the final prompt
                 .map(ragDoc -> llmClient.callWithCache(ragDoc, environmentSettings, getName()))
-                .recover(EmptyString.class, e -> new RagMultiDocumentContext<>(
+                .recover(EmptyList.class, e -> new RagMultiDocumentContext<>(
                         List.of(),
                         "",
                         null,
@@ -474,7 +474,7 @@ class ZenDeskConfig {
      * between calls. Individual organizations are then filtered out from the collective results client side.
      */
     @Inject
-    @ConfigProperty(name = "sb.zendesk.filterbyorganization", defaultValue = "false")
+    @ConfigProperty(name = "sb.zendesk.filterbyorganization")
     private Optional<String> configZenDeskFilterByOrganization;
 
     @Inject
@@ -890,7 +890,7 @@ class ZenDeskConfig {
 
         public String getOrganization() {
             // Organization is just a name or number. If the organization is an email address, it was mixed up for the receipt.
-            if (EmailValidator.getInstance().isValid(getSanitizeEmail().sanitize(getRawOrganization(), String.join("\n", prompts))) && StringUtils.isBlank(getRecipient())) {
+            if (EmailValidator.getInstance().isValid(getSanitizeEmail().sanitize(getRawOrganization(), String.join("\n", prompts))) && StringUtils.isBlank(getRawRecipient())) {
                 return "";
             }
 
@@ -915,7 +915,10 @@ class ZenDeskConfig {
                     .filter(StringUtils::isNotBlank)
                     .collect(Collectors.toList());
 
-            excludedOrganization.addAll(Arrays.stream(getConfigZenExcludedOrgs().orElse("").split(",")).toList());
+            excludedOrganization.addAll(Arrays.stream(getConfigZenExcludedOrgs().orElse("").split(","))
+                    .map(String::trim)
+                    .filter(StringUtils::isNotBlank)
+                    .toList());
 
             return excludedOrganization;
         }
@@ -1373,7 +1376,7 @@ class ZenDeskConfig {
                     ZenDeskOrganization.TTL_SECONDS,
                     DEFAULT_TOOL_TTL_SECONDS + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_TOOL_TTL_SECONDS));
         }
 
         @Override

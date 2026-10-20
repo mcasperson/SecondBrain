@@ -2271,7 +2271,7 @@ class MultiSlackZenGoogleConfig {
                     MultiSlackZenGoogle.MULTI_SLACK_ZEN_TTL_SECONDS_ARG,
                     DEFAULT_TTL_SECONDS + "");
 
-            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_RATING));
+            return Math.max(0, org.apache.commons.lang3.math.NumberUtils.toInt(argument.getSafeValue(), DEFAULT_TTL_SECONDS));
         }
 
         public int getMinimumContentLength() {

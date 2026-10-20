@@ -14,17 +14,20 @@ import secondbrain.infrastructure.planhat.api.TicketPart;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * A PlanHat client that returns the configured objectives, opportunities and conversations. Each call is recorded, and calls can be
- * made to fail. Methods that are not supported throw UnsupportedOperationException. Expose it with a
+ * A PlanHat client that returns the configured objectives, opportunities, conversations, companies and users. Each call is recorded, and calls can be
+ * made to fail. Companies are looked up by the PlanHat URL, so each PlanHat instance can return a different company, and
+ * users are looked up by ID. A company or user that has not been added fails the call. Methods that are not supported throw UnsupportedOperationException. Expose it with a
  * {@code @Produces @Preferred} method.
  */
 public final class FakePlanHatClient implements PlanHatClient {
     /**
-     * A recorded call to getObjectives or getOpportunities.
+     * A recorded call to getObjectives, getOpportunities, getCompany or getUser. For getUser the companyId is the user ID.
      */
     public record Call(String method, Client client, String companyId, String url, String token, int ttlSeconds) {
     }
@@ -41,6 +44,8 @@ public final class FakePlanHatClient implements PlanHatClient {
     public final List<Conversation> conversations = new ArrayList<>();
     public final List<Call> calls = new CopyOnWriteArrayList<>();
     public final List<ConversationCall> conversationCalls = new CopyOnWriteArrayList<>();
+    public final Map<String, Company> companiesByUrl = new HashMap<>();
+    public final Map<String, PlanHatUser> usersById = new HashMap<>();
     public volatile boolean fail;
 
     private void record(final String method, final Client client, final String companyId, final String url, final String token, final int ttlSeconds) {
@@ -93,11 +98,21 @@ public final class FakePlanHatClient implements PlanHatClient {
 
     @Override
     public Company getCompany(final Client client, final String company, final String url, final String token, final int ttlSeconds) {
-        throw new UnsupportedOperationException();
+        record("getCompany", client, company, url, token, ttlSeconds);
+        final Company found = companiesByUrl.get(url);
+        if (found == null) {
+            throw new IllegalStateException("No company at " + url);
+        }
+        return found;
     }
 
     @Override
     public PlanHatUser getUser(final Client client, final String userId, final String url, final String token, final int ttlSeconds) {
-        throw new UnsupportedOperationException();
+        record("getUser", client, userId, url, token, ttlSeconds);
+        final PlanHatUser found = usersById.get(userId);
+        if (found == null) {
+            throw new IllegalStateException("No user " + userId);
+        }
+        return found;
     }
 }

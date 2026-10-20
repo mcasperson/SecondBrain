@@ -68,6 +68,7 @@ import secondbrain.domain.zip.ApacheCommonsZStdZipper;
 import secondbrain.domain.zip.ApacheCompressZipper;
 import secondbrain.infrastructure.azure.MessageTooLongResponseInspector;
 import secondbrain.infrastructure.gong.GongClient;
+import secondbrain.infrastructure.googledocs.GoogleDocsClientProducer;
 import secondbrain.infrastructure.gong.GongClientMock;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.mock.MockLLmCLient;
@@ -95,6 +96,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @AddBeanClasses(SlackSearch.class)
 @AddBeanClasses(ZenDeskOrganization.class)
 @AddBeanClasses(GoogleDocs.class)
+@AddBeanClasses(GoogleDocsClientProducer.class)
 @AddBeanClasses(PlanHat.class)
 @AddBeanClasses(PlanHatUsage.class)
 @AddBeanClasses(Gong.class)

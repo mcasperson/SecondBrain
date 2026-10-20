@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
@@ -16,6 +17,14 @@ public class CompletableFutureTimeoutService implements TimeoutService {
     @Inject
     private Logger logger;
 
+    /**
+     * CompletableFuture.get() reports a timeout from orTimeout() as an ExecutionException wrapping the TimeoutException.
+     */
+    private static boolean isTimeout(final Throwable e) {
+        return e instanceof TimeoutException
+                || (e instanceof ExecutionException && e.getCause() instanceof TimeoutException);
+    }
+
     @Override
     public <T> T executeWithTimeout(final TimeoutFunctionCallback<T> callback, final TimeoutFunctionCallback<T> onTimeout, final long timeoutSeconds) {
         checkNotNull(callback, "callback must not be null");
@@ -25,8 +34,12 @@ public class CompletableFutureTimeoutService implements TimeoutService {
                         .supplyAsync(callback::apply)
                         .orTimeout(timeoutSeconds, TimeUnit.SECONDS)
                         .get())
-                .onFailure(TimeoutException.class, e -> logger.warning("Operation timed out after " + timeoutSeconds + " seconds"))
-                .recover(TimeoutException.class, e -> onTimeout.apply())
+                .onFailure(e -> {
+                    if (isTimeout(e)) {
+                        logger.warning("Operation timed out after " + timeoutSeconds + " seconds");
+                    }
+                })
+                .recoverWith(e -> isTimeout(e) ? Try.of(onTimeout::apply) : Try.failure(e))
                 .get();
     }
 
@@ -38,8 +51,12 @@ public class CompletableFutureTimeoutService implements TimeoutService {
         return Try.of(() -> callback
                         .orTimeout(timeoutSeconds, TimeUnit.SECONDS)
                         .get())
-                .onFailure(TimeoutException.class, e -> logger.warning("Operation timed out after " + timeoutSeconds + " seconds"))
-                .recover(TimeoutException.class, e -> onTimeout.apply())
+                .onFailure(e -> {
+                    if (isTimeout(e)) {
+                        logger.warning("Operation timed out after " + timeoutSeconds + " seconds");
+                    }
+                })
+                .recoverWith(e -> isTimeout(e) ? Try.of(onTimeout::apply) : Try.failure(e))
                 .get();
     }
 
@@ -87,12 +104,18 @@ public class CompletableFutureTimeoutService implements TimeoutService {
                         .supplyAsync(callback::apply)
                         .orTimeout(timeoutSeconds, TimeUnit.SECONDS)
                         .get())
-                .onFailure(TimeoutException.class, e -> logger.warning("Operation timed out after " + timeoutSeconds + " seconds"))
-                .recover(TimeoutException.class, e -> {
+                .onFailure(e -> {
+                    if (isTimeout(e)) {
+                        logger.warning("Operation timed out after " + timeoutSeconds + " seconds");
+                    }
+                })
+                .recoverWith(e -> isTimeout(e)
+                        ? Try.of(() -> {
                     Try.run(() -> Thread.sleep(retryDelaySeconds * 1000));
                     return executeWithTimeoutAndRetry(
                             callback, onTimeout, timeoutSeconds, retryCount, retryDelaySeconds, retryAttempt + 1);
                 })
+                        : Try.failure(e))
                 .get();
     }
 }

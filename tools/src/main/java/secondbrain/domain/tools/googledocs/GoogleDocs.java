@@ -1,10 +1,6 @@
 package secondbrain.domain.tools.googledocs;
 
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpRequestInitializer;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.services.docs.v1.Docs;
 import com.google.api.services.docs.v1.model.*;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.AccessToken;
@@ -45,6 +41,7 @@ import secondbrain.domain.tools.CommonArguments;
 import secondbrain.domain.tools.googledocs.model.GoogleDoc;
 import secondbrain.domain.tools.keyword.Keywords;
 import secondbrain.domain.tools.rating.RatingTool;
+import secondbrain.infrastructure.googledocs.GoogleDocsClient;
 import secondbrain.infrastructure.llm.LlmClient;
 
 import java.io.ByteArrayInputStream;
@@ -66,8 +63,6 @@ public class GoogleDocs implements Tool<Void> {
     public static final String GOOGLE_DOC_FILTER_RATING_META = "FilterRating";
     public static final String GOOGLE_DOC_ID_ARG = "googleDocumentId";
     private static final SemaphoreLender SEMAPHORE_LENDER = new SemaphoreLender(Constants.DEFAULT_SEMAPHORE_COUNT);
-    private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
-    private static final String APPLICATION_NAME = "SecondBrain";
     private static final String INSTRUCTIONS = """
             You are an expert in reading technical Google Documents.
             You are given a prompt and the contents of a Google Document related to the prompt.
@@ -108,6 +103,9 @@ public class GoogleDocs implements Tool<Void> {
 
     @Inject
     private DocumentTrimmer documentTrimmer;
+
+    @Inject
+    private GoogleDocsClient googleDocsClient;
 
     @Override
     public String getName() {
@@ -196,11 +194,7 @@ public class GoogleDocs implements Tool<Void> {
         }
 
         final Try<List<RagDocumentContext<Void>>> result = SEMAPHORE_LENDER.lendAutoClose()
-                .of(s -> Try.of(GoogleNetHttpTransport::newTrustedTransport)
-                        .map(transport -> new Docs.Builder(transport, JSON_FACTORY, token.get())
-                                .setApplicationName(APPLICATION_NAME)
-                                .build())
-                        .mapTry(service -> service.documents().get(parsedArgs.getDocumentId()).execute())
+                .of(s -> Try.of(() -> googleDocsClient.getDocument(token.get(), parsedArgs.getDocumentId()))
                         .map(this::getDocumentText)
                         .map(docText -> new GoogleDoc(parsedArgs.getDocumentId(), "Google Doc " + parsedArgs.getDocumentId(), "https://docs.google.com/document/d/" + parsedArgs.getDocumentId(), docText))
                         .map(docText -> dataToRagDoc.getDocumentContext(docText, getName(), getContextLabel(), parsedArgs))
