@@ -194,10 +194,14 @@ class UploadedDocTest {
     }
 
     @Test
-    void getContextReturnsNothingWithoutAFilename() {
-        // Looks like a bug: a missing filename is returned as null rather than "", which fails the upload
-        assertEquals(List.of(), tool.getContext(Map.of("document", encode(CONTENTS)), List.of(PROMPT), args()));
-        assertTrue(fileToText.paths.isEmpty());
+    void getContextConvertsADocumentWithoutAFilename() {
+        final List<RagDocumentContext<Void>> context = tool.getContext(Map.of("document", encode(CONTENTS)), List.of(PROMPT), args());
+
+        // Without a filename the temp file has no extension, like a filename without one
+        assertEquals(List.of(CONTENTS), documents(context));
+        assertEquals(1, fileToText.paths.size());
+        assertTrue(fileToText.paths.getFirst().endsWith("."), fileToText.paths.getFirst());
+        assertEquals(List.of(CONTENTS), fileToText.contents);
     }
 
     @Test

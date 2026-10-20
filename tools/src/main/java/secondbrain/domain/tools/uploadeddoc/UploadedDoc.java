@@ -37,6 +37,7 @@ import java.io.FileOutputStream;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -324,9 +325,7 @@ class UploadDocConfig {
         }
 
         public String getFileName() {
-            return Try.of(() -> context.get("filename"))
-                    .recover(throwable -> "")
-                    .get();
+            return Objects.requireNonNullElse(context.get("filename"), "");
         }
 
         public List<String> getKeywords() {
