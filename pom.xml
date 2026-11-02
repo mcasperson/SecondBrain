@@ -46,6 +46,18 @@
 
     <dependencyManagement>
         <dependencies>
+            <!--
+                Align every Jackson module. Transitive dependencies such as resteasy-jackson2-provider otherwise pull in
+                2.18.1, which the Anthropic SDK rejects at runtime (https://github.com/FasterXML/jackson-databind/issues/4639).
+                This is listed first so it takes precedence over any Jackson versions managed by the other BOMs.
+            -->
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>2.18.2</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-bom</artifactId>
@@ -91,12 +103,6 @@
                 <version>1.9.0</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-            <!-- Match the Jackson version used by the rest of the project rather than the one requested by the Anthropic SDK -->
-            <dependency>
-                <groupId>com.fasterxml.jackson.module</groupId>
-                <artifactId>jackson-module-kotlin</artifactId>
-                <version>2.18.2</version>
             </dependency>
         </dependencies>
 
