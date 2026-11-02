@@ -6,6 +6,7 @@ import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.infrastructure.azure.AzureClient;
+import secondbrain.infrastructure.claude.ClaudeClient;
 import secondbrain.infrastructure.google.GoogleClient;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.ollama.OllamaClient;
@@ -25,13 +26,18 @@ public class LlmClientProducer {
     @ApplicationScoped
     public LlmClient produceLlmClient(final OllamaClient ollamaClient,
                                       final GoogleClient googleClient,
-                                      final AzureClient azureClient) {
+                                      final AzureClient azureClient,
+                                      final ClaudeClient claudeClient) {
         if ("google".equalsIgnoreCase(client)) {
             return googleClient;
         }
 
         if ("azure".equalsIgnoreCase(client)) {
             return azureClient;
+        }
+
+        if ("claude".equalsIgnoreCase(client)) {
+            return claudeClient;
         }
 
         return ollamaClient;

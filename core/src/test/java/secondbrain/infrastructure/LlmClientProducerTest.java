@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.infrastructure.azure.AzureClient;
+import secondbrain.infrastructure.claude.ClaudeClient;
 import secondbrain.infrastructure.google.GoogleClient;
 import secondbrain.infrastructure.llm.LlmClient;
 import secondbrain.infrastructure.ollama.OllamaClient;
@@ -36,65 +37,77 @@ import static org.mockito.Mockito.when;
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(LlmClientProducer.class)
 class LlmClientProducerTest {
-	@Inject
-	@Preferred
-	private LlmClient llmClient;
+    @Inject
+    @Preferred
+    private LlmClient llmClient;
 
-	private static <T extends LlmClient> T namedClient(final Class<T> clazz, final String name) {
-		final T client = mock(clazz);
-		when(client.call(any(String.class), anyMap())).thenReturn(name);
-		return client;
-	}
+    private static <T extends LlmClient> T namedClient(final Class<T> clazz, final String name) {
+        final T client = mock(clazz);
+        when(client.call(any(String.class), anyMap())).thenReturn(name);
+        return client;
+    }
 
-	@Produces
-	@ExcludeBean
-	OllamaClient produceOllamaClient() {
-		return namedClient(OllamaClient.class, "ollama");
-	}
+    @Produces
+    @ExcludeBean
+    OllamaClient produceOllamaClient() {
+        return namedClient(OllamaClient.class, "ollama");
+    }
 
-	@Produces
-	@ExcludeBean
-	GoogleClient produceGoogleClient() {
-		return namedClient(GoogleClient.class, "google");
-	}
+    @Produces
+    @ExcludeBean
+    GoogleClient produceGoogleClient() {
+        return namedClient(GoogleClient.class, "google");
+    }
 
-	@Produces
-	@ExcludeBean
-	AzureClient produceAzureClient() {
-		return namedClient(AzureClient.class, "azure");
-	}
+    @Produces
+    @ExcludeBean
+    AzureClient produceAzureClient() {
+        return namedClient(AzureClient.class, "azure");
+    }
 
-	private String selectedClient(final Map<String, String> config) {
-		TestConfigUtil.registerConfig(config);
-		return llmClient.call("prompt", Map.of());
-	}
+    @Produces
+    @ExcludeBean
+    ClaudeClient produceClaudeClient() {
+        return namedClient(ClaudeClient.class, "claude");
+    }
 
-	@Test
-	void defaultsToOllamaWhenNoClientIsConfigured() {
-		assertEquals("ollama", selectedClient(Map.of()));
-	}
+    private String selectedClient(final Map<String, String> config) {
+        TestConfigUtil.registerConfig(config);
+        return llmClient.call("prompt", Map.of());
+    }
 
-	@ParameterizedTest
-	@ValueSource(strings = {"google", "GOOGLE", "Google"})
-	void selectsGoogleIgnoringCase(final String client) {
-		assertEquals("google", selectedClient(Map.of("sb.llm.client", client)));
-	}
+    @Test
+    void defaultsToOllamaWhenNoClientIsConfigured() {
+        assertEquals("ollama", selectedClient(Map.of()));
+    }
 
-	@ParameterizedTest
-	@ValueSource(strings = {"azure", "AZURE", "Azure"})
-	void selectsAzureIgnoringCase(final String client) {
-		assertEquals("azure", selectedClient(Map.of("sb.llm.client", client)));
-	}
+    @ParameterizedTest
+    @ValueSource(strings = {"google", "GOOGLE", "Google"})
+    void selectsGoogleIgnoringCase(final String client) {
+        assertEquals("google", selectedClient(Map.of("sb.llm.client", client)));
+    }
 
-	@ParameterizedTest
-	@ValueSource(strings = {"ollama", "OLLAMA", "openai", "google-gemini", " azure "})
-	void anyOtherValueSelectsOllama(final String client) {
-		assertEquals("ollama", selectedClient(Map.of("sb.llm.client", client)));
-	}
+    @ParameterizedTest
+    @ValueSource(strings = {"azure", "AZURE", "Azure"})
+    void selectsAzureIgnoringCase(final String client) {
+        assertEquals("azure", selectedClient(Map.of("sb.llm.client", client)));
+    }
 
-	@Test
-	void theProducedClientIsCreatedOnceForTheApplication() {
-		assertEquals("azure", selectedClient(Map.of("sb.llm.client", "azure")));
-		assertEquals("azure", selectedClient(Map.of("sb.llm.client", "google")));
-	}
+    @ParameterizedTest
+    @ValueSource(strings = {"claude", "CLAUDE", "Claude"})
+    void selectsClaudeIgnoringCase(final String client) {
+        assertEquals("claude", selectedClient(Map.of("sb.llm.client", client)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ollama", "OLLAMA", "openai", "google-gemini", " azure "})
+    void anyOtherValueSelectsOllama(final String client) {
+        assertEquals("ollama", selectedClient(Map.of("sb.llm.client", client)));
+    }
+
+    @Test
+    void theProducedClientIsCreatedOnceForTheApplication() {
+        assertEquals("azure", selectedClient(Map.of("sb.llm.client", "azure")));
+        assertEquals("azure", selectedClient(Map.of("sb.llm.client", "google")));
+    }
 }
