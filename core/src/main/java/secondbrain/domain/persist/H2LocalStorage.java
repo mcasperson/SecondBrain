@@ -16,14 +16,11 @@ import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.exceptions.SerializationFailed;
 import secondbrain.domain.json.JsonDeserializer;
-import secondbrain.domain.persist.config.LocalStorageCacheDisable;
-import secondbrain.domain.persist.config.LocalStorageCacheDisableRedaction;
-import secondbrain.domain.persist.config.LocalStorageCacheReadOnly;
-import secondbrain.domain.persist.config.LocalStorageCacheWriteOnly;
-import secondbrain.domain.persist.config.LocalStorageDisableTool;
+import secondbrain.domain.persist.config.*;
 import secondbrain.domain.sanitize.SanitizeDocument;
 
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -177,7 +174,14 @@ public class H2LocalStorage implements LocalStorage {
 
     private String getDatabasePath() {
         return path
-                .map(p -> Paths.get(p, "localstoragev2").toAbsolutePath().toString())
+                .map(p -> {
+                    final Path directory = Paths.get(p).toAbsolutePath();
+                    if (!Files.exists(directory)) {
+                        Try.run(() -> Files.createDirectories(directory))
+                                .onFailure(ex -> logger.warning("Failed to create database directory " + directory + ": " + ex.getMessage()));
+                    }
+                    return directory.resolve("localstoragev2").toString();
+                })
                 .orElse("./localstoragev2");
     }
 
@@ -549,9 +553,9 @@ public class H2LocalStorage implements LocalStorage {
                         preparedStatement.setTimestamp(5, ttlSeconds == 0
                                 ? null
                                 : Timestamp.from(ZonedDateTime
-                                                 .now(ZoneOffset.UTC)
-                                                 .plusSeconds(ttlSeconds)
-                                                 .toInstant()));
+                                .now(ZoneOffset.UTC)
+                                .plusSeconds(ttlSeconds)
+                                .toInstant()));
                         preparedStatement.executeUpdate();
                         return preparedStatement;
                     })
