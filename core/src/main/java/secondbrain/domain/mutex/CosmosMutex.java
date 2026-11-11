@@ -5,8 +5,6 @@ import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
-import jakarta.enterprise.event.Startup;
 import jakarta.inject.Inject;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -78,11 +76,6 @@ public class CosmosMutex implements Mutex {
 
     private int getLockTtlSeconds() {
         return parseLockTtlSeconds(lockTtl);
-    }
-
-    // This observer forces the container to instantiate the bean at startup
-    public void onStartup(@Observes final Startup event) {
-        // Initialization logic here
     }
 
     @PostConstruct
