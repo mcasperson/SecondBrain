@@ -5,6 +5,7 @@ import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -59,7 +60,7 @@ public class CosmosMutex implements Mutex {
      * The container is created by {@link CosmosLockContainerProducer}, or by a test producer.
      */
     @Inject
-    private CosmosLockContainer cosmosLockContainer;
+    private Instance<CosmosLockContainer> cosmosLockContainers;
 
     @Nullable
     private CosmosLockContainer container;
@@ -81,7 +82,7 @@ public class CosmosMutex implements Mutex {
     @PostConstruct
     public void postConstruct() {
         logger.fine("Initializing Cosmos DB mutex");
-        container = cosmosLockContainer;
+        container = cosmosLockContainers.get();
         logger.fine("Initialized Cosmos DB mutex");
 
         clearLocksOnStartup();

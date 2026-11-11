@@ -7,8 +7,6 @@ import io.vavr.control.Try;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
-import jakarta.enterprise.event.Startup;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.ArrayUtils;
@@ -125,11 +123,6 @@ public class CosmosLocalStorage implements LocalStorage {
 
     @Inject
     private SharedVirtualThreadExecutor sharedVirtualThreadExecutor;
-
-    // This observer forces the container to instantiate the bean at startup
-    public void onStartup(@Observes final Startup event) {
-        // Initialization logic here
-    }
 
     @PostConstruct
     public void postConstruct() {
