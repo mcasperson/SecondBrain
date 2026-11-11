@@ -6,15 +6,12 @@ import jakarta.inject.Inject;
 import org.jboss.weld.junit5.auto.AddBeanClasses;
 import org.jboss.weld.junit5.auto.AddExtensions;
 import org.jboss.weld.junit5.auto.EnableAutoWeld;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import secondbrain.domain.exceptions.LockFail;
+import secondbrain.domain.files.FileUtilsImpl;
 import secondbrain.domain.logger.Loggers;
-import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.mutex.config.MutexTimeout;
+import secondbrain.domain.test.TestConfigUtil;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +25,7 @@ import java.util.Map;
 @AddBeanClasses(FileLockSemaphore.class)
 @AddBeanClasses(MutexTimeout.class)
 @AddBeanClasses(Loggers.class)
+@AddBeanClasses(FileUtilsImpl.class)
 public class FileLockSemaphoreTest {
 
     @Inject

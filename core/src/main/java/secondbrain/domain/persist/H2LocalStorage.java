@@ -15,6 +15,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.exceptionhandling.ExceptionHandler;
 import secondbrain.domain.exceptions.LocalStorageFailure;
 import secondbrain.domain.exceptions.SerializationFailed;
+import secondbrain.domain.files.FileUtils;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.persist.config.*;
 import secondbrain.domain.sanitize.SanitizeDocument;
@@ -87,6 +88,9 @@ public class H2LocalStorage implements LocalStorage {
 
     @Inject
     private Logger logger;
+
+    @Inject
+    private FileUtils fileUtils;
 
     @Inject
     @Identifier("financialLocationContactRedaction")
@@ -175,11 +179,7 @@ public class H2LocalStorage implements LocalStorage {
     private String getDatabasePath() {
         return path
                 .map(p -> {
-                    final Path directory = Paths.get(p).toAbsolutePath();
-                    if (!Files.exists(directory)) {
-                        Try.run(() -> Files.createDirectories(directory))
-                                .onFailure(ex -> logger.warning("Failed to create database directory " + directory + ": " + ex.getMessage()));
-                    }
+                    final Path directory = fileUtils.createDirectoryIfNotExists(p);
                     return directory.resolve("localstoragev2").toString();
                 })
                 .orElse("./localstoragev2");

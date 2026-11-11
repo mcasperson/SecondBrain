@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptions.LockFail;
+import secondbrain.domain.files.FileUtils;
 import secondbrain.domain.mutex.config.MutexTimeout;
 import secondbrain.domain.tryext.TryExtensions;
 
@@ -14,7 +15,6 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
@@ -46,6 +46,9 @@ public class FileLockMutex implements Mutex {
 
     @Inject
     private Logger log;
+
+    @Inject
+    private FileUtils fileUtils;
 
     @Override
     public <T> T acquire(final long timeout, final String lockName, final MutexCallback<T> callback) {
@@ -134,7 +137,7 @@ public class FileLockMutex implements Mutex {
 
         final Path parent = path.toAbsolutePath().getParent();
         if (parent != null) {
-            Try.run(() -> Files.createDirectories(parent));
+            fileUtils.createDirectoryIfNotExists(parent);
         }
 
         return path.toFile();

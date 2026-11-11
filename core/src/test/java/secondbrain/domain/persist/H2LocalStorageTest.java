@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
+import secondbrain.domain.files.FileUtilsImpl;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.logger.Loggers;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
@@ -22,6 +23,7 @@ import java.util.UUID;
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(H2LocalStorage.class)
+@AddBeanClasses(FileUtilsImpl.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(LoggingExceptionHandler.class)
 @AddBeanClasses(JsonDeserializerJackson.class)

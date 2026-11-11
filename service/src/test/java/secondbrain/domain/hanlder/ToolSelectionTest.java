@@ -21,6 +21,7 @@ import secondbrain.domain.debug.DebugToolArgsKeyValue;
 import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.encryption.JasyptEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
+import secondbrain.domain.files.FileUtilsImpl;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.json.JsonDeserializerJackson;
 import secondbrain.domain.limit.DocumentTrimmerExactKeywords;
@@ -32,22 +33,22 @@ import secondbrain.domain.response.OkResponseValidation;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
 import secondbrain.domain.sanitize.RemoveSpacing;
 import secondbrain.domain.sanitize.SanitizeEmail;
+import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.toolbuilder.ToolBuilderLlama3;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.ToolCall;
 import secondbrain.domain.tools.smoketest.SmokeTest;
 import secondbrain.domain.tools.zendesk.SanitizeOrganization;
-import secondbrain.domain.test.TestConfigUtil;
 import secondbrain.domain.tools.zendesk.ZenDeskOrganization;
 import secondbrain.domain.validate.Llama32ValidateInputs;
 import secondbrain.domain.validate.ValidateListEmptyOrNull;
 import secondbrain.domain.validate.ValidateStringBlank;
+import secondbrain.domain.web.ClientConstructorDefault;
 import secondbrain.infrastructure.github.GitHubClient;
 import secondbrain.infrastructure.github.GitHubClientMock;
 import secondbrain.infrastructure.gong.GongClient;
 import secondbrain.infrastructure.gong.GongClientMock;
 import secondbrain.infrastructure.ollama.OllamaClient;
-import secondbrain.domain.web.ClientConstructorDefault;
 import secondbrain.infrastructure.planhat.PlanHatClient;
 import secondbrain.infrastructure.planhat.PlanHatClientMock;
 import secondbrain.infrastructure.slack.SlackClient;
@@ -85,6 +86,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @EnableAutoWeld
 @AddExtensions(ConfigExtension.class)
 @AddBeanClasses(H2LocalStorage.class)
+@AddBeanClasses(FileUtilsImpl.class)
 @AddBeanClasses(Loggers.class)
 @AddBeanClasses(JasyptEncryptor.class)
 @AddBeanClasses(AesEncryptor.class)

@@ -6,8 +6,6 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.enterprise.inject.spi.InjectionPoint;
 import jakarta.inject.Inject;
 import org.apache.tika.utils.StringUtils;
-import secondbrain.domain.test.TestConfigUtil;
-import secondbrain.domain.testconstants.TestConstants;
 import org.jboss.weld.junit5.WeldInitiator;
 import org.jboss.weld.junit5.WeldJunit5Extension;
 import org.jboss.weld.junit5.WeldSetup;
@@ -22,6 +20,7 @@ import secondbrain.domain.converter.StringConverter;
 import secondbrain.domain.converter.StringConverterSelector;
 import secondbrain.domain.encryption.AesEncryptor;
 import secondbrain.domain.exceptionhandling.LoggingExceptionHandler;
+import secondbrain.domain.files.FileUtilsImpl;
 import secondbrain.domain.files.FileWriter;
 import secondbrain.domain.files.PathBuilder;
 import secondbrain.domain.handler.DefaultPromptHandlerOutput;
@@ -30,13 +29,11 @@ import secondbrain.domain.handler.PromptHandlerResponse;
 import secondbrain.domain.handler.PromptResponseSimple;
 import secondbrain.domain.json.JsonDeserializer;
 import secondbrain.domain.objects.SecretGetterGenerator;
-import secondbrain.domain.persist.CosmosCacheContainerProducer;
-import secondbrain.domain.persist.CosmosLocalStorage;
-import secondbrain.domain.persist.H2LocalStorage;
-import secondbrain.domain.persist.LocalStorageProducer;
-import secondbrain.domain.persist.LocalStorageReadWrite;
+import secondbrain.domain.persist.*;
 import secondbrain.domain.persist.config.*;
 import secondbrain.domain.sanitize.FinancialLocationContactRedaction;
+import secondbrain.domain.test.TestConfigUtil;
+import secondbrain.domain.testconstants.TestConstants;
 import secondbrain.domain.toolbuilder.ToolSelector;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.validate.ValidateStringBlank;
@@ -95,6 +92,7 @@ class MainTest {
                             MockBeans.class,
                             DefaultPromptHandlerOutput.class,
                             H2LocalStorage.class,
+                            FileUtilsImpl.class,
                             CosmosLocalStorage.class,
                             CosmosCacheContainerProducer.class,
                             LocalStorageCacheDisable.class,
