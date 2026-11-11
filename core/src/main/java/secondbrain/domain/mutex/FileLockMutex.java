@@ -4,15 +4,20 @@ import io.vavr.API;
 import io.vavr.control.Try;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import secondbrain.domain.exceptions.LockFail;
 import secondbrain.domain.mutex.config.MutexTimeout;
 import secondbrain.domain.tryext.TryExtensions;
 
+import java.io.File;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -27,6 +32,14 @@ import java.util.logging.Logger;
 public class FileLockMutex implements Mutex {
     private static final long SLEEP = 10000;
     private static final Map<String, ReentrantLock> LOCKS = new ConcurrentHashMap<>();
+
+    /**
+     * The directory where lock files are saved. Absolute lock names are used as is.
+     * If not set, relative lock names are resolved against the working directory.
+     */
+    @Inject
+    @ConfigProperty(name = "sb.mutex.lockpath")
+    private Optional<String> lockPath;
 
     @Inject
     private MutexTimeout mutexTimeout;
@@ -70,7 +83,7 @@ public class FileLockMutex implements Mutex {
 
         try {
             return TryExtensions.withResources(
-                            () -> new RandomAccessFile(lockName, "rw").getChannel(),
+                            () -> new RandomAccessFile(resolveLockFile(lockName), "rw").getChannel(),
                             FileChannel::tryLock,
                             lock -> callIfNotNull(lock, callback))
                     .onFailure(OverlappingFileLockException.class, ex -> {
@@ -88,7 +101,7 @@ public class FileLockMutex implements Mutex {
 
         while (true) {
             final Try<T> result = TryExtensions.withResources(
-                            () -> new RandomAccessFile(lockName, "rw").getChannel(),
+                            () -> new RandomAccessFile(resolveLockFile(lockName), "rw").getChannel(),
                             channel -> channel.tryLock(0, 0, false),
                             lock -> callIfNotNull(lock, callback))
                     .onFailure(OverlappingFileLockException.class, ex -> {
@@ -111,6 +124,20 @@ public class FileLockMutex implements Mutex {
 
             Try.run(() -> Thread.sleep(Math.min(SLEEP, timeout)));
         }
+    }
+
+    private File resolveLockFile(final String lockName) {
+        final Path path = lockPath
+                .filter(dir -> !dir.isBlank())
+                .map(dir -> Path.of(dir).resolve(lockName))
+                .orElseGet(() -> Path.of(lockName));
+
+        final Path parent = path.toAbsolutePath().getParent();
+        if (parent != null) {
+            Try.run(() -> Files.createDirectories(parent));
+        }
+
+        return path.toFile();
     }
 
     private <T> T callIfNotNull(final FileLock lock, final MutexCallback<T> callback) {
