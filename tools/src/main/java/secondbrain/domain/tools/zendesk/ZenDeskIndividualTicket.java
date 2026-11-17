@@ -18,7 +18,6 @@ import secondbrain.domain.constants.Constants;
 import secondbrain.domain.context.IndividualContext;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
-import secondbrain.domain.debug.DebugToolArgs;
 import secondbrain.domain.encryption.Encryptor;
 import secondbrain.domain.exceptionhandling.ExceptionMapping;
 import secondbrain.domain.exceptions.InternalFailure;
@@ -27,7 +26,6 @@ import secondbrain.domain.limit.DocumentTrimmer;
 import secondbrain.domain.objects.ToStringGenerator;
 import secondbrain.domain.processing.DataToRagDoc;
 import secondbrain.domain.processing.RatingMetadata;
-import secondbrain.domain.sanitize.SanitizeDocument;
 import secondbrain.domain.tooldefs.IntermediateResult;
 import secondbrain.domain.tooldefs.Tool;
 import secondbrain.domain.tooldefs.ToolArgs;
@@ -44,7 +42,7 @@ import secondbrain.infrastructure.zendesk.api.ZenDeskTicket;
 import secondbrain.infrastructure.zendesk.api.ZenDeskUserItemResponse;
 
 import java.util.*;
-import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -78,10 +76,6 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     private ZenDeskTicketConfig config;
 
     @Inject
-    @Identifier("removeSpacing")
-    private SanitizeDocument removeSpacing;
-
-    @Inject
     @Preferred
     private LlmClient llmClient;
 
@@ -90,16 +84,10 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     private ZenDeskClient zenDeskClient;
 
     @Inject
-    private DebugToolArgs debugToolArgs;
-
-    @Inject
     private ValidateList validateList;
 
     @Inject
     private ValidateString validateString;
-
-    @Inject
-    private Logger logger;
 
     @Inject
     private ExceptionMapping exceptionMapping;
@@ -134,10 +122,12 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     }
 
     private String getContextLabelWithDate(@Nullable final ZenDeskTicket ticket) {
-        if (ticket == null || StringUtils.isBlank(ticket.getCreatedAt())) {
+        if (ticket == null) {
             return getContextLabel();
         }
-        return getContextLabel() + " " + ticket.getCreatedAt();
+        return Stream.of(getContextLabel(), "ID: " + ticket.id(), "Date: " + ticket.getCreatedAt())
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.joining(" "));
     }
 
     @Override

@@ -190,7 +190,7 @@ class ZenDeskIndividualTicketTest {
         assertEquals(expectedDocument, ticket.document());
         assertEquals("123", ticket.id());
         assertEquals("ZenDeskIndividualTicket", ticket.tool());
-        assertEquals("ZenDesk Ticket 2024-01-01T00:00:00Z Acme", ticket.contextLabel());
+        assertEquals("ZenDesk Ticket ID: 123 Date: 2024-01-01T00:00:00Z Acme", ticket.contextLabel());
         assertEquals("[ZenDesk Ticket 123](Login broken - Acme - Bob [123](" + URL + "/agent/tickets/123))", ticket.link());
         assertEquals(List.of(new IntermediateResult(expectedDocument, "Data-ZenDesk-123-AcmeCorp.txt")), ticket.getIntermediateResults());
         assertEquals(List.of("comments:" + AUTH + ":" + URL + ":123:" + (60 * 60 * 24 * 90)), zenDeskClient.commentCalls);
@@ -218,8 +218,8 @@ class ZenDeskIndividualTicketTest {
                 new ToolArgs(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBJECT_ARG, "Login\r\nbroken\nagain", true)));
 
         final RagDocumentContext<Void> ticket = context.getFirst();
-        // Without a created date or organization, the label is just the tool label
-        assertEquals("ZenDesk Ticket", ticket.contextLabel());
+        // Without a created date or organization, the label has the ticket id and an empty date
+        assertEquals("ZenDesk Ticket ID: 123 Date: ", ticket.contextLabel());
         // Line breaks are removed from the subject in the link
         assertEquals("[ZenDesk Ticket 123](Login broken again - Unknown Organization - Unknown User [123](" + URL + "/agent/tickets/123))", ticket.link());
     }
