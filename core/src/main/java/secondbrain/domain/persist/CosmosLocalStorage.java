@@ -129,7 +129,15 @@ public class CosmosLocalStorage implements LocalStorage {
         logger.fine("Initializing Cosmos DB local storage");
         synchronized (CosmosLocalStorage.class) {
             if (container == null) {
-                container = cosmosCacheContainers.get();
+                try {
+                    container = cosmosCacheContainers.get();
+                } catch (final Exception ex) {
+                    throw new LocalStorageFailure("Failed to connect to Cosmos DB local storage: "
+                            + exceptionHandler.getExceptionMessage(ex)
+                            + ". Check sb.cosmos.endpoint, sb.cosmos.key, sb.cosmos.autodiscovery and "
+                            + "sb.cosmos.gatewayMode (autodiscovery=false and gatewayMode=true are only for the "
+                            + "vnext emulator), or set sb.localstorage.provider to h2.", ex);
+                }
             }
         }
         logger.fine("Initialized Cosmos DB local storage");
