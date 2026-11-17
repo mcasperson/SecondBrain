@@ -197,6 +197,26 @@ class ZenDeskIndividualTicketTest {
     }
 
     @Test
+    void getContextLabelIncludesTheSubmitterName() {
+        final RagDocumentContext<Void> ticket = tool.getContext(
+                env(),
+                List.of(PROMPT),
+                args(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG, "1")).getFirst();
+
+        assertEquals("ZenDesk Ticket ID: 123 Date: 2024-01-01T00:00:00Z Submitter: Alice Acme", ticket.contextLabel());
+    }
+
+    @Test
+    void getContextLabelOmitsAnUnknownSubmitter() {
+        final RagDocumentContext<Void> ticket = tool.getContext(
+                env(),
+                List.of(PROMPT),
+                args(ZenDeskIndividualTicket.ZENDESK_TICKET_SUBMITTER_ARG, "999")).getFirst();
+
+        assertEquals("ZenDesk Ticket ID: 123 Date: 2024-01-01T00:00:00Z Acme", ticket.contextLabel());
+    }
+
+    @Test
     void getContextLimitsTheNumberOfComments() {
         final List<RagDocumentContext<Void>> context = tool.getContext(env(), List.of(PROMPT), args(ZenDeskOrganization.NUM_COMMENTS_ARG, "1"));
 

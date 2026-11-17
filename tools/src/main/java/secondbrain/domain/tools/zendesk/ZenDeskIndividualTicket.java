@@ -121,11 +121,18 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
         return "ZenDesk Ticket";
     }
 
-    private String getContextLabelWithDate(@Nullable final ZenDeskTicket ticket) {
+    private String getContextLabelWithDate(
+            @Nullable final ZenDeskTicket ticket,
+            final String authHeader,
+            final String url) {
         if (ticket == null) {
             return getContextLabel();
         }
-        return Stream.of(getContextLabel(), "ID: " + ticket.id(), "Date: " + ticket.getCreatedAt())
+        return Stream.of(
+                        getContextLabel(),
+                        "ID: " + ticket.id(),
+                        "Date: " + ticket.getCreatedAt(),
+                        getSubmitterName(ticket, authHeader, url))
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.joining(" "));
     }
@@ -223,6 +230,19 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
     }
 
     @Nullable
+    private String getSubmitterName(final ZenDeskTicket meta, final String authHeader, final String url) {
+        if (StringUtils.isBlank(meta.getSubmitterId())) {
+            return null;
+        }
+        return Try
+                .of(() -> zenDeskClient.getUser(authHeader, url, meta.getSubmitterId()).name())
+                // Best effort - a missing submitter name should not fail the whole process
+                .filter(StringUtils::isNotBlank)
+                .map(name -> "Submitter: " + name)
+                .getOrNull();
+    }
+
+    @Nullable
     private String getOrganizationName(final ZenDeskTicket meta, final String authHeader, final String url) {
         return Try
                 .of(() -> zenDeskClient.getOrganization(authHeader, url, meta.getOrganizationId()))
@@ -307,7 +327,7 @@ public class ZenDeskIndividualTicket implements Tool<Void> {
             final ZenDeskTicketConfig.LocalArguments parsedArgs) {
         final String contextLabel = String.join(
                 " ",
-                Stream.of(getContextLabelWithDate(meta), getOrganizationName(meta, authHeader, parsedArgs.getUrl()))
+                Stream.of(getContextLabelWithDate(meta, authHeader, parsedArgs.getUrl()), getOrganizationName(meta, authHeader, parsedArgs.getUrl()))
                         .filter(StringUtils::isNotBlank)
                         .toList());
 
