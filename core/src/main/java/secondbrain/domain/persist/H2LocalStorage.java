@@ -9,6 +9,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jspecify.annotations.Nullable;
@@ -160,6 +161,14 @@ public class H2LocalStorage implements LocalStorage {
                 .recover(ex -> {
                     logger.warning(exceptionHandler.getExceptionMessage(ex));
 
+                    /*
+                        Retrying will never fix a corrupt database file. The database is only a cache, so move the
+                        bad file aside and let the next attempt create a fresh one.
+                     */
+                    if (isCorrupted(ex) && quarantineDatabase() && count < MAX_RETRIES) {
+                        return getConnection(count + 1);
+                    }
+
                     if (count < MAX_RETRIES) {
                         return getConnection(count + 1);
                     }
@@ -167,6 +176,28 @@ public class H2LocalStorage implements LocalStorage {
                     throw new LocalStorageFailure("Failed to get connection after " + MAX_RETRIES + " attempts", ex);
                 })
                 .get();
+    }
+
+    private boolean isCorrupted(final Throwable ex) {
+        return ExceptionUtils.getThrowableList(ex).stream()
+                .map(Throwable::getMessage)
+                .anyMatch(message -> StringUtils.containsIgnoreCase(message, "File corrupted"));
+    }
+
+    /**
+     * Moves a corrupt database file out of the way, keeping it for inspection or recovery.
+     *
+     * @return true if the corrupt file was moved, and a fresh database can be created
+     */
+    private boolean quarantineDatabase() {
+        final Path database = Paths.get(getDatabasePath() + ".mv.db");
+        final Path quarantined = Paths.get(getDatabasePath() + ".mv.db.corrupt-" + System.currentTimeMillis());
+
+        return Try.run(() -> Files.move(database, quarantined))
+                .onSuccess(v -> logger.warning("Moved corrupt database to " + quarantined + " and creating a new one"))
+                .onFailure(ex -> logger.warning("Failed to move corrupt database: "
+                        + exceptionHandler.getExceptionMessage(ex)))
+                .isSuccess();
     }
 
     private void cleanConnection(final Connection connection) {
