@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.exceptions.PromptTooLong;
 import secondbrain.domain.exceptions.RateLimit;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.ListLimiterAtomicCutOff;
@@ -178,6 +179,29 @@ class ClaudeClientTest {
         final List<String> messages = claudeMessages.getRequests().getFirst().messages();
         assertEquals("Ticket: printer", messages.getFirst());
         assertEquals("Summarise", messages.getLast());
+    }
+
+    @Test
+    void callWithCacheReducesTheContextWhenThePromptIsTooLong() {
+        claudeMessages.failNextCallsWith(
+                new PromptTooLong("too long", new RuntimeException("prompt is too long: 200 tokens > 100 maximum")), 1);
+
+        final RagMultiDocumentContext<Void> result = client.callWithCache(ragDocs(List.of("Summarise")), Map.of(), TOOL);
+
+        assertEquals(List.of("response"), result.getResponses());
+        final List<ClaudeRequest> requests = claudeMessages.getRequests();
+        assertEquals(2, requests.size());
+        assertTrue(requests.get(1).generatePromptText().length() < requests.get(0).generatePromptText().length());
+        assertEquals("Summarise", requests.get(1).messages().getLast());
+    }
+
+    @Test
+    void callWithCacheGivesUpWhenThePromptIsStillTooLong() {
+        claudeMessages.failWith(new PromptTooLong("too long", new RuntimeException("prompt is too long")));
+
+        assertThrows(PromptTooLong.class, () -> client.callWithCache(ragDocs(List.of("Summarise")), Map.of(), TOOL));
+        // The original request and three reductions
+        assertEquals(4, claudeMessages.getRequests().size());
     }
 
     @Test

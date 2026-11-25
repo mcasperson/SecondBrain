@@ -18,6 +18,9 @@ public class FakeClaudeMessages implements ClaudeMessages {
     private volatile String response = "response";
     @Nullable
     private volatile RuntimeException failure;
+    @Nullable
+    private volatile RuntimeException transientFailure;
+    private final AtomicInteger transientFailures = new AtomicInteger();
 
     /**
      * Sets the text returned by every subsequent call.
@@ -31,6 +34,14 @@ public class FakeClaudeMessages implements ClaudeMessages {
      */
     public void failWith(final RuntimeException failure) {
         this.failure = failure;
+    }
+
+    /**
+     * Makes the next calls throw the supplied exception, after which calls succeed again.
+     */
+    public void failNextCallsWith(final RuntimeException failure, final int calls) {
+        this.transientFailure = failure;
+        this.transientFailures.set(calls);
     }
 
     /**
@@ -49,6 +60,10 @@ public class FakeClaudeMessages implements ClaudeMessages {
     @Override
     public String createMessage(final ClaudeRequest request) {
         requests.add(request);
+        final RuntimeException currentTransientFailure = transientFailure;
+        if (currentTransientFailure != null && transientFailures.getAndDecrement() > 0) {
+            throw currentTransientFailure;
+        }
         final RuntimeException currentFailure = failure;
         if (currentFailure != null) {
             throw currentFailure;

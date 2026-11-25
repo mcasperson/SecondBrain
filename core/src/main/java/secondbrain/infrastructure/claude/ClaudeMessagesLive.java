@@ -3,15 +3,12 @@ package secondbrain.infrastructure.claude;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.core.JsonValue;
 import com.anthropic.errors.AnthropicException;
+import com.anthropic.errors.BadRequestException;
 import com.anthropic.errors.RateLimitException;
-import com.anthropic.models.messages.CacheControlEphemeral;
-import com.anthropic.models.messages.Message;
-import com.anthropic.models.messages.MessageCreateParams;
-import com.anthropic.models.messages.OutputConfig;
-import com.anthropic.models.messages.StopReason;
-import com.anthropic.models.messages.TextBlock;
+import com.anthropic.models.messages.*;
 import org.apache.commons.lang3.StringUtils;
 import secondbrain.domain.exceptions.LlmCallFailure;
+import secondbrain.domain.exceptions.PromptTooLong;
 import secondbrain.domain.exceptions.RateLimit;
 
 import java.util.stream.Collectors;
@@ -21,6 +18,7 @@ import java.util.stream.Collectors;
  */
 public class ClaudeMessagesLive implements ClaudeMessages {
     private static final String FALLBACK_BETA = "server-side-fallback-2026-07-01";
+    private static final String PROMPT_TOO_LONG = "prompt is too long";
 
     private final AnthropicClient client;
     private final String fallbacks;
@@ -78,6 +76,11 @@ public class ClaudeMessagesLive implements ClaudeMessages {
             return client.messages().create(params);
         } catch (final RateLimitException ex) {
             throw new RateLimit("Claude API rate limit exceeded", ex);
+        } catch (final BadRequestException ex) {
+            if (String.valueOf(ex.getMessage()).contains(PROMPT_TOO_LONG)) {
+                throw new PromptTooLong("The prompt is too long for the Claude model " + params.model(), ex);
+            }
+            throw new LlmCallFailure("Failed to call the Claude API for model " + params.model(), ex);
         } catch (final AnthropicException ex) {
             throw new LlmCallFailure("Failed to call the Claude API for model " + params.model(), ex);
         }

@@ -11,6 +11,7 @@ import org.jspecify.annotations.Nullable;
 import secondbrain.domain.collections.MapUtils;
 import secondbrain.domain.context.RagDocumentContext;
 import secondbrain.domain.context.RagMultiDocumentContext;
+import secondbrain.domain.exceptions.PromptTooLong;
 import secondbrain.domain.injection.Preferred;
 import secondbrain.domain.limit.ListLimiter;
 import secondbrain.domain.persist.LocalStorage;
@@ -42,6 +43,12 @@ public class ClaudeClient implements LlmClient {
      */
     private static final float DEFAULT_CHARS_PER_INPUT_TOKENS = 3.5f;
     private static final int DEFAULT_CACHE_TTL_DAYS = 30;
+    private static final int MAX_CONTEXT_REDUCTIONS = 3;
+    /**
+     * Used to reduce the context when the API does not say how many tokens it accepts.
+     */
+    private static final double DEFAULT_REDUCTION_RATIO = 0.5;
+    private static final double REDUCTION_SAFETY_MARGIN = 0.9;
 
     @Inject
     @ConfigProperty(name = "sb.claudellm.model", defaultValue = DEFAULT_MODEL)
@@ -114,32 +121,10 @@ public class ClaudeClient implements LlmClient {
         final String resolvedReasoningEffort = getResolvedReasoningEffort(environmentSettings);
         final int maxChars = getMaxChars(environmentSettings);
 
-        // No individual context can be longer than the maxChars.
-        // This ensures we always have at least some context available.
-        final List<RagDocumentContext<T>> trimmedItems = ragDocs.getIndividualContexts().stream()
-                .map(ragDoc -> ragDoc.updateDocument(ragDoc.document().substring(0, Math.min(maxChars, ragDoc.document().length()))))
-                .toList();
-
-        // Limit the total size of the context messages to maxChars
-        final List<RagDocumentContext<T>> trimmedList = listLimiter.limitListContent(trimmedItems,
-                RagDocumentContext::document,
-                maxChars);
-
         final List<String> responses = ragDocs.getPrompts()
                 .stream()
                 .map(prompt -> {
-                    // The context is sent before the prompt so the shared prefix can be cached by the Claude API
-                    final List<String> messages = new ArrayList<>(trimmedList.stream()
-                            .map(ragDoc -> ragDoc.contextLabel() + ": " + ragDoc.document())
-                            .toList());
-                    messages.add(prompt);
-
-                    final ClaudeRequest request = new ClaudeRequest(
-                            modelName,
-                            getMaxOutputTokens(),
-                            ragDocs.instructions(),
-                            messages,
-                            resolvedReasoningEffort);
+                    final ClaudeRequest request = buildRequest(ragDocs, prompt, modelName, resolvedReasoningEffort, maxChars);
 
                     final String promptHash = DigestUtils.sha256Hex(request.generatePromptText()
                             + modelName
@@ -151,12 +136,87 @@ public class ClaudeClient implements LlmClient {
                                     CACHE_SOURCE,
                                     promptHash,
                                     NumberUtils.toInt(ttlDays, DEFAULT_CACHE_TTL_DAYS) * 24L * 60L * 60L,
-                                    () -> call(request))
+                                    () -> callReducingContext(ragDocs, prompt, modelName, resolvedReasoningEffort, request, MAX_CONTEXT_REDUCTIONS))
                             .result();
                 })
                 .toList();
 
         return ragDocs.updateResponses(responses);
+    }
+
+    private <T> ClaudeRequest buildRequest(
+            final RagMultiDocumentContext<T> ragDocs,
+            final String prompt,
+            final String modelName,
+            @Nullable final String resolvedReasoningEffort,
+            final int maxChars) {
+        // No individual context can be longer than the maxChars.
+        // This ensures we always have at least some context available.
+        final List<RagDocumentContext<T>> trimmedItems = ragDocs.getIndividualContexts().stream()
+                .map(ragDoc -> ragDoc.updateDocument(ragDoc.document().substring(0, Math.min(maxChars, ragDoc.document().length()))))
+                .toList();
+
+        // Limit the total size of the context messages to maxChars
+        final List<RagDocumentContext<T>> trimmedList = listLimiter.limitListContent(trimmedItems,
+                RagDocumentContext::document,
+                maxChars);
+
+        // The context is sent before the prompt so the shared prefix can be cached by the Claude API
+        final List<String> messages = new ArrayList<>(trimmedList.stream()
+                .map(ragDoc -> ragDoc.contextLabel() + ": " + ragDoc.document())
+                .toList());
+        messages.add(prompt);
+
+        return new ClaudeRequest(
+                modelName,
+                getMaxOutputTokens(),
+                ragDocs.instructions(),
+                messages,
+                resolvedReasoningEffort);
+    }
+
+    /**
+     * Our token count is only an estimate based on the number of characters. If Claude rejects the request as too
+     * long, retrying the same request can never succeed, so we shrink the context and try again instead.
+     */
+    private <T> String callReducingContext(
+            final RagMultiDocumentContext<T> ragDocs,
+            final String prompt,
+            final String modelName,
+            @Nullable final String resolvedReasoningEffort,
+            final ClaudeRequest request,
+            final int reductionsLeft) {
+        try {
+            return call(request);
+        } catch (final PromptTooLong ex) {
+            if (reductionsLeft <= 0) {
+                throw ex;
+            }
+
+            final int reducedChars = getReducedChars(request, ex);
+
+            logger.warning("Claude rejected a prompt of " + request.generatePromptText().length() + " characters as too long. Retrying with " + reducedChars + " characters of context.");
+
+            return callReducingContext(
+                    ragDocs,
+                    prompt,
+                    modelName,
+                    resolvedReasoningEffort,
+                    buildRequest(ragDocs, prompt, modelName, resolvedReasoningEffort, reducedChars),
+                    reductionsLeft - 1);
+        }
+    }
+
+    /**
+     * Calculates the number of characters to use when retrying a request that was rejected as too long.
+     * If the API reported the token counts we scale by the limit, otherwise we fall back to a fixed ratio.
+     */
+    private int getReducedChars(final ClaudeRequest request, final PromptTooLong ex) {
+        final int currentChars = request.generatePromptText().length();
+        final double ratio = ex.getTokens().isPresent() && ex.getMaxTokens().isPresent()
+                ? (double) ex.getMaxTokens().getAsInt() / ex.getTokens().getAsInt()
+                : DEFAULT_REDUCTION_RATIO;
+        return Math.max(1, (int) (currentChars * ratio * REDUCTION_SAFETY_MARGIN));
     }
 
     private String call(final ClaudeRequest request) {
