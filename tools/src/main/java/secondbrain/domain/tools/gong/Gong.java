@@ -364,7 +364,7 @@ public class Gong implements Tool<Void> {
         if (call == null || call.started() == null) {
             return getContextLabel();
         }
-        final String label = getContextLabel() + " " + call.started().format(ISO_OFFSET_DATE_TIME);
+        final String label = getContextLabel() + " " + call.id() + " " + call.started().format(ISO_OFFSET_DATE_TIME);
         return call.duration() > 0
                 ? label + " (" + Math.max(1, Math.round(call.duration() / 60f)) + " min)"
                 : label;
