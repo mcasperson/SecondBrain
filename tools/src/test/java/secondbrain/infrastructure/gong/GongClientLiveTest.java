@@ -88,7 +88,7 @@ class GongClientLiveTest {
     }
 
     private static GongCallExtensive call(final String id, final GongCallExtensiveContext... context) {
-        return new GongCallExtensive(new GongCallExtensiveMetadata(id, "https://gong.test/call/" + id, FROM), List.of(context), List.of());
+        return new GongCallExtensive(new GongCallExtensiveMetadata(id, "https://gong.test/call/" + id, "Call " + id, FROM, 60), List.of(context), List.of());
     }
 
     private static GongCallExtensiveContext salesforce(final String objectType, final String objectId) {
@@ -231,7 +231,7 @@ class GongClientLiveTest {
     @Test
     void getCallTranscriptFormatsEachSpeakerTurn() {
         final GongCallExtensive call = new GongCallExtensive(
-                new GongCallExtensiveMetadata("call-1", "", FROM),
+                new GongCallExtensiveMetadata("call-1", "", "Call call-1", FROM, 60),
                 List.of(),
                 List.of(new GongCallExtensiveParty("p1", "Alice", "s1")));
         http.enqueue(FakeJaxRs.response(200, new GongCallTranscript(List.of(new GongCallTranscriptCollection(List.of(

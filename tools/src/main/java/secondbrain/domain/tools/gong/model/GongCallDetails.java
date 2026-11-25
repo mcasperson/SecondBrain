@@ -17,9 +17,10 @@ import java.util.stream.Stream;
 /**
  * This class represents the contract between a tool and the Gong API.
  *
- * @param id      The call ID
- * @param url     The call URL
- * @param parties The list of parties involved in the call
+ * @param id       The call ID
+ * @param url      The call URL
+ * @param parties  The list of parties involved in the call
+ * @param duration The call duration in seconds
  */
 public record GongCallDetails(String id,
                               String url,
@@ -27,6 +28,7 @@ public record GongCallDetails(String id,
                               List<GongCallExtensiveParty> parties,
                               String transcript,
                               ZonedDateTime started,
+                              int duration,
                               @Nullable MetaObjectResult meta1,
                               @Nullable MetaObjectResult meta2,
                               @Nullable MetaObjectResult meta3,
@@ -106,6 +108,6 @@ public record GongCallDetails(String id,
      * If we don't need to carry the full transcript any more, clear it out to save some memory.
      */
     public GongCallDetails clearTranscript() {
-        return new GongCallDetails(id, url, company, parties, "", started, meta1, meta2, meta3, meta4, meta5, meta6, meta7, meta8, meta9, meta10);
+        return new GongCallDetails(id, url, company, parties, "", started, duration, meta1, meta2, meta3, meta4, meta5, meta6, meta7, meta8, meta9, meta10);
     }
 }

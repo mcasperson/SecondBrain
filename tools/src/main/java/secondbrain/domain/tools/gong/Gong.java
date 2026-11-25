@@ -121,10 +121,6 @@ public class Gong implements Tool<Void> {
     private HooksContainer hooksContainer;
 
     @Inject
-    @Identifier("everything")
-    private DateParser dateParser;
-
-    @Inject
     @Preferred
     private LocalStorage localStorage;
 
@@ -245,7 +241,8 @@ public class Gong implements Tool<Void> {
                                 gong.getSystemContextOrDefault("Salesforce", "Name", "Unknown"),
                                 gong.parties(),
                                 gongClient.getCallTranscript(parsedArgs.getSecretAccessKey(), parsedArgs.getSecretAccessSecretKey(), gong),
-                                dateParser.parseDateOrDefault(gong.metaData().started()),
+                                gong.metaData().startedDate().toZonedDateTime(),
+                                gong.metaData().getDuration(),
                                 getMeta(gong, parsedArgs.getObject1Name(), parsedArgs.getObject1()),
                                 getMeta(gong, parsedArgs.getObject2Name(), parsedArgs.getObject2()),
                                 getMeta(gong, parsedArgs.getObject3Name(), parsedArgs.getObject3()),
@@ -367,7 +364,10 @@ public class Gong implements Tool<Void> {
         if (call == null || call.started() == null) {
             return getContextLabel();
         }
-        return getContextLabel() + " " + call.started().format(ISO_OFFSET_DATE_TIME);
+        final String label = getContextLabel() + " " + call.started().format(ISO_OFFSET_DATE_TIME);
+        return call.duration() > 0
+                ? label + " (" + Math.max(1, Math.round(call.duration() / 60f)) + " min)"
+                : label;
     }
 }
 

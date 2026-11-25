@@ -12,7 +12,7 @@ public record GongCallExtensive(GongCallExtensiveMetadata metaData,
                                 List<GongCallExtensiveContext> context,
                                 List<GongCallExtensiveParty> parties) {
 
-    private static final GongCallExtensiveMetadata EMPTY_METADATA = new GongCallExtensiveMetadata("", "", "");
+    private static final GongCallExtensiveMetadata EMPTY_METADATA = new GongCallExtensiveMetadata("", "", "", "", 0);
 
     public GongCallExtensiveMetadata getMetaData() {
         return Objects.requireNonNullElse(metaData(), EMPTY_METADATA);

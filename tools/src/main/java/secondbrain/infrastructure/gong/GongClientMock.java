@@ -33,7 +33,7 @@ public class GongClientMock implements GongClient {
             @Nullable final String fromDateTime,
             @Nullable final String toDateTime) {
         return List.of(new GongCallExtensive(
-                new GongCallExtensiveMetadata("12345", "https://gong.io/call/12345", "2023-10-01T10:00:00Z"),
+                new GongCallExtensiveMetadata("12345", "https://gong.io/call/12345", "Mock call", "2023-10-01T10:00:00Z", 600),
                 List.of(new GongCallExtensiveContext("unused", List.of())),
                 List.of(new GongCallExtensiveParty("1", "Alice", "Speaker1"))));
     }
