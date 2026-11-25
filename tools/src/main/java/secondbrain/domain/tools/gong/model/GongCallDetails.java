@@ -101,7 +101,8 @@ public record GongCallDetails(String id,
     }
 
     public MetaObjectResults generateMetaObjectResults() {
-        return new MetaObjectResults(Stream.of(meta1, meta2, meta3, meta4, meta5, meta6, meta7, meta8, meta9, meta10).filter(Objects::nonNull).toList());
+        final MetaObjectResult durationMeta = new MetaObjectResult("Duration", duration, id, "Gong");
+        return new MetaObjectResults(Stream.of(meta1, meta2, meta3, meta4, meta5, meta6, meta7, meta8, meta9, meta10, durationMeta).filter(Objects::nonNull).toList());
     }
 
     /**
